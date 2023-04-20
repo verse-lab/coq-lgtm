@@ -1,0 +1,810 @@
+DIGEST 48c34e3129f3b920e41438539ea32ec2
+FSLF.LibWf
+R455:464 SLF.LibTactics <> <> lib
+R466:473 SLF.LibLogic <> <> lib
+R476:482 SLF.LibProd <> <> lib
+R484:489 SLF.LibSum <> <> lib
+R491:501 SLF.LibRelation <> <> lib
+R503:508 SLF.LibNat <> <> lib
+R510:515 SLF.LibInt <> <> lib
+def 1070:1071 <> wf
+R1076:1087 Coq.Init.Wf <> well_founded def
+R1374:1375 SLF.LibWf <> wf def
+def 2053:2059 <> measure
+binder 2061:2061 <> A:1
+R2067:2068 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R2066:2066 SLF.LibWf <> A:1 var
+R2069:2071 Coq.Init.Datatypes <> nat ind
+binder 2064:2064 <> f:2
+R2076:2081 SLF.LibRelation <> binary def
+R2083:2083 SLF.LibWf <> A:1 var
+binder 2094:2095 <> x1:3
+binder 2097:2098 <> x2:4
+R2108:2110 SLF.LibOrder <> ::comp_scope:x_'<'_x not
+R2104:2104 SLF.LibWf <> f:2 var
+R2106:2107 SLF.LibWf <> x1:3 var
+R2111:2111 SLF.LibWf <> f:2 var
+R2113:2114 SLF.LibWf <> x2:4 var
+sec 2298:2304 <> Measure
+var 2318:2318 Measure A
+R2348:2351 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R2347:2347 SLF.LibWf <> Measure.A var
+R2352:2354 Coq.Init.Datatypes <> nat ind
+prf 2364:2373 <> wf_measure
+binder 2384:2384 <> f:6
+R2389:2390 SLF.LibWf <> wf def
+R2393:2399 SLF.LibWf <> measure def
+R2401:2401 SLF.LibWf <> f:6 var
+R2475:2489 SLF.LibNat <> peano_induction thm
+R2475:2489 SLF.LibNat <> peano_induction thm
+R2523:2531 Coq.Init.Wf <> Acc_intro constr
+R2523:2531 Coq.Init.Wf <> Acc_intro constr
+prf 2603:2615 <> trans_measure
+R2632:2635 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R2631:2631 SLF.LibWf <> Measure.A var
+R2636:2638 Coq.Init.Datatypes <> nat ind
+binder 2627:2627 <> f:7
+R2644:2648 SLF.LibRelation <> trans def
+R2651:2657 SLF.LibWf <> measure def
+R2659:2659 SLF.LibWf <> f:7 var
+R2691:2697 SLF.LibWf <> measure def
+R2700:2704 SLF.LibRelation <> trans def
+R2772:2778 SLF.LibWf Measure <> sec
+def 3001:3008 <> measure2
+binder 3010:3011 <> A1:8
+binder 3013:3014 <> A2:9
+R3023:3026 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R3021:3022 SLF.LibWf <> A1:8 var
+R3029:3032 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R3027:3028 SLF.LibWf <> A2:9 var
+R3033:3035 Coq.Init.Datatypes <> nat ind
+binder 3017:3017 <> f:10
+R3040:3045 SLF.LibRelation <> binary def
+R3050:3050 Coq.Init.Datatypes <> ::type_scope:x_'*'_x not
+R3048:3049 SLF.LibWf <> A1:8 var
+R3051:3052 SLF.LibWf <> A2:9 var
+binder 3064:3065 <> p1:11
+binder 3067:3068 <> p2:12
+R3088:3089 SLF.LibWf <> p1:11 var
+binder 3078:3079 <> x1:13
+binder 3081:3082 <> y1:14
+R3124:3125 SLF.LibWf <> p2:12 var
+binder 3114:3115 <> x2:15
+binder 3117:3118 <> y2:16
+R3153:3155 SLF.LibOrder <> ::comp_scope:x_'<'_x not
+R3146:3146 SLF.LibWf <> f:10 var
+R3151:3152 SLF.LibWf <> y1:14 var
+R3148:3149 SLF.LibWf <> x1:13 var
+R3156:3156 SLF.LibWf <> f:10 var
+R3161:3162 SLF.LibWf <> y2:16 var
+R3158:3159 SLF.LibWf <> x2:15 var
+prf 3173:3183 <> wf_measure2
+binder 3194:3195 <> A1:17
+binder 3197:3198 <> A2:18
+R3205:3206 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R3203:3204 SLF.LibWf <> A1:17 var
+R3209:3210 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R3207:3208 SLF.LibWf <> A2:18 var
+R3211:3213 Coq.Init.Datatypes <> nat ind
+binder 3201:3201 <> f:19
+R3219:3220 SLF.LibWf <> wf def
+R3223:3230 SLF.LibWf <> measure2 def
+R3232:3232 SLF.LibWf <> f:19 var
+R3283:3299 SLF.LibNat <> measure_induction thm
+R3304:3311 SLF.LibProd <> uncurry2 def
+R3283:3299 SLF.LibNat <> measure_induction thm
+R3304:3311 SLF.LibProd <> uncurry2 def
+R3357:3365 Coq.Init.Wf <> Acc_intro constr
+R3357:3365 Coq.Init.Wf <> Acc_intro constr
+R3673:3674 SLF.LibWf <> wf def
+R3673:3674 SLF.LibWf <> wf def
+R3701:3712 Coq.Init.Wf <> well_founded def
+R3701:3712 Coq.Init.Wf <> well_founded def
+R3726:3737 Coq.Init.Wf <> well_founded def
+R3726:3737 Coq.Init.Wf <> well_founded def
+R3744:3745 SLF.LibWf <> wf def
+R3847:3862 Coq.Init.Wf <> well_founded_ind thm
+R3865:3874 SLF.LibWf <> wf_measure thm
+prf 4260:4267 <> wf_empty
+binder 4278:4278 <> A:20
+R4283:4284 SLF.LibWf <> wf def
+R4288:4292 SLF.LibRelation <> empty def
+R4294:4294 SLF.LibWf <> A:20 var
+prf 4612:4625 <> wf_of_rel_incl
+binder 4636:4636 <> A:21
+R4647:4652 SLF.LibRelation <> binary def
+R4654:4654 SLF.LibWf <> A:21 var
+binder 4639:4640 <> R1:22
+binder 4642:4643 <> R2:23
+R4665:4670 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R4660:4661 SLF.LibWf <> wf def
+R4663:4664 SLF.LibWf <> R1:22 var
+R4685:4690 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R4671:4678 SLF.LibRelation <> rel_incl def
+R4683:4684 SLF.LibWf <> R1:22 var
+R4680:4681 SLF.LibWf <> R2:23 var
+R4691:4692 SLF.LibWf <> wf def
+R4694:4695 SLF.LibWf <> R2:23 var
+R4758:4773 Coq.Init.Wf <> well_founded_ind thm
+R4758:4773 Coq.Init.Wf <> well_founded_ind thm
+prf 5306:5316 <> wf_peano_lt
+R5320:5321 SLF.LibWf <> wf def
+R5323:5330 Coq.Init.Peano <> lt def
+R5378:5392 SLF.LibNat <> peano_induction thm
+R5378:5392 SLF.LibNat <> peano_induction thm
+R5402:5410 Coq.Init.Wf <> Acc_intro constr
+R5402:5410 Coq.Init.Wf <> Acc_intro constr
+prf 5728:5732 <> wf_lt
+R5737:5738 SLF.LibWf <> wf def
+R5740:5742 Coq.Init.Datatypes <> nat ind
+R5744:5745 SLF.LibOrder <> lt meth
+R5793:5807 SLF.LibNat <> peano_induction thm
+R5793:5807 SLF.LibNat <> peano_induction thm
+R5817:5825 Coq.Init.Wf <> Acc_intro constr
+R5817:5825 Coq.Init.Wf <> Acc_intro constr
+def 6055:6062 <> nat_upto
+R6067:6069 Coq.Init.Datatypes <> nat ind
+binder 6065:6065 <> b:24
+R6086:6088 Coq.Init.Datatypes <> nat ind
+binder 6082:6082 <> n:25
+binder 6084:6084 <> m:26
+R6106:6109 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R6096:6099 Coq.Init.Peano <> ::nat_scope:x_'<='_x not
+R6095:6095 SLF.LibWf <> n:25 var
+R6100:6100 SLF.LibWf <> b:24 var
+R6112:6114 Coq.Init.Peano <> ::nat_scope:x_'<'_x not
+R6111:6111 SLF.LibWf <> m:26 var
+R6115:6115 SLF.LibWf <> n:25 var
+prf 6130:6140 <> nat_upto_eq
+R6158:6160 Coq.Init.Datatypes <> nat ind
+binder 6152:6152 <> b:27
+binder 6154:6154 <> n:28
+binder 6156:6156 <> m:29
+R6180:6183 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R6211:6211 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R6166:6173 SLF.LibWf <> nat_upto def
+R6179:6179 SLF.LibWf <> m:29 var
+R6177:6177 SLF.LibWf <> n:28 var
+R6175:6175 SLF.LibWf <> b:27 var
+R6196:6199 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R6186:6189 Coq.Init.Peano <> ::nat_scope:x_'<='_x not
+R6185:6185 SLF.LibWf <> n:28 var
+R6190:6190 SLF.LibWf <> b:27 var
+R6202:6204 Coq.Init.Peano <> ::nat_scope:x_'<'_x not
+R6201:6201 SLF.LibWf <> m:29 var
+R6205:6205 SLF.LibWf <> n:28 var
+prf 6245:6255 <> wf_nat_upto
+R6269:6271 Coq.Init.Datatypes <> nat ind
+binder 6267:6267 <> b:30
+R6277:6278 SLF.LibWf <> wf def
+R6281:6288 SLF.LibWf <> nat_upto def
+R6290:6290 SLF.LibWf <> b:30 var
+R6341:6350 SLF.LibWf <> wf_measure thm
+binder 6357:6357 <> n:31
+R6364:6364 Coq.Init.Peano <> ::nat_scope:x_'-'_x not
+R6365:6365 SLF.LibWf <> n:31 var
+R6341:6350 SLF.LibWf <> wf_measure thm
+binder 6357:6357 <> n:32
+R6364:6364 Coq.Init.Peano <> ::nat_scope:x_'-'_x not
+R6365:6365 SLF.LibWf <> n:32 var
+R6385:6393 Coq.Init.Wf <> Acc_intro constr
+R6385:6393 Coq.Init.Wf <> Acc_intro constr
+def 6829:6834 <> downto
+R6839:6839 Coq.Numbers.BinNums <> Z ind
+binder 6837:6837 <> b:33
+R6856:6856 Coq.Numbers.BinNums <> Z ind
+binder 6852:6852 <> n:34
+binder 6854:6854 <> m:35
+R6862:6862 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R6869:6874 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R6880:6880 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R6864:6867 SLF.LibOrder <> ::comp_scope:x_'<='_x not
+R6863:6863 SLF.LibWf <> b:33 var
+R6868:6868 SLF.LibWf <> n:34 var
+R6876:6878 SLF.LibOrder <> ::comp_scope:x_'<'_x not
+R6875:6875 SLF.LibWf <> n:34 var
+R6879:6879 SLF.LibWf <> m:35 var
+prf 6890:6898 <> downto_eq
+R6916:6916 Coq.Numbers.BinNums <> Z ind
+binder 6910:6910 <> b:36
+binder 6912:6912 <> n:37
+binder 6914:6914 <> m:38
+R6934:6937 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R6953:6953 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R6922:6927 SLF.LibWf <> downto def
+R6933:6933 SLF.LibWf <> m:38 var
+R6931:6931 SLF.LibWf <> n:37 var
+R6929:6929 SLF.LibWf <> b:36 var
+R6944:6947 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R6939:6942 SLF.LibOrder <> ::comp_scope:x_'<='_x not
+R6938:6938 SLF.LibWf <> b:36 var
+R6943:6943 SLF.LibWf <> n:37 var
+R6949:6951 SLF.LibOrder <> ::comp_scope:x_'<'_x not
+R6948:6948 SLF.LibWf <> n:37 var
+R6952:6952 SLF.LibWf <> m:38 var
+prf 6987:6998 <> downto_intro
+R7016:7016 Coq.Numbers.BinNums <> Z ind
+binder 7010:7010 <> b:39
+binder 7012:7012 <> n:40
+binder 7014:7014 <> m:41
+R7028:7033 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R7023:7026 SLF.LibOrder <> ::comp_scope:x_'<='_x not
+R7022:7022 SLF.LibWf <> b:39 var
+R7027:7027 SLF.LibWf <> n:40 var
+R7039:7044 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R7035:7037 SLF.LibOrder <> ::comp_scope:x_'<'_x not
+R7034:7034 SLF.LibWf <> n:40 var
+R7038:7038 SLF.LibWf <> m:41 var
+R7045:7050 SLF.LibWf <> downto def
+R7056:7056 SLF.LibWf <> m:41 var
+R7054:7054 SLF.LibWf <> n:40 var
+R7052:7052 SLF.LibWf <> b:39 var
+prf 7092:7100 <> wf_downto
+R7114:7114 Coq.Numbers.BinNums <> Z ind
+binder 7112:7112 <> b:42
+R7120:7121 SLF.LibWf <> wf def
+R7124:7129 SLF.LibWf <> downto def
+R7131:7131 SLF.LibWf <> b:42 var
+R7182:7191 SLF.LibWf <> wf_measure thm
+binder 7198:7198 <> n:43
+R7203:7211 Coq.ZArith.BinInt Z abs_nat def
+R7215:7215 Coq.ZArith.BinInt <> ::Z_scope:x_'-'_x not
+R7214:7214 SLF.LibWf <> n:43 var
+R7182:7191 SLF.LibWf <> wf_measure thm
+binder 7198:7198 <> n:44
+R7203:7211 Coq.ZArith.BinInt Z abs_nat def
+R7215:7215 Coq.ZArith.BinInt <> ::Z_scope:x_'-'_x not
+R7214:7214 SLF.LibWf <> n:44 var
+R7232:7240 Coq.Init.Wf <> Acc_intro constr
+R7232:7240 Coq.Init.Wf <> Acc_intro constr
+R7287:7296 SLF.LibInt <> lt_abs_abs thm
+R7287:7296 SLF.LibInt <> lt_abs_abs thm
+R7352:7357 SLF.LibWf <> downto def
+R7375:7380 SLF.LibWf <> downto def
+def 7596:7599 <> upto
+R7604:7604 Coq.Numbers.BinNums <> Z ind
+binder 7602:7602 <> b:45
+R7621:7621 Coq.Numbers.BinNums <> Z ind
+binder 7617:7617 <> n:46
+binder 7619:7619 <> m:47
+R7627:7627 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R7634:7639 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R7645:7645 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R7629:7632 SLF.LibOrder <> ::comp_scope:x_'<='_x not
+R7628:7628 SLF.LibWf <> n:46 var
+R7633:7633 SLF.LibWf <> b:45 var
+R7641:7643 SLF.LibOrder <> ::comp_scope:x_'<'_x not
+R7640:7640 SLF.LibWf <> m:47 var
+R7644:7644 SLF.LibWf <> n:46 var
+prf 7655:7661 <> upto_eq
+binder 7672:7672 <> b:48
+binder 7674:7674 <> n:49
+binder 7676:7676 <> m:50
+R7691:7694 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R7714:7714 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R7681:7684 SLF.LibWf <> upto def
+R7690:7690 SLF.LibWf <> m:50 var
+R7688:7688 SLF.LibWf <> n:49 var
+R7686:7686 SLF.LibWf <> b:48 var
+R7695:7695 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R7702:7707 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R7713:7713 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R7697:7700 SLF.LibOrder <> ::comp_scope:x_'<='_x not
+R7696:7696 SLF.LibWf <> n:49 var
+R7701:7701 SLF.LibWf <> b:48 var
+R7709:7711 SLF.LibOrder <> ::comp_scope:x_'<'_x not
+R7708:7708 SLF.LibWf <> m:50 var
+R7712:7712 SLF.LibWf <> n:49 var
+prf 7748:7757 <> upto_intro
+binder 7768:7768 <> b:51
+binder 7770:7770 <> n:52
+binder 7772:7772 <> m:53
+R7783:7788 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R7778:7781 SLF.LibOrder <> ::comp_scope:x_'<='_x not
+R7777:7777 SLF.LibWf <> n:52 var
+R7782:7782 SLF.LibWf <> b:51 var
+R7794:7799 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R7790:7792 SLF.LibOrder <> ::comp_scope:x_'<'_x not
+R7789:7789 SLF.LibWf <> m:53 var
+R7793:7793 SLF.LibWf <> n:52 var
+R7800:7803 SLF.LibWf <> upto def
+R7809:7809 SLF.LibWf <> m:53 var
+R7807:7807 SLF.LibWf <> n:52 var
+R7805:7805 SLF.LibWf <> b:51 var
+prf 7845:7851 <> wf_upto
+binder 7862:7862 <> n:54
+R7867:7868 SLF.LibWf <> wf def
+R7871:7874 SLF.LibWf <> upto def
+R7876:7876 SLF.LibWf <> n:54 var
+R7927:7936 SLF.LibWf <> wf_measure thm
+binder 7943:7943 <> n:55
+R7948:7956 Coq.ZArith.BinInt Z abs_nat def
+R7960:7960 Coq.ZArith.BinInt <> ::Z_scope:x_'-'_x not
+R7961:7961 SLF.LibWf <> n:55 var
+R7927:7936 SLF.LibWf <> wf_measure thm
+binder 7943:7943 <> n:56
+R7948:7956 Coq.ZArith.BinInt Z abs_nat def
+R7960:7960 Coq.ZArith.BinInt <> ::Z_scope:x_'-'_x not
+R7961:7961 SLF.LibWf <> n:56 var
+R7977:7985 Coq.Init.Wf <> Acc_intro constr
+R7977:7985 Coq.Init.Wf <> Acc_intro constr
+R8023:8032 SLF.LibInt <> lt_abs_abs thm
+R8023:8032 SLF.LibInt <> lt_abs_abs thm
+R8086:8089 SLF.LibWf <> upto def
+R8107:8110 SLF.LibWf <> upto def
+sec 8324:8331 <> UnprojWf
+var 8345:8346 UnprojWf A1
+var 8348:8349 UnprojWf A2
+var 8351:8352 UnprojWf A3
+var 8354:8355 UnprojWf A4
+var 8357:8358 UnprojWf A5
+prf 8376:8386 <> wf_unproj21
+R8400:8405 SLF.LibRelation <> binary def
+R8407:8408 SLF.LibWf <> UnprojWf.A1 var
+binder 8398:8398 <> R:62
+R8418:8423 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R8414:8415 SLF.LibWf <> wf def
+R8417:8417 SLF.LibWf <> R:62 var
+R8424:8425 SLF.LibWf <> wf def
+R8428:8435 SLF.LibProd <> unproj21 def
+R8440:8440 SLF.LibWf <> R:62 var
+R8437:8438 SLF.LibWf <> UnprojWf.A2 var
+prf 8559:8569 <> wf_unproj22
+R8583:8588 SLF.LibRelation <> binary def
+R8590:8591 SLF.LibWf <> UnprojWf.A2 var
+binder 8581:8581 <> R:63
+R8601:8606 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R8597:8598 SLF.LibWf <> wf def
+R8600:8600 SLF.LibWf <> R:63 var
+R8607:8608 SLF.LibWf <> wf def
+R8611:8618 SLF.LibProd <> unproj22 def
+R8623:8623 SLF.LibWf <> R:63 var
+R8620:8621 SLF.LibWf <> UnprojWf.A1 var
+prf 8742:8752 <> wf_unproj31
+R8766:8771 SLF.LibRelation <> binary def
+R8773:8774 SLF.LibWf <> UnprojWf.A1 var
+binder 8764:8764 <> R:64
+R8784:8789 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R8780:8781 SLF.LibWf <> wf def
+R8783:8783 SLF.LibWf <> R:64 var
+R8790:8791 SLF.LibWf <> wf def
+R8794:8801 SLF.LibProd <> unproj31 def
+R8809:8809 SLF.LibWf <> R:64 var
+R8806:8807 SLF.LibWf <> UnprojWf.A3 var
+R8803:8804 SLF.LibWf <> UnprojWf.A2 var
+prf 8941:8951 <> wf_unproj32
+R8965:8970 SLF.LibRelation <> binary def
+R8972:8973 SLF.LibWf <> UnprojWf.A2 var
+binder 8963:8963 <> R:65
+R8983:8988 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R8979:8980 SLF.LibWf <> wf def
+R8982:8982 SLF.LibWf <> R:65 var
+R8989:8990 SLF.LibWf <> wf def
+R8993:9000 SLF.LibProd <> unproj32 def
+R9008:9008 SLF.LibWf <> R:65 var
+R9005:9006 SLF.LibWf <> UnprojWf.A3 var
+R9002:9003 SLF.LibWf <> UnprojWf.A1 var
+prf 9140:9150 <> wf_unproj33
+R9164:9169 SLF.LibRelation <> binary def
+R9171:9172 SLF.LibWf <> UnprojWf.A3 var
+binder 9162:9162 <> R:66
+R9182:9187 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R9178:9179 SLF.LibWf <> wf def
+R9181:9181 SLF.LibWf <> R:66 var
+R9188:9189 SLF.LibWf <> wf def
+R9192:9199 SLF.LibProd <> unproj33 def
+R9207:9207 SLF.LibWf <> R:66 var
+R9204:9205 SLF.LibWf <> UnprojWf.A2 var
+R9201:9202 SLF.LibWf <> UnprojWf.A1 var
+prf 9339:9349 <> wf_unproj41
+R9363:9368 SLF.LibRelation <> binary def
+R9370:9371 SLF.LibWf <> UnprojWf.A1 var
+binder 9361:9361 <> R:67
+R9381:9386 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R9377:9378 SLF.LibWf <> wf def
+R9380:9380 SLF.LibWf <> R:67 var
+R9387:9388 SLF.LibWf <> wf def
+R9391:9398 SLF.LibProd <> unproj41 def
+R9409:9409 SLF.LibWf <> R:67 var
+R9406:9407 SLF.LibWf <> UnprojWf.A4 var
+R9403:9404 SLF.LibWf <> UnprojWf.A3 var
+R9400:9401 SLF.LibWf <> UnprojWf.A2 var
+prf 9554:9564 <> wf_unproj42
+R9578:9583 SLF.LibRelation <> binary def
+R9585:9586 SLF.LibWf <> UnprojWf.A2 var
+binder 9576:9576 <> R:68
+R9596:9601 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R9592:9593 SLF.LibWf <> wf def
+R9595:9595 SLF.LibWf <> R:68 var
+R9602:9603 SLF.LibWf <> wf def
+R9606:9613 SLF.LibProd <> unproj42 def
+R9624:9624 SLF.LibWf <> R:68 var
+R9621:9622 SLF.LibWf <> UnprojWf.A4 var
+R9618:9619 SLF.LibWf <> UnprojWf.A3 var
+R9615:9616 SLF.LibWf <> UnprojWf.A1 var
+prf 9769:9779 <> wf_unproj43
+R9793:9798 SLF.LibRelation <> binary def
+R9800:9801 SLF.LibWf <> UnprojWf.A3 var
+binder 9791:9791 <> R:69
+R9811:9816 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R9807:9808 SLF.LibWf <> wf def
+R9810:9810 SLF.LibWf <> R:69 var
+R9817:9818 SLF.LibWf <> wf def
+R9821:9828 SLF.LibProd <> unproj43 def
+R9839:9839 SLF.LibWf <> R:69 var
+R9836:9837 SLF.LibWf <> UnprojWf.A4 var
+R9833:9834 SLF.LibWf <> UnprojWf.A2 var
+R9830:9831 SLF.LibWf <> UnprojWf.A1 var
+prf 9984:9994 <> wf_unproj44
+R10008:10013 SLF.LibRelation <> binary def
+R10015:10016 SLF.LibWf <> UnprojWf.A4 var
+binder 10006:10006 <> R:70
+R10026:10031 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R10022:10023 SLF.LibWf <> wf def
+R10025:10025 SLF.LibWf <> R:70 var
+R10032:10033 SLF.LibWf <> wf def
+R10036:10043 SLF.LibProd <> unproj44 def
+R10054:10054 SLF.LibWf <> R:70 var
+R10051:10052 SLF.LibWf <> UnprojWf.A3 var
+R10048:10049 SLF.LibWf <> UnprojWf.A2 var
+R10045:10046 SLF.LibWf <> UnprojWf.A1 var
+prf 10199:10209 <> wf_unproj51
+R10223:10228 SLF.LibRelation <> binary def
+R10230:10231 SLF.LibWf <> UnprojWf.A1 var
+binder 10221:10221 <> R:71
+R10241:10246 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R10237:10238 SLF.LibWf <> wf def
+R10240:10240 SLF.LibWf <> R:71 var
+R10247:10248 SLF.LibWf <> wf def
+R10251:10258 SLF.LibProd <> unproj51 def
+R10272:10272 SLF.LibWf <> R:71 var
+R10269:10270 SLF.LibWf <> UnprojWf.A5 var
+R10266:10267 SLF.LibWf <> UnprojWf.A4 var
+R10263:10264 SLF.LibWf <> UnprojWf.A3 var
+R10260:10261 SLF.LibWf <> UnprojWf.A2 var
+R10428:10435 SLF.LibWf UnprojWf <> sec
+prf 10776:10785 <> wf_lexico2
+binder 10796:10797 <> A1:72
+binder 10799:10800 <> A2:73
+R10807:10812 SLF.LibRelation <> binary def
+R10814:10815 SLF.LibWf <> A1:72 var
+binder 10804:10805 <> R1:74
+R10822:10827 SLF.LibRelation <> binary def
+R10829:10830 SLF.LibWf <> A2:73 var
+binder 10819:10820 <> R2:75
+R10841:10846 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R10836:10837 SLF.LibWf <> wf def
+R10839:10840 SLF.LibWf <> R1:74 var
+R10852:10857 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R10847:10848 SLF.LibWf <> wf def
+R10850:10851 SLF.LibWf <> R2:75 var
+R10858:10859 SLF.LibWf <> wf def
+R10862:10868 SLF.LibRelation <> lexico2 def
+R10873:10874 SLF.LibWf <> R2:75 var
+R10870:10871 SLF.LibWf <> R1:74 var
+prf 11112:11121 <> wf_lexico3
+binder 11132:11133 <> A1:76
+binder 11135:11136 <> A2:77
+binder 11138:11139 <> A3:78
+R11146:11151 SLF.LibRelation <> binary def
+R11153:11154 SLF.LibWf <> A1:76 var
+binder 11143:11144 <> R1:79
+R11161:11166 SLF.LibRelation <> binary def
+R11168:11169 SLF.LibWf <> A2:77 var
+binder 11158:11159 <> R2:80
+R11176:11181 SLF.LibRelation <> binary def
+R11183:11184 SLF.LibWf <> A3:78 var
+binder 11173:11174 <> R3:81
+R11195:11200 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R11190:11191 SLF.LibWf <> wf def
+R11193:11194 SLF.LibWf <> R1:79 var
+R11206:11211 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R11201:11202 SLF.LibWf <> wf def
+R11204:11205 SLF.LibWf <> R2:80 var
+R11217:11222 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R11212:11213 SLF.LibWf <> wf def
+R11215:11216 SLF.LibWf <> R3:81 var
+R11223:11224 SLF.LibWf <> wf def
+R11227:11233 SLF.LibRelation <> lexico3 def
+R11241:11242 SLF.LibWf <> R3:81 var
+R11238:11239 SLF.LibWf <> R2:80 var
+R11235:11236 SLF.LibWf <> R1:79 var
+R11276:11285 SLF.LibWf <> wf_lexico2 thm
+R11276:11285 SLF.LibWf <> wf_lexico2 thm
+R11295:11304 SLF.LibWf <> wf_lexico2 thm
+R11295:11304 SLF.LibWf <> wf_lexico2 thm
+prf 11319:11328 <> wf_lexico4
+binder 11339:11340 <> A1:82
+binder 11342:11343 <> A2:83
+binder 11345:11346 <> A3:84
+binder 11348:11349 <> A4:85
+R11356:11361 SLF.LibRelation <> binary def
+R11363:11364 SLF.LibWf <> A1:82 var
+binder 11353:11354 <> R1:86
+R11371:11376 SLF.LibRelation <> binary def
+R11378:11379 SLF.LibWf <> A2:83 var
+binder 11368:11369 <> R2:87
+R11386:11391 SLF.LibRelation <> binary def
+R11393:11394 SLF.LibWf <> A3:84 var
+binder 11383:11384 <> R3:88
+R11401:11406 SLF.LibRelation <> binary def
+R11408:11409 SLF.LibWf <> A4:85 var
+binder 11398:11399 <> R4:89
+R11420:11425 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R11415:11416 SLF.LibWf <> wf def
+R11418:11419 SLF.LibWf <> R1:86 var
+R11431:11436 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R11426:11427 SLF.LibWf <> wf def
+R11429:11430 SLF.LibWf <> R2:87 var
+R11442:11447 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R11437:11438 SLF.LibWf <> wf def
+R11440:11441 SLF.LibWf <> R3:88 var
+R11453:11458 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R11448:11449 SLF.LibWf <> wf def
+R11451:11452 SLF.LibWf <> R4:89 var
+R11459:11460 SLF.LibWf <> wf def
+R11463:11469 SLF.LibRelation <> lexico4 def
+R11480:11481 SLF.LibWf <> R4:89 var
+R11477:11478 SLF.LibWf <> R3:88 var
+R11474:11475 SLF.LibWf <> R2:87 var
+R11471:11472 SLF.LibWf <> R1:86 var
+R11515:11524 SLF.LibWf <> wf_lexico3 thm
+R11515:11524 SLF.LibWf <> wf_lexico3 thm
+R11534:11543 SLF.LibWf <> wf_lexico2 thm
+R11534:11543 SLF.LibWf <> wf_lexico2 thm
+prf 11788:11803 <> wf_prod2_of_wf_1
+binder 11815:11816 <> A1:90
+binder 11818:11819 <> A2:91
+R11832:11837 SLF.LibRelation <> binary def
+R11839:11840 SLF.LibWf <> A1:90 var
+binder 11829:11830 <> R1:92
+R11847:11852 SLF.LibRelation <> binary def
+R11854:11855 SLF.LibWf <> A2:91 var
+binder 11844:11845 <> R2:93
+R11866:11871 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R11861:11862 SLF.LibWf <> wf def
+R11864:11865 SLF.LibWf <> R1:92 var
+R11872:11873 SLF.LibWf <> wf def
+R11876:11880 SLF.LibRelation <> prod2 def
+R11885:11886 SLF.LibWf <> R2:93 var
+R11882:11883 SLF.LibWf <> R1:92 var
+prf 12036:12051 <> wf_prod2_of_wf_2
+binder 12063:12064 <> A1:94
+binder 12066:12067 <> A2:95
+R12080:12085 SLF.LibRelation <> binary def
+R12087:12088 SLF.LibWf <> A1:94 var
+binder 12077:12078 <> R1:96
+R12095:12100 SLF.LibRelation <> binary def
+R12102:12103 SLF.LibWf <> A2:95 var
+binder 12092:12093 <> R2:97
+R12114:12119 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R12109:12110 SLF.LibWf <> wf def
+R12112:12113 SLF.LibWf <> R2:97 var
+R12120:12121 SLF.LibWf <> wf def
+R12124:12128 SLF.LibRelation <> prod2 def
+R12133:12134 SLF.LibWf <> R2:97 var
+R12130:12131 SLF.LibWf <> R1:96 var
+prf 12284:12299 <> wf_prod3_of_wf_1
+binder 12311:12312 <> A1:98
+binder 12314:12315 <> A2:99
+binder 12317:12318 <> A3:100
+R12331:12336 SLF.LibRelation <> binary def
+R12338:12339 SLF.LibWf <> A1:98 var
+binder 12328:12329 <> R1:101
+R12346:12351 SLF.LibRelation <> binary def
+R12353:12354 SLF.LibWf <> A2:99 var
+binder 12343:12344 <> R2:102
+R12361:12366 SLF.LibRelation <> binary def
+R12368:12369 SLF.LibWf <> A3:100 var
+binder 12358:12359 <> R3:103
+R12380:12385 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R12375:12376 SLF.LibWf <> wf def
+R12378:12379 SLF.LibWf <> R1:101 var
+R12386:12387 SLF.LibWf <> wf def
+R12390:12394 SLF.LibRelation <> prod3 def
+R12402:12403 SLF.LibWf <> R3:103 var
+R12399:12400 SLF.LibWf <> R2:102 var
+R12396:12397 SLF.LibWf <> R1:101 var
+R12434:12449 SLF.LibWf <> wf_prod2_of_wf_1 thm
+R12434:12449 SLF.LibWf <> wf_prod2_of_wf_1 thm
+R12459:12474 SLF.LibWf <> wf_prod2_of_wf_1 thm
+R12459:12474 SLF.LibWf <> wf_prod2_of_wf_1 thm
+prf 12489:12504 <> wf_prod3_of_wf_2
+binder 12516:12517 <> A1:104
+binder 12519:12520 <> A2:105
+binder 12522:12523 <> A3:106
+R12536:12541 SLF.LibRelation <> binary def
+R12543:12544 SLF.LibWf <> A1:104 var
+binder 12533:12534 <> R1:107
+R12551:12556 SLF.LibRelation <> binary def
+R12558:12559 SLF.LibWf <> A2:105 var
+binder 12548:12549 <> R2:108
+R12566:12571 SLF.LibRelation <> binary def
+R12573:12574 SLF.LibWf <> A3:106 var
+binder 12563:12564 <> R3:109
+R12585:12590 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R12580:12581 SLF.LibWf <> wf def
+R12583:12584 SLF.LibWf <> R2:108 var
+R12591:12592 SLF.LibWf <> wf def
+R12595:12599 SLF.LibRelation <> prod3 def
+R12607:12608 SLF.LibWf <> R3:109 var
+R12604:12605 SLF.LibWf <> R2:108 var
+R12601:12602 SLF.LibWf <> R1:107 var
+R12639:12654 SLF.LibWf <> wf_prod2_of_wf_1 thm
+R12639:12654 SLF.LibWf <> wf_prod2_of_wf_1 thm
+R12664:12679 SLF.LibWf <> wf_prod2_of_wf_2 thm
+R12664:12679 SLF.LibWf <> wf_prod2_of_wf_2 thm
+prf 12694:12709 <> wf_prod3_of_wf_3
+binder 12721:12722 <> A1:110
+binder 12724:12725 <> A2:111
+binder 12727:12728 <> A3:112
+R12741:12746 SLF.LibRelation <> binary def
+R12748:12749 SLF.LibWf <> A1:110 var
+binder 12738:12739 <> R1:113
+R12756:12761 SLF.LibRelation <> binary def
+R12763:12764 SLF.LibWf <> A2:111 var
+binder 12753:12754 <> R2:114
+R12771:12776 SLF.LibRelation <> binary def
+R12778:12779 SLF.LibWf <> A3:112 var
+binder 12768:12769 <> R3:115
+R12790:12795 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R12785:12786 SLF.LibWf <> wf def
+R12788:12789 SLF.LibWf <> R3:115 var
+R12796:12797 SLF.LibWf <> wf def
+R12800:12804 SLF.LibRelation <> prod3 def
+R12812:12813 SLF.LibWf <> R3:115 var
+R12809:12810 SLF.LibWf <> R2:114 var
+R12806:12807 SLF.LibWf <> R1:113 var
+R12845:12860 SLF.LibWf <> wf_prod2_of_wf_2 thm
+R12845:12860 SLF.LibWf <> wf_prod2_of_wf_2 thm
+prf 12875:12890 <> wf_prod4_of_wf_1
+binder 12902:12903 <> A1:116
+binder 12905:12906 <> A2:117
+binder 12908:12909 <> A3:118
+binder 12911:12912 <> A4:119
+R12925:12930 SLF.LibRelation <> binary def
+R12932:12933 SLF.LibWf <> A1:116 var
+binder 12922:12923 <> R1:120
+R12940:12945 SLF.LibRelation <> binary def
+R12947:12948 SLF.LibWf <> A2:117 var
+binder 12937:12938 <> R2:121
+R12955:12960 SLF.LibRelation <> binary def
+R12962:12963 SLF.LibWf <> A3:118 var
+binder 12952:12953 <> R3:122
+R12970:12975 SLF.LibRelation <> binary def
+R12977:12978 SLF.LibWf <> A4:119 var
+binder 12967:12968 <> R4:123
+R12989:12994 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R12984:12985 SLF.LibWf <> wf def
+R12987:12988 SLF.LibWf <> R1:120 var
+R12995:12996 SLF.LibWf <> wf def
+R12999:13003 SLF.LibRelation <> prod4 def
+R13014:13015 SLF.LibWf <> R4:123 var
+R13011:13012 SLF.LibWf <> R3:122 var
+R13008:13009 SLF.LibWf <> R2:121 var
+R13005:13006 SLF.LibWf <> R1:120 var
+R13046:13061 SLF.LibWf <> wf_prod2_of_wf_1 thm
+R13046:13061 SLF.LibWf <> wf_prod2_of_wf_1 thm
+R13071:13086 SLF.LibWf <> wf_prod3_of_wf_1 thm
+R13071:13086 SLF.LibWf <> wf_prod3_of_wf_1 thm
+prf 13101:13116 <> wf_prod4_of_wf_2
+binder 13128:13129 <> A1:124
+binder 13131:13132 <> A2:125
+binder 13134:13135 <> A3:126
+binder 13137:13138 <> A4:127
+R13151:13156 SLF.LibRelation <> binary def
+R13158:13159 SLF.LibWf <> A1:124 var
+binder 13148:13149 <> R1:128
+R13166:13171 SLF.LibRelation <> binary def
+R13173:13174 SLF.LibWf <> A2:125 var
+binder 13163:13164 <> R2:129
+R13181:13186 SLF.LibRelation <> binary def
+R13188:13189 SLF.LibWf <> A3:126 var
+binder 13178:13179 <> R3:130
+R13196:13201 SLF.LibRelation <> binary def
+R13203:13204 SLF.LibWf <> A4:127 var
+binder 13193:13194 <> R4:131
+R13215:13220 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R13210:13211 SLF.LibWf <> wf def
+R13213:13214 SLF.LibWf <> R2:129 var
+R13221:13222 SLF.LibWf <> wf def
+R13225:13229 SLF.LibRelation <> prod4 def
+R13240:13241 SLF.LibWf <> R4:131 var
+R13237:13238 SLF.LibWf <> R3:130 var
+R13234:13235 SLF.LibWf <> R2:129 var
+R13231:13232 SLF.LibWf <> R1:128 var
+R13272:13287 SLF.LibWf <> wf_prod2_of_wf_1 thm
+R13272:13287 SLF.LibWf <> wf_prod2_of_wf_1 thm
+R13297:13312 SLF.LibWf <> wf_prod3_of_wf_2 thm
+R13297:13312 SLF.LibWf <> wf_prod3_of_wf_2 thm
+prf 13327:13342 <> wf_prod4_of_wf_3
+binder 13354:13355 <> A1:132
+binder 13357:13358 <> A2:133
+binder 13360:13361 <> A3:134
+binder 13363:13364 <> A4:135
+R13377:13382 SLF.LibRelation <> binary def
+R13384:13385 SLF.LibWf <> A1:132 var
+binder 13374:13375 <> R1:136
+R13392:13397 SLF.LibRelation <> binary def
+R13399:13400 SLF.LibWf <> A2:133 var
+binder 13389:13390 <> R2:137
+R13407:13412 SLF.LibRelation <> binary def
+R13414:13415 SLF.LibWf <> A3:134 var
+binder 13404:13405 <> R3:138
+R13422:13427 SLF.LibRelation <> binary def
+R13429:13430 SLF.LibWf <> A4:135 var
+binder 13419:13420 <> R4:139
+R13441:13446 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R13436:13437 SLF.LibWf <> wf def
+R13439:13440 SLF.LibWf <> R3:138 var
+R13447:13448 SLF.LibWf <> wf def
+R13451:13455 SLF.LibRelation <> prod4 def
+R13466:13467 SLF.LibWf <> R4:139 var
+R13463:13464 SLF.LibWf <> R3:138 var
+R13460:13461 SLF.LibWf <> R2:137 var
+R13457:13458 SLF.LibWf <> R1:136 var
+R13498:13513 SLF.LibWf <> wf_prod2_of_wf_1 thm
+R13498:13513 SLF.LibWf <> wf_prod2_of_wf_1 thm
+R13523:13538 SLF.LibWf <> wf_prod3_of_wf_3 thm
+R13523:13538 SLF.LibWf <> wf_prod3_of_wf_3 thm
+prf 13553:13568 <> wf_prod4_of_wf_4
+binder 13580:13581 <> A1:140
+binder 13583:13584 <> A2:141
+binder 13586:13587 <> A3:142
+binder 13589:13590 <> A4:143
+R13603:13608 SLF.LibRelation <> binary def
+R13610:13611 SLF.LibWf <> A1:140 var
+binder 13600:13601 <> R1:144
+R13618:13623 SLF.LibRelation <> binary def
+R13625:13626 SLF.LibWf <> A2:141 var
+binder 13615:13616 <> R2:145
+R13633:13638 SLF.LibRelation <> binary def
+R13640:13641 SLF.LibWf <> A3:142 var
+binder 13630:13631 <> R3:146
+R13648:13653 SLF.LibRelation <> binary def
+R13655:13656 SLF.LibWf <> A4:143 var
+binder 13645:13646 <> R4:147
+R13667:13672 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R13662:13663 SLF.LibWf <> wf def
+R13665:13666 SLF.LibWf <> R4:147 var
+R13673:13674 SLF.LibWf <> wf def
+R13677:13681 SLF.LibRelation <> prod4 def
+R13692:13693 SLF.LibWf <> R4:147 var
+R13689:13690 SLF.LibWf <> R3:146 var
+R13686:13687 SLF.LibWf <> R2:145 var
+R13683:13684 SLF.LibWf <> R1:144 var
+R13725:13740 SLF.LibWf <> wf_prod2_of_wf_2 thm
+R13725:13740 SLF.LibWf <> wf_prod2_of_wf_2 thm
+prf 14130:14144 <> wf_rel_preimage
+binder 14155:14155 <> A:148
+binder 14157:14157 <> B:149
+R14162:14167 SLF.LibRelation <> binary def
+R14169:14169 SLF.LibWf <> B:149 var
+binder 14160:14160 <> R:150
+R14176:14177 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R14175:14175 SLF.LibWf <> A:148 var
+R14178:14178 SLF.LibWf <> B:149 var
+binder 14173:14173 <> f:151
+R14188:14193 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R14184:14185 SLF.LibWf <> wf def
+R14187:14187 SLF.LibWf <> R:150 var
+R14194:14195 SLF.LibWf <> wf def
+R14198:14209 SLF.LibRelation <> rel_preimage def
+R14213:14213 SLF.LibWf <> f:151 var
+R14211:14211 SLF.LibWf <> R:150 var
+prf 16731:16741 <> wf_tclosure
+binder 16752:16752 <> A:152
+R16757:16762 SLF.LibRelation <> binary def
+R16764:16764 SLF.LibWf <> A:152 var
+binder 16755:16755 <> R:153
+R16774:16779 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R16770:16771 SLF.LibWf <> wf def
+R16773:16773 SLF.LibWf <> R:153 var
+R16780:16781 SLF.LibWf <> wf def
+R16784:16791 SLF.LibRelation <> tclosure ind
+R16793:16793 SLF.LibWf <> R:153 var
+R16819:16820 SLF.LibWf <> wf def
+R16823:16834 Coq.Init.Wf <> well_founded def
+R17033:17039 Coq.Init.Wf <> Acc_inv thm
+R17033:17039 Coq.Init.Wf <> Acc_inv thm
+R17033:17039 Coq.Init.Wf <> Acc_inv thm

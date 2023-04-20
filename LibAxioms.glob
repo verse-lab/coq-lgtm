@@ -1,0 +1,44 @@
+DIGEST 81dce5aba280846f884b9695e8e41625
+FSLF.LibAxioms
+ax 1335:1345 <> fun_ext_dep
+binder 1357:1357 <> A:1
+R1373:1374 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R1372:1372 SLF.LibAxioms <> A:1 var
+binder 1368:1368 <> B:2
+binder 1395:1395 <> x:3
+R1398:1398 SLF.LibAxioms <> B:2 var
+R1400:1400 SLF.LibAxioms <> x:3 var
+binder 1382:1382 <> f:4
+binder 1384:1384 <> g:5
+R1406:1406 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R1426:1432 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+binder 1414:1414 <> x:6
+R1420:1422 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R1417:1417 SLF.LibAxioms <> f:4 var
+R1419:1419 SLF.LibAxioms <> x:6 var
+R1423:1423 SLF.LibAxioms <> g:5 var
+R1425:1425 SLF.LibAxioms <> x:6 var
+R1434:1436 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R1433:1433 SLF.LibAxioms <> f:4 var
+R1437:1437 SLF.LibAxioms <> g:5 var
+ax 1711:1718 <> prop_ext
+binder 1730:1730 <> P:8
+binder 1732:1732 <> Q:9
+R1745:1745 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R1753:1759 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R1747:1751 Coq.Init.Logic <> ::type_scope:x_'<->'_x not
+R1746:1746 SLF.LibAxioms <> P:8 var
+R1752:1752 SLF.LibAxioms <> Q:9 var
+R1761:1763 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R1760:1760 SLF.LibAxioms <> P:8 var
+R1764:1764 SLF.LibAxioms <> Q:9 var
+ax 2107:2128 <> indefinite_description
+binder 2140:2140 <> A:11
+R2156:2157 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R2155:2155 SLF.LibAxioms <> A:11 var
+binder 2151:2151 <> P:12
+R2171:2176 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R2167:2168 Coq.Init.Logic <> ex ind
+R2170:2170 SLF.LibAxioms <> P:12 var
+R2177:2179 Coq.Init.Specif <> sig ind
+R2181:2181 SLF.LibAxioms <> P:12 var

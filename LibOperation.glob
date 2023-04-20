@@ -1,0 +1,381 @@
+DIGEST afc77687b2f9bf3dbfc5105e4cb54303
+FSLF.LibOperation
+R455:464 SLF.LibTactics <> <> lib
+sec 732:742 <> Definitions
+var 756:756 Definitions A
+R789:792 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R788:788 SLF.LibOperation <> Definitions.A var
+R794:797 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R793:793 SLF.LibOperation <> Definitions.A var
+R798:798 SLF.LibOperation <> Definitions.A var
+R821:824 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R820:820 SLF.LibOperation <> Definitions.A var
+R825:825 SLF.LibOperation <> Definitions.A var
+def 1051:1054 <> comm
+binder 1056:1056 <> f:2
+binder 1068:1068 <> x:3
+binder 1070:1070 <> y:4
+R1080:1082 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R1075:1075 SLF.LibOperation <> f:2 var
+R1077:1077 SLF.LibOperation <> x:3 var
+R1079:1079 SLF.LibOperation <> y:4 var
+R1083:1083 SLF.LibOperation <> f:2 var
+R1085:1085 SLF.LibOperation <> y:4 var
+R1087:1087 SLF.LibOperation <> x:3 var
+def 1124:1128 <> assoc
+binder 1130:1130 <> f:5
+binder 1142:1142 <> x:6
+binder 1144:1144 <> y:7
+binder 1146:1146 <> z:8
+R1162:1164 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R1151:1151 SLF.LibOperation <> f:5 var
+R1153:1153 SLF.LibOperation <> x:6 var
+R1156:1156 SLF.LibOperation <> f:5 var
+R1158:1158 SLF.LibOperation <> y:7 var
+R1160:1160 SLF.LibOperation <> z:8 var
+R1165:1165 SLF.LibOperation <> f:5 var
+R1168:1168 SLF.LibOperation <> f:5 var
+R1170:1170 SLF.LibOperation <> x:6 var
+R1172:1172 SLF.LibOperation <> y:7 var
+R1175:1175 SLF.LibOperation <> z:8 var
+def 1235:1244 <> comm_assoc
+binder 1246:1246 <> f:9
+binder 1258:1258 <> x:10
+binder 1260:1260 <> y:11
+binder 1262:1262 <> z:12
+R1278:1280 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R1267:1267 SLF.LibOperation <> f:9 var
+R1269:1269 SLF.LibOperation <> x:10 var
+R1272:1272 SLF.LibOperation <> f:9 var
+R1274:1274 SLF.LibOperation <> y:11 var
+R1276:1276 SLF.LibOperation <> z:12 var
+R1281:1281 SLF.LibOperation <> f:9 var
+R1283:1283 SLF.LibOperation <> y:11 var
+R1286:1286 SLF.LibOperation <> f:9 var
+R1288:1288 SLF.LibOperation <> x:10 var
+R1290:1290 SLF.LibOperation <> z:12 var
+def 1522:1528 <> distrib
+binder 1530:1530 <> i:13
+binder 1532:1532 <> f:14
+binder 1544:1544 <> x:15
+binder 1546:1546 <> y:16
+R1560:1562 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R1551:1551 SLF.LibOperation <> i:13 var
+R1554:1554 SLF.LibOperation <> f:14 var
+R1556:1556 SLF.LibOperation <> x:15 var
+R1558:1558 SLF.LibOperation <> y:16 var
+R1563:1563 SLF.LibOperation <> f:14 var
+R1566:1566 SLF.LibOperation <> i:13 var
+R1568:1568 SLF.LibOperation <> x:15 var
+R1572:1572 SLF.LibOperation <> i:13 var
+R1574:1574 SLF.LibOperation <> y:16 var
+def 1636:1647 <> distrib_comm
+binder 1649:1649 <> i:17
+binder 1651:1651 <> f:18
+binder 1663:1663 <> x:19
+binder 1665:1665 <> y:20
+R1679:1681 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R1670:1670 SLF.LibOperation <> i:17 var
+R1673:1673 SLF.LibOperation <> f:18 var
+R1675:1675 SLF.LibOperation <> x:19 var
+R1677:1677 SLF.LibOperation <> y:20 var
+R1682:1682 SLF.LibOperation <> f:18 var
+R1685:1685 SLF.LibOperation <> i:17 var
+R1687:1687 SLF.LibOperation <> y:20 var
+R1691:1691 SLF.LibOperation <> i:17 var
+R1693:1693 SLF.LibOperation <> x:19 var
+def 1737:1745 <> distrib_l
+binder 1747:1747 <> f:21
+binder 1749:1749 <> g:22
+binder 1761:1761 <> x:23
+binder 1763:1763 <> y:24
+binder 1765:1765 <> z:25
+R1781:1783 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R1770:1770 SLF.LibOperation <> f:21 var
+R1772:1772 SLF.LibOperation <> x:23 var
+R1775:1775 SLF.LibOperation <> g:22 var
+R1777:1777 SLF.LibOperation <> y:24 var
+R1779:1779 SLF.LibOperation <> z:25 var
+R1784:1784 SLF.LibOperation <> g:22 var
+R1787:1787 SLF.LibOperation <> f:21 var
+R1789:1789 SLF.LibOperation <> x:23 var
+R1791:1791 SLF.LibOperation <> y:24 var
+R1795:1795 SLF.LibOperation <> f:21 var
+R1797:1797 SLF.LibOperation <> x:23 var
+R1799:1799 SLF.LibOperation <> z:25 var
+def 1844:1852 <> distrib_r
+binder 1854:1854 <> f:26
+binder 1856:1856 <> g:27
+binder 1868:1868 <> x:28
+binder 1870:1870 <> y:29
+binder 1872:1872 <> z:30
+R1888:1890 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R1877:1877 SLF.LibOperation <> f:26 var
+R1880:1880 SLF.LibOperation <> g:27 var
+R1882:1882 SLF.LibOperation <> y:29 var
+R1884:1884 SLF.LibOperation <> z:30 var
+R1887:1887 SLF.LibOperation <> x:28 var
+R1891:1891 SLF.LibOperation <> g:27 var
+R1894:1894 SLF.LibOperation <> f:26 var
+R1896:1896 SLF.LibOperation <> y:29 var
+R1898:1898 SLF.LibOperation <> x:28 var
+R1902:1902 SLF.LibOperation <> f:26 var
+R1904:1904 SLF.LibOperation <> z:30 var
+R1906:1906 SLF.LibOperation <> x:28 var
+def 2125:2133 <> neutral_l
+binder 2135:2135 <> f:31
+binder 2137:2137 <> e:32
+binder 2148:2148 <> x:33
+R2158:2160 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R2153:2153 SLF.LibOperation <> f:31 var
+R2155:2155 SLF.LibOperation <> e:32 var
+R2157:2157 SLF.LibOperation <> x:33 var
+R2161:2161 SLF.LibOperation <> x:33 var
+def 2198:2206 <> neutral_r
+binder 2208:2208 <> f:34
+binder 2210:2210 <> e:35
+binder 2222:2222 <> x:36
+R2232:2234 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R2227:2227 SLF.LibOperation <> f:34 var
+R2229:2229 SLF.LibOperation <> x:36 var
+R2231:2231 SLF.LibOperation <> e:35 var
+R2235:2235 SLF.LibOperation <> x:36 var
+def 2273:2280 <> absorb_l
+binder 2282:2282 <> f:37
+binder 2284:2284 <> a:38
+binder 2296:2296 <> x:39
+R2306:2308 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R2301:2301 SLF.LibOperation <> f:37 var
+R2303:2303 SLF.LibOperation <> a:38 var
+R2305:2305 SLF.LibOperation <> x:39 var
+R2309:2309 SLF.LibOperation <> a:38 var
+def 2348:2355 <> absorb_r
+binder 2357:2357 <> f:40
+binder 2359:2359 <> a:41
+binder 2371:2371 <> x:42
+R2381:2383 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R2376:2376 SLF.LibOperation <> f:40 var
+R2378:2378 SLF.LibOperation <> x:42 var
+R2380:2380 SLF.LibOperation <> a:41 var
+R2384:2384 SLF.LibOperation <> a:41 var
+def 2419:2428 <> idempotent
+binder 2430:2430 <> i:43
+binder 2442:2442 <> x:44
+R2454:2456 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R2447:2447 SLF.LibOperation <> i:43 var
+R2450:2450 SLF.LibOperation <> i:43 var
+R2452:2452 SLF.LibOperation <> x:44 var
+R2457:2457 SLF.LibOperation <> i:43 var
+R2459:2459 SLF.LibOperation <> x:44 var
+def 2494:2503 <> involutive
+binder 2505:2505 <> i:45
+binder 2517:2517 <> x:46
+R2529:2531 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R2522:2522 SLF.LibOperation <> i:45 var
+R2525:2525 SLF.LibOperation <> i:45 var
+R2527:2527 SLF.LibOperation <> x:46 var
+R2532:2532 SLF.LibOperation <> x:46 var
+def 2625:2635 <> idempotent2
+binder 2637:2637 <> f:47
+binder 2649:2649 <> x:48
+R2659:2661 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R2654:2654 SLF.LibOperation <> f:47 var
+R2656:2656 SLF.LibOperation <> x:48 var
+R2658:2658 SLF.LibOperation <> x:48 var
+R2662:2662 SLF.LibOperation <> x:48 var
+def 2698:2709 <> self_neutral
+binder 2711:2711 <> f:49
+binder 2713:2713 <> e:50
+binder 2715:2715 <> x:51
+R2727:2729 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R2722:2722 SLF.LibOperation <> f:49 var
+R2724:2724 SLF.LibOperation <> x:51 var
+R2726:2726 SLF.LibOperation <> x:51 var
+R2730:2730 SLF.LibOperation <> e:50 var
+def 2935:2947 <> inverse_for_l
+binder 2949:2949 <> f:52
+binder 2951:2951 <> e:53
+binder 2953:2953 <> a:54
+binder 2955:2955 <> b:55
+R2967:2969 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R2962:2962 SLF.LibOperation <> f:52 var
+R2964:2964 SLF.LibOperation <> a:54 var
+R2966:2966 SLF.LibOperation <> b:55 var
+R2970:2970 SLF.LibOperation <> e:53 var
+def 3007:3019 <> inverse_for_r
+binder 3021:3021 <> f:56
+binder 3023:3023 <> e:57
+binder 3025:3025 <> a:58
+binder 3027:3027 <> b:59
+R3039:3041 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R3034:3034 SLF.LibOperation <> f:56 var
+R3036:3036 SLF.LibOperation <> b:59 var
+R3038:3038 SLF.LibOperation <> a:58 var
+R3042:3042 SLF.LibOperation <> e:57 var
+def 3122:3130 <> inverse_l
+binder 3132:3132 <> f:60
+binder 3134:3134 <> e:61
+binder 3136:3136 <> i:62
+binder 3148:3148 <> x:63
+R3162:3164 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R3153:3153 SLF.LibOperation <> f:60 var
+R3156:3156 SLF.LibOperation <> i:62 var
+R3158:3158 SLF.LibOperation <> x:63 var
+R3161:3161 SLF.LibOperation <> x:63 var
+R3165:3165 SLF.LibOperation <> e:61 var
+def 3211:3219 <> inverse_r
+binder 3221:3221 <> f:64
+binder 3223:3223 <> e:65
+binder 3225:3225 <> i:66
+binder 3237:3237 <> x:67
+R3251:3253 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R3242:3242 SLF.LibOperation <> f:64 var
+R3244:3244 SLF.LibOperation <> x:67 var
+R3247:3247 SLF.LibOperation <> i:66 var
+R3249:3249 SLF.LibOperation <> x:67 var
+R3254:3254 SLF.LibOperation <> e:65 var
+def 3290:3301 <> self_inverse
+binder 3303:3303 <> i:68
+binder 3305:3305 <> x:69
+R3315:3317 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R3312:3312 SLF.LibOperation <> i:68 var
+R3314:3314 SLF.LibOperation <> x:69 var
+R3318:3318 SLF.LibOperation <> x:69 var
+R3326:3336 SLF.LibOperation Definitions <> sec
+def 3554:3561 <> morphism
+binder 3564:3564 <> A:70
+binder 3566:3566 <> B:71
+R3582:3583 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R3581:3581 SLF.LibOperation <> A:70 var
+R3584:3584 SLF.LibOperation <> B:71 var
+binder 3577:3577 <> h:72
+R3593:3594 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R3592:3592 SLF.LibOperation <> A:70 var
+R3596:3597 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R3595:3595 SLF.LibOperation <> A:70 var
+R3598:3598 SLF.LibOperation <> A:70 var
+binder 3588:3588 <> f:73
+R3607:3608 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R3606:3606 SLF.LibOperation <> B:71 var
+R3610:3611 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R3609:3609 SLF.LibOperation <> B:71 var
+R3612:3612 SLF.LibOperation <> B:71 var
+binder 3602:3602 <> g:74
+binder 3627:3627 <> x:75
+binder 3629:3629 <> y:76
+R3641:3643 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R3632:3632 SLF.LibOperation <> h:72 var
+R3635:3635 SLF.LibOperation <> f:73 var
+R3639:3639 SLF.LibOperation <> y:76 var
+R3637:3637 SLF.LibOperation <> x:75 var
+R3644:3644 SLF.LibOperation <> g:74 var
+R3653:3653 SLF.LibOperation <> h:72 var
+R3655:3655 SLF.LibOperation <> y:76 var
+R3647:3647 SLF.LibOperation <> h:72 var
+R3649:3649 SLF.LibOperation <> x:75 var
+def 3693:3704 <> automorphism
+binder 3706:3706 <> A:77
+R3712:3719 SLF.LibOperation <> morphism def
+R3721:3721 SLF.LibOperation <> A:77 var
+R3723:3723 SLF.LibOperation <> A:77 var
+R3736:3747 SLF.LibOperation <> automorphism def
+R3736:3747 SLF.LibOperation <> automorphism def
+def 3938:3946 <> injective
+binder 3948:3948 <> A:78
+binder 3950:3950 <> B:79
+R3958:3961 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R3957:3957 SLF.LibOperation <> A:78 var
+R3962:3962 SLF.LibOperation <> B:79 var
+binder 3953:3953 <> f:80
+binder 3977:3977 <> x:81
+binder 3979:3979 <> y:82
+R3991:3994 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R3985:3987 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R3982:3982 SLF.LibOperation <> f:80 var
+R3984:3984 SLF.LibOperation <> x:81 var
+R3988:3988 SLF.LibOperation <> f:80 var
+R3990:3990 SLF.LibOperation <> y:82 var
+R3996:3998 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R3995:3995 SLF.LibOperation <> x:81 var
+R3999:3999 SLF.LibOperation <> y:82 var
+sec 4177:4188 <> OpProperties
+var 4202:4202 OpProperties A
+R4233:4236 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R4232:4232 SLF.LibOperation <> OpProperties.A var
+R4237:4237 SLF.LibOperation <> OpProperties.A var
+R4262:4265 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R4261:4261 SLF.LibOperation <> OpProperties.A var
+R4267:4270 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R4266:4266 SLF.LibOperation <> OpProperties.A var
+R4271:4271 SLF.LibOperation <> OpProperties.A var
+prf 4281:4294 <> idempotent_inv
+binder 4305:4305 <> h:84
+binder 4307:4307 <> x:85
+binder 4309:4309 <> y:86
+R4326:4331 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R4314:4323 SLF.LibOperation <> idempotent def
+R4325:4325 SLF.LibOperation <> h:84 var
+R4339:4344 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R4333:4335 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R4332:4332 SLF.LibOperation <> y:86 var
+R4336:4336 SLF.LibOperation <> h:84 var
+R4338:4338 SLF.LibOperation <> x:85 var
+R4348:4350 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R4345:4345 SLF.LibOperation <> h:84 var
+R4347:4347 SLF.LibOperation <> y:86 var
+R4351:4351 SLF.LibOperation <> y:86 var
+prf 4494:4520 <> neutral_r_of_comm_neutral_l
+binder 4531:4531 <> f:87
+binder 4533:4533 <> e:88
+R4544:4549 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R4538:4541 SLF.LibOperation <> comm def
+R4543:4543 SLF.LibOperation <> f:87 var
+R4563:4568 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R4550:4558 SLF.LibOperation <> neutral_l def
+R4562:4562 SLF.LibOperation <> e:88 var
+R4560:4560 SLF.LibOperation <> f:87 var
+R4569:4577 SLF.LibOperation <> neutral_r def
+R4581:4581 SLF.LibOperation <> e:88 var
+R4579:4579 SLF.LibOperation <> f:87 var
+prf 4645:4671 <> inverse_r_of_comm_inverse_l
+binder 4682:4682 <> f:89
+binder 4684:4684 <> e:90
+binder 4686:4686 <> i:91
+R4697:4702 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R4691:4694 SLF.LibOperation <> comm def
+R4696:4696 SLF.LibOperation <> f:89 var
+R4718:4723 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R4703:4711 SLF.LibOperation <> inverse_l def
+R4717:4717 SLF.LibOperation <> i:91 var
+R4715:4715 SLF.LibOperation <> e:90 var
+R4713:4713 SLF.LibOperation <> f:89 var
+R4724:4732 SLF.LibOperation <> inverse_r def
+R4738:4738 SLF.LibOperation <> i:91 var
+R4736:4736 SLF.LibOperation <> e:90 var
+R4734:4734 SLF.LibOperation <> f:89 var
+prf 4802:4828 <> distrib_r_of_comm_distrib_l
+binder 4839:4839 <> f:92
+binder 4841:4841 <> g:93
+R4852:4857 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R4846:4849 SLF.LibOperation <> comm def
+R4851:4851 SLF.LibOperation <> f:92 var
+R4871:4876 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R4858:4866 SLF.LibOperation <> distrib_l def
+R4870:4870 SLF.LibOperation <> g:93 var
+R4868:4868 SLF.LibOperation <> f:92 var
+R4877:4885 SLF.LibOperation <> distrib_r def
+R4889:4889 SLF.LibOperation <> g:93 var
+R4887:4887 SLF.LibOperation <> f:92 var
+R4939:4947 SLF.LibOperation <> distrib_l def
+R4939:4947 SLF.LibOperation <> distrib_l def
+prf 4993:5020 <> comm_assoc_of_comm_and_assoc
+binder 5031:5031 <> f:94
+R5042:5047 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R5036:5039 SLF.LibOperation <> comm def
+R5041:5041 SLF.LibOperation <> f:94 var
+R5055:5060 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R5048:5052 SLF.LibOperation <> assoc def
+R5054:5054 SLF.LibOperation <> f:94 var
+R5061:5070 SLF.LibOperation <> comm_assoc def
+R5072:5072 SLF.LibOperation <> f:94 var
+R5167:5178 SLF.LibOperation OpProperties <> sec

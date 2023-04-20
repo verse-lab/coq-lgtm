@@ -1,0 +1,785 @@
+DIGEST c7ddff1ae04a115d66e07d5dcdc2c96f
+FSLF.Hprop
+R81:95 SLF.LibSepReference <> <> lib
+R105:117 SLF.LibSepReference ProgramSyntax <> mod
+R211:221 SLF.LibSepReference Fmap single def
+R211:221 SLF.LibSepReference Fmap single def
+R242:251 SLF.LibSepReference Fmap union def
+R242:251 SLF.LibSepReference Fmap union def
+R272:284 SLF.LibSepReference Fmap disjoint def
+R272:284 SLF.LibSepReference Fmap disjoint def
+R305:331 SLF.LibSepReference Fmap union_comm_of_disjoint thm
+R305:331 SLF.LibSepReference Fmap union_comm_of_disjoint thm
+R352:369 SLF.LibSepReference Fmap union_empty_l thm
+R352:369 SLF.LibSepReference Fmap union_empty_l thm
+R390:407 SLF.LibSepReference Fmap union_empty_r thm
+R390:407 SLF.LibSepReference Fmap union_empty_r thm
+R428:443 SLF.LibSepReference Fmap union_assoc thm
+R428:443 SLF.LibSepReference Fmap union_assoc thm
+R464:484 SLF.LibSepReference Fmap disjoint_empty_l thm
+R464:484 SLF.LibSepReference Fmap disjoint_empty_l thm
+R505:525 SLF.LibSepReference Fmap disjoint_empty_r thm
+R505:525 SLF.LibSepReference Fmap disjoint_empty_r thm
+R546:569 SLF.LibSepReference Fmap disjoint_union_eq_l thm
+R546:569 SLF.LibSepReference Fmap disjoint_union_eq_l thm
+R590:613 SLF.LibSepReference Fmap disjoint_union_eq_r thm
+R590:613 SLF.LibSepReference Fmap disjoint_union_eq_r thm
+def 4723:4733 <> example_val
+R4737:4739 SLF.LibSepReference <> val ind
+R4746:4752 SLF.LibSepReference <> val_fun constr
+R4759:4764 SLF.LibSepReference <> trm_if constr
+R4835:4841 SLF.LibSepReference <> trm_val constr
+R4844:4850 SLF.LibSepReference <> val_int constr
+R4797:4803 SLF.LibSepReference <> trm_val constr
+R4806:4812 SLF.LibSepReference <> val_int constr
+R4767:4773 SLF.LibSepReference <> trm_var constr
+def 4995:5006 <> example_val'
+R5010:5012 SLF.LibSepReference <> trm ind
+R5019:5021 SLF.LibSepReference <> ::trm_scope:'<{'_x_'}>' not
+R5060:5062 SLF.LibSepReference <> ::trm_scope:'<{'_x_'}>' not
+R5022:5025 SLF.LibSepReference <> :trm:val_scope:'fun'_x_'=>'_x not
+R5029:5039 SLF.LibSepReference <> :trm:val_scope:'fun'_x_'=>'_x not
+R5040:5042 SLF.LibSepReference <> :trm:trm_scope:'if'_x_'then'_x_'else'_x not
+R5046:5051 SLF.LibSepReference <> :trm:trm_scope:'if'_x_'then'_x_'else'_x not
+R5053:5058 SLF.LibSepReference <> :trm:trm_scope:'if'_x_'then'_x_'else'_x not
+def 5499:5503 <> state
+R5515:5518 SLF.LibSepFmap <> fmap indrec
+R5524:5526 SLF.LibSepReference <> val ind
+R5520:5522 SLF.LibSepReference <> loc def
+def 5691:5694 <> heap
+R5706:5710 SLF.Hprop <> state def
+def 6898:6902 <> hprop
+R6911:6914 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R6907:6910 SLF.Hprop <> heap def
+R6996:7000 SLF.Hprop <> hprop def
+def 7498:7503 <> hempty
+R7507:7511 SLF.Hprop <> hprop def
+R7525:7528 SLF.Hprop <> heap def
+binder 7523:7523 <> h:1
+R7536:7538 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R7535:7535 SLF.Hprop <> h:1 var
+R7539:7548 SLF.LibSepReference Fmap empty def
+R7572:7577 SLF.Hprop <> hempty def
+not 7562:7562 <> :::'\[]'
+def 7743:7747 <> hpure
+binder 7750:7750 <> P:2
+R7760:7764 SLF.Hprop <> hprop def
+R7778:7781 SLF.Hprop <> heap def
+binder 7776:7776 <> h:3
+R7787:7787 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R7802:7806 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R7789:7791 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R7788:7788 SLF.Hprop <> h:3 var
+R7792:7801 SLF.LibSepReference Fmap empty def
+R7807:7807 SLF.Hprop <> P:2 var
+R7833:7837 SLF.Hprop <> hpure def
+not 7820:7820 <> :::'\['_x_']'
+def 8042:8048 <> hsingle
+R8053:8055 SLF.LibSepReference <> loc def
+binder 8051:8051 <> p:4
+R8061:8063 SLF.LibSepReference <> val ind
+binder 8059:8059 <> v:5
+R8068:8072 SLF.Hprop <> hprop def
+R8086:8089 SLF.Hprop <> heap def
+binder 8084:8084 <> h:6
+R8097:8099 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R8096:8096 SLF.Hprop <> h:6 var
+R8100:8110 SLF.LibSepReference Fmap single def
+R8114:8114 SLF.Hprop <> v:5 var
+R8112:8112 SLF.Hprop <> p:4 var
+R8144:8150 SLF.Hprop <> hsingle def
+not 8128:8128 <> :::x_'~~>'_x
+def 8444:8448 <> hstar
+R8459:8463 SLF.Hprop <> hprop def
+binder 8451:8452 <> H1:7
+binder 8454:8455 <> H2:8
+R8468:8472 SLF.Hprop <> hprop def
+R8486:8489 SLF.Hprop <> heap def
+binder 8484:8484 <> h:9
+R8495:8501 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+R8507:8508 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+binder 8502:8503 <> h1:10
+binder 8505:8506 <> h2:11
+R8514:8547 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R8509:8510 SLF.Hprop <> H1:7 var
+R8512:8513 SLF.Hprop <> h1:10 var
+R8553:8586 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R8548:8549 SLF.Hprop <> H2:8 var
+R8551:8552 SLF.Hprop <> h2:11 var
+R8606:8639 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R8587:8599 SLF.LibSepReference Fmap disjoint def
+R8604:8605 SLF.Hprop <> h2:11 var
+R8601:8602 SLF.Hprop <> h1:10 var
+R8641:8643 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R8640:8640 SLF.Hprop <> h:9 var
+R8644:8653 SLF.LibSepReference Fmap union def
+R8658:8659 SLF.Hprop <> h2:11 var
+R8655:8656 SLF.Hprop <> h1:10 var
+R8689:8693 SLF.Hprop <> hstar def
+not 8672:8672 <> :::x_'\*'_x
+def 9266:9272 <> hexists
+binder 9275:9275 <> A:12
+R9287:9288 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R9286:9286 SLF.Hprop <> A:12 var
+R9289:9293 SLF.Hprop <> hprop def
+binder 9284:9284 <> J:13
+R9298:9302 SLF.Hprop <> hprop def
+R9316:9319 SLF.Hprop <> heap def
+binder 9314:9314 <> h:14
+R9325:9331 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+R9333:9334 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+binder 9332:9332 <> x:15
+R9335:9335 SLF.Hprop <> J:13 var
+R9339:9339 SLF.Hprop <> h:14 var
+R9337:9337 SLF.Hprop <> x:15 var
+R9383:9389 SLF.Hprop <> hexists def
+binder 9396:9397 <> x1:16
+R9406:9412 SLF.Hprop <> hexists def
+binder 9419:9420 <> xn:17
+not 9352:9352 <> :::'\exists'_x_'..'_x_','_x
+ax 10468:10478 <> hstar_assoc
+binder 10489:10490 <> H1:18
+binder 10492:10493 <> H2:19
+binder 10495:10496 <> H3:20
+R10517:10519 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R10501:10501 SLF.Hprop <> :::x_'\*'_x not
+R10510:10514 SLF.Hprop <> :::x_'\*'_x not
+R10504:10507 SLF.Hprop <> :::x_'\*'_x not
+R10502:10503 SLF.Hprop <> H1:18 var
+R10508:10509 SLF.Hprop <> H2:19 var
+R10515:10516 SLF.Hprop <> H3:20 var
+R10522:10526 SLF.Hprop <> :::x_'\*'_x not
+R10535:10535 SLF.Hprop <> :::x_'\*'_x not
+R10520:10521 SLF.Hprop <> H1:18 var
+R10529:10532 SLF.Hprop <> :::x_'\*'_x not
+R10527:10528 SLF.Hprop <> H2:19 var
+R10533:10534 SLF.Hprop <> H3:20 var
+ax 11061:11084 <> predicate_extensionality
+binder 11096:11096 <> A:22
+R11110:11111 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R11109:11109 SLF.Hprop <> A:22 var
+binder 11105:11105 <> P:23
+binder 11107:11107 <> Q:24
+R11121:11121 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R11143:11149 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+binder 11129:11129 <> x:25
+R11135:11139 Coq.Init.Logic <> ::type_scope:x_'<->'_x not
+R11132:11132 SLF.Hprop <> P:23 var
+R11134:11134 SLF.Hprop <> x:25 var
+R11140:11140 SLF.Hprop <> Q:24 var
+R11142:11142 SLF.Hprop <> x:25 var
+R11151:11153 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R11150:11150 SLF.Hprop <> P:23 var
+R11154:11154 SLF.Hprop <> Q:24 var
+prf 11287:11294 <> hprop_eq
+R11312:11316 SLF.Hprop <> hprop def
+binder 11306:11307 <> H1:27
+binder 11309:11310 <> H2:28
+R11322:11322 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R11353:11359 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R11333:11336 SLF.Hprop <> heap def
+binder 11331:11331 <> h:29
+R11344:11348 Coq.Init.Logic <> ::type_scope:x_'<->'_x not
+R11340:11341 SLF.Hprop <> H1:27 var
+R11343:11343 SLF.Hprop <> h:29 var
+R11349:11350 SLF.Hprop <> H2:28 var
+R11352:11352 SLF.Hprop <> h:29 var
+R11362:11364 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R11360:11361 SLF.Hprop <> H1:27 var
+R11365:11366 SLF.Hprop <> H2:28 var
+R11388:11411 SLF.Hprop <> predicate_extensionality prfax
+R11388:11411 SLF.Hprop <> predicate_extensionality prfax
+R11921:11924 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R11918:11920 SLF.LibSepReference <> val ind
+R11925:11929 SLF.Hprop <> hprop def
+binder 12168:12168 <> x:30
+R12173:12177 SLF.Hprop <> hstar def
+R12182:12182 SLF.Hprop <> x:30 var
+not 12150:12150 <> :::x_'\*+'_x
+ax 12569:12593 <> functional_extensionality
+binder 12604:12604 <> A:31
+binder 12606:12606 <> B:32
+R12614:12615 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R12613:12613 SLF.Hprop <> A:31 var
+R12616:12616 SLF.Hprop <> B:32 var
+binder 12609:12609 <> f:33
+binder 12611:12611 <> g:34
+R12622:12622 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R12642:12648 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+binder 12630:12630 <> x:35
+R12636:12638 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R12633:12633 SLF.Hprop <> f:33 var
+R12635:12635 SLF.Hprop <> x:35 var
+R12639:12639 SLF.Hprop <> g:34 var
+R12641:12641 SLF.Hprop <> x:35 var
+R12650:12652 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R12649:12649 SLF.Hprop <> f:33 var
+R12653:12653 SLF.Hprop <> g:34 var
+prf 12758:12765 <> qprop_eq
+R12786:12787 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R12783:12785 SLF.LibSepReference <> val ind
+R12788:12792 SLF.Hprop <> hprop def
+binder 12777:12778 <> Q1:37
+binder 12780:12781 <> Q2:38
+R12798:12798 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R12826:12832 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R12809:12811 SLF.LibSepReference <> val ind
+binder 12807:12807 <> v:39
+R12819:12821 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R12815:12816 SLF.Hprop <> Q1:37 var
+R12818:12818 SLF.Hprop <> v:39 var
+R12822:12823 SLF.Hprop <> Q2:38 var
+R12825:12825 SLF.Hprop <> v:39 var
+R12835:12837 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R12833:12834 SLF.Hprop <> Q1:37 var
+R12838:12839 SLF.Hprop <> Q2:38 var
+R12861:12885 SLF.Hprop <> functional_extensionality prfax
+R12861:12885 SLF.Hprop <> functional_extensionality prfax
+def 13688:13692 <> hoare
+R13697:13699 SLF.LibSepReference <> trm ind
+binder 13695:13695 <> t:40
+R13705:13709 SLF.Hprop <> hprop def
+binder 13703:13703 <> H:41
+R13718:13719 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R13715:13717 SLF.LibSepReference <> val ind
+R13720:13724 SLF.Hprop <> hprop def
+binder 13713:13713 <> Q:42
+R13749:13753 SLF.Hprop <> state def
+binder 13747:13747 <> s:43
+R13760:13765 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R13757:13757 SLF.Hprop <> H:41 var
+R13759:13759 SLF.Hprop <> s:43 var
+R13766:13773 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+R13790:13792 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+R13777:13781 SLF.Hprop <> state def
+binder 13774:13775 <> s':44
+R13787:13789 SLF.LibSepReference <> val ind
+binder 13785:13785 <> v:45
+R13806:13809 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R13793:13796 SLF.LibSepReference <> eval ind
+R13805:13805 SLF.Hprop <> v:45 var
+R13802:13803 SLF.Hprop <> s':44 var
+R13800:13800 SLF.Hprop <> t:40 var
+R13798:13798 SLF.Hprop <> s:43 var
+R13810:13810 SLF.Hprop <> Q:42 var
+R13814:13815 SLF.Hprop <> s':44 var
+R13812:13812 SLF.Hprop <> v:45 var
+prf 14378:14389 <> hoare_conseq
+binder 14400:14400 <> t:46
+binder 14402:14402 <> H:47
+binder 14404:14404 <> Q:48
+binder 14406:14407 <> H':49
+binder 14409:14410 <> Q':50
+R14428:14433 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R14415:14419 SLF.Hprop <> hoare def
+R14426:14427 SLF.Hprop <> Q':50 var
+R14423:14424 SLF.Hprop <> H':49 var
+R14421:14421 SLF.Hprop <> t:46 var
+R14442:14447 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R14435:14439 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'==>'_x not
+R14434:14434 SLF.Hprop <> H:47 var
+R14440:14441 SLF.Hprop <> H':49 var
+R14457:14462 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R14450:14455 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'===>'_x not
+R14448:14449 SLF.Hprop <> Q':50 var
+R14456:14456 SLF.Hprop <> Q:48 var
+R14463:14467 SLF.Hprop <> hoare def
+R14473:14473 SLF.Hprop <> Q:48 var
+R14471:14471 SLF.Hprop <> H:47 var
+R14469:14469 SLF.Hprop <> t:46 var
+def 15138:15143 <> triple
+R15148:15150 SLF.LibSepReference <> trm ind
+binder 15146:15146 <> t:51
+R15156:15160 SLF.Hprop <> hprop def
+binder 15154:15154 <> H:52
+R15169:15170 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R15166:15168 SLF.LibSepReference <> val ind
+R15171:15175 SLF.Hprop <> hprop def
+binder 15164:15164 <> Q:53
+R15201:15205 SLF.Hprop <> hprop def
+binder 15198:15199 <> H':54
+R15209:15213 SLF.Hprop <> hoare def
+R15229:15233 SLF.Hprop <> :::x_'\*+'_x not
+R15228:15228 SLF.Hprop <> Q:53 var
+R15234:15235 SLF.Hprop <> H':54 var
+R15219:15222 SLF.Hprop <> :::x_'\*'_x not
+R15218:15218 SLF.Hprop <> H:52 var
+R15223:15224 SLF.Hprop <> H':54 var
+R15215:15215 SLF.Hprop <> t:51 var
+prf 15404:15415 <> triple_frame
+binder 15426:15426 <> t:55
+binder 15428:15428 <> H:56
+binder 15430:15430 <> Q:57
+binder 15432:15433 <> H':58
+R15450:15455 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R15438:15443 SLF.Hprop <> triple def
+R15449:15449 SLF.Hprop <> Q:57 var
+R15447:15447 SLF.Hprop <> H:56 var
+R15445:15445 SLF.Hprop <> t:55 var
+R15456:15461 SLF.Hprop <> triple def
+R15477:15481 SLF.Hprop <> :::x_'\*+'_x not
+R15476:15476 SLF.Hprop <> Q:57 var
+R15482:15483 SLF.Hprop <> H':58 var
+R15467:15470 SLF.Hprop <> :::x_'\*'_x not
+R15466:15466 SLF.Hprop <> H:56 var
+R15471:15472 SLF.Hprop <> H':58 var
+R15463:15463 SLF.Hprop <> t:55 var
+R15519:15524 SLF.Hprop <> triple def
+R15581:15584 SLF.Hprop <> :::x_'\*'_x not
+R15581:15584 SLF.Hprop <> :::x_'\*'_x not
+R15740:15751 SLF.Hprop <> hoare_conseq prfax
+R15740:15751 SLF.Hprop <> hoare_conseq prfax
+R15781:15791 SLF.Hprop <> hstar_assoc defax
+R15781:15791 SLF.Hprop <> hstar_assoc defax
+R15781:15791 SLF.Hprop <> hstar_assoc defax
+R15824:15834 SLF.Hprop <> hstar_assoc defax
+R15824:15834 SLF.Hprop <> hstar_assoc defax
+R15824:15834 SLF.Hprop <> hstar_assoc defax
+ax 16058:16061 <> incr
+R16065:16067 SLF.LibSepReference <> val ind
+prf 16510:16521 <> incr_applied
+R16535:16537 SLF.LibSepReference <> loc def
+binder 16533:16533 <> p:60
+R16543:16545 SLF.LibInt <> ::Int_scope:'int' not
+binder 16541:16541 <> n:61
+R16597:16601 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R16553:16559 SLF.LibSepReference <> trm_app constr
+R16577:16583 SLF.LibSepReference <> trm_val constr
+R16586:16592 SLF.LibSepReference <> val_loc constr
+R16594:16594 SLF.Hprop <> p:60 var
+R16562:16568 SLF.LibSepReference <> trm_val constr
+R16570:16573 SLF.Hprop <> incr defax
+R16602:16605 SLF.Hprop <> incr defax
+R16607:16607 SLF.Hprop <> p:60 var
+ax 16731:16741 <> triple_incr
+R16755:16757 SLF.LibSepReference <> loc def
+binder 16753:16753 <> p:62
+R16763:16765 SLF.LibInt <> ::Int_scope:'int' not
+binder 16761:16761 <> n:63
+R16771:16776 SLF.Hprop <> triple def
+binder 16810:16810 <> r:64
+R16816:16821 SLF.Hprop <> :::x_'~~>'_x not
+R16825:16825 SLF.Hprop <> :::x_'~~>'_x not
+R16815:16815 SLF.Hprop <> p:62 var
+R16823:16823 Coq.ZArith.BinInt <> ::Z_scope:x_'+'_x not
+R16822:16822 SLF.Hprop <> n:63 var
+R16793:16797 SLF.Hprop <> :::x_'~~>'_x not
+R16792:16792 SLF.Hprop <> p:62 var
+R16798:16798 SLF.Hprop <> n:63 var
+R16779:16782 SLF.Hprop <> incr defax
+R16784:16784 SLF.Hprop <> p:62 var
+prf 17435:17447 <> triple_incr_2
+R17463:17465 SLF.LibSepReference <> loc def
+binder 17459:17459 <> p:66
+binder 17461:17461 <> q:67
+R17473:17475 SLF.LibInt <> ::Int_scope:'int' not
+binder 17469:17469 <> n:68
+binder 17471:17471 <> m:69
+R17481:17486 SLF.Hprop <> triple def
+R17540:17540 SLF.Hprop <> :::x_'\*'_x not
+R17552:17557 SLF.Hprop <> :::x_'\*'_x not
+R17565:17565 SLF.Hprop <> :::x_'\*'_x not
+R17542:17547 SLF.Hprop <> :::x_'~~>'_x not
+R17551:17551 SLF.Hprop <> :::x_'~~>'_x not
+R17541:17541 SLF.Hprop <> p:66 var
+R17549:17549 Coq.ZArith.BinInt <> ::Z_scope:x_'+'_x not
+R17548:17548 SLF.Hprop <> n:68 var
+R17559:17563 SLF.Hprop <> :::x_'~~>'_x not
+R17558:17558 SLF.Hprop <> q:67 var
+R17564:17564 SLF.Hprop <> m:69 var
+R17502:17502 SLF.Hprop <> :::x_'\*'_x not
+R17510:17515 SLF.Hprop <> :::x_'\*'_x not
+R17523:17523 SLF.Hprop <> :::x_'\*'_x not
+R17504:17508 SLF.Hprop <> :::x_'~~>'_x not
+R17503:17503 SLF.Hprop <> p:66 var
+R17509:17509 SLF.Hprop <> n:68 var
+R17517:17521 SLF.Hprop <> :::x_'~~>'_x not
+R17516:17516 SLF.Hprop <> q:67 var
+R17522:17522 SLF.Hprop <> m:69 var
+R17489:17492 SLF.Hprop <> incr defax
+R17494:17494 SLF.Hprop <> p:66 var
+R17801:17811 SLF.Hprop <> triple_incr defax
+R17801:17811 SLF.Hprop <> triple_incr defax
+R17828:17839 SLF.Hprop <> triple_frame thm
+R17843:17847 SLF.Hprop <> :::x_'~~>'_x not
+R17828:17839 SLF.Hprop <> triple_frame thm
+R17843:17847 SLF.Hprop <> :::x_'~~>'_x not
+ax 18133:18145 <> triple_incr_3
+R18159:18161 SLF.LibSepReference <> loc def
+binder 18157:18157 <> p:70
+R18167:18169 SLF.LibInt <> ::Int_scope:'int' not
+binder 18165:18165 <> n:71
+R18175:18179 SLF.Hprop <> hprop def
+binder 18173:18173 <> H:72
+R18185:18190 SLF.Hprop <> triple def
+R18236:18236 SLF.Hprop <> :::x_'\*'_x not
+R18248:18252 SLF.Hprop <> :::x_'\*'_x not
+R18238:18243 SLF.Hprop <> :::x_'~~>'_x not
+R18247:18247 SLF.Hprop <> :::x_'~~>'_x not
+R18237:18237 SLF.Hprop <> p:70 var
+R18245:18245 Coq.ZArith.BinInt <> ::Z_scope:x_'+'_x not
+R18244:18244 SLF.Hprop <> n:71 var
+R18253:18253 SLF.Hprop <> H:72 var
+R18206:18206 SLF.Hprop <> :::x_'\*'_x not
+R18214:18218 SLF.Hprop <> :::x_'\*'_x not
+R18208:18212 SLF.Hprop <> :::x_'~~>'_x not
+R18207:18207 SLF.Hprop <> p:70 var
+R18213:18213 SLF.Hprop <> n:71 var
+R18219:18219 SLF.Hprop <> H:72 var
+R18193:18196 SLF.Hprop <> incr defax
+R18198:18198 SLF.Hprop <> p:70 var
+ax 18936:18945 <> triple_ref
+R18959:18961 SLF.LibSepReference <> val ind
+binder 18957:18957 <> v:74
+R18967:18972 SLF.Hprop <> triple def
+R18999:19005 SLF.LibSepReference <> ::hprop_scope:'funloc'_x_'=>'_x not
+R19007:19010 SLF.LibSepReference <> ::hprop_scope:'funloc'_x_'=>'_x not
+binder 19006:19006 <> p:75
+binder 19006:19006 <> p:76
+binder 19006:19006 <> p:77
+R19012:19016 SLF.Hprop <> :::x_'~~>'_x not
+R19011:19011 SLF.Hprop <> p:75 var
+R19017:19017 SLF.Hprop <> v:74 var
+R18990:18992 SLF.Hprop <> :::'\[]' not
+R18975:18981 SLF.LibSepReference <> val_ref constr
+R18983:18983 SLF.Hprop <> v:74 var
+ax 19152:19172 <> triple_ref_with_frame
+R19187:19189 SLF.LibSepReference <> loc def
+binder 19184:19185 <> l':79
+R19196:19198 SLF.LibSepReference <> val ind
+binder 19193:19194 <> v':80
+R19204:19206 SLF.LibSepReference <> val ind
+binder 19202:19202 <> v:81
+R19212:19217 SLF.Hprop <> triple def
+R19252:19258 SLF.LibSepReference <> ::hprop_scope:'funloc'_x_'=>'_x not
+R19260:19263 SLF.LibSepReference <> ::hprop_scope:'funloc'_x_'=>'_x not
+binder 19259:19259 <> p:82
+binder 19259:19259 <> p:83
+binder 19259:19259 <> p:84
+R19271:19274 SLF.Hprop <> :::x_'\*'_x not
+R19265:19269 SLF.Hprop <> :::x_'~~>'_x not
+R19264:19264 SLF.Hprop <> p:82 var
+R19270:19270 SLF.Hprop <> v:81 var
+R19277:19281 SLF.Hprop <> :::x_'~~>'_x not
+R19275:19276 SLF.Hprop <> l':79 var
+R19282:19283 SLF.Hprop <> v':80 var
+R19238:19242 SLF.Hprop <> :::x_'~~>'_x not
+R19236:19237 SLF.Hprop <> l':79 var
+R19243:19244 SLF.Hprop <> v':80 var
+R19220:19226 SLF.LibSepReference <> val_ref constr
+R19228:19228 SLF.Hprop <> v:81 var
+R19985:19994 SLF.LibSepReference Fmap union def
+not 19970:19970 <> :::x_'\u'_x
+R20520:20522 SLF.LibSepReference <> val ind
+prf 20656:20667 <> hempty_intro
+R20673:20686 SLF.Hprop <> :::'\[]' not
+R20677:20686 SLF.LibSepReference Fmap empty def
+prf 20725:20735 <> hpure_intro
+binder 20746:20746 <> P:86
+R20752:20757 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R20751:20751 SLF.Hprop <> P:86 var
+R20758:20759 SLF.Hprop <> :::'\['_x_']' not
+R20761:20772 SLF.Hprop <> :::'\['_x_']' not
+R20760:20760 SLF.Hprop <> P:86 var
+R20763:20772 SLF.LibSepReference Fmap empty def
+prf 20821:20833 <> hsingle_intro
+binder 20844:20844 <> p:87
+binder 20846:20846 <> v:88
+R20851:20851 SLF.Hprop <> :::x_'~~>'_x not
+R20853:20857 SLF.Hprop <> :::x_'~~>'_x not
+R20859:20877 SLF.Hprop <> :::x_'~~>'_x not
+R20852:20852 SLF.Hprop <> p:87 var
+R20858:20858 SLF.Hprop <> v:88 var
+R20862:20872 SLF.LibSepReference Fmap single def
+R20876:20876 SLF.Hprop <> v:88 var
+R20874:20874 SLF.Hprop <> p:87 var
+prf 20924:20934 <> hstar_intro
+binder 20945:20946 <> H1:89
+binder 20948:20949 <> H2:90
+binder 20951:20952 <> h1:91
+binder 20954:20955 <> h2:92
+R20965:20970 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R20960:20961 SLF.Hprop <> H1:89 var
+R20963:20964 SLF.Hprop <> h1:91 var
+R20976:20981 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R20971:20972 SLF.Hprop <> H2:90 var
+R20974:20975 SLF.Hprop <> h2:92 var
+R21001:21006 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R20982:20994 SLF.LibSepReference Fmap disjoint def
+R20999:21000 SLF.Hprop <> h2:92 var
+R20996:20997 SLF.Hprop <> h1:91 var
+R21007:21007 SLF.Hprop <> :::x_'\*'_x not
+R21010:21013 SLF.Hprop <> :::x_'\*'_x not
+R21016:21027 SLF.Hprop <> :::x_'\*'_x not
+R21008:21009 SLF.Hprop <> H1:89 var
+R21014:21015 SLF.Hprop <> H2:90 var
+R21021:21024 SLF.Hprop <> :::x_'\u'_x not
+R21019:21020 SLF.Hprop <> h1:91 var
+R21025:21026 SLF.Hprop <> h2:92 var
+prf 21078:21090 <> hexists_intro
+binder 21101:21101 <> A:93
+R21106:21106 SLF.Hprop <> A:93 var
+binder 21104:21104 <> x:94
+R21113:21114 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R21112:21112 SLF.Hprop <> A:93 var
+R21115:21119 SLF.Hprop <> hprop def
+binder 21110:21110 <> J:95
+binder 21122:21122 <> h:96
+R21132:21137 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R21127:21127 SLF.Hprop <> J:95 var
+R21131:21131 SLF.Hprop <> h:96 var
+R21129:21129 SLF.Hprop <> x:94 var
+R21138:21146 SLF.Hprop <> :::'\exists'_x_'..'_x_','_x not
+R21148:21149 SLF.Hprop <> :::'\exists'_x_'..'_x_','_x not
+R21153:21155 SLF.Hprop <> :::'\exists'_x_'..'_x_','_x not
+binder 21147:21147 <> x:97
+R21150:21150 SLF.Hprop <> J:95 var
+R21152:21152 SLF.Hprop <> x:97 var
+R21155:21155 SLF.Hprop <> h:96 var
+prf 21349:21358 <> hempty_inv
+binder 21369:21369 <> h:98
+R21379:21384 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R21374:21378 SLF.Hprop <> :::'\[]' not
+R21378:21378 SLF.Hprop <> h:98 var
+R21386:21388 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R21385:21385 SLF.Hprop <> h:98 var
+R21389:21398 SLF.LibSepReference Fmap empty def
+prf 21452:21460 <> hpure_inv
+binder 21471:21471 <> P:99
+binder 21473:21473 <> h:100
+R21484:21489 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R21478:21479 SLF.Hprop <> :::'\['_x_']' not
+R21481:21483 SLF.Hprop <> :::'\['_x_']' not
+R21480:21480 SLF.Hprop <> P:99 var
+R21483:21483 SLF.Hprop <> h:100 var
+R21491:21494 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R21490:21490 SLF.Hprop <> P:99 var
+R21496:21498 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R21495:21495 SLF.Hprop <> h:100 var
+R21499:21508 SLF.LibSepReference Fmap empty def
+prf 21564:21574 <> hsingle_inv
+binder 21584:21584 <> p:101
+binder 21586:21586 <> v:102
+binder 21588:21588 <> h:103
+R21604:21609 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R21593:21593 SLF.Hprop <> :::x_'~~>'_x not
+R21595:21599 SLF.Hprop <> :::x_'~~>'_x not
+R21601:21603 SLF.Hprop <> :::x_'~~>'_x not
+R21594:21594 SLF.Hprop <> p:101 var
+R21600:21600 SLF.Hprop <> v:102 var
+R21603:21603 SLF.Hprop <> h:103 var
+R21611:21613 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R21610:21610 SLF.Hprop <> h:103 var
+R21614:21624 SLF.LibSepReference Fmap single def
+R21628:21628 SLF.Hprop <> v:102 var
+R21626:21626 SLF.Hprop <> p:101 var
+prf 21682:21690 <> hstar_inv
+binder 21701:21702 <> H1:104
+binder 21704:21705 <> H2:105
+binder 21707:21707 <> h:106
+R21724:21729 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R21712:21712 SLF.Hprop <> :::x_'\*'_x not
+R21715:21718 SLF.Hprop <> :::x_'\*'_x not
+R21721:21723 SLF.Hprop <> :::x_'\*'_x not
+R21713:21714 SLF.Hprop <> H1:104 var
+R21719:21720 SLF.Hprop <> H2:105 var
+R21723:21723 SLF.Hprop <> h:106 var
+R21730:21736 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+R21742:21743 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+binder 21737:21738 <> h1:107
+binder 21740:21741 <> h2:108
+R21749:21752 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R21744:21745 SLF.Hprop <> H1:104 var
+R21747:21748 SLF.Hprop <> h1:107 var
+R21758:21761 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R21753:21754 SLF.Hprop <> H2:105 var
+R21756:21757 SLF.Hprop <> h2:108 var
+R21781:21784 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R21762:21774 SLF.LibSepReference Fmap disjoint def
+R21779:21780 SLF.Hprop <> h2:108 var
+R21776:21777 SLF.Hprop <> h1:107 var
+R21786:21788 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R21785:21785 SLF.Hprop <> h:106 var
+R21791:21794 SLF.Hprop <> :::x_'\u'_x not
+R21789:21790 SLF.Hprop <> h1:107 var
+R21795:21796 SLF.Hprop <> h2:108 var
+prf 21851:21861 <> hexists_inv
+binder 21872:21872 <> A:109
+R21878:21879 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R21877:21877 SLF.Hprop <> A:109 var
+R21880:21884 SLF.Hprop <> hprop def
+binder 21875:21875 <> J:110
+binder 21887:21887 <> h:111
+R21910:21915 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R21892:21900 SLF.Hprop <> :::'\exists'_x_'..'_x_','_x not
+R21902:21903 SLF.Hprop <> :::'\exists'_x_'..'_x_','_x not
+R21907:21909 SLF.Hprop <> :::'\exists'_x_'..'_x_','_x not
+binder 21901:21901 <> x:112
+R21904:21904 SLF.Hprop <> J:110 var
+R21906:21906 SLF.Hprop <> x:112 var
+R21909:21909 SLF.Hprop <> h:111 var
+R21916:21922 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+R21924:21925 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+binder 21923:21923 <> x:113
+R21926:21926 SLF.Hprop <> J:110 var
+R21930:21930 SLF.Hprop <> h:111 var
+R21928:21928 SLF.Hprop <> x:113 var
+prf 22530:22542 <> hstar_hpure_l
+binder 22553:22553 <> P:114
+binder 22555:22555 <> H:115
+binder 22557:22557 <> h:116
+R22575:22578 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R22587:22587 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R22562:22562 SLF.Hprop <> :::x_'\*'_x not
+R22567:22570 SLF.Hprop <> :::x_'\*'_x not
+R22572:22574 SLF.Hprop <> :::x_'\*'_x not
+R22563:22564 SLF.Hprop <> :::'\['_x_']' not
+R22566:22566 SLF.Hprop <> :::'\['_x_']' not
+R22565:22565 SLF.Hprop <> P:114 var
+R22571:22571 SLF.Hprop <> H:115 var
+R22574:22574 SLF.Hprop <> h:116 var
+R22580:22583 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R22579:22579 SLF.Hprop <> P:114 var
+R22584:22584 SLF.Hprop <> H:115 var
+R22586:22586 SLF.Hprop <> h:116 var
+def 23583:23597 <> triple_lowlevel
+R23602:23604 SLF.LibSepReference <> trm ind
+binder 23600:23600 <> t:117
+R23610:23614 SLF.Hprop <> hprop def
+binder 23608:23608 <> H:118
+R23623:23624 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R23620:23622 SLF.LibSepReference <> val ind
+R23625:23629 SLF.Hprop <> hprop def
+binder 23618:23618 <> Q:119
+binder 23651:23652 <> h1:120
+binder 23654:23655 <> h2:121
+R23679:23684 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R23660:23672 SLF.LibSepReference Fmap disjoint def
+R23677:23678 SLF.Hprop <> h2:121 var
+R23674:23675 SLF.Hprop <> h1:120 var
+R23689:23694 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R23685:23685 SLF.Hprop <> H:118 var
+R23687:23688 SLF.Hprop <> h1:120 var
+R23695:23701 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+R23707:23715 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+binder 23702:23704 <> h1':122
+binder 23706:23706 <> v:123
+R23736:23743 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R23716:23728 SLF.LibSepReference Fmap disjoint def
+R23734:23735 SLF.Hprop <> h2:121 var
+R23730:23732 SLF.Hprop <> h1':122 var
+R23775:23782 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R23744:23747 SLF.LibSepReference <> eval ind
+R23774:23774 SLF.Hprop <> v:123 var
+R23766:23769 SLF.Hprop <> :::x_'\u'_x not
+R23763:23765 SLF.Hprop <> h1':122 var
+R23770:23771 SLF.Hprop <> h2:121 var
+R23760:23760 SLF.Hprop <> t:117 var
+R23752:23755 SLF.Hprop <> :::x_'\u'_x not
+R23750:23751 SLF.Hprop <> h1:120 var
+R23756:23757 SLF.Hprop <> h2:121 var
+R23783:23783 SLF.Hprop <> Q:119 var
+R23787:23789 SLF.Hprop <> h1':122 var
+R23785:23785 SLF.Hprop <> v:123 var
+prf 24062:24087 <> triple_iff_triple_lowlevel
+binder 24098:24098 <> t:124
+binder 24100:24100 <> H:125
+binder 24102:24102 <> Q:126
+R24119:24123 Coq.Init.Logic <> ::type_scope:x_'<->'_x not
+R24107:24112 SLF.Hprop <> triple def
+R24118:24118 SLF.Hprop <> Q:126 var
+R24116:24116 SLF.Hprop <> H:125 var
+R24114:24114 SLF.Hprop <> t:124 var
+R24124:24138 SLF.Hprop <> triple_lowlevel def
+R24144:24144 SLF.Hprop <> Q:126 var
+R24142:24142 SLF.Hprop <> H:125 var
+R24140:24140 SLF.Hprop <> t:124 var
+prf 24717:24736 <> hempty_eq_hpure_true
+R24745:24747 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R24742:24744 SLF.Hprop <> :::'\[]' not
+R24748:24749 SLF.Hprop <> :::'\['_x_']' not
+R24754:24754 SLF.Hprop <> :::'\['_x_']' not
+R24750:24753 Coq.Init.Logic <> True ind
+R24779:24784 SLF.Hprop <> hempty def
+R24787:24791 SLF.Hprop <> hpure def
+R24800:24807 SLF.Hprop <> hprop_eq thm
+R24800:24807 SLF.Hprop <> hprop_eq thm
+def 24983:24989 <> hempty'
+R24993:24997 SLF.Hprop <> hprop def
+R25004:25005 SLF.Hprop <> :::'\['_x_']' not
+R25010:25010 SLF.Hprop <> :::'\['_x_']' not
+R25006:25009 Coq.Init.Logic <> True ind
+prf 25207:25228 <> hpure_eq_hexists_proof
+binder 25239:25239 <> P:127
+R25248:25251 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R25270:25270 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R25244:25245 SLF.Hprop <> :::'\['_x_']' not
+R25247:25247 SLF.Hprop <> :::'\['_x_']' not
+R25246:25246 SLF.Hprop <> P:127 var
+R25252:25260 SLF.Hprop <> :::'\exists'_x_'..'_x_','_x not
+R25264:25266 SLF.Hprop <> :::'\exists'_x_'..'_x_','_x not
+R25263:25263 SLF.Hprop <> P:127 var
+binder 25261:25261 <> p:128
+R25267:25269 SLF.Hprop <> :::'\[]' not
+R25295:25300 SLF.Hprop <> hempty def
+R25303:25307 SLF.Hprop <> hpure def
+R25310:25316 SLF.Hprop <> hexists def
+R25337:25344 SLF.Hprop <> hprop_eq thm
+R25337:25344 SLF.Hprop <> hprop_eq thm
+def 25681:25686 <> hpure'
+binder 25689:25689 <> P:129
+R25699:25703 SLF.Hprop <> hprop def
+R25710:25718 SLF.Hprop <> :::'\exists'_x_'..'_x_','_x not
+R25722:25724 SLF.Hprop <> :::'\exists'_x_'..'_x_','_x not
+R25721:25721 SLF.Hprop <> P:129 var
+binder 25719:25719 <> p:130
+R25725:25727 SLF.Hprop <> :::'\[]' not
+mod 27899:27912 <> Extensionality
+ax 28366:28393 Extensionality propositional_extensionality
+binder 28405:28405 <> P:131
+binder 28407:28407 <> Q:132
+R28418:28418 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R28426:28432 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R28420:28424 Coq.Init.Logic <> ::type_scope:x_'<->'_x not
+R28419:28419 SLF.Hprop <> P:131 var
+R28425:28425 SLF.Hprop <> Q:132 var
+R28434:28436 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R28433:28433 SLF.Hprop <> P:131 var
+R28437:28437 SLF.Hprop <> Q:132 var
+ax 28590:28614 Extensionality functional_extensionality
+binder 28625:28625 <> A:134
+binder 28627:28627 <> B:135
+R28635:28636 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R28634:28634 SLF.Hprop <> A:134 var
+R28637:28637 SLF.Hprop <> B:135 var
+binder 28630:28630 <> f:136
+binder 28632:28632 <> g:137
+R28643:28643 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R28663:28669 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+binder 28651:28651 <> x:138
+R28657:28659 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R28654:28654 SLF.Hprop <> f:136 var
+R28656:28656 SLF.Hprop <> x:138 var
+R28660:28660 SLF.Hprop <> g:137 var
+R28662:28662 SLF.Hprop <> x:138 var
+R28671:28673 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R28670:28670 SLF.Hprop <> f:136 var
+R28674:28674 SLF.Hprop <> g:137 var
+prf 28923:28954 Extensionality predicate_extensionality_derived
+binder 28965:28965 <> A:140
+R28973:28974 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R28972:28972 SLF.Hprop <> A:140 var
+binder 28968:28968 <> P:141
+binder 28970:28970 <> Q:142
+R28984:28984 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R29006:29012 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+binder 28992:28992 <> x:143
+R28998:29002 Coq.Init.Logic <> ::type_scope:x_'<->'_x not
+R28995:28995 SLF.Hprop <> P:141 var
+R28997:28997 SLF.Hprop <> x:143 var
+R29003:29003 SLF.Hprop <> Q:142 var
+R29005:29005 SLF.Hprop <> x:143 var
+R29014:29016 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R29013:29013 SLF.Hprop <> P:141 var
+R29017:29017 SLF.Hprop <> Q:142 var
+R29078:29091 SLF.Hprop Extensionality <> mod

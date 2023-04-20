@@ -1,0 +1,2140 @@
+DIGEST 19373ea5bf3c9a12de91a7193994c16d
+FSLF.Partial
+R99:104 SLF.Nondet <> <> lib
+R173:175 SLF.LibSepVar <> var def
+R197:200 Coq.Init.Datatypes <> bool ind
+R222:226 SLF.LibSepReference <> state def
+R248:250 SLF.LibSepReference <> trm ind
+R272:274 SLF.LibSepReference <> val ind
+R296:298 SLF.LibInt <> ::Int_scope:'int' not
+R320:322 SLF.LibSepReference <> loc def
+R344:347 SLF.LibSepReference <> heap def
+R394:398 SLF.LibSepReference SepSimplArgs hprop def
+R423:424 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R420:422 SLF.LibSepReference <> val ind
+R425:429 SLF.LibSepReference SepSimplArgs hprop def
+ind 2294:2299 <> evalnp
+constr 2353:2362 <> evalnp_val
+constr 2428:2437 <> evalnp_fix
+constr 2528:2541 <> evalnp_app_fix
+constr 2688:2697 <> evalnp_let
+constr 2855:2863 <> evalnp_if
+constr 2982:2991 <> evalnp_add
+constr 3103:3113 <> evalnp_rand
+constr 3234:3243 <> evalnp_ref
+constr 3378:3387 <> evalnp_get
+constr 3501:3510 <> evalnp_set
+constr 3639:3649 <> evalnp_free
+R2308:2311 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R2303:2307 SLF.LibSepReference <> state def
+R2315:2318 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R2312:2314 SLF.LibSepReference <> trm ind
+R2319:2319 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R2336:2340 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R2323:2324 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R2320:2322 SLF.LibSepReference <> val ind
+R2330:2331 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R2325:2329 SLF.LibSepReference <> state def
+binder 2373:2373 <> s:3
+binder 2375:2375 <> v:4
+binder 2377:2377 <> Q:5
+R2391:2400 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R2386:2386 SLF.Partial <> Q:5 var
+R2388:2388 SLF.Partial <> v:4 var
+R2390:2390 SLF.Partial <> s:3 var
+R2401:2406 SLF.Partial <> evalnp:1 ind
+R2422:2422 SLF.Partial <> Q:5 var
+R2411:2417 SLF.LibSepReference <> trm_val constr
+R2419:2419 SLF.Partial <> v:4 var
+R2408:2408 SLF.Partial <> s:3 var
+binder 2448:2448 <> s:6
+binder 2450:2450 <> f:7
+binder 2452:2452 <> x:8
+binder 2454:2455 <> t1:9
+binder 2457:2457 <> Q:10
+R2486:2495 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R2466:2466 SLF.Partial <> Q:10 var
+R2469:2475 SLF.LibSepReference <> val_fix constr
+R2481:2482 SLF.Partial <> t1:9 var
+R2479:2479 SLF.Partial <> x:8 var
+R2477:2477 SLF.Partial <> f:7 var
+R2485:2485 SLF.Partial <> s:6 var
+R2496:2501 SLF.Partial <> evalnp:1 ind
+R2522:2522 SLF.Partial <> Q:10 var
+R2506:2512 SLF.LibSepReference <> trm_fix constr
+R2518:2519 SLF.Partial <> t1:9 var
+R2516:2516 SLF.Partial <> x:8 var
+R2514:2514 SLF.Partial <> f:7 var
+R2503:2503 SLF.Partial <> s:6 var
+binder 2552:2553 <> s1:11
+binder 2555:2556 <> v1:12
+binder 2558:2559 <> v2:13
+binder 2561:2561 <> f:14
+binder 2563:2563 <> x:15
+binder 2565:2566 <> t1:16
+binder 2568:2568 <> Q:17
+R2596:2605 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R2579:2581 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R2577:2578 SLF.Partial <> v1:12 var
+R2582:2588 SLF.LibSepReference <> val_fix constr
+R2594:2595 SLF.Partial <> t1:16 var
+R2592:2592 SLF.Partial <> x:15 var
+R2590:2590 SLF.Partial <> f:14 var
+R2646:2655 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R2606:2611 SLF.Partial <> evalnp:1 ind
+R2645:2645 SLF.Partial <> Q:17 var
+R2617:2621 SLF.LibSepReference <> subst def
+R2629:2633 SLF.LibSepReference <> subst def
+R2640:2641 SLF.Partial <> t1:16 var
+R2637:2638 SLF.Partial <> v1:12 var
+R2635:2635 SLF.Partial <> f:14 var
+R2625:2626 SLF.Partial <> v2:13 var
+R2623:2623 SLF.Partial <> x:15 var
+R2613:2614 SLF.Partial <> s1:11 var
+R2656:2661 SLF.Partial <> evalnp:1 ind
+R2682:2682 SLF.Partial <> Q:17 var
+R2667:2673 SLF.LibSepReference <> trm_app constr
+R2678:2679 SLF.Partial <> v2:13 var
+R2675:2676 SLF.Partial <> v1:12 var
+R2663:2664 SLF.Partial <> s1:11 var
+binder 2708:2709 <> Q1:18
+binder 2711:2712 <> s1:19
+binder 2714:2714 <> x:20
+binder 2716:2717 <> t1:21
+binder 2719:2720 <> t2:22
+binder 2722:2722 <> Q:23
+R2746:2755 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R2731:2736 SLF.Partial <> evalnp:1 ind
+R2744:2745 SLF.Partial <> Q1:18 var
+R2741:2742 SLF.Partial <> t1:21 var
+R2738:2739 SLF.Partial <> s1:19 var
+R2756:2756 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R2810:2820 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+binder 2764:2765 <> v1:24
+binder 2767:2768 <> s2:25
+R2779:2782 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R2771:2772 SLF.Partial <> Q1:18 var
+R2774:2775 SLF.Partial <> v1:24 var
+R2777:2778 SLF.Partial <> s2:25 var
+R2783:2788 SLF.Partial <> evalnp:1 ind
+R2809:2809 SLF.Partial <> Q:23 var
+R2794:2798 SLF.LibSepReference <> subst def
+R2805:2806 SLF.Partial <> t2:22 var
+R2802:2803 SLF.Partial <> v1:24 var
+R2800:2800 SLF.Partial <> x:20 var
+R2790:2791 SLF.Partial <> s2:25 var
+R2821:2826 SLF.Partial <> evalnp:1 ind
+R2849:2849 SLF.Partial <> Q:23 var
+R2832:2838 SLF.LibSepReference <> trm_let constr
+R2845:2846 SLF.Partial <> t2:22 var
+R2842:2843 SLF.Partial <> t1:21 var
+R2840:2840 SLF.Partial <> x:20 var
+R2828:2829 SLF.Partial <> s1:19 var
+binder 2874:2875 <> s1:26
+binder 2877:2877 <> b:27
+binder 2879:2880 <> t1:28
+binder 2882:2883 <> t2:29
+binder 2885:2885 <> Q:30
+R2928:2937 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R2894:2899 SLF.Partial <> evalnp:1 ind
+R2927:2927 SLF.Partial <> Q:30 var
+R2908:2908 SLF.Partial <> b:27 var
+R2923:2924 SLF.Partial <> t2:29 var
+R2915:2916 SLF.Partial <> t1:28 var
+R2901:2902 SLF.Partial <> s1:26 var
+R2938:2943 SLF.Partial <> evalnp:1 ind
+R2976:2976 SLF.Partial <> Q:30 var
+R2949:2954 SLF.LibSepReference <> trm_if constr
+R2972:2973 SLF.Partial <> t2:29 var
+R2969:2970 SLF.Partial <> t1:28 var
+R2957:2964 SLF.LibSepReference <> val_bool constr
+R2966:2966 SLF.Partial <> b:27 var
+R2945:2946 SLF.Partial <> s1:26 var
+binder 3002:3002 <> s:31
+binder 3004:3005 <> n1:32
+binder 3007:3008 <> n2:33
+binder 3010:3010 <> Q:34
+R3042:3051 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R3019:3019 SLF.Partial <> Q:34 var
+R3022:3028 SLF.LibSepReference <> val_int constr
+R3033:3035 Coq.ZArith.BinInt <> ::Z_scope:x_'+'_x not
+R3031:3032 SLF.Partial <> n1:32 var
+R3036:3037 SLF.Partial <> n2:33 var
+R3041:3041 SLF.Partial <> s:31 var
+R3052:3057 SLF.Partial <> evalnp:1 ind
+R3097:3097 SLF.Partial <> Q:34 var
+R3062:3068 SLF.LibSepReference <> val_add constr
+R3071:3077 SLF.LibSepReference <> val_int constr
+R3079:3080 SLF.Partial <> n1:32 var
+R3084:3090 SLF.LibSepReference <> val_int constr
+R3092:3093 SLF.Partial <> n2:33 var
+R3059:3059 SLF.Partial <> s:31 var
+binder 3124:3124 <> s:35
+binder 3126:3126 <> n:36
+binder 3128:3128 <> Q:37
+R3142:3151 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R3138:3140 SLF.LibOrder <> ::comp_scope:x_'>'_x not
+R3137:3137 SLF.Partial <> n:36 var
+R3152:3152 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R3185:3195 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+binder 3160:3161 <> n1:38
+R3175:3178 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R3165:3168 SLF.LibOrder <> ::comp_scope:x_'<='_x_'<'_x not
+R3171:3173 SLF.LibOrder <> ::comp_scope:x_'<='_x_'<'_x not
+R3169:3170 SLF.Partial <> n1:38 var
+R3169:3170 SLF.Partial <> n1:38 var
+R3174:3174 SLF.Partial <> n:36 var
+R3179:3179 SLF.Partial <> Q:37 var
+R3181:3182 SLF.Partial <> n1:38 var
+R3184:3184 SLF.Partial <> s:35 var
+R3196:3201 SLF.Partial <> evalnp:1 ind
+R3228:3228 SLF.Partial <> Q:37 var
+R3206:3213 SLF.LibSepReference <> val_rand constr
+R3216:3222 SLF.LibSepReference <> val_int constr
+R3224:3224 SLF.Partial <> n:36 var
+R3203:3203 SLF.Partial <> s:35 var
+binder 3254:3254 <> s:39
+binder 3256:3256 <> v:40
+binder 3258:3258 <> Q:41
+R3267:3267 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R3340:3350 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+binder 3275:3275 <> p:42
+R3294:3306 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R3278:3279 Coq.Init.Logic <> ::type_scope:'~'_x not
+R3280:3289 SLF.LibSepReference Fmap indom def
+R3293:3293 SLF.Partial <> p:42 var
+R3291:3291 SLF.Partial <> s:39 var
+R3307:3307 SLF.Partial <> Q:41 var
+R3310:3316 SLF.LibSepReference <> val_loc constr
+R3318:3318 SLF.Partial <> p:42 var
+R3322:3332 SLF.LibSepReference Fmap update def
+R3338:3338 SLF.Partial <> v:40 var
+R3336:3336 SLF.Partial <> p:42 var
+R3334:3334 SLF.Partial <> s:39 var
+R3351:3356 SLF.Partial <> evalnp:1 ind
+R3372:3372 SLF.Partial <> Q:41 var
+R3361:3367 SLF.LibSepReference <> val_ref constr
+R3369:3369 SLF.Partial <> v:40 var
+R3358:3358 SLF.Partial <> s:39 var
+binder 3398:3398 <> s:43
+binder 3400:3400 <> p:44
+binder 3402:3402 <> Q:45
+R3425:3434 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R3411:3420 SLF.LibSepReference Fmap indom def
+R3424:3424 SLF.Partial <> p:44 var
+R3422:3422 SLF.Partial <> s:43 var
+R3454:3463 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R3435:3435 SLF.Partial <> Q:45 var
+R3438:3446 SLF.LibSepReference Fmap read def
+R3450:3450 SLF.Partial <> p:44 var
+R3448:3448 SLF.Partial <> s:43 var
+R3453:3453 SLF.Partial <> s:43 var
+R3464:3469 SLF.Partial <> evalnp:1 ind
+R3495:3495 SLF.Partial <> Q:45 var
+R3474:3480 SLF.LibSepReference <> val_get constr
+R3483:3489 SLF.LibSepReference <> val_loc constr
+R3491:3491 SLF.Partial <> p:44 var
+R3471:3471 SLF.Partial <> s:43 var
+binder 3521:3521 <> s:46
+binder 3523:3523 <> p:47
+binder 3525:3525 <> v:48
+binder 3527:3527 <> Q:49
+R3550:3559 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R3536:3545 SLF.LibSepReference Fmap indom def
+R3549:3549 SLF.Partial <> p:47 var
+R3547:3547 SLF.Partial <> s:46 var
+R3590:3599 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R3560:3560 SLF.Partial <> Q:49 var
+R3562:3569 SLF.LibSepReference <> val_unit constr
+R3572:3582 SLF.LibSepReference Fmap update def
+R3588:3588 SLF.Partial <> v:48 var
+R3586:3586 SLF.Partial <> p:47 var
+R3584:3584 SLF.Partial <> s:46 var
+R3600:3605 SLF.Partial <> evalnp:1 ind
+R3633:3633 SLF.Partial <> Q:49 var
+R3610:3616 SLF.LibSepReference <> val_set constr
+R3619:3625 SLF.LibSepReference <> val_loc constr
+R3627:3627 SLF.Partial <> p:47 var
+R3630:3630 SLF.Partial <> v:48 var
+R3607:3607 SLF.Partial <> s:46 var
+binder 3660:3660 <> s:50
+binder 3662:3662 <> p:51
+binder 3664:3664 <> Q:52
+R3687:3696 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R3673:3682 SLF.LibSepReference Fmap indom def
+R3686:3686 SLF.Partial <> p:51 var
+R3684:3684 SLF.Partial <> s:50 var
+R3725:3734 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R3697:3697 SLF.Partial <> Q:52 var
+R3699:3706 SLF.LibSepReference <> val_unit constr
+R3709:3719 SLF.LibSepReference Fmap remove def
+R3723:3723 SLF.Partial <> p:51 var
+R3721:3721 SLF.Partial <> s:50 var
+R3735:3740 SLF.Partial <> evalnp:1 ind
+R3767:3767 SLF.Partial <> Q:52 var
+R3745:3752 SLF.LibSepReference <> val_free constr
+R3755:3761 SLF.LibSepReference <> val_loc constr
+R3763:3763 SLF.Partial <> p:51 var
+R3742:3742 SLF.Partial <> s:50 var
+def 3934:3940 <> hoarenp
+R3945:3947 SLF.LibSepReference <> trm ind
+binder 3943:3943 <> t:53
+R3953:3957 SLF.LibSepReference SepSimplArgs hprop def
+binder 3951:3951 <> H:54
+R3966:3967 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R3963:3965 SLF.LibSepReference <> val ind
+R3968:3972 SLF.LibSepReference SepSimplArgs hprop def
+binder 3961:3961 <> Q:55
+binder 3994:3994 <> s:56
+R4000:4003 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R3997:3997 SLF.Partial <> H:54 var
+R3999:3999 SLF.Partial <> s:56 var
+R4004:4009 SLF.Partial <> evalnp coind
+R4015:4015 SLF.Partial <> Q:55 var
+R4013:4013 SLF.Partial <> t:53 var
+R4011:4011 SLF.Partial <> s:56 var
+prf 4321:4333 <> evalnp_conseq
+binder 4344:4344 <> s:57
+binder 4346:4346 <> t:58
+binder 4348:4349 <> Q1:59
+binder 4351:4352 <> Q2:60
+R4370:4375 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R4357:4362 SLF.Partial <> evalnp coind
+R4368:4369 SLF.Partial <> Q1:59 var
+R4366:4366 SLF.Partial <> t:58 var
+R4364:4364 SLF.Partial <> s:57 var
+R4386:4391 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R4378:4383 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'===>'_x not
+R4376:4377 SLF.Partial <> Q1:59 var
+R4384:4385 SLF.Partial <> Q2:60 var
+R4392:4397 SLF.Partial <> evalnp coind
+R4403:4404 SLF.Partial <> Q2:60 var
+R4401:4401 SLF.Partial <> t:58 var
+R4399:4399 SLF.Partial <> s:57 var
+R4442:4446 SLF.LibSepReference SepSimplArgs qimpl def
+R4449:4453 SLF.LibSepReference SepSimplArgs himpl def
+R4442:4446 SLF.LibSepReference SepSimplArgs qimpl def
+R4449:4453 SLF.LibSepReference SepSimplArgs himpl def
+prf 4768:4782 <> evalnp_inv_eval
+binder 4793:4793 <> s:61
+binder 4795:4795 <> t:62
+binder 4797:4797 <> v:63
+binder 4799:4800 <> s':64
+binder 4802:4802 <> Q:65
+R4819:4824 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R4807:4812 SLF.Partial <> evalnp coind
+R4818:4818 SLF.Partial <> Q:65 var
+R4816:4816 SLF.Partial <> t:62 var
+R4814:4814 SLF.Partial <> s:61 var
+R4838:4843 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R4825:4828 SLF.Nondet <> eval ind
+R4837:4837 SLF.Partial <> v:63 var
+R4834:4835 SLF.Partial <> s':64 var
+R4832:4832 SLF.Partial <> t:62 var
+R4830:4830 SLF.Partial <> s:61 var
+R4844:4844 SLF.Partial <> Q:65 var
+R4846:4846 SLF.Partial <> v:63 var
+R4848:4849 SLF.Partial <> s':64 var
+prf 5525:5539 <> evalnp_of_evaln
+binder 5550:5550 <> s:66
+binder 5552:5552 <> t:67
+binder 5554:5554 <> Q:68
+R5570:5575 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R5559:5563 SLF.Nondet <> evaln ind
+R5569:5569 SLF.Partial <> Q:68 var
+R5567:5567 SLF.Partial <> t:67 var
+R5565:5565 SLF.Partial <> s:66 var
+R5576:5581 SLF.Partial <> evalnp coind
+R5587:5587 SLF.Partial <> Q:68 var
+R5585:5585 SLF.Partial <> t:67 var
+R5583:5583 SLF.Partial <> s:66 var
+prf 5667:5683 <> hoaren_of_cohoare
+binder 5694:5694 <> t:69
+binder 5696:5696 <> H:70
+binder 5698:5698 <> Q:71
+R5715:5720 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R5703:5708 SLF.Nondet <> hoaren def
+R5714:5714 SLF.Partial <> Q:71 var
+R5712:5712 SLF.Partial <> H:70 var
+R5710:5710 SLF.Partial <> t:69 var
+R5721:5727 SLF.Partial <> hoarenp def
+R5733:5733 SLF.Partial <> Q:71 var
+R5731:5731 SLF.Partial <> H:70 var
+R5729:5729 SLF.Partial <> t:69 var
+R5797:5811 SLF.Partial <> evalnp_of_evaln thm
+R5797:5811 SLF.Partial <> evalnp_of_evaln thm
+def 6405:6409 <> Empty
+R6416:6417 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R6413:6415 SLF.LibSepReference <> val ind
+R6423:6424 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R6418:6422 SLF.LibSepReference <> state def
+binder 6439:6439 <> v:72
+binder 6441:6441 <> s:73
+R6446:6450 Coq.Init.Logic <> False ind
+def 6604:6607 <> divn
+R6612:6616 SLF.LibSepReference <> state def
+binder 6610:6610 <> s:74
+R6622:6624 SLF.LibSepReference <> trm ind
+binder 6620:6620 <> t:75
+R6639:6644 SLF.Partial <> evalnp coind
+R6650:6654 SLF.Partial <> Empty def
+R6648:6648 SLF.Partial <> t:75 var
+R6646:6646 SLF.Partial <> s:74 var
+prf 7014:7027 <> hoarenp_conseq
+binder 7038:7038 <> t:76
+binder 7040:7041 <> H':77
+binder 7043:7044 <> Q':78
+binder 7046:7046 <> H:79
+binder 7048:7048 <> Q:80
+R7068:7073 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R7053:7059 SLF.Partial <> hoarenp def
+R7066:7067 SLF.Partial <> Q':78 var
+R7063:7064 SLF.Partial <> H':77 var
+R7061:7061 SLF.Partial <> t:76 var
+R7082:7087 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R7075:7079 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'==>'_x not
+R7074:7074 SLF.Partial <> H:79 var
+R7080:7081 SLF.Partial <> H':77 var
+R7097:7102 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R7090:7095 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'===>'_x not
+R7088:7089 SLF.Partial <> Q':78 var
+R7096:7096 SLF.Partial <> Q:80 var
+R7103:7109 SLF.Partial <> hoarenp def
+R7115:7115 SLF.Partial <> Q:80 var
+R7113:7113 SLF.Partial <> H:79 var
+R7111:7111 SLF.Partial <> t:76 var
+R7141:7147 SLF.Partial <> hoarenp def
+R7141:7147 SLF.Partial <> hoarenp def
+R7177:7189 SLF.Partial <> evalnp_conseq thm
+R7177:7189 SLF.Partial <> evalnp_conseq thm
+prf 7204:7218 <> hoarenp_hexists
+binder 7229:7229 <> t:81
+binder 7232:7232 <> A:82
+R7244:7245 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R7243:7243 SLF.Partial <> A:82 var
+R7246:7250 SLF.LibSepReference SepSimplArgs hprop def
+binder 7241:7241 <> J:83
+binder 7253:7253 <> Q:84
+R7258:7258 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R7286:7292 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+binder 7266:7266 <> x:85
+R7269:7275 SLF.Partial <> hoarenp def
+R7285:7285 SLF.Partial <> Q:84 var
+R7280:7280 SLF.Partial <> J:83 var
+R7282:7282 SLF.Partial <> x:85 var
+R7277:7277 SLF.Partial <> t:81 var
+R7293:7299 SLF.Partial <> hoarenp def
+R7315:7315 SLF.Partial <> Q:84 var
+R7304:7310 SLF.LibSepReference SepSimplArgs hexists def
+R7312:7312 SLF.Partial <> J:83 var
+R7301:7301 SLF.Partial <> t:81 var
+prf 7383:7395 <> hoarenp_hpure
+binder 7406:7406 <> t:86
+binder 7409:7409 <> P:87
+binder 7417:7417 <> H:88
+binder 7419:7419 <> Q:89
+R7424:7424 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R7443:7449 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R7426:7429 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R7425:7425 SLF.Partial <> P:87 var
+R7430:7436 SLF.Partial <> hoarenp def
+R7442:7442 SLF.Partial <> Q:89 var
+R7440:7440 SLF.Partial <> H:88 var
+R7438:7438 SLF.Partial <> t:86 var
+R7450:7456 SLF.Partial <> hoarenp def
+R7472:7472 SLF.Partial <> Q:89 var
+R7465:7468 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'\*'_x not
+R7461:7462 SLF.LibSepReference SepSimplArgs ::hprop_scope:'\['_x_']' not
+R7464:7464 SLF.LibSepReference SepSimplArgs ::hprop_scope:'\['_x_']' not
+R7463:7463 SLF.Partial <> P:87 var
+R7469:7469 SLF.Partial <> H:88 var
+R7458:7458 SLF.Partial <> t:86 var
+R7562:7571 SLF.LibSepReference SepSimplArgs hempty_inv thm
+R7562:7571 SLF.LibSepReference SepSimplArgs hempty_inv thm
+R7592:7609 SLF.LibSepReference Fmap union_empty_l thm
+R7592:7609 SLF.LibSepReference Fmap union_empty_l thm
+R7592:7609 SLF.LibSepReference Fmap union_empty_l thm
+prf 7669:7679 <> hoarenp_val
+binder 7690:7690 <> v:90
+binder 7692:7692 <> H:91
+binder 7694:7694 <> Q:92
+R7708:7713 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R7700:7704 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'==>'_x not
+R7699:7699 SLF.Partial <> H:91 var
+R7705:7705 SLF.Partial <> Q:92 var
+R7707:7707 SLF.Partial <> v:90 var
+R7714:7720 SLF.Partial <> hoarenp def
+R7736:7736 SLF.Partial <> Q:92 var
+R7734:7734 SLF.Partial <> H:91 var
+R7723:7729 SLF.LibSepReference <> trm_val constr
+R7731:7731 SLF.Partial <> v:90 var
+R7782:7791 SLF.Partial <> evalnp_val constr
+R7782:7791 SLF.Partial <> evalnp_val constr
+prf 7806:7816 <> hoarenp_fix
+binder 7827:7827 <> f:93
+binder 7829:7829 <> x:94
+binder 7831:7832 <> t1:95
+binder 7834:7834 <> H:96
+binder 7836:7836 <> Q:97
+R7865:7870 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R7842:7846 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'==>'_x not
+R7841:7841 SLF.Partial <> H:96 var
+R7847:7847 SLF.Partial <> Q:97 var
+R7850:7856 SLF.LibSepReference <> val_fix constr
+R7862:7863 SLF.Partial <> t1:95 var
+R7860:7860 SLF.Partial <> x:94 var
+R7858:7858 SLF.Partial <> f:93 var
+R7871:7877 SLF.Partial <> hoarenp def
+R7898:7898 SLF.Partial <> Q:97 var
+R7896:7896 SLF.Partial <> H:96 var
+R7880:7886 SLF.LibSepReference <> trm_fix constr
+R7892:7893 SLF.Partial <> t1:95 var
+R7890:7890 SLF.Partial <> x:94 var
+R7888:7888 SLF.Partial <> f:93 var
+R7944:7953 SLF.Partial <> evalnp_fix constr
+R7944:7953 SLF.Partial <> evalnp_fix constr
+prf 7968:7982 <> hoarenp_app_fix
+binder 7993:7994 <> v1:98
+binder 7996:7997 <> v2:99
+binder 7999:7999 <> f:100
+binder 8001:8001 <> x:101
+binder 8003:8004 <> t1:102
+binder 8006:8006 <> H:103
+binder 8008:8008 <> Q:104
+R8032:8037 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R8015:8017 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R8013:8014 SLF.Partial <> v1:98 var
+R8018:8024 SLF.LibSepReference <> val_fix constr
+R8030:8031 SLF.Partial <> t1:102 var
+R8028:8028 SLF.Partial <> x:101 var
+R8026:8026 SLF.Partial <> f:100 var
+R8078:8083 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R8038:8044 SLF.Partial <> hoarenp def
+R8077:8077 SLF.Partial <> Q:104 var
+R8075:8075 SLF.Partial <> H:103 var
+R8047:8051 SLF.LibSepReference <> subst def
+R8059:8063 SLF.LibSepReference <> subst def
+R8070:8071 SLF.Partial <> t1:102 var
+R8067:8068 SLF.Partial <> v1:98 var
+R8065:8065 SLF.Partial <> f:100 var
+R8055:8056 SLF.Partial <> v2:99 var
+R8053:8053 SLF.Partial <> x:101 var
+R8084:8090 SLF.Partial <> hoarenp def
+R8110:8110 SLF.Partial <> Q:104 var
+R8108:8108 SLF.Partial <> H:103 var
+R8093:8099 SLF.LibSepReference <> trm_app constr
+R8104:8105 SLF.Partial <> v2:99 var
+R8101:8102 SLF.Partial <> v1:98 var
+R8158:8171 SLF.Partial <> evalnp_app_fix constr
+R8158:8171 SLF.Partial <> evalnp_app_fix constr
+prf 8186:8196 <> hoarenp_let
+binder 8207:8207 <> x:105
+binder 8209:8210 <> t1:106
+binder 8212:8213 <> t2:107
+binder 8215:8215 <> H:108
+binder 8217:8217 <> Q:109
+binder 8219:8220 <> Q1:110
+R8240:8245 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R8225:8231 SLF.Partial <> hoarenp def
+R8238:8239 SLF.Partial <> Q1:110 var
+R8236:8236 SLF.Partial <> H:108 var
+R8233:8234 SLF.Partial <> t1:106 var
+R8246:8246 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R8291:8297 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+binder 8254:8255 <> v1:111
+R8258:8264 SLF.Partial <> hoarenp def
+R8290:8290 SLF.Partial <> Q:109 var
+R8283:8284 SLF.Partial <> Q1:110 var
+R8286:8287 SLF.Partial <> v1:111 var
+R8267:8271 SLF.LibSepReference <> subst def
+R8278:8279 SLF.Partial <> t2:107 var
+R8275:8276 SLF.Partial <> v1:111 var
+R8273:8273 SLF.Partial <> x:105 var
+R8298:8304 SLF.Partial <> hoarenp def
+R8326:8326 SLF.Partial <> Q:109 var
+R8324:8324 SLF.Partial <> H:108 var
+R8307:8313 SLF.LibSepReference <> trm_let constr
+R8320:8321 SLF.Partial <> t2:107 var
+R8317:8318 SLF.Partial <> t1:106 var
+R8315:8315 SLF.Partial <> x:105 var
+R8376:8385 SLF.Partial <> evalnp_let constr
+R8376:8385 SLF.Partial <> evalnp_let constr
+prf 8400:8409 <> hoarenp_if
+R8423:8426 Coq.Init.Datatypes <> bool ind
+binder 8421:8421 <> b:112
+binder 8429:8430 <> t1:113
+binder 8432:8433 <> t2:114
+binder 8435:8435 <> H:115
+binder 8437:8437 <> Q:116
+R8476:8481 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R8442:8448 SLF.Partial <> hoarenp def
+R8475:8475 SLF.Partial <> Q:116 var
+R8473:8473 SLF.Partial <> H:115 var
+R8454:8454 SLF.Partial <> b:112 var
+R8469:8470 SLF.Partial <> t2:114 var
+R8461:8462 SLF.Partial <> t1:113 var
+R8482:8488 SLF.Partial <> hoarenp def
+R8509:8509 SLF.Partial <> Q:116 var
+R8507:8507 SLF.Partial <> H:115 var
+R8491:8496 SLF.LibSepReference <> trm_if constr
+R8503:8504 SLF.Partial <> t2:114 var
+R8500:8501 SLF.Partial <> t1:113 var
+R8498:8498 SLF.Partial <> b:112 var
+R8555:8563 SLF.Partial <> evalnp_if constr
+R8555:8563 SLF.Partial <> evalnp_if constr
+prf 8617:8627 <> hoarenp_add
+binder 8638:8638 <> H:117
+binder 8640:8641 <> n1:118
+binder 8643:8644 <> n2:119
+R8649:8655 SLF.Partial <> hoarenp def
+binder 8688:8688 <> r:120
+R8717:8720 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'\*'_x not
+R8693:8694 SLF.LibSepReference SepSimplArgs ::hprop_scope:'\['_x_']' not
+R8716:8716 SLF.LibSepReference SepSimplArgs ::hprop_scope:'\['_x_']' not
+R8696:8698 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R8695:8695 SLF.Partial <> r:120 var
+R8699:8705 SLF.LibSepReference <> val_int constr
+R8710:8712 Coq.ZArith.BinInt <> ::Z_scope:x_'+'_x not
+R8708:8709 SLF.Partial <> n1:118 var
+R8713:8714 SLF.Partial <> n2:119 var
+R8721:8721 SLF.Partial <> H:117 var
+R8677:8677 SLF.Partial <> H:117 var
+R8658:8664 SLF.LibSepReference <> val_add constr
+R8666:8667 SLF.Partial <> n1:118 var
+R8669:8670 SLF.Partial <> n2:119 var
+R8768:8777 SLF.Partial <> evalnp_add constr
+R8768:8777 SLF.Partial <> evalnp_add constr
+R8789:8801 SLF.LibSepReference SepSimplArgs hstar_hpure_l thm
+R8789:8801 SLF.LibSepReference SepSimplArgs hstar_hpure_l thm
+prf 8816:8827 <> hoarenp_rand
+binder 8838:8838 <> n:121
+R8848:8853 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R8844:8846 SLF.LibOrder <> ::comp_scope:x_'>'_x not
+R8843:8843 SLF.Partial <> n:121 var
+R8854:8860 SLF.Partial <> hoarenp def
+binder 8892:8892 <> r:122
+R8897:8904 SLF.LibSepReference SepSimplArgs ::hprop_scope:'\exists'_x_'..'_x_','_x not
+R8907:8908 SLF.LibSepReference SepSimplArgs ::hprop_scope:'\exists'_x_'..'_x_','_x not
+binder 8905:8906 <> n1:123
+R8923:8926 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'\*'_x not
+R8909:8910 SLF.LibSepReference SepSimplArgs ::hprop_scope:'\['_x_']' not
+R8922:8922 SLF.LibSepReference SepSimplArgs ::hprop_scope:'\['_x_']' not
+R8912:8915 SLF.LibOrder <> ::comp_scope:x_'<='_x_'<'_x not
+R8918:8920 SLF.LibOrder <> ::comp_scope:x_'<='_x_'<'_x not
+R8916:8917 SLF.Partial <> n1:123 var
+R8916:8917 SLF.Partial <> n1:123 var
+R8921:8921 SLF.Partial <> n:121 var
+R8927:8928 SLF.LibSepReference SepSimplArgs ::hprop_scope:'\['_x_']' not
+R8943:8943 SLF.LibSepReference SepSimplArgs ::hprop_scope:'\['_x_']' not
+R8930:8932 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R8929:8929 SLF.Partial <> r:122 var
+R8933:8939 SLF.LibSepReference <> val_int constr
+R8941:8942 SLF.Partial <> n1:123 var
+R8879:8881 SLF.LibSepReference SepSimplArgs ::hprop_scope:'\[]' not
+R8863:8870 SLF.LibSepReference <> val_rand constr
+R8872:8872 SLF.Partial <> n:121 var
+R8992:9002 SLF.Partial <> evalnp_rand constr
+R8992:9002 SLF.Partial <> evalnp_rand constr
+R9016:9025 SLF.LibSepReference SepSimplArgs hempty_inv thm
+R9016:9025 SLF.LibSepReference SepSimplArgs hempty_inv thm
+R9054:9066 SLF.LibSepReference SepSimplArgs hexists_intro thm
+R9054:9066 SLF.LibSepReference SepSimplArgs hexists_intro thm
+R9081:9093 SLF.LibSepReference SepSimplArgs hstar_hpure_l thm
+R9081:9093 SLF.LibSepReference SepSimplArgs hstar_hpure_l thm
+R9114:9124 SLF.LibSepReference SepSimplArgs hpure_intro thm
+R9114:9124 SLF.LibSepReference SepSimplArgs hpure_intro thm
+prf 9139:9149 <> hoarenp_ref
+binder 9160:9160 <> H:124
+binder 9162:9162 <> v:125
+R9167:9173 SLF.Partial <> hoarenp def
+binder 9202:9202 <> r:126
+R9207:9207 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'\*'_x not
+R9246:9250 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'\*'_x not
+R9208:9215 SLF.LibSepReference SepSimplArgs ::hprop_scope:'\exists'_x_'..'_x_','_x not
+R9217:9218 SLF.LibSepReference SepSimplArgs ::hprop_scope:'\exists'_x_'..'_x_','_x not
+binder 9216:9216 <> p:127
+R9235:9238 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'\*'_x not
+R9219:9220 SLF.LibSepReference SepSimplArgs ::hprop_scope:'\['_x_']' not
+R9234:9234 SLF.LibSepReference SepSimplArgs ::hprop_scope:'\['_x_']' not
+R9222:9224 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R9221:9221 SLF.Partial <> r:126 var
+R9225:9231 SLF.LibSepReference <> val_loc constr
+R9233:9233 SLF.Partial <> p:127 var
+R9240:9244 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'~~>'_x not
+R9239:9239 SLF.Partial <> p:127 var
+R9245:9245 SLF.Partial <> v:125 var
+R9251:9251 SLF.Partial <> H:124 var
+R9191:9191 SLF.Partial <> H:124 var
+R9176:9182 SLF.LibSepReference <> val_ref constr
+R9184:9184 SLF.Partial <> v:125 var
+R9298:9307 SLF.Partial <> evalnp_ref constr
+R9298:9307 SLF.Partial <> evalnp_ref constr
+R9332:9337 SLF.LibSepFmap <> update def
+R9332:9337 SLF.LibSepFmap <> update def
+R9347:9357 SLF.LibSepReference SepSimplArgs hstar_intro thm
+R9347:9357 SLF.LibSepReference SepSimplArgs hstar_intro thm
+R9373:9385 SLF.LibSepReference SepSimplArgs hexists_intro thm
+R9373:9385 SLF.LibSepReference SepSimplArgs hexists_intro thm
+R9398:9410 SLF.LibSepReference SepSimplArgs hstar_hpure_l thm
+R9398:9410 SLF.LibSepReference SepSimplArgs hstar_hpure_l thm
+R9398:9410 SLF.LibSepReference SepSimplArgs hstar_hpure_l thm
+R9432:9444 SLF.LibSepReference SepSimplArgs hsingle_intro thm
+R9432:9444 SLF.LibSepReference SepSimplArgs hsingle_intro thm
+R9461:9488 SLF.LibSepFmap <> disjoint_single_of_not_indom thm
+R9461:9488 SLF.LibSepFmap <> disjoint_single_of_not_indom thm
+prf 9505:9515 <> hoarenp_get
+binder 9526:9526 <> H:128
+binder 9528:9528 <> v:129
+binder 9530:9530 <> p:130
+R9535:9541 SLF.Partial <> hoarenp def
+binder 9585:9585 <> r:131
+R9598:9601 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'\*'_x not
+R9590:9591 SLF.LibSepReference SepSimplArgs ::hprop_scope:'\['_x_']' not
+R9597:9597 SLF.LibSepReference SepSimplArgs ::hprop_scope:'\['_x_']' not
+R9593:9595 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R9592:9592 SLF.Partial <> r:131 var
+R9596:9596 SLF.Partial <> v:129 var
+R9602:9602 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'\*'_x not
+R9610:9614 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'\*'_x not
+R9604:9608 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'~~>'_x not
+R9603:9603 SLF.Partial <> p:130 var
+R9609:9609 SLF.Partial <> v:129 var
+R9615:9615 SLF.Partial <> H:128 var
+R9560:9560 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'\*'_x not
+R9568:9572 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'\*'_x not
+R9562:9566 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'~~>'_x not
+R9561:9561 SLF.Partial <> p:130 var
+R9567:9567 SLF.Partial <> v:129 var
+R9573:9573 SLF.Partial <> H:128 var
+R9544:9550 SLF.LibSepReference <> val_get constr
+R9552:9552 SLF.Partial <> p:130 var
+R9681:9689 SLF.LibSepReference SepSimplArgs hstar_inv thm
+R9692:9693 SLF.LibTactics <> rm def
+R9681:9689 SLF.LibSepReference SepSimplArgs hstar_inv thm
+R9692:9693 SLF.LibTactics <> rm def
+R9710:9720 SLF.LibSepReference SepSimplArgs hsingle_inv thm
+R9710:9720 SLF.LibSepReference SepSimplArgs hsingle_inv thm
+R9735:9746 SLF.LibSepFmap <> indom_single thm
+R9735:9746 SLF.LibSepFmap <> indom_single thm
+R9762:9771 SLF.Partial <> evalnp_get constr
+R9762:9771 SLF.Partial <> evalnp_get constr
+R9786:9803 SLF.LibSepReference Fmap indom_union_l thm
+R9786:9803 SLF.LibSepReference Fmap indom_union_l thm
+R9820:9831 SLF.LibSepFmap <> indom_single thm
+R9820:9831 SLF.LibSepFmap <> indom_single thm
+R9848:9860 SLF.LibSepReference SepSimplArgs hstar_hpure_l thm
+R9848:9860 SLF.LibSepReference SepSimplArgs hstar_hpure_l thm
+R9848:9860 SLF.LibSepReference SepSimplArgs hstar_hpure_l thm
+R9895:9911 SLF.LibSepReference Fmap read_union_l thm
+R9895:9911 SLF.LibSepReference Fmap read_union_l thm
+R9923:9938 SLF.LibSepReference Fmap read_single thm
+R9923:9938 SLF.LibSepReference Fmap read_single thm
+R9957:9967 SLF.LibSepReference SepSimplArgs hstar_intro thm
+R9957:9967 SLF.LibSepReference SepSimplArgs hstar_intro thm
+prf 9986:9996 <> hoarenp_set
+binder 10007:10007 <> H:132
+binder 10009:10009 <> w:133
+binder 10011:10011 <> p:134
+binder 10013:10013 <> v:135
+R10018:10024 SLF.Partial <> hoarenp def
+binder 10080:10080 <> r:136
+R10100:10103 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'\*'_x not
+R10085:10086 SLF.LibSepReference SepSimplArgs ::hprop_scope:'\['_x_']' not
+R10099:10099 SLF.LibSepReference SepSimplArgs ::hprop_scope:'\['_x_']' not
+R10088:10090 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R10087:10087 SLF.Partial <> r:136 var
+R10091:10098 SLF.LibSepReference <> val_unit constr
+R10104:10104 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'\*'_x not
+R10112:10116 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'\*'_x not
+R10106:10110 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'~~>'_x not
+R10105:10105 SLF.Partial <> p:134 var
+R10111:10111 SLF.Partial <> v:135 var
+R10117:10117 SLF.Partial <> H:132 var
+R10055:10055 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'\*'_x not
+R10063:10067 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'\*'_x not
+R10057:10061 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'~~>'_x not
+R10056:10056 SLF.Partial <> p:134 var
+R10062:10062 SLF.Partial <> w:133 var
+R10068:10068 SLF.Partial <> H:132 var
+R10027:10033 SLF.LibSepReference <> val_set constr
+R10036:10042 SLF.LibSepReference <> val_loc constr
+R10044:10044 SLF.Partial <> p:134 var
+R10047:10047 SLF.Partial <> v:135 var
+R10184:10192 SLF.LibSepReference SepSimplArgs hstar_inv thm
+R10195:10196 SLF.LibTactics <> rm def
+R10184:10192 SLF.LibSepReference SepSimplArgs hstar_inv thm
+R10195:10196 SLF.LibTactics <> rm def
+R10213:10223 SLF.LibSepReference SepSimplArgs hsingle_inv thm
+R10213:10223 SLF.LibSepReference SepSimplArgs hsingle_inv thm
+R10238:10249 SLF.LibSepFmap <> indom_single thm
+R10238:10249 SLF.LibSepFmap <> indom_single thm
+R10265:10274 SLF.Partial <> evalnp_set constr
+R10265:10274 SLF.Partial <> evalnp_set constr
+R10289:10306 SLF.LibSepReference Fmap indom_union_l thm
+R10289:10306 SLF.LibSepReference Fmap indom_union_l thm
+R10323:10334 SLF.LibSepFmap <> indom_single thm
+R10323:10334 SLF.LibSepFmap <> indom_single thm
+R10351:10363 SLF.LibSepReference SepSimplArgs hstar_hpure_l thm
+R10351:10363 SLF.LibSepReference SepSimplArgs hstar_hpure_l thm
+R10351:10363 SLF.LibSepReference SepSimplArgs hstar_hpure_l thm
+R10398:10416 SLF.LibSepReference Fmap update_union_l thm
+R10398:10416 SLF.LibSepReference Fmap update_union_l thm
+R10398:10416 SLF.LibSepReference Fmap update_union_l thm
+R10398:10416 SLF.LibSepReference Fmap update_union_l thm
+R10436:10447 SLF.LibSepFmap <> indom_single thm
+R10436:10447 SLF.LibSepFmap <> indom_single thm
+R10466:10478 SLF.LibSepFmap <> update_single thm
+R10466:10478 SLF.LibSepFmap <> update_single thm
+R10466:10478 SLF.LibSepFmap <> update_single thm
+R10488:10498 SLF.LibSepReference SepSimplArgs hstar_intro thm
+R10488:10498 SLF.LibSepReference SepSimplArgs hstar_intro thm
+R10516:10528 SLF.LibSepReference SepSimplArgs hsingle_intro thm
+R10516:10528 SLF.LibSepReference SepSimplArgs hsingle_intro thm
+R10569:10592 SLF.LibSepReference Fmap disjoint_single_set thm
+R10569:10592 SLF.LibSepReference Fmap disjoint_single_set thm
+prf 10615:10626 <> hoarenp_free
+binder 10637:10637 <> H:137
+binder 10639:10639 <> p:138
+binder 10641:10641 <> v:139
+R10646:10652 SLF.Partial <> hoarenp def
+binder 10707:10707 <> r:140
+R10727:10730 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'\*'_x not
+R10712:10713 SLF.LibSepReference SepSimplArgs ::hprop_scope:'\['_x_']' not
+R10726:10726 SLF.LibSepReference SepSimplArgs ::hprop_scope:'\['_x_']' not
+R10715:10717 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R10714:10714 SLF.Partial <> r:140 var
+R10718:10725 SLF.LibSepReference <> val_unit constr
+R10731:10731 SLF.Partial <> H:137 var
+R10682:10682 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'\*'_x not
+R10690:10694 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'\*'_x not
+R10684:10688 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'~~>'_x not
+R10683:10683 SLF.Partial <> p:138 var
+R10689:10689 SLF.Partial <> v:139 var
+R10695:10695 SLF.Partial <> H:137 var
+R10655:10662 SLF.LibSepReference <> val_free constr
+R10665:10671 SLF.LibSepReference <> val_loc constr
+R10673:10673 SLF.Partial <> p:138 var
+R10798:10806 SLF.LibSepReference SepSimplArgs hstar_inv thm
+R10809:10810 SLF.LibTactics <> rm def
+R10798:10806 SLF.LibSepReference SepSimplArgs hstar_inv thm
+R10809:10810 SLF.LibTactics <> rm def
+R10827:10837 SLF.LibSepReference SepSimplArgs hsingle_inv thm
+R10827:10837 SLF.LibSepReference SepSimplArgs hsingle_inv thm
+R10852:10863 SLF.LibSepFmap <> indom_single thm
+R10852:10863 SLF.LibSepFmap <> indom_single thm
+R10879:10889 SLF.Partial <> evalnp_free constr
+R10879:10889 SLF.Partial <> evalnp_free constr
+R10904:10921 SLF.LibSepReference Fmap indom_union_l thm
+R10904:10921 SLF.LibSepReference Fmap indom_union_l thm
+R10938:10949 SLF.LibSepFmap <> indom_single thm
+R10938:10949 SLF.LibSepFmap <> indom_single thm
+R10966:10978 SLF.LibSepReference SepSimplArgs hstar_hpure_l thm
+R10966:10978 SLF.LibSepReference SepSimplArgs hstar_hpure_l thm
+R10966:10978 SLF.LibSepReference SepSimplArgs hstar_hpure_l thm
+R11014:11039 SLF.LibSepReference Fmap remove_union_single_l thm
+R11014:11039 SLF.LibSepReference Fmap remove_union_single_l thm
+R11069:11100 SLF.LibSepReference Fmap disjoint_inv_not_indom_both thm
+R11069:11100 SLF.LibSepReference Fmap disjoint_inv_not_indom_both thm
+prf 11436:11447 <> divn_app_fix
+binder 11458:11459 <> s1:141
+binder 11461:11462 <> v1:142
+binder 11464:11465 <> v2:143
+binder 11467:11467 <> f:144
+binder 11469:11469 <> x:145
+binder 11471:11472 <> t1:146
+R11496:11501 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R11479:11481 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R11477:11478 SLF.Partial <> v1:142 var
+R11482:11488 SLF.LibSepReference <> val_fix constr
+R11494:11495 SLF.Partial <> t1:146 var
+R11492:11492 SLF.Partial <> x:145 var
+R11490:11490 SLF.Partial <> f:144 var
+R11538:11543 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R11502:11505 SLF.Partial <> divn def
+R11511:11515 SLF.LibSepReference <> subst def
+R11523:11527 SLF.LibSepReference <> subst def
+R11534:11535 SLF.Partial <> t1:146 var
+R11531:11532 SLF.Partial <> v1:142 var
+R11529:11529 SLF.Partial <> f:144 var
+R11519:11520 SLF.Partial <> v2:143 var
+R11517:11517 SLF.Partial <> x:145 var
+R11507:11508 SLF.Partial <> s1:141 var
+R11544:11547 SLF.Partial <> divn def
+R11553:11559 SLF.LibSepReference <> trm_app constr
+R11564:11565 SLF.Partial <> v2:143 var
+R11561:11562 SLF.Partial <> v1:142 var
+R11549:11550 SLF.Partial <> s1:141 var
+R11602:11605 SLF.Partial <> divn def
+R11602:11605 SLF.Partial <> divn def
+R11616:11629 SLF.Partial <> evalnp_app_fix constr
+R11616:11629 SLF.Partial <> evalnp_app_fix constr
+prf 11824:11835 <> divn_let_ctx
+binder 11846:11847 <> s1:147
+binder 11849:11849 <> x:148
+binder 11851:11852 <> t1:149
+binder 11854:11855 <> t2:150
+R11870:11875 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R11860:11863 SLF.Partial <> divn def
+R11868:11869 SLF.Partial <> t1:149 var
+R11865:11866 SLF.Partial <> s1:147 var
+R11876:11879 SLF.Partial <> divn def
+R11885:11891 SLF.LibSepReference <> trm_let constr
+R11898:11899 SLF.Partial <> t2:150 var
+R11895:11896 SLF.Partial <> t1:149 var
+R11893:11893 SLF.Partial <> x:148 var
+R11881:11882 SLF.Partial <> s1:147 var
+prf 11963:11970 <> divn_let
+binder 11981:11982 <> s1:151
+binder 11984:11984 <> x:152
+binder 11986:11987 <> t1:153
+binder 11989:11990 <> t2:154
+binder 11992:11993 <> Q1:155
+R12013:12018 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R11998:12003 SLF.Partial <> evalnp coind
+R12011:12012 SLF.Partial <> Q1:155 var
+R12008:12009 SLF.Partial <> t1:153 var
+R12005:12006 SLF.Partial <> s1:151 var
+R12019:12019 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R12057:12063 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+binder 12027:12028 <> s2:156
+binder 12030:12031 <> v1:157
+R12034:12037 SLF.Partial <> divn def
+R12043:12047 SLF.LibSepReference <> subst def
+R12054:12055 SLF.Partial <> t2:154 var
+R12051:12052 SLF.Partial <> v1:157 var
+R12049:12049 SLF.Partial <> x:152 var
+R12039:12040 SLF.Partial <> s2:156 var
+R12064:12067 SLF.Partial <> divn def
+R12073:12079 SLF.LibSepReference <> trm_let constr
+R12086:12087 SLF.Partial <> t2:154 var
+R12083:12084 SLF.Partial <> t1:153 var
+R12081:12081 SLF.Partial <> x:152 var
+R12069:12070 SLF.Partial <> s1:151 var
+R12126:12129 SLF.Partial <> divn def
+R12126:12129 SLF.Partial <> divn def
+R12140:12149 SLF.Partial <> evalnp_let constr
+R12140:12149 SLF.Partial <> evalnp_let constr
+prf 12167:12173 <> divn_if
+binder 12184:12185 <> s1:158
+binder 12187:12187 <> b:159
+binder 12189:12190 <> t1:160
+binder 12192:12193 <> t2:161
+R12228:12233 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R12198:12201 SLF.Partial <> divn def
+R12210:12210 SLF.Partial <> b:159 var
+R12225:12226 SLF.Partial <> t2:161 var
+R12217:12218 SLF.Partial <> t1:160 var
+R12203:12204 SLF.Partial <> s1:158 var
+R12234:12237 SLF.Partial <> divn def
+R12243:12248 SLF.LibSepReference <> trm_if constr
+R12266:12267 SLF.Partial <> t2:161 var
+R12263:12264 SLF.Partial <> t1:160 var
+R12251:12258 SLF.LibSepReference <> val_bool constr
+R12260:12260 SLF.Partial <> b:159 var
+R12239:12240 SLF.Partial <> s1:158 var
+R12302:12305 SLF.Partial <> divn def
+R12302:12305 SLF.Partial <> divn def
+R12316:12324 SLF.Partial <> evalnp_if constr
+R12316:12324 SLF.Partial <> evalnp_if constr
+ind 12948:12951 <> safe
+constr 12983:12990 <> safe_val
+constr 13035:13042 <> safe_fix
+constr 13097:13108 <> safe_app_fix
+constr 13242:13249 <> safe_let
+constr 13393:13399 <> safe_if
+constr 13505:13512 <> safe_add
+constr 13585:13593 <> safe_rand
+constr 13664:13671 <> safe_ref
+constr 13716:13723 <> safe_get
+constr 13802:13809 <> safe_set
+constr 13892:13900 <> safe_free
+R12960:12963 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R12955:12959 SLF.LibSepReference <> state def
+R12967:12970 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R12964:12966 SLF.LibSepReference <> trm ind
+binder 13001:13001 <> s:164
+binder 13003:13003 <> v:165
+R13012:13015 SLF.Partial <> safe:162 ind
+R13020:13026 SLF.LibSepReference <> trm_val constr
+R13028:13028 SLF.Partial <> v:165 var
+R13017:13017 SLF.Partial <> s:164 var
+binder 13053:13053 <> s:166
+binder 13055:13055 <> f:167
+binder 13057:13057 <> x:168
+binder 13059:13060 <> t1:169
+R13069:13072 SLF.Partial <> safe:162 ind
+R13077:13083 SLF.LibSepReference <> trm_fix constr
+R13089:13090 SLF.Partial <> t1:169 var
+R13087:13087 SLF.Partial <> x:168 var
+R13085:13085 SLF.Partial <> f:167 var
+R13074:13074 SLF.Partial <> s:166 var
+binder 13119:13119 <> s:170
+binder 13121:13122 <> v1:171
+binder 13124:13125 <> v2:172
+binder 13127:13127 <> f:173
+binder 13129:13129 <> x:174
+binder 13131:13132 <> t1:175
+R13160:13169 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R13143:13145 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R13141:13142 SLF.Partial <> v1:171 var
+R13146:13152 SLF.LibSepReference <> val_fix constr
+R13158:13159 SLF.Partial <> t1:175 var
+R13156:13156 SLF.Partial <> x:174 var
+R13154:13154 SLF.Partial <> f:173 var
+R13205:13214 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R13170:13173 SLF.Partial <> safe:162 ind
+R13178:13182 SLF.LibSepReference <> subst def
+R13190:13194 SLF.LibSepReference <> subst def
+R13201:13202 SLF.Partial <> t1:175 var
+R13198:13199 SLF.Partial <> v1:171 var
+R13196:13196 SLF.Partial <> f:173 var
+R13186:13187 SLF.Partial <> v2:172 var
+R13184:13184 SLF.Partial <> x:174 var
+R13175:13175 SLF.Partial <> s:170 var
+R13215:13218 SLF.Partial <> safe:162 ind
+R13223:13229 SLF.LibSepReference <> trm_app constr
+R13234:13235 SLF.Partial <> v2:172 var
+R13231:13232 SLF.Partial <> v1:171 var
+R13220:13220 SLF.Partial <> s:170 var
+binder 13260:13260 <> s:176
+binder 13262:13262 <> x:177
+binder 13264:13265 <> t1:178
+binder 13267:13268 <> t2:179
+R13286:13295 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R13277:13280 SLF.Partial <> safe:162 ind
+R13284:13285 SLF.Partial <> t1:178 var
+R13282:13282 SLF.Partial <> s:176 var
+R13296:13296 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R13353:13363 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+binder 13304:13305 <> v1:180
+binder 13307:13308 <> s2:181
+R13326:13329 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R13311:13314 SLF.Nondet <> eval ind
+R13324:13325 SLF.Partial <> v1:180 var
+R13321:13322 SLF.Partial <> s2:181 var
+R13318:13319 SLF.Partial <> t1:178 var
+R13316:13316 SLF.Partial <> s:176 var
+R13330:13333 SLF.Partial <> safe:162 ind
+R13339:13343 SLF.LibSepReference <> subst def
+R13350:13351 SLF.Partial <> t2:179 var
+R13347:13348 SLF.Partial <> v1:180 var
+R13345:13345 SLF.Partial <> x:177 var
+R13335:13336 SLF.Partial <> s2:181 var
+R13364:13367 SLF.Partial <> safe:162 ind
+R13372:13378 SLF.LibSepReference <> trm_let constr
+R13385:13386 SLF.Partial <> t2:179 var
+R13382:13383 SLF.Partial <> t1:178 var
+R13380:13380 SLF.Partial <> x:177 var
+R13369:13369 SLF.Partial <> s:176 var
+binder 13410:13410 <> s:182
+binder 13412:13412 <> b:183
+binder 13414:13415 <> t1:184
+binder 13417:13418 <> t2:185
+R13456:13465 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R13427:13430 SLF.Partial <> safe:162 ind
+R13438:13438 SLF.Partial <> b:183 var
+R13453:13454 SLF.Partial <> t2:185 var
+R13445:13446 SLF.Partial <> t1:184 var
+R13432:13432 SLF.Partial <> s:182 var
+R13466:13469 SLF.Partial <> safe:162 ind
+R13474:13479 SLF.LibSepReference <> trm_if constr
+R13497:13498 SLF.Partial <> t2:185 var
+R13494:13495 SLF.Partial <> t1:184 var
+R13482:13489 SLF.LibSepReference <> val_bool constr
+R13491:13491 SLF.Partial <> b:183 var
+R13471:13471 SLF.Partial <> s:182 var
+binder 13523:13523 <> s:186
+binder 13525:13526 <> n1:187
+binder 13528:13529 <> n2:188
+R13538:13541 SLF.Partial <> safe:162 ind
+R13546:13552 SLF.LibSepReference <> val_add constr
+R13555:13561 SLF.LibSepReference <> val_int constr
+R13563:13564 SLF.Partial <> n1:187 var
+R13568:13574 SLF.LibSepReference <> val_int constr
+R13576:13577 SLF.Partial <> n2:188 var
+R13543:13543 SLF.Partial <> s:186 var
+binder 13604:13604 <> s:189
+binder 13606:13606 <> n:190
+R13620:13629 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R13616:13618 SLF.LibOrder <> ::comp_scope:x_'>'_x not
+R13615:13615 SLF.Partial <> n:190 var
+R13630:13633 SLF.Partial <> safe:162 ind
+R13638:13645 SLF.LibSepReference <> val_rand constr
+R13648:13654 SLF.LibSepReference <> val_int constr
+R13656:13656 SLF.Partial <> n:190 var
+R13635:13635 SLF.Partial <> s:189 var
+binder 13682:13682 <> s:191
+binder 13684:13684 <> v:192
+R13693:13696 SLF.Partial <> safe:162 ind
+R13701:13707 SLF.LibSepReference <> val_ref constr
+R13709:13709 SLF.Partial <> v:192 var
+R13698:13698 SLF.Partial <> s:191 var
+binder 13734:13734 <> s:193
+binder 13736:13736 <> p:194
+R13759:13768 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R13745:13754 SLF.LibSepReference Fmap indom def
+R13758:13758 SLF.Partial <> p:194 var
+R13756:13756 SLF.Partial <> s:193 var
+R13769:13772 SLF.Partial <> safe:162 ind
+R13777:13783 SLF.LibSepReference <> val_get constr
+R13786:13792 SLF.LibSepReference <> val_loc constr
+R13794:13794 SLF.Partial <> p:194 var
+R13774:13774 SLF.Partial <> s:193 var
+binder 13820:13820 <> s:195
+binder 13822:13822 <> p:196
+binder 13824:13824 <> v:197
+R13847:13856 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R13833:13842 SLF.LibSepReference Fmap indom def
+R13846:13846 SLF.Partial <> p:196 var
+R13844:13844 SLF.Partial <> s:195 var
+R13857:13860 SLF.Partial <> safe:162 ind
+R13865:13871 SLF.LibSepReference <> val_set constr
+R13874:13880 SLF.LibSepReference <> val_loc constr
+R13882:13882 SLF.Partial <> p:196 var
+R13885:13885 SLF.Partial <> v:197 var
+R13862:13862 SLF.Partial <> s:195 var
+binder 13911:13911 <> s:198
+binder 13913:13913 <> p:199
+R13936:13945 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R13922:13931 SLF.LibSepReference Fmap indom def
+R13935:13935 SLF.Partial <> p:199 var
+R13933:13933 SLF.Partial <> s:198 var
+R13946:13949 SLF.Partial <> safe:162 ind
+R13954:13961 SLF.LibSepReference <> val_free constr
+R13964:13970 SLF.LibSepReference <> val_loc constr
+R13972:13972 SLF.Partial <> p:199 var
+R13951:13951 SLF.Partial <> s:198 var
+sec 13986:13995 <> EvalnpSafe
+R14016:14019 SLF.Partial <> eval ind
+R14021:14026 SLF.Partial <> evalnp ind
+prf 14462:14485 <> evalnp_iff_safe_and_post
+binder 14496:14496 <> s:200
+binder 14498:14498 <> t:201
+binder 14500:14500 <> Q:202
+R14517:14522 Coq.Init.Logic <> ::type_scope:x_'<->'_x not
+R14573:14573 Coq.Init.Logic <> ::type_scope:x_'<->'_x not
+R14505:14510 SLF.Partial <> evalnp coind
+R14516:14516 SLF.Partial <> Q:202 var
+R14514:14514 SLF.Partial <> t:201 var
+R14512:14512 SLF.Partial <> s:200 var
+R14531:14535 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R14572:14572 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R14523:14526 SLF.Partial <> safe coind
+R14530:14530 SLF.Partial <> t:201 var
+R14528:14528 SLF.Partial <> s:200 var
+binder 14543:14543 <> v:203
+binder 14545:14546 <> s':204
+R14562:14565 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R14549:14552 SLF.Nondet <> eval ind
+R14561:14561 SLF.Partial <> v:203 var
+R14558:14559 SLF.Partial <> s':204 var
+R14556:14556 SLF.Partial <> t:201 var
+R14554:14554 SLF.Partial <> s:200 var
+R14566:14566 SLF.Partial <> Q:202 var
+R14568:14568 SLF.Partial <> v:203 var
+R14570:14571 SLF.Partial <> s':204 var
+def 14710:14712 <> Any
+R14719:14720 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R14716:14718 SLF.LibSepReference <> val ind
+R14726:14727 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R14721:14725 SLF.LibSepReference <> state def
+binder 14742:14742 <> v:205
+binder 14744:14744 <> s:206
+R14749:14752 Coq.Init.Logic <> True ind
+R14768:14770 SLF.Partial <> Any def
+prf 15021:15039 <> safe_iff_evalnp_any
+binder 15050:15050 <> s:207
+binder 15052:15052 <> t:208
+R15065:15069 Coq.Init.Logic <> ::type_scope:x_'<->'_x not
+R15057:15060 SLF.Partial <> safe coind
+R15064:15064 SLF.Partial <> t:208 var
+R15062:15062 SLF.Partial <> s:207 var
+R15070:15075 SLF.Partial <> evalnp coind
+R15081:15083 SLF.Partial <> Any def
+R15079:15079 SLF.Partial <> t:208 var
+R15077:15077 SLF.Partial <> s:207 var
+R15144:15153 SLF.Partial EvalnpSafe <> sec
+prf 15664:15682 <> exists_step_val_inv
+binder 15693:15693 <> s:209
+binder 15695:15695 <> v:210
+R15700:15700 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R15729:15735 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R15701:15707 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+R15713:15714 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+binder 15708:15709 <> s':211
+binder 15711:15712 <> t':212
+R15715:15718 SLF.Nondet <> step ind
+R15727:15728 SLF.Partial <> t':212 var
+R15724:15725 SLF.Partial <> s':211 var
+R15722:15722 SLF.Partial <> v:210 var
+R15720:15720 SLF.Partial <> s:209 var
+R15736:15740 Coq.Init.Logic <> False ind
+def 16302:16308 <> evalnps
+R16313:16317 SLF.LibSepReference <> state def
+binder 16311:16311 <> s:213
+R16323:16325 SLF.LibSepReference <> trm ind
+binder 16321:16321 <> t:214
+R16334:16335 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R16331:16333 SLF.LibSepReference <> val ind
+R16341:16342 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R16336:16340 SLF.LibSepReference <> state def
+binder 16329:16329 <> Q:215
+binder 16368:16369 <> s':216
+binder 16371:16372 <> t':217
+R16390:16400 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R16375:16379 SLF.Nondet <> evals ind
+R16388:16389 SLF.Partial <> t':217 var
+R16385:16386 SLF.Partial <> s':216 var
+R16383:16383 SLF.Partial <> t:214 var
+R16381:16381 SLF.Partial <> s:213 var
+R16401:16401 Coq.Init.Logic <> ::type_scope:x_'\/'_x not
+R16436:16445 Coq.Init.Logic <> ::type_scope:x_'\/'_x not
+R16480:16480 Coq.Init.Logic <> ::type_scope:x_'\/'_x not
+R16402:16408 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+R16410:16411 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+binder 16409:16409 <> v:218
+R16426:16429 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R16414:16416 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R16412:16413 SLF.Partial <> t':217 var
+R16417:16423 SLF.LibSepReference <> trm_val constr
+R16425:16425 SLF.Partial <> v:218 var
+R16430:16430 SLF.Partial <> Q:215 var
+R16434:16435 SLF.Partial <> s':216 var
+R16432:16432 SLF.Partial <> v:218 var
+R16446:16452 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+R16460:16461 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+binder 16453:16455 <> s'':219
+binder 16457:16459 <> t'':220
+R16462:16465 SLF.Nondet <> step ind
+R16477:16479 SLF.Partial <> t'':220 var
+R16473:16475 SLF.Partial <> s'':219 var
+R16470:16471 SLF.Partial <> t':217 var
+R16467:16468 SLF.Partial <> s':216 var
+def 16611:16618 <> hoarenps
+R16623:16625 SLF.LibSepReference <> trm ind
+binder 16621:16621 <> t:221
+R16631:16635 SLF.LibSepReference SepSimplArgs hprop def
+binder 16629:16629 <> H:222
+R16644:16645 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R16641:16643 SLF.LibSepReference <> val ind
+R16646:16650 SLF.LibSepReference SepSimplArgs hprop def
+binder 16639:16639 <> Q:223
+binder 16672:16672 <> s:224
+R16678:16681 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R16675:16675 SLF.Partial <> H:222 var
+R16677:16677 SLF.Partial <> s:224 var
+R16682:16688 SLF.Partial <> evalnps def
+R16694:16694 SLF.Partial <> Q:223 var
+R16692:16692 SLF.Partial <> t:221 var
+R16690:16690 SLF.Partial <> s:224 var
+prf 17884:17894 <> evalnps_val
+binder 17905:17905 <> s:225
+binder 17907:17907 <> v:226
+binder 17909:17909 <> Q:227
+R17919:17924 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R17914:17914 SLF.Partial <> Q:227 var
+R17916:17916 SLF.Partial <> v:226 var
+R17918:17918 SLF.Partial <> s:225 var
+R17925:17931 SLF.Partial <> evalnps def
+R17937:17937 SLF.Partial <> Q:227 var
+R17935:17935 SLF.Partial <> v:226 var
+R17933:17933 SLF.Partial <> s:225 var
+prf 18051:18065 <> evalnps_val_inv
+binder 18076:18076 <> s:228
+binder 18078:18078 <> v:229
+binder 18080:18080 <> Q:230
+R18098:18103 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R18085:18091 SLF.Partial <> evalnps def
+R18097:18097 SLF.Partial <> Q:230 var
+R18095:18095 SLF.Partial <> v:229 var
+R18093:18093 SLF.Partial <> s:228 var
+R18104:18104 SLF.Partial <> Q:230 var
+R18106:18106 SLF.Partial <> v:229 var
+R18108:18108 SLF.Partial <> s:228 var
+R18164:18173 SLF.Nondet <> evals_refl constr
+R18164:18173 SLF.Nondet <> evals_refl constr
+prf 18525:18540 <> evalnps_inv_step
+binder 18551:18552 <> s1:231
+binder 18554:18555 <> t1:232
+binder 18557:18558 <> s2:233
+binder 18560:18561 <> t2:234
+binder 18563:18563 <> Q:235
+R18583:18588 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R18568:18574 SLF.Partial <> evalnps def
+R18582:18582 SLF.Partial <> Q:235 var
+R18579:18580 SLF.Partial <> t1:232 var
+R18576:18577 SLF.Partial <> s1:231 var
+R18605:18610 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R18589:18592 SLF.Nondet <> step ind
+R18603:18604 SLF.Partial <> t2:234 var
+R18600:18601 SLF.Partial <> s2:233 var
+R18597:18598 SLF.Partial <> t1:232 var
+R18594:18595 SLF.Partial <> s1:231 var
+R18611:18617 SLF.Partial <> evalnps def
+R18625:18625 SLF.Partial <> Q:235 var
+R18622:18623 SLF.Partial <> t2:234 var
+R18619:18620 SLF.Partial <> s2:233 var
+prf 19107:19125 <> evalnps_not_val_inv
+binder 19136:19137 <> s1:236
+binder 19139:19140 <> t1:237
+binder 19142:19142 <> Q:238
+R19162:19167 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R19147:19153 SLF.Partial <> evalnps def
+R19161:19161 SLF.Partial <> Q:238 var
+R19158:19159 SLF.Partial <> t1:237 var
+R19155:19156 SLF.Partial <> s1:236 var
+R19168:19168 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R19194:19200 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+binder 19176:19176 <> v:239
+R19181:19184 Coq.Init.Logic <> ::type_scope:x_'<>'_x not
+R19179:19180 SLF.Partial <> t1:237 var
+R19185:19191 SLF.LibSepReference <> trm_val constr
+R19193:19193 SLF.Partial <> v:239 var
+R19201:19207 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+R19213:19214 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+binder 19208:19209 <> s2:240
+binder 19211:19212 <> t2:241
+R19231:19234 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R19215:19218 SLF.Nondet <> step ind
+R19229:19230 SLF.Partial <> t2:241 var
+R19226:19227 SLF.Partial <> s2:240 var
+R19223:19224 SLF.Partial <> t1:237 var
+R19220:19221 SLF.Partial <> s1:236 var
+R19235:19241 SLF.Partial <> evalnps def
+R19249:19249 SLF.Partial <> Q:238 var
+R19246:19247 SLF.Partial <> t2:241 var
+R19243:19244 SLF.Partial <> s2:240 var
+prf 19666:19679 <> evalnps_conseq
+binder 19690:19690 <> s:242
+binder 19692:19692 <> t:243
+binder 19694:19694 <> Q:244
+binder 19696:19697 <> Q':245
+R19716:19721 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R19702:19708 SLF.Partial <> evalnps def
+R19714:19715 SLF.Partial <> Q':245 var
+R19712:19712 SLF.Partial <> t:243 var
+R19710:19710 SLF.Partial <> s:242 var
+R19731:19736 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R19724:19729 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'===>'_x not
+R19722:19723 SLF.Partial <> Q':245 var
+R19730:19730 SLF.Partial <> Q:244 var
+R19737:19743 SLF.Partial <> evalnps def
+R19749:19749 SLF.Partial <> Q:244 var
+R19747:19747 SLF.Partial <> t:243 var
+R19745:19745 SLF.Partial <> s:242 var
+prf 19881:19895 <> hoarenps_conseq
+binder 19906:19906 <> t:246
+binder 19908:19909 <> H':247
+binder 19911:19912 <> Q':248
+binder 19914:19914 <> H:249
+binder 19916:19916 <> Q:250
+R19937:19942 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R19921:19928 SLF.Partial <> hoarenps def
+R19935:19936 SLF.Partial <> Q':248 var
+R19932:19933 SLF.Partial <> H':247 var
+R19930:19930 SLF.Partial <> t:246 var
+R19951:19956 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R19944:19948 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'==>'_x not
+R19943:19943 SLF.Partial <> H:249 var
+R19949:19950 SLF.Partial <> H':247 var
+R19966:19971 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R19959:19964 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'===>'_x not
+R19957:19958 SLF.Partial <> Q':248 var
+R19965:19965 SLF.Partial <> Q:250 var
+R19972:19979 SLF.Partial <> hoarenps def
+R19985:19985 SLF.Partial <> Q:250 var
+R19983:19983 SLF.Partial <> H:249 var
+R19981:19981 SLF.Partial <> t:246 var
+R20038:20051 SLF.Partial <> evalnps_conseq thm
+R20038:20051 SLF.Partial <> evalnps_conseq thm
+prf 20596:20606 <> evalnps_let
+binder 20617:20617 <> s:251
+binder 20619:20619 <> x:252
+binder 20621:20622 <> t1:253
+binder 20624:20625 <> t2:254
+binder 20627:20628 <> Q1:255
+binder 20630:20630 <> Q:256
+R20650:20655 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R20635:20641 SLF.Partial <> evalnps def
+R20648:20649 SLF.Partial <> Q1:255 var
+R20645:20646 SLF.Partial <> t1:253 var
+R20643:20643 SLF.Partial <> s:251 var
+R20656:20656 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R20711:20717 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+binder 20664:20665 <> s1:257
+binder 20667:20668 <> v1:258
+R20679:20682 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R20671:20672 SLF.Partial <> Q1:255 var
+R20674:20675 SLF.Partial <> v1:258 var
+R20677:20678 SLF.Partial <> s1:257 var
+R20683:20689 SLF.Partial <> evalnps def
+R20710:20710 SLF.Partial <> Q:256 var
+R20695:20699 SLF.LibSepReference <> subst def
+R20706:20707 SLF.Partial <> t2:254 var
+R20703:20704 SLF.Partial <> v1:258 var
+R20701:20701 SLF.Partial <> x:252 var
+R20691:20692 SLF.Partial <> s1:257 var
+R20718:20724 SLF.Partial <> evalnps def
+R20746:20746 SLF.Partial <> Q:256 var
+R20729:20735 SLF.LibSepReference <> trm_let constr
+R20742:20743 SLF.Partial <> t2:254 var
+R20739:20740 SLF.Partial <> t1:253 var
+R20737:20737 SLF.Partial <> x:252 var
+R20726:20726 SLF.Partial <> s:251 var
+prf 20809:20820 <> hoarenps_let
+binder 20831:20831 <> x:259
+binder 20833:20834 <> t1:260
+binder 20836:20837 <> t2:261
+binder 20839:20839 <> H:262
+binder 20841:20841 <> Q:263
+binder 20843:20844 <> Q1:264
+R20865:20870 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R20849:20856 SLF.Partial <> hoarenps def
+R20863:20864 SLF.Partial <> Q1:264 var
+R20861:20861 SLF.Partial <> H:262 var
+R20858:20859 SLF.Partial <> t1:260 var
+R20871:20871 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R20917:20923 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+binder 20879:20880 <> v1:265
+R20883:20890 SLF.Partial <> hoarenps def
+R20916:20916 SLF.Partial <> Q:263 var
+R20909:20910 SLF.Partial <> Q1:264 var
+R20912:20913 SLF.Partial <> v1:265 var
+R20893:20897 SLF.LibSepReference <> subst def
+R20904:20905 SLF.Partial <> t2:261 var
+R20901:20902 SLF.Partial <> v1:265 var
+R20899:20899 SLF.Partial <> x:259 var
+R20924:20931 SLF.Partial <> hoarenps def
+R20953:20953 SLF.Partial <> Q:263 var
+R20951:20951 SLF.Partial <> H:262 var
+R20934:20940 SLF.LibSepReference <> trm_let constr
+R20947:20948 SLF.Partial <> t2:261 var
+R20944:20945 SLF.Partial <> t1:260 var
+R20942:20942 SLF.Partial <> x:259 var
+R21005:21015 SLF.Partial <> evalnps_let prfax
+R21005:21015 SLF.Partial <> evalnps_let prfax
+def 22149:22153 <> divns
+R22158:22162 SLF.LibSepReference <> state def
+binder 22156:22156 <> s:266
+R22168:22170 SLF.LibSepReference <> trm ind
+binder 22166:22166 <> t:267
+binder 22192:22193 <> s':268
+binder 22195:22196 <> t':269
+R22214:22219 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R22199:22203 SLF.Nondet <> evals ind
+R22212:22213 SLF.Partial <> t':269 var
+R22209:22210 SLF.Partial <> s':268 var
+R22207:22207 SLF.Partial <> t:267 var
+R22205:22205 SLF.Partial <> s:266 var
+R22220:22226 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+R22234:22235 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+binder 22227:22229 <> s'':270
+binder 22231:22233 <> t'':271
+R22236:22239 SLF.Nondet <> step ind
+R22251:22253 SLF.Partial <> t'':271 var
+R22247:22249 SLF.Partial <> s'':270 var
+R22244:22245 SLF.Partial <> t':269 var
+R22241:22242 SLF.Partial <> s':268 var
+prf 22435:22457 <> divns_iff_evalnps_Empty
+binder 22468:22468 <> s:272
+binder 22470:22470 <> t:273
+R22484:22488 Coq.Init.Logic <> ::type_scope:x_'<->'_x not
+R22475:22479 SLF.Partial <> divns def
+R22483:22483 SLF.Partial <> t:273 var
+R22481:22481 SLF.Partial <> s:272 var
+R22489:22495 SLF.Partial <> evalnps def
+R22501:22505 SLF.Partial <> Empty def
+R22499:22499 SLF.Partial <> t:273 var
+R22497:22497 SLF.Partial <> s:272 var
+prf 23060:23073 <> divns_inv_step
+binder 23084:23085 <> s1:274
+binder 23087:23088 <> t1:275
+binder 23090:23091 <> s2:276
+binder 23093:23094 <> t2:277
+R23110:23115 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R23099:23103 SLF.Partial <> divns def
+R23108:23109 SLF.Partial <> t1:275 var
+R23105:23106 SLF.Partial <> s1:274 var
+R23132:23137 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R23116:23119 SLF.Nondet <> step ind
+R23130:23131 SLF.Partial <> t2:277 var
+R23127:23128 SLF.Partial <> s2:276 var
+R23124:23125 SLF.Partial <> t1:275 var
+R23121:23122 SLF.Partial <> s1:274 var
+R23138:23142 SLF.Partial <> divns def
+R23147:23148 SLF.Partial <> t2:277 var
+R23144:23145 SLF.Partial <> s2:276 var
+prf 23337:23349 <> divns_val_inv
+binder 23360:23360 <> s:278
+binder 23362:23362 <> v:279
+R23367:23368 Coq.Init.Logic <> ::type_scope:'~'_x not
+R23369:23373 SLF.Partial <> divns def
+R23377:23377 SLF.Partial <> v:279 var
+R23375:23375 SLF.Partial <> s:278 var
+prf 23652:23664 <> divns_let_ctx
+binder 23675:23676 <> s1:280
+binder 23678:23678 <> x:281
+binder 23680:23681 <> t1:282
+binder 23683:23684 <> t2:283
+R23700:23705 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R23689:23693 SLF.Partial <> divns def
+R23698:23699 SLF.Partial <> t1:282 var
+R23695:23696 SLF.Partial <> s1:280 var
+R23706:23710 SLF.Partial <> divns def
+R23716:23722 SLF.LibSepReference <> trm_let constr
+R23729:23730 SLF.Partial <> t2:283 var
+R23726:23727 SLF.Partial <> t1:282 var
+R23724:23724 SLF.Partial <> x:281 var
+R23712:23713 SLF.Partial <> s1:280 var
+ind 24653:24659 <> evalnpz
+constr 24701:24711 <> evalnpz_val
+constr 24768:24779 <> evalnpz_step
+R24668:24669 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R24663:24667 SLF.LibSepReference <> state def
+R24673:24674 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R24670:24672 SLF.LibSepReference <> trm ind
+R24675:24675 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R24686:24688 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R24679:24680 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R24676:24678 SLF.LibSepReference <> val ind
+R24681:24685 SLF.LibSepReference SepSimplArgs hprop def
+binder 24722:24722 <> s:286
+binder 24724:24724 <> v:287
+binder 24726:24726 <> Q:288
+R24740:24749 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R24735:24735 SLF.Partial <> Q:288 var
+R24737:24737 SLF.Partial <> v:287 var
+R24739:24739 SLF.Partial <> s:286 var
+R24750:24756 SLF.Partial <> evalnpz:284 ind
+R24762:24762 SLF.Partial <> Q:288 var
+R24760:24760 SLF.Partial <> v:287 var
+R24758:24758 SLF.Partial <> s:286 var
+binder 24790:24790 <> s:289
+binder 24792:24792 <> t:290
+binder 24794:24794 <> Q:291
+R24803:24803 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R24832:24842 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R24804:24810 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+R24816:24817 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+binder 24811:24812 <> s':292
+binder 24814:24815 <> t':293
+R24818:24821 SLF.Nondet <> step ind
+R24830:24831 SLF.Partial <> t':293 var
+R24827:24828 SLF.Partial <> s':292 var
+R24825:24825 SLF.Partial <> t:290 var
+R24823:24823 SLF.Partial <> s:289 var
+R24843:24843 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R24891:24901 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+binder 24851:24852 <> s':294
+binder 24854:24855 <> t':295
+R24872:24875 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R24858:24861 SLF.Nondet <> step ind
+R24870:24871 SLF.Partial <> t':295 var
+R24867:24868 SLF.Partial <> s':294 var
+R24865:24865 SLF.Partial <> t:290 var
+R24863:24863 SLF.Partial <> s:289 var
+R24876:24882 SLF.Partial <> evalnpz:284 ind
+R24890:24890 SLF.Partial <> Q:291 var
+R24887:24888 SLF.Partial <> t':295 var
+R24884:24885 SLF.Partial <> s':294 var
+R24902:24908 SLF.Partial <> evalnpz:284 ind
+R24914:24914 SLF.Partial <> Q:291 var
+R24912:24912 SLF.Partial <> t:290 var
+R24910:24910 SLF.Partial <> s:289 var
+def 24996:25003 <> hoarenpz
+R25008:25010 SLF.LibSepReference <> trm ind
+binder 25006:25006 <> t:296
+R25016:25020 SLF.LibSepReference SepSimplArgs hprop def
+binder 25014:25014 <> H:297
+R25029:25030 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R25026:25028 SLF.LibSepReference <> val ind
+R25031:25035 SLF.LibSepReference SepSimplArgs hprop def
+binder 25024:25024 <> Q:298
+binder 25057:25057 <> s:299
+R25063:25066 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R25060:25060 SLF.Partial <> H:297 var
+R25062:25062 SLF.Partial <> s:299 var
+R25067:25073 SLF.Partial <> evalnpz coind
+R25079:25079 SLF.Partial <> Q:298 var
+R25077:25077 SLF.Partial <> t:296 var
+R25075:25075 SLF.Partial <> s:299 var
+prf 25404:25417 <> evalnpz_conseq
+binder 25428:25428 <> s:300
+binder 25430:25430 <> t:301
+binder 25432:25432 <> Q:302
+binder 25434:25435 <> Q':303
+R25454:25459 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R25440:25446 SLF.Partial <> evalnpz coind
+R25452:25453 SLF.Partial <> Q':303 var
+R25450:25450 SLF.Partial <> t:301 var
+R25448:25448 SLF.Partial <> s:300 var
+R25469:25474 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R25462:25467 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'===>'_x not
+R25460:25461 SLF.Partial <> Q':303 var
+R25468:25468 SLF.Partial <> Q:302 var
+R25475:25481 SLF.Partial <> evalnpz coind
+R25487:25487 SLF.Partial <> Q:302 var
+R25485:25485 SLF.Partial <> t:301 var
+R25483:25483 SLF.Partial <> s:300 var
+R25571:25581 SLF.Partial <> evalnpz_val constr
+R25571:25581 SLF.Partial <> evalnpz_val constr
+R25609:25620 SLF.Partial <> evalnpz_step constr
+R25609:25620 SLF.Partial <> evalnpz_step constr
+prf 25704:25718 <> hoarenpz_conseq
+binder 25729:25729 <> t:304
+binder 25731:25732 <> H':305
+binder 25734:25735 <> Q':306
+binder 25737:25737 <> H:307
+binder 25739:25739 <> Q:308
+R25760:25765 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R25744:25751 SLF.Partial <> hoarenpz def
+R25758:25759 SLF.Partial <> Q':306 var
+R25755:25756 SLF.Partial <> H':305 var
+R25753:25753 SLF.Partial <> t:304 var
+R25774:25779 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R25767:25771 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'==>'_x not
+R25766:25766 SLF.Partial <> H:307 var
+R25772:25773 SLF.Partial <> H':305 var
+R25789:25794 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R25782:25787 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'===>'_x not
+R25780:25781 SLF.Partial <> Q':306 var
+R25788:25788 SLF.Partial <> Q:308 var
+R25795:25802 SLF.Partial <> hoarenpz def
+R25808:25808 SLF.Partial <> Q:308 var
+R25806:25806 SLF.Partial <> H:307 var
+R25804:25804 SLF.Partial <> t:304 var
+R25861:25874 SLF.Partial <> evalnpz_conseq thm
+R25861:25874 SLF.Partial <> evalnpz_conseq thm
+prf 26344:26354 <> evalnpz_let
+binder 26365:26365 <> s:309
+binder 26367:26367 <> x:310
+binder 26369:26370 <> t1:311
+binder 26372:26373 <> t2:312
+binder 26375:26376 <> Q1:313
+binder 26378:26378 <> Q:314
+R26398:26403 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R26383:26389 SLF.Partial <> evalnpz coind
+R26396:26397 SLF.Partial <> Q1:313 var
+R26393:26394 SLF.Partial <> t1:311 var
+R26391:26391 SLF.Partial <> s:309 var
+R26404:26404 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R26459:26465 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+binder 26412:26413 <> s1:315
+binder 26415:26416 <> v1:316
+R26427:26430 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R26419:26420 SLF.Partial <> Q1:313 var
+R26422:26423 SLF.Partial <> v1:316 var
+R26425:26426 SLF.Partial <> s1:315 var
+R26431:26437 SLF.Partial <> evalnpz coind
+R26458:26458 SLF.Partial <> Q:314 var
+R26443:26447 SLF.LibSepReference <> subst def
+R26454:26455 SLF.Partial <> t2:312 var
+R26451:26452 SLF.Partial <> v1:316 var
+R26449:26449 SLF.Partial <> x:310 var
+R26439:26440 SLF.Partial <> s1:315 var
+R26466:26472 SLF.Partial <> evalnpz coind
+R26494:26494 SLF.Partial <> Q:314 var
+R26477:26483 SLF.LibSepReference <> trm_let constr
+R26490:26491 SLF.Partial <> t2:312 var
+R26487:26488 SLF.Partial <> t1:311 var
+R26485:26485 SLF.Partial <> x:310 var
+R26474:26474 SLF.Partial <> s:309 var
+prf 26557:26568 <> hoarenpz_let
+binder 26579:26579 <> x:317
+binder 26581:26582 <> t1:318
+binder 26584:26585 <> t2:319
+binder 26587:26587 <> H:320
+binder 26589:26589 <> Q:321
+binder 26591:26592 <> Q1:322
+R26613:26618 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R26597:26604 SLF.Partial <> hoarenpz def
+R26611:26612 SLF.Partial <> Q1:322 var
+R26609:26609 SLF.Partial <> H:320 var
+R26606:26607 SLF.Partial <> t1:318 var
+R26619:26619 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R26665:26671 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+binder 26627:26628 <> v1:323
+R26631:26638 SLF.Partial <> hoarenpz def
+R26664:26664 SLF.Partial <> Q:321 var
+R26657:26658 SLF.Partial <> Q1:322 var
+R26660:26661 SLF.Partial <> v1:323 var
+R26641:26645 SLF.LibSepReference <> subst def
+R26652:26653 SLF.Partial <> t2:319 var
+R26649:26650 SLF.Partial <> v1:323 var
+R26647:26647 SLF.Partial <> x:317 var
+R26672:26679 SLF.Partial <> hoarenpz def
+R26701:26701 SLF.Partial <> Q:321 var
+R26699:26699 SLF.Partial <> H:320 var
+R26682:26688 SLF.LibSepReference <> trm_let constr
+R26695:26696 SLF.Partial <> t2:319 var
+R26692:26693 SLF.Partial <> t1:318 var
+R26690:26690 SLF.Partial <> x:317 var
+R26753:26763 SLF.Partial <> evalnpz_let prfax
+R26753:26763 SLF.Partial <> evalnpz_let prfax
+ind 27248:27252 <> divnz
+constr 27284:27293 <> divnz_step
+R27261:27264 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R27256:27260 SLF.LibSepReference <> state def
+R27268:27271 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R27265:27267 SLF.LibSepReference <> trm ind
+binder 27304:27305 <> s1:326
+binder 27307:27308 <> t1:327
+R27317:27317 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R27348:27358 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R27318:27324 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+R27330:27331 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+binder 27325:27326 <> s2:328
+binder 27328:27329 <> t2:329
+R27332:27335 SLF.Nondet <> step ind
+R27346:27347 SLF.Partial <> t2:329 var
+R27343:27344 SLF.Partial <> s2:328 var
+R27340:27341 SLF.Partial <> t1:327 var
+R27337:27338 SLF.Partial <> s1:326 var
+R27359:27359 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R27405:27415 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+binder 27367:27368 <> s2:330
+binder 27370:27371 <> t2:331
+R27390:27393 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R27374:27377 SLF.Nondet <> step ind
+R27388:27389 SLF.Partial <> t2:331 var
+R27385:27386 SLF.Partial <> s2:330 var
+R27382:27383 SLF.Partial <> t1:327 var
+R27379:27380 SLF.Partial <> s1:326 var
+R27394:27398 SLF.Partial <> divnz:324 ind
+R27403:27404 SLF.Partial <> t2:331 var
+R27400:27401 SLF.Partial <> s2:330 var
+R27416:27420 SLF.Partial <> divnz:324 ind
+R27425:27426 SLF.Partial <> t1:327 var
+R27422:27423 SLF.Partial <> s1:326 var
+prf 27620:27642 <> divnz_iff_evalnpz_Empty
+binder 27653:27653 <> s:332
+binder 27655:27655 <> t:333
+R27669:27673 Coq.Init.Logic <> ::type_scope:x_'<->'_x not
+R27660:27664 SLF.Partial <> divnz coind
+R27668:27668 SLF.Partial <> t:333 var
+R27666:27666 SLF.Partial <> s:332 var
+R27674:27680 SLF.Partial <> evalnpz coind
+R27686:27690 SLF.Partial <> Empty def
+R27684:27684 SLF.Partial <> t:333 var
+R27682:27682 SLF.Partial <> s:332 var
+prf 28051:28068 <> evalnpz_eq_evalnps
+R28081:28083 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R28074:28080 SLF.Partial <> evalnpz coind
+R28084:28090 SLF.Partial <> evalnps def
+R28423:28429 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+R28431:28432 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+binder 28430:28430 <> v:334
+R28434:28436 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R28437:28443 SLF.LibSepReference <> trm_val constr
+R28445:28445 SLF.Partial <> v:334 var
+R28423:28429 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+R28431:28432 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+binder 28430:28430 <> v:335
+R28434:28436 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R28437:28443 SLF.LibSepReference <> trm_val constr
+R28445:28445 SLF.Partial <> v:335 var
+R28484:28494 SLF.Partial <> evalnpz_val constr
+R28484:28494 SLF.Partial <> evalnpz_val constr
+R28504:28518 SLF.Partial <> evalnps_val_inv thm
+R28504:28518 SLF.Partial <> evalnps_val_inv thm
+R28551:28569 SLF.Partial <> evalnps_not_val_inv prfax
+R28551:28569 SLF.Partial <> evalnps_not_val_inv prfax
+R28583:28594 SLF.Partial <> evalnpz_step constr
+R28583:28594 SLF.Partial <> evalnpz_step constr
+R28665:28680 SLF.Partial <> evalnps_inv_step prfax
+R28665:28680 SLF.Partial <> evalnps_inv_step prfax
+prf 28706:28725 <> hoarenpz_eq_hoarenps
+R28739:28741 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R28731:28738 SLF.Partial <> hoarenpz def
+R28742:28749 SLF.Partial <> hoarenps def
+R28772:28779 SLF.Partial <> hoarenps def
+R28782:28789 SLF.Partial <> hoarenpz def
+R28801:28818 SLF.Partial <> evalnpz_eq_evalnps thm
+R28801:28818 SLF.Partial <> evalnpz_eq_evalnps thm
+prf 29122:29135 <> divnz_eq_divns
+R29146:29148 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R29141:29145 SLF.Partial <> divnz coind
+R29149:29153 SLF.Partial <> divns def
+R29201:29223 SLF.Partial <> divns_iff_evalnps_Empty prfax
+R29201:29223 SLF.Partial <> divns_iff_evalnps_Empty prfax
+R29201:29223 SLF.Partial <> divns_iff_evalnps_Empty prfax
+R29236:29258 SLF.Partial <> divnz_iff_evalnpz_Empty prfax
+R29236:29258 SLF.Partial <> divnz_iff_evalnpz_Empty prfax
+R29236:29258 SLF.Partial <> divnz_iff_evalnpz_Empty prfax
+R29272:29289 SLF.Partial <> evalnpz_eq_evalnps thm
+R29272:29289 SLF.Partial <> evalnpz_eq_evalnps thm
+prf 30150:30168 <> evalnpz_let_inv_ctx
+binder 30179:30179 <> x:336
+binder 30181:30182 <> s1:337
+binder 30184:30185 <> t1:338
+binder 30187:30188 <> t2:339
+binder 30190:30190 <> Q:340
+binder 30192:30193 <> Q1:341
+R30228:30233 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R30198:30204 SLF.Partial <> evalnpz coind
+R30227:30227 SLF.Partial <> Q:340 var
+R30210:30216 SLF.LibSepReference <> trm_let constr
+R30223:30224 SLF.Partial <> t2:339 var
+R30220:30221 SLF.Partial <> t1:338 var
+R30218:30218 SLF.Partial <> x:336 var
+R30206:30207 SLF.Partial <> s1:337 var
+R30270:30275 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R30234:30234 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'===>'_x not
+R30261:30267 SLF.LibSepReference SepSimplArgs ::hprop_scope:x_'===>'_x not
+binder 30239:30239 <> v:342
+binder 30241:30241 <> s:343
+R30246:30250 SLF.Nondet <> evals ind
+R30260:30260 SLF.Partial <> v:342 var
+R30258:30258 SLF.Partial <> s:343 var
+R30255:30256 SLF.Partial <> t1:338 var
+R30252:30253 SLF.Partial <> s1:337 var
+R30268:30269 SLF.Partial <> Q1:341 var
+R30276:30282 SLF.Partial <> evalnpz coind
+R30290:30291 SLF.Partial <> Q1:341 var
+R30287:30288 SLF.Partial <> t1:338 var
+R30284:30285 SLF.Partial <> s1:337 var
+R30364:30370 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+R30373:30374 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+binder 30371:30372 <> v1:344
+R30377:30379 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R30380:30386 SLF.LibSepReference <> trm_val constr
+R30388:30389 SLF.Partial <> v1:344 var
+R30364:30370 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+R30373:30374 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+binder 30371:30372 <> v1:345
+R30377:30379 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R30380:30386 SLF.LibSepReference <> trm_val constr
+R30388:30389 SLF.Partial <> v1:345 var
+R30427:30437 SLF.Partial <> evalnpz_val constr
+R30427:30437 SLF.Partial <> evalnpz_val constr
+R30462:30471 SLF.Nondet <> evals_refl constr
+R30462:30471 SLF.Nondet <> evals_refl constr
+R30487:30498 SLF.Partial <> evalnpz_step constr
+R30487:30498 SLF.Partial <> evalnpz_step constr
+R30659:30670 SLF.Nondet <> step_let_ctx constr
+R30659:30670 SLF.Nondet <> step_let_ctx constr
+R30717:30726 SLF.Nondet <> evals_step constr
+R30717:30726 SLF.Nondet <> evals_step constr
+prf 30751:30770 <> evalnpz_let_inv_cont
+binder 30781:30782 <> s1:346
+binder 30784:30785 <> s2:347
+binder 30787:30788 <> v1:348
+binder 30790:30790 <> x:349
+binder 30792:30793 <> t1:350
+binder 30795:30796 <> t2:351
+binder 30798:30798 <> Q:352
+R30833:30838 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R30803:30809 SLF.Partial <> evalnpz coind
+R30832:30832 SLF.Partial <> Q:352 var
+R30815:30821 SLF.LibSepReference <> trm_let constr
+R30828:30829 SLF.Partial <> t2:351 var
+R30825:30826 SLF.Partial <> t1:350 var
+R30823:30823 SLF.Partial <> x:349 var
+R30811:30812 SLF.Partial <> s1:346 var
+R30856:30861 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R30839:30843 SLF.Nondet <> evals ind
+R30854:30855 SLF.Partial <> v1:348 var
+R30851:30852 SLF.Partial <> s2:347 var
+R30848:30849 SLF.Partial <> t1:350 var
+R30845:30846 SLF.Partial <> s1:346 var
+R30862:30868 SLF.Partial <> evalnpz coind
+R30889:30889 SLF.Partial <> Q:352 var
+R30874:30878 SLF.LibSepReference <> subst def
+R30885:30886 SLF.Partial <> t2:351 var
+R30882:30883 SLF.Partial <> v1:348 var
+R30880:30880 SLF.Partial <> x:349 var
+R30870:30871 SLF.Partial <> s2:347 var
+R30932:30938 SLF.LibSepReference <> trm_val constr
+R30932:30938 SLF.LibSepReference <> trm_val constr
+R31014:31021 SLF.Nondet <> step_let constr
+R31014:31021 SLF.Nondet <> step_let constr
+R31129:31140 SLF.Nondet <> step_let_ctx constr
+R31129:31140 SLF.Nondet <> step_let_ctx constr
+prf 31159:31173 <> evalnpz_let_inv
+binder 31184:31185 <> s1:353
+binder 31187:31187 <> x:354
+binder 31189:31190 <> t1:355
+binder 31192:31193 <> t2:356
+binder 31195:31195 <> Q:357
+R31230:31235 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R31200:31206 SLF.Partial <> evalnpz coind
+R31229:31229 SLF.Partial <> Q:357 var
+R31212:31218 SLF.LibSepReference <> trm_let constr
+R31225:31226 SLF.Partial <> t2:356 var
+R31222:31223 SLF.Partial <> t1:355 var
+R31220:31220 SLF.Partial <> x:354 var
+R31208:31209 SLF.Partial <> s1:353 var
+R31236:31242 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+R31245:31246 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+binder 31243:31244 <> Q1:358
+R31263:31277 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R31332:31332 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R31247:31253 SLF.Partial <> evalnpz coind
+R31261:31262 SLF.Partial <> Q1:358 var
+R31258:31259 SLF.Partial <> t1:355 var
+R31255:31256 SLF.Partial <> s1:353 var
+binder 31285:31286 <> v1:359
+binder 31288:31289 <> s2:360
+R31300:31303 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R31292:31293 SLF.Partial <> Q1:358 var
+R31295:31296 SLF.Partial <> v1:359 var
+R31298:31299 SLF.Partial <> s2:360 var
+R31304:31310 SLF.Partial <> evalnpz coind
+R31331:31331 SLF.Partial <> Q:357 var
+R31316:31320 SLF.LibSepReference <> subst def
+R31327:31328 SLF.Partial <> t2:356 var
+R31324:31325 SLF.Partial <> v1:359 var
+R31322:31322 SLF.Partial <> x:354 var
+R31312:31313 SLF.Partial <> s2:360 var
+binder 31372:31372 <> v:361
+binder 31374:31374 <> s:362
+R31379:31383 SLF.Nondet <> evals ind
+R31394:31400 SLF.LibSepReference <> trm_val constr
+R31402:31402 SLF.Partial <> v:361 var
+R31391:31391 SLF.Partial <> s:362 var
+binder 31372:31372 <> v:363
+binder 31374:31374 <> s:364
+R31379:31383 SLF.Nondet <> evals ind
+R31394:31400 SLF.LibSepReference <> trm_val constr
+R31402:31402 SLF.Partial <> v:363 var
+R31391:31391 SLF.Partial <> s:364 var
+R31426:31444 SLF.Partial <> evalnpz_let_inv_ctx thm
+R31426:31444 SLF.Partial <> evalnpz_let_inv_ctx thm
+R31473:31492 SLF.Partial <> evalnpz_let_inv_cont thm
+R31473:31492 SLF.Partial <> evalnpz_let_inv_cont thm
+prf 31630:31646 <> evalnp_of_evalnpz
+binder 31657:31657 <> s:365
+binder 31659:31659 <> t:366
+binder 31661:31661 <> Q:367
+R31679:31684 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R31666:31672 SLF.Partial <> evalnpz coind
+R31678:31678 SLF.Partial <> Q:367 var
+R31676:31676 SLF.Partial <> t:366 var
+R31674:31674 SLF.Partial <> s:365 var
+R31685:31690 SLF.Partial <> evalnp coind
+R31696:31696 SLF.Partial <> Q:367 var
+R31694:31694 SLF.Partial <> t:366 var
+R31692:31692 SLF.Partial <> s:365 var
+R31826:31835 SLF.Partial <> evalnp_val constr
+R31826:31835 SLF.Partial <> evalnp_val constr
+R32114:32123 SLF.Partial <> evalnp_fix constr
+R32114:32123 SLF.Partial <> evalnp_fix constr
+R32157:32164 SLF.Nondet <> step_fix constr
+R32157:32164 SLF.Nondet <> step_fix constr
+R32216:32234 SLF.Partial <> exists_step_val_inv thm
+R32216:32234 SLF.Partial <> exists_step_val_inv thm
+R32299:32312 SLF.Partial <> evalnp_app_fix constr
+R32299:32312 SLF.Partial <> evalnp_app_fix constr
+R32368:32379 SLF.Nondet <> step_app_fix constr
+R32368:32379 SLF.Nondet <> step_app_fix constr
+R32397:32406 SLF.Partial <> evalnp_add constr
+R32397:32406 SLF.Partial <> evalnp_add constr
+R32442:32449 SLF.Nondet <> step_add constr
+R32442:32449 SLF.Nondet <> step_add constr
+R32503:32521 SLF.Partial <> exists_step_val_inv thm
+R32503:32521 SLF.Partial <> exists_step_val_inv thm
+R32552:32562 SLF.Partial <> evalnp_rand constr
+R32552:32562 SLF.Partial <> evalnp_rand constr
+R32630:32638 SLF.Nondet <> step_rand constr
+R32630:32638 SLF.Nondet <> step_rand constr
+R32696:32714 SLF.Partial <> exists_step_val_inv thm
+R32696:32714 SLF.Partial <> exists_step_val_inv thm
+R32745:32754 SLF.Partial <> evalnp_ref constr
+R32745:32754 SLF.Partial <> evalnp_ref constr
+R32805:32812 SLF.Nondet <> step_ref constr
+R32805:32812 SLF.Nondet <> step_ref constr
+R32869:32887 SLF.Partial <> exists_step_val_inv thm
+R32869:32887 SLF.Partial <> exists_step_val_inv thm
+R32918:32927 SLF.Partial <> evalnp_get constr
+R32918:32927 SLF.Partial <> evalnp_get constr
+R32964:32971 SLF.Nondet <> step_get constr
+R32964:32971 SLF.Nondet <> step_get constr
+R33025:33043 SLF.Partial <> exists_step_val_inv thm
+R33025:33043 SLF.Partial <> exists_step_val_inv thm
+R33074:33083 SLF.Partial <> evalnp_set constr
+R33074:33083 SLF.Partial <> evalnp_set constr
+R33120:33127 SLF.Nondet <> step_set constr
+R33120:33127 SLF.Nondet <> step_set constr
+R33181:33199 SLF.Partial <> exists_step_val_inv thm
+R33181:33199 SLF.Partial <> exists_step_val_inv thm
+R33230:33240 SLF.Partial <> evalnp_free constr
+R33230:33240 SLF.Partial <> evalnp_free constr
+R33277:33285 SLF.Nondet <> step_free constr
+R33277:33285 SLF.Nondet <> step_free constr
+R33339:33357 SLF.Partial <> exists_step_val_inv thm
+R33339:33357 SLF.Partial <> exists_step_val_inv thm
+R33463:33477 SLF.Partial <> evalnpz_let_inv thm
+R33463:33477 SLF.Partial <> evalnpz_let_inv thm
+R33489:33498 SLF.Partial <> evalnp_let constr
+R33489:33498 SLF.Partial <> evalnp_let constr
+R33624:33632 SLF.Partial <> evalnp_if constr
+R33624:33632 SLF.Partial <> evalnp_if constr
+R33668:33674 SLF.Nondet <> step_if constr
+R33668:33674 SLF.Nondet <> step_if constr
+prf 33951:33965 <> evalnp_inv_step
+binder 33976:33976 <> s:368
+binder 33978:33978 <> t:369
+binder 33980:33980 <> Q:370
+R33997:34005 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R33985:33990 SLF.Partial <> evalnp coind
+R33996:33996 SLF.Partial <> Q:370 var
+R33994:33994 SLF.Partial <> t:369 var
+R33992:33992 SLF.Partial <> s:368 var
+R34006:34006 Coq.Init.Logic <> ::type_scope:x_'\/'_x not
+R34039:34046 Coq.Init.Logic <> ::type_scope:x_'\/'_x not
+R34153:34153 Coq.Init.Logic <> ::type_scope:x_'\/'_x not
+R34007:34013 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+R34015:34016 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+binder 34014:34014 <> v:371
+R34030:34033 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R34018:34020 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R34017:34017 SLF.Partial <> t:369 var
+R34021:34027 SLF.LibSepReference <> trm_val constr
+R34029:34029 SLF.Partial <> v:371 var
+R34034:34034 SLF.Partial <> Q:370 var
+R34036:34036 SLF.Partial <> v:371 var
+R34038:34038 SLF.Partial <> s:368 var
+R34047:34047 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R34094:34105 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R34152:34152 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R34048:34054 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+R34060:34061 Coq.Init.Logic <> ::type_scope:'exists'_x_'..'_x_','_x not
+binder 34055:34056 <> s':372
+binder 34058:34059 <> t':373
+R34076:34079 Coq.Init.Logic <> ::type_scope:x_'/\'_x not
+R34062:34065 SLF.Nondet <> step ind
+R34074:34075 SLF.Partial <> t':373 var
+R34071:34072 SLF.Partial <> s':372 var
+R34069:34069 SLF.Partial <> t:369 var
+R34067:34067 SLF.Partial <> s:368 var
+R34080:34085 SLF.Partial <> evalnp coind
+R34093:34093 SLF.Partial <> Q:370 var
+R34090:34091 SLF.Partial <> t':373 var
+R34087:34088 SLF.Partial <> s':372 var
+binder 34113:34114 <> s':374
+binder 34116:34117 <> t':375
+R34134:34137 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R34120:34123 SLF.Nondet <> step ind
+R34132:34133 SLF.Partial <> t':375 var
+R34129:34130 SLF.Partial <> s':374 var
+R34127:34127 SLF.Partial <> t:369 var
+R34125:34125 SLF.Partial <> s:368 var
+R34138:34143 SLF.Partial <> evalnp coind
+R34151:34151 SLF.Partial <> Q:370 var
+R34148:34149 SLF.Partial <> t':375 var
+R34145:34146 SLF.Partial <> s':374 var
+R34312:34319 SLF.Nondet <> step_fix constr
+R34312:34319 SLF.Nondet <> step_fix constr
+R34334:34343 SLF.Partial <> evalnp_val constr
+R34334:34343 SLF.Partial <> evalnp_val constr
+R34391:34400 SLF.Partial <> evalnp_val constr
+R34391:34400 SLF.Partial <> evalnp_val constr
+R34467:34478 SLF.Nondet <> step_app_fix constr
+R34467:34478 SLF.Nondet <> step_app_fix constr
+R34612:34619 SLF.Nondet <> step_add constr
+R34612:34619 SLF.Nondet <> step_add constr
+R34634:34643 SLF.Partial <> evalnp_val constr
+R34634:34643 SLF.Partial <> evalnp_val constr
+R34691:34700 SLF.Partial <> evalnp_val constr
+R34691:34700 SLF.Partial <> evalnp_val constr
+R34768:34776 SLF.Nondet <> step_rand constr
+R34768:34776 SLF.Nondet <> step_rand constr
+R34806:34815 SLF.Partial <> evalnp_val constr
+R34806:34815 SLF.Partial <> evalnp_val constr
+R34889:34898 SLF.Partial <> evalnp_val constr
+R34889:34898 SLF.Partial <> evalnp_val constr
+R34959:34970 SLF.LibSepFmap <> exists_fresh thm
+R34972:34975 SLF.LibSepReference <> null def
+R34959:34970 SLF.LibSepFmap <> exists_fresh thm
+R34972:34975 SLF.LibSepReference <> null def
+R35012:35019 SLF.Nondet <> step_ref constr
+R35012:35019 SLF.Nondet <> step_ref constr
+R35034:35043 SLF.Partial <> evalnp_val constr
+R35034:35043 SLF.Partial <> evalnp_val constr
+R35101:35110 SLF.Partial <> evalnp_val constr
+R35101:35110 SLF.Partial <> evalnp_val constr
+R35178:35185 SLF.Nondet <> step_get constr
+R35178:35185 SLF.Nondet <> step_get constr
+R35200:35209 SLF.Partial <> evalnp_val constr
+R35200:35209 SLF.Partial <> evalnp_val constr
+R35267:35276 SLF.Partial <> evalnp_val constr
+R35267:35276 SLF.Partial <> evalnp_val constr
+R35344:35351 SLF.Nondet <> step_set constr
+R35344:35351 SLF.Nondet <> step_set constr
+R35366:35375 SLF.Partial <> evalnp_val constr
+R35366:35375 SLF.Partial <> evalnp_val constr
+R35433:35442 SLF.Partial <> evalnp_val constr
+R35433:35442 SLF.Partial <> evalnp_val constr
+R35510:35518 SLF.Nondet <> step_free constr
+R35510:35518 SLF.Nondet <> step_free constr
+R35533:35542 SLF.Partial <> evalnp_val constr
+R35533:35542 SLF.Partial <> evalnp_val constr
+R35600:35609 SLF.Partial <> evalnp_val constr
+R35600:35609 SLF.Partial <> evalnp_val constr
+R35754:35761 SLF.Nondet <> step_let constr
+R35754:35761 SLF.Nondet <> step_let constr
+R35824:35835 SLF.Nondet <> step_let_ctx constr
+R35824:35835 SLF.Nondet <> step_let_ctx constr
+R35860:35869 SLF.Partial <> evalnp_let constr
+R35860:35869 SLF.Partial <> evalnp_let constr
+R36036:36045 SLF.Partial <> evalnp_let constr
+R36036:36045 SLF.Partial <> evalnp_let constr
+R36160:36166 SLF.Nondet <> step_if constr
+R36160:36166 SLF.Nondet <> step_if constr
+prf 36354:36370 <> evalnpz_of_coeval
+binder 36381:36381 <> s:376
+binder 36383:36383 <> t:377
+binder 36385:36385 <> Q:378
+R36402:36407 Coq.Init.Logic <> ::type_scope:x_'->'_x not
+R36390:36395 SLF.Partial <> evalnp coind
+R36401:36401 SLF.Partial <> Q:378 var
+R36399:36399 SLF.Partial <> t:377 var
+R36397:36397 SLF.Partial <> s:376 var
+R36408:36414 SLF.Partial <> evalnpz coind
+R36420:36420 SLF.Partial <> Q:378 var
+R36418:36418 SLF.Partial <> t:377 var
+R36416:36416 SLF.Partial <> s:376 var
+R36460:36474 SLF.Partial <> evalnp_inv_step thm
+R36460:36474 SLF.Partial <> evalnp_inv_step thm
+R36537:36547 SLF.Partial <> evalnpz_val constr
+R36537:36547 SLF.Partial <> evalnpz_val constr
+R36566:36577 SLF.Partial <> evalnpz_step constr
+R36566:36577 SLF.Partial <> evalnpz_step constr
+prf 36804:36820 <> evalnpz_eq_evalnp
+R36834:36836 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R36827:36833 SLF.Partial <> evalnpz coind
+R36837:36842 SLF.Partial <> evalnp coind
+R36901:36917 SLF.Partial <> evalnp_of_evalnpz thm
+R36901:36917 SLF.Partial <> evalnp_of_evalnpz thm
+R36934:36950 SLF.Partial <> evalnpz_of_coeval thm
+R36934:36950 SLF.Partial <> evalnpz_of_coeval thm
+prf 36967:36987 <> hoarenpcso_eq_hoarenp
+R37001:37003 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R36993:37000 SLF.Partial <> hoarenpz def
+R37004:37010 SLF.Partial <> hoarenp def
+R37033:37039 SLF.Partial <> hoarenp def
+R37042:37049 SLF.Partial <> hoarenpz def
+R37061:37077 SLF.Partial <> evalnpz_eq_evalnp thm
+R37061:37077 SLF.Partial <> evalnpz_eq_evalnp thm
+prf 37092:37110 <> hoarenps_eq_hoarenp
+R37125:37127 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R37117:37124 SLF.Partial <> hoarenps def
+R37128:37134 SLF.Partial <> hoarenp def
+R37163:37182 SLF.Partial <> hoarenpz_eq_hoarenps thm
+R37163:37182 SLF.Partial <> hoarenpz_eq_hoarenps thm
+R37163:37182 SLF.Partial <> hoarenpz_eq_hoarenps thm
+R37194:37214 SLF.Partial <> hoarenpcso_eq_hoarenp thm
+R37194:37214 SLF.Partial <> hoarenpcso_eq_hoarenp thm
+prf 37444:37456 <> divns_eq_divn
+R37467:37469 Coq.Init.Logic <> ::type_scope:x_'='_x not
+R37462:37466 SLF.Partial <> divns def
+R37470:37473 SLF.Partial <> divn def
+R37518:37521 SLF.Partial <> divn def
+R37534:37556 SLF.Partial <> divns_iff_evalnps_Empty prfax
+R37534:37556 SLF.Partial <> divns_iff_evalnps_Empty prfax
+R37534:37556 SLF.Partial <> divns_iff_evalnps_Empty prfax
+R37572:37588 SLF.Partial <> evalnpz_eq_evalnp thm
+R37572:37588 SLF.Partial <> evalnpz_eq_evalnp thm
+R37572:37588 SLF.Partial <> evalnpz_eq_evalnp thm
+R37602:37619 SLF.Partial <> evalnpz_eq_evalnps thm
+R37602:37619 SLF.Partial <> evalnpz_eq_evalnps thm
