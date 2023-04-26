@@ -11,6 +11,9 @@ Set Implicit Arguments.
 From SLF Require Export LibCore.
 From SLF Require Export LibSepTLCbuffer LibSepVar LibSepFmap.
 From SLF Require LibSepSimpl.
+
+From mathcomp Require Import ssreflect.
+
 Module Fmap := LibSepFmap. (* Short name for Fmap module. *)
 
 (* ################################################################# *)
@@ -30,6 +33,21 @@ Axiom propositional_extensionality : forall (P Q:Prop),
   (P <-> Q) ->
   P = Q.
 
+Definition upd {A B : Type} (f : A -> B) x y :=
+  fun z => If x = z then y else f z.
+
+Lemma upd_eq A B (f : A -> B) x y : 
+  upd f x y x = y.
+Proof.
+Admitted.
+
+Lemma upd_neq A B (f : A -> B) x y z : 
+  z <> x ->
+  upd f x y z = f z.
+Proof.
+Admitted.
+
+
 (* ================================================================= *)
 (** ** Variables *)
 
@@ -47,7 +65,7 @@ Axiom propositional_extensionality : forall (P Q:Prop),
     represent heaps in the semantics. The library provides a tactic called
     [fmap_disjoint] to automate disjointness proofs, and a tactic called
     [fmap_eq] for proving equalities between heaps modulo associativity and
-    commutativity. Without these two tactics, proofs involving finite maps
+    commutativity. Without these two tactics, pr oofs involving finite maps
     would be much more tedious and fragile. *)
 
 (* ################################################################# *)
@@ -135,7 +153,7 @@ Definition state D : Type := fmap (hloc D) val.
 
 Definition hheap D : Type := state D.
 
-Definition proj D d (h : hheap D) := 
+Definition proj D (h : hheap D) d := 
   Fmap.filter (fun '(_, c) _ => c = d) h.
 
 (* ================================================================= *)
@@ -162,8 +180,11 @@ Implicit Types t : trm.
 
 (** The types of values and heap values are inhabited. *)
 
+Check @arbitrary.
+
 Global Instance Inhab_val : Inhab val.
-Proof using. apply (Inhab_of_val val_unit). Qed.
+Proof using. apply (Inhab_of_val val_unit). Defined.
+
 
 (** Coercions to improve conciseness in the statment of evaluation rules. *)
 
@@ -246,82 +267,238 @@ Definition trm_is_val (t:trm) : Prop :=
 
 (** Big-step evaluation judgement, written [eval s t s' v]. *)
 
-Section eval.
+Section eval1.
 
 Context (D : Type) (d : D).
 
-Inductive eval : hheap D -> trm -> hheap D -> val -> Prop :=
-  | eval_val : forall s v,
-      eval s (trm_val v) s v
-  | eval_fun : forall s x t1,
-      eval s (trm_fun x t1) s (val_fun x t1)
-  | eval_fix : forall s f x t1,
-      eval s (trm_fix f x t1) s (val_fix f x t1)
-  | eval_app_args : forall s1 s2 s3 s4 t1 t2 v1 v2 r,
+Inductive eval1 : hheap D -> trm -> hheap D -> val -> Prop :=
+  | eval1_val : forall s v,
+      eval1 s (trm_val v) s v
+  | eval1_fun : forall s x t1,
+      eval1 s (trm_fun x t1) s (val_fun x t1)
+  | eval1_fix : forall s f x t1,
+      eval1 s (trm_fix f x t1) s (val_fix f x t1)
+  | eval1_app_args : forall s1 s2 s3 s4 t1 t2 v1 v2 r,
       (~ trm_is_val t1 \/ ~ trm_is_val t2) ->
-      eval s1 t1 s2 v1 ->
-      eval s2 t2 s3 v2 ->
-      eval s3 (trm_app v1 v2) s4 r ->
-      eval s1 (trm_app t1 t2) s4 r
-  | eval_app_fun : forall s1 s2 v1 v2 x t1 v,
+      eval1 s1 t1 s2 v1 ->
+      eval1 s2 t2 s3 v2 ->
+      eval1 s3 (trm_app v1 v2) s4 r ->
+      eval1 s1 (trm_app t1 t2) s4 r
+  | eval1_app_fun : forall s1 s2 v1 v2 x t1 v,
       v1 = val_fun x t1 ->
-      eval s1 (subst x v2 t1) s2 v ->
-      eval s1 (trm_app v1 v2) s2 v
-  | eval_app_fix : forall s1 s2 v1 v2 f x t1 v,
+      eval1 s1 (subst x v2 t1) s2 v ->
+      eval1 s1 (trm_app v1 v2) s2 v
+  | eval1_app_fix : forall s1 s2 v1 v2 f x t1 v,
       v1 = val_fix f x t1 ->
-      eval s1 (subst x v2 (subst f v1 t1)) s2 v ->
-      eval s1 (trm_app v1 v2) s2 v
-  | eval_seq : forall s1 s2 s3 t1 t2 v1 v,
-      eval s1 t1 s2 v1 ->
-      eval s2 t2 s3 v ->
-      eval s1 (trm_seq t1 t2) s3 v
-  | eval_let : forall s1 s2 s3 x t1 t2 v1 r,
-      eval s1 t1 s2 v1 ->
-      eval s2 (subst x v1 t2) s3 r ->
-      eval s1 (trm_let x t1 t2) s3 r
-  | eval_if : forall s1 s2 b v t1 t2,
-      eval s1 (if b then t1 else t2) s2 v ->
-      eval s1 (trm_if (val_bool b) t1 t2) s2 v
-  | eval_unop : forall op m v1 v,
+      eval1 s1 (subst x v2 (subst f v1 t1)) s2 v ->
+      eval1 s1 (trm_app v1 v2) s2 v
+  | eval1_seq : forall s1 s2 s3 t1 t2 v1 v,
+      eval1 s1 t1 s2 v1 ->
+      eval1 s2 t2 s3 v ->
+      eval1 s1 (trm_seq t1 t2) s3 v
+  | eval1_let : forall s1 s2 s3 x t1 t2 v1 r,
+      eval1 s1 t1 s2 v1 ->
+      eval1 s2 (subst x v1 t2) s3 r ->
+      eval1 s1 (trm_let x t1 t2) s3 r
+  | eval1_if : forall s1 s2 b v t1 t2,
+      eval1 s1 (if b then t1 else t2) s2 v ->
+      eval1 s1 (trm_if (val_bool b) t1 t2) s2 v
+  | eval1_unop : forall op m v1 v,
       evalunop op v1 v ->
-      eval m (op v1) m v
-  | eval_binop : forall op m v1 v2 v,
+      eval1 m (op v1) m v
+  | eval1_binop : forall op m v1 v2 v,
       evalbinop op v1 v2 v ->
-      eval m (op v1 v2) m v
-  | eval_ref : forall s v p,
+      eval1 m (op v1 v2) m v
+  | eval1_ref : forall s v p,
       ~ Fmap.indom s (p, d) ->
-      eval s (val_ref v) (Fmap.update s (p, d) v) (val_loc p)
-  | eval_get : forall s p v,
+      eval1 s (val_ref v) (Fmap.update s (p, d) v) (val_loc p)
+  | eval1_get : forall s p v,
       Fmap.indom s (p, d) ->
       v = Fmap.read s (p, d) ->
-      eval s (val_get (val_loc p)) s v
-  | eval_set : forall s p v,
+      eval1 s (val_get (val_loc p)) s v
+  | eval1_set : forall s p v,
       Fmap.indom s (p, d) ->
-      eval s (val_set (val_loc p) v) (Fmap.update s (p, d) v) val_unit
-  | eval_free : forall s p,
+      eval1 s (val_set (val_loc p) v) (Fmap.update s (p, d) v) val_unit
+  | eval1_free : forall s p,
       Fmap.indom s (p, d) ->
-      eval s (val_free (val_loc p)) (Fmap.remove s (p, d)) val_unit.
+      eval1 s (val_free (val_loc p)) (Fmap.remove s (p, d)) val_unit.
 
-(** Specialized evaluation rules for addition and division, for avoiding the
-    indirection via [eval_binop] in the course. *)
+(** Specialized eval1uation rules for addition and division, for avoiding the
+    indirection via [eval1_binop] in the course. *)
 
-Lemma eval_add : forall s n1 n2,
-  eval s (val_add (val_int n1) (val_int n2)) s (val_int (n1 + n2)).
-Proof using. intros. applys eval_binop. applys evalbinop_add. Qed.
+Lemma eval1_add : forall s n1 n2,
+  eval1 s (val_add (val_int n1) (val_int n2)) s (val_int (n1 + n2)).
+Proof using. intros. applys eval1_binop. applys evalbinop_add. Qed.
 
-Lemma eval_div : forall s n1 n2,
+Lemma eval1_div : forall s n1 n2,
   n2 <> 0 ->
-  eval s (val_div (val_int n1) (val_int n2)) s (val_int (Z.quot n1 n2)).
-Proof using. intros. applys eval_binop. applys* evalbinop_div. Qed.
+  eval1 s (val_div (val_int n1) (val_int n2)) s (val_int (Z.quot n1 n2)).
+Proof using. intros. applys eval1_binop. applys* evalbinop_div. Qed.
 
-(** [eval_like t1 t2] asserts that [t2] evaluates like [t1]. In particular,
+(** [eval1_like t1 t2] asserts that [t2] eval1uates like [t1]. In particular,
     this relation hold whenever [t2] reduces in small-step to [t1]. *)
 
-Definition eval_like (t1 t2:trm) : Prop :=
-  forall s s' v, eval s t1 s' v -> eval s t2 s' v.
+Definition eval1_like (t1 t2:trm) : Prop :=
+  forall s s' v, eval1 s t1 s' v -> eval1 s t2 s' v.
 
-End eval.
+End eval1.
 
+(* Section eval. *)
+
+Definition fset A := fmap A unit.
+
+Inductive eval (D : Type) : fset D -> hheap D -> (D -> trm) -> hheap D -> fmap D val -> Prop :=
+  | eval_empty h hv  : eval empty h hv h empty
+  | eval_step  h1 h2 h3 ht d v hv fs : 
+    ~ Fmap.indom fs d        ->
+      eval1 d h1 (ht d) h2 v ->
+      eval fs h2 ht h3 hv    ->
+        eval (Fmap.update fs d tt) h1 ht h3 (Fmap.update hv d v).
+
+Definition eval_like D (fs : fset D) ht1 ht2 : Prop :=
+  forall s s' hv, eval fs s ht1 s' hv -> eval fs s ht2 s' hv.
+
+Definition local D (fs : fset D) (h : hheap D) :=
+  forall x d, indom h (x, d) -> indom fs d.
+
+Lemma remove_union_not_r  [A B : Type] [h1 h2 : fmap A B] [x : A] :
+  ~ indom h2 x -> 
+  remove h1 x \u h2 = remove (h1 \u h2) x.
+Proof.
+Admitted.
+
+Lemma eval1_frame D (d : D) t h1 h2 h fs v : 
+  local fs h -> 
+  ~ indom fs d ->
+  eval1 d h1 t h2 v -> 
+    eval1 d (h1 \+ h) t (h2 \+ h) v.
+Proof.
+  move=> l ?.
+  have ? : forall x, ~ indom h (x, d) by move=> x /l.
+  have ? : forall x s, ~ indom s (x, d) -> ~ indom (s \u h) (x, d).
+  { move=> *. rewrite* indom_union_eq. }
+  have ? : forall x s v, indom s (x, d) -> v = read s (x, d) -> v = read (s \u h) (x, d).
+  { move=> *. rewrite* read_union_l. }
+  have ? : forall x s, indom s (x, d) -> indom (s \u h) (x, d).
+  { move=> *. rewrite* indom_union_eq. }
+  elim=> *; rewrite -?update_union_not_r //; try by (econstructor; eauto).
+  rewrite remove_union_not_r //; by (econstructor; eauto).
+Qed.
+
+Lemma eval_hv_dom D (fs : fset D) ht h h' (hv : fmap D val) :
+  eval fs h ht h' hv ->
+  Fmap.indom hv = Fmap.indom fs.
+Proof.
+  intros ev; induction ev.
+  { apply fun_ext_1; introv.
+    unfold indom, map_indom; simpls.
+    applys* prop_ext. }
+  applys fun_ext_1; introv.
+  rewrite ?indom_update_eq IHev; eauto.
+Qed.
+
+
+
+Lemma fset_rect A : forall P : Type,
+  P -> 
+  (A -> P -> P) -> fset A -> P.
+Proof.
+Admitted.
+
+Lemma fset_rectE A (P : Type) (p : P) (f : A -> P -> P) :
+  (fset_rect p f empty = p) *
+  ((forall (a b : A) (p : P), f a (f b p) = f b (f a p)) ->
+    forall fs x, ~ Fmap.indom fs x -> fset_rect p f (update fs x tt) = f x (fset_rect p f fs)).
+Admitted.
+
+Lemma fset_ind A : forall P : fset A -> Prop,
+  P empty -> 
+  (forall fs x, P fs -> ~ Fmap.indom fs x -> P (update fs x tt)) -> forall fs, P fs.
+Proof.
+Admitted.
+
+Lemma evalE D fs (h h' : hheap D) ht hv : 
+  indom hv = indom fs ->
+  eval fs h ht h' hv =
+  (forall d, indom fs d -> eval1 d (proj h d) (ht d) (proj h' d) (read hv d)).
+Proof.
+Admitted.
+
+Lemma eval_seq D fs : forall s1 s2 s3 (ht1 ht2 : D -> trm) hv1 hv,
+  eval fs s1 ht1 s2 hv1 ->
+  eval fs s2 ht2 s3 hv ->
+  eval fs s1 (fun d => trm_seq (ht1 d) (ht2 d)) s3 hv.
+Proof.
+  move=> >; do 2? (move=>/[dup]/eval_hv_dom ? /[swap]).
+  rewrite ?evalE // => *.
+  by apply/eval1_seq; eauto.
+Qed.
+
+Lemma eval_let D fs : forall s1 s2 s3 (ht1 ht2 : D -> trm) (x : D -> var) hv1 hv,
+  eval fs s1 ht1 s2 hv1 ->
+  eval fs s2 (fun d => subst (x d) (read hv1 d) (ht2 d)) s3 hv ->
+  eval fs s1 (fun d => trm_let (x d) (ht1 d) (ht2 d)) s3 hv.
+Proof.
+  move=> >; do 2? (move=>/[dup]/eval_hv_dom ? /[swap]).
+  rewrite ?evalE// => *.
+  by apply/eval1_let; eauto.
+Qed.
+
+Lemma eval_if D fs :  forall s1 s2 (b : D -> bool) hv ht1 ht2,
+  eval fs s1 (fun d => if b d then ht1 d else ht2 d) s2 hv ->
+  eval fs s1 (fun d => trm_if (val_bool (b d)) (ht1 d) (ht2 d)) s2 hv.
+Proof.
+  move=> >; do 2? (move=>/[dup]/eval_hv_dom ?; try move/[swap]).
+  rewrite ?evalE// => *.
+  by apply/eval1_if; eauto.
+Qed.
+
+Lemma eval_app_fun D fs : forall s1 s2 hv1 hv2 (x : D -> var) ht1 hv,
+  (forall d, indom fs d -> hv1 d = val_fun (x d) (ht1 d)) ->
+  eval fs s1 (fun d => subst (x d) (hv2 d) (ht1 d)) s2 hv ->
+  eval fs s1 (fun d => trm_app (hv1 d) (hv2 d)) s2 hv.
+  move=> > ? /[dup]/eval_hv_dom ?.
+  rewrite ?evalE // => *.
+  by apply/eval1_app_fun; eauto.
+Qed.
+
+Lemma eval_app_fix D fs : forall s1 s2 hv1 hv2 (x f : D -> var) ht1 hv,
+  (forall d, indom fs d -> hv1 d = val_fix (f d) (x d) (ht1 d)) ->
+  eval fs s1 (fun d => subst (x d) (hv2 d) (subst (f d) (hv1 d) (ht1 d))) s2 hv ->
+  eval fs s1 (fun d => trm_app (hv1 d) (hv2 d)) s2 hv.
+  move=> > ? /[dup]/eval_hv_dom ?.
+  rewrite ?evalE// => *.
+  by apply/eval1_app_fix; eauto.
+Qed.
+
+Lemma eval_val D fs : forall s (hv : fmap D val),
+  indom hv = indom fs ->
+  eval fs s (fun d => trm_val (read hv d)) s hv.
+Proof.
+  move=> *.
+  rewrite evalE // => *.
+  exact/eval1_val.
+Qed.
+
+Lemma eval_fun D fs : forall (x : D -> var) ht1 hv s,
+  indom hv = indom fs ->
+  (forall d, indom hv d -> read hv d = val_fun (x d) (ht1 d)) ->
+  eval fs s (fun d => trm_fun (x d) (ht1 d)) s hv.
+Proof.
+  move=> > E1 E2.
+  rewrite evalE // => *; rewrite E2 ?E1 //.
+  exact/eval1_fun.
+Qed.
+
+Lemma eval_fix D fs : forall (f x : D -> var) ht1 hv s,
+  indom hv = indom fs ->
+  (forall d, indom hv d -> read hv d = val_fix (f d) (x d) (ht1 d)) ->
+  eval fs s (fun d => trm_fix (f d) (x d) (ht1 d)) s hv.
+Proof.
+  move=> > E1 E2.
+  rewrite evalE // => *; rewrite E2 ?E1 //.
+  exact/eval1_fix.
+Qed.
 
 (* ################################################################# *)
 (** * Heap Predicates *)
@@ -402,6 +579,9 @@ Definition hexists A (J:A->hhprop) : hhprop :=
 Definition hforall (A : Type) (J : A -> hhprop) : hhprop :=
   fun h => forall x, J x h.
 
+Definition hlocal (H : hhprop) (fs : fset D) :=
+  H ==> local fs.
+
 Notation "\[]" := (hempty)
   (at level 0) : hprop_scope.
 
@@ -436,6 +616,9 @@ Definition hwand (H1 H2 : hhprop) : hhprop :=
 Definition qwand A (Q1 Q2:A->hhprop) : hhprop :=
   \forall x, hwand (Q1 x) (Q2 x).
 
+Definition hstar_fset (fs : fset D) (f : D -> hhprop) : hhprop :=
+  fset_rect \[] (fun d H => f d \* H) fs.
+
 Notation "\[ P ]" := (hpure P)
   (at level 0, format "\[ P ]") : hprop_scope.
 
@@ -449,6 +632,13 @@ Notation "H1 \-* H2" := (hwand H1 H2)
 
 Notation "Q1 \--* Q2" := (qwand Q1 Q2)
   (at level 43) : hprop_scope.
+
+Reserved Notation "'\*_' ( i <- r ) F"
+  (at level 41, F at level 41, i, r at level 50,
+           format "'[' \*_ ( i  <-  r ) '/  '  F ']'").
+
+Notation "'\*_' ( i <- r ) F" :=
+  (hstar_fset r (fun i => F)) : nat_scope.
 
 (* ================================================================= *)
 (** ** Basic Properties of Separation Logic Operators *)
@@ -846,7 +1036,7 @@ Lemma hwand_inv : forall h1 h2 H1 H2,
 Proof using.
   introv M2 M1 D'. unfolds hwand. lets (H0&M3): hexists_inv M2.
   lets (h0&h3&P1&P3&D''&U): hstar_inv M3. lets (P4&E3): hpure_inv P3.
-  subst h2 h3. rewrite union_empty_r in *. applys P4. applys* hstar_intro.
+  subst h2 h3. rewrite union_empty_r in D' M3 M2 *. applys P4. applys* hstar_intro.
 Qed.
 
 (* ----------------------------------------------------------------- *)
@@ -967,6 +1157,127 @@ Module Export HS := LibSepSimpl.XsimplSetup(SepSimplArgs).
 
 Export SepSimplArgs.
 
+(* ----------------------------------------------------------------- *)
+(** *** Properties of [hlocal] *)
+
+Lemma hstar_fset_empty (f : D -> hhprop) :
+  hstar_fset empty f = \[].
+Proof.
+  by rewrite /hstar_fset fset_rectE.
+Qed.
+
+Lemma hstar_fset_update fs x (f : D -> hhprop) :
+  ~ Fmap.indom fs x ->
+  hstar_fset (update fs x tt) f = f x \* hstar_fset fs f.
+Proof.
+  move=> ?.
+  rewrite /hstar_fset fset_rectE //.
+  move=> *; by rewrite hstar_comm_assoc.
+Qed.
+
+
+Lemma hstar_fset_union fs1 fs2 (f : D -> hhprop) :
+  disjoint fs1 fs2 ->
+  hstar_fset (fs1 \u fs2) f = hstar_fset fs1 f \* hstar_fset fs2 f.
+Proof.
+Admitted.
+
+Lemma hstar_fset_eq fs (f1 f2 : D -> hhprop) :
+  (forall d, indom fs d -> f1 d = f2 d) ->
+  hstar_fset fs f1 = hstar_fset fs f2.
+Proof.
+Admitted.
+
+Lemma hstar_fset_emptys fs :
+  hstar_fset fs (fun _ => \[]) = \[].
+Proof.
+  elim/fset_ind: fs=> [|?? E ?].
+  { exact/hstar_fset_empty. }
+  rewrite hstar_fset_update // E; xsimpl.
+Qed.
+
+Lemma hstar_fset_hstar fs P Q: 
+  \*_(d <- fs) P d \* Q d = (\*_(d <- fs) P d) \* (\*_(d <- fs) Q d).
+Proof.
+  elim/fset_ind: fs=> [|?? E ?].
+  { rewrite ?hstar_fset_empty; xsimpl. }
+  rewrite ?hstar_fset_update // E; xsimpl.
+Qed.
+
+
+Lemma hstar_fset_pure fs P: 
+  \*_(d <- fs) \[P d] = \[forall d, indom fs d -> P d].
+Proof.
+  elim/fset_ind: fs=> [|??].
+  { rewrite hstar_fset_empty.
+    apply/fun_ext_1=> ?; apply/prop_ext; split.
+    { move->.
+      have p: (forall d, indom (empty : fset D) d -> P d) by [].
+      by exists p. }
+  by case. }
+  move=> E ?; rewrite hstar_fset_update // E.
+  apply/fun_ext_1=> x; apply/prop_ext; split.
+  { case=> ? [?] [][?] E1 [][?] E2 [].
+    eexists.
+    { move=> ?; rewrite indom_update_eq=> -[<-|]; eauto. }
+    subst. rewrite E1 E2 /hempty; autos~. }
+  case=> p ->; exists (empty : hheap D), (empty : hheap D); splits~.
+  all: eexists=> //*; apply/p; rewrite* indom_update_eq.
+Qed.
+
+Lemma hstar_fset_pure_hstar fs P H: 
+  \*_(d <- fs) \[P d] \* H d = \[forall d, indom fs d -> P d] \* \*_(d <- fs) H d.
+Proof. by rewrite hstar_fset_hstar hstar_fset_pure. Qed.
+
+(* ----------------------------------------------------------------- *)
+(** *** Properties of [hlocal] *)
+
+Lemma local_union h1 h2 (fs : fset D) :
+  local fs (h1 \u h2) = 
+  (local fs h1 /\ local fs h2).
+Proof.
+  apply/prop_ext; split=> l.
+  { split=> x d ?; apply/(l x); rewrite* indom_union_eq. }
+  move=> x d; by rewrite* indom_union_eq.
+Qed.
+
+Lemma hlocal_hsingle p x fs d: 
+  indom fs d ->
+  hlocal (p ~(d)~> x) fs.
+Proof. by move=> ?? -> ?? /[! indom_single_eq]-[?<-]. Qed.
+
+Lemma hlocal_hsingle_single p x d: 
+  hlocal (p ~(d)~> x) (single d tt).
+Proof. exact/hlocal_hsingle/indom_single. Qed.
+
+Lemma hlocal_hstar H1 H2 fs : 
+  hlocal H1 fs -> hlocal H2 fs ->
+  hlocal (H1 \* H2) fs.
+Proof.
+  move=> hl1 hl2 ? [?] [?] [/hl1 ?] [/hl2 ?] [_ ->].
+  by rewrite* local_union.
+Qed.
+
+Lemma hlocal_hempty fs : hlocal \[] fs.
+Proof. by move=> ? ->. Qed.
+
+Lemma hlocal_hpure P fs : hlocal \[P] fs.
+Proof. by move=> ? [?->]. Qed.
+
+Lemma hlocal_hstar_fset (P : D -> hhprop) fs1 fs2: 
+  (forall d, indom fs1 d -> hlocal (P d) fs2) ->
+    hlocal (\*_(d <- fs1) P d) fs2.
+Proof.
+  elim/fset_ind: fs1.
+  { rewrite hstar_fset_empty=> *; exact/hlocal_hempty. }
+  move=> fs d IHfs ? IN. rewrite hstar_fset_update //.
+  apply/hlocal_hstar/IHfs=> *; apply/IN; by rewrite* indom_update_eq.
+Qed.
+
+Lemma hlocal_hexists A fs (J : A -> _) :
+  (forall x, hlocal (J x) fs) -> hlocal (hexists J) fs.
+Proof. by move=> hl ? [? /hl]. Qed.
+
 (** From now on, all operators have opaque definitions. *)
 
 Global Opaque hempty hpure hstar hsingle hexists hforall
@@ -1078,7 +1389,7 @@ Ltac xaffine_core tt ::=
 Implicit Types P : Prop.
 Implicit Types d : D.
 Implicit Types H : hhprop.
-Implicit Types Q : val->hhprop.
+(* Implicit Types Q : val->hhprop. *)
 
 (* ================================================================= *)
 (** ** Evaluation Rules for Primitives in Separation Style *)
@@ -1092,19 +1403,19 @@ Hint Resolve indom_single : core.
 Lemma eval_ref_sep : forall s1 s2 v p d,
   s2 = Fmap.single (p, d) v ->
   Fmap.disjoint s2 s1 ->
-  eval d s1 (val_ref v) (Fmap.union s2 s1) (val_loc p).
+  eval1 d s1 (val_ref v) (Fmap.union s2 s1) (val_loc p).
 Proof using.
   introv -> D. forwards Dv: Fmap.indom_single p v.
-  rewrite <- Fmap.update_eq_union_single. applys~ eval_ref.
+  rewrite <- Fmap.update_eq_union_single. applys~ eval1_ref.
   { intros N. applys~ Fmap.disjoint_inv_not_indom_both D N. }
 Qed.
 
 Lemma eval_get_sep : forall s s2 p d v,
   s = Fmap.union (Fmap.single (p, d) v) s2 ->
-  eval d s (val_get (val_loc p)) s v.
+  eval1 d s (val_get (val_loc p)) s v.
 Proof using.
   introv ->. forwards Dv: Fmap.indom_single p v.
-  applys eval_get.
+  applys eval1_get.
   { applys~ Fmap.indom_union_l. }
   { rewrite~ Fmap.read_union_l. rewrite~ Fmap.read_single. }
 Qed.
@@ -1113,10 +1424,10 @@ Lemma eval_set_sep : forall s1 s2 h2 p d w v,
   s1 = Fmap.union (Fmap.single (p, d) w) h2 ->
   s2 = Fmap.union (Fmap.single (p, d) v) h2 ->
   Fmap.disjoint (Fmap.single (p, d) w) h2 ->
-  eval d s1 (val_set (val_loc p) v) s2 val_unit.
+  eval1 d s1 (val_set (val_loc p) v) s2 val_unit.
 Proof using.
   introv -> -> D. forwards Dv: Fmap.indom_single p w.
-  applys_eq eval_set.
+  applys_eq eval1_set.
   { rewrite~ Fmap.update_union_l. fequals.
     rewrite~ Fmap.update_single. }
   { applys~ Fmap.indom_union_l. }
@@ -1125,15 +1436,32 @@ Qed.
 Lemma eval_free_sep : forall s1 s2 v p d,
   s1 = Fmap.union (Fmap.single (p, d) v) s2 ->
   Fmap.disjoint (Fmap.single (p, d) v) s2 ->
-  eval d s1 (val_free p) s2 val_unit.
+  eval1 d s1 (val_free p) s2 val_unit.
 Proof using.
   introv -> D. forwards Dv: Fmap.indom_single p v.
-  applys_eq eval_free.
+  applys_eq eval1_free.
   { rewrite~ Fmap.remove_union_single_l.
     intros Dl. applys Fmap.disjoint_inv_not_indom_both D Dl.
     applys Fmap.indom_single. }
   { applys~ Fmap.indom_union_l. }
 Qed.
+
+Lemma local_partition h d :
+  exists h1 h2,
+    local (single d tt) h1 /\
+    disjoint h1 h2         /\ 
+    h = h1 \u h2.
+Admitted.
+
+Lemma eval1_local (d : D) hd h h' t v :
+  local (single d tt) hd ->
+  disjoint hd h ->
+  eval1 d (hd \u h) t h' v -> 
+  exists hd', 
+    local (single d tt) hd' /\
+    h' = hd' \u h.
+Admitted.
+
 
 (* ================================================================= *)
 (** ** Hoare Reasoning Rules *)
@@ -1141,11 +1469,83 @@ Qed.
 (* ################################################################# *)
 (** * Definition of total correctness Hoare Triples. *)
 
-Definition hhoare (p : D -> bool) (t:trm) (H:hhprop) (Q:(D->val)->hhprop) :=
+(* From mathcomp Require Import ssreflect. *)
+
+Definition hhoare (fs : fset D) (ht : D -> trm) (H : hhprop) (Q: fmap D val -> hhprop) :=
   forall h, H h -> 
-    exists h' (v : D -> val), 
-      forall d, p d ->
-        eval d (proj d h) t (proj d h') (v d) /\ Q v h'.
+    exists h' hv, 
+        eval fs h ht h' hv /\ Q hv h'.
+
+Lemma eval_eq (fs : fset D) (ht1 ht2 : D -> trm) h h' hv : 
+  (forall d, Fmap.indom fs d -> ht1 d = ht2 d) ->
+  eval fs h ht1 h' hv -> eval fs h ht2 h' hv.
+Proof.
+  introv eq ev; induction ev; try constructor.
+  econstructor; eauto.
+  { rewrite* <-eq. rewrite indom_update_eq; eauto. }
+  applys IHev. introv ?. applys eq.
+  rewrite indom_update_eq; eauto.
+Qed.
+
+Lemma hhoare_eq (fs : fset D) (ht1 ht2 : D -> trm) H (Q: fmap D val -> hhprop) : 
+  (forall d, Fmap.indom fs d -> ht1 d = ht2 d) ->
+  hhoare fs ht1 H Q -> hhoare fs ht2 H Q.
+Proof.
+  intros eq hh ? [h' [hv [ev ?]]]%hh.
+  exists h', hv; splits~; applys~ eval_eq.
+Qed.
+
+Lemma disj_singleE (A B : Type) (h : fmap A B) (x : A) (v : B) :
+  disjoint h (single x v) = ~ indom h x.
+Admitted.
+
+Lemma eval_cup (fs1 fs2 : fset D) ht h1 h2 h3 hv1 hv2 : 
+  disjoint fs1 fs2 ->
+  eval fs1 h1 ht h2 hv1 ->
+  eval fs2 h2 ht h3 hv2 ->
+    eval (fs1 \u fs2) h1 ht h3 (hv1 \u hv2).
+Proof.
+  intros disj ev.
+  induction ev.
+  { rewrite ?Fmap.union_empty_l; auto. }
+  intros ?.
+  unfold update in disj.
+  rewrite Fmap.disjoint_union_eq_l disj_singleE in disj.  
+  destruct disj.
+  rewrite <-?update_union_not_r; eauto.
+  { econstructor; eauto; rewrite* indom_union_eq. }
+  erewrite eval_hv_dom; try apply H1; auto.
+Qed.
+
+Lemma hhoare_union (fs1 fs2 : fset D) ht H (Q Q': fmap D val -> hhprop) : 
+  disjoint fs1 fs2 ->
+  hhoare fs1 ht H Q ->
+  (forall hv, 
+    indom hv = indom fs1 ->
+    hhoare fs2 ht (Q hv) (fun hv' => Q' (hv \u hv'))) -> 
+    hhoare (fs1 \u fs2) ht H Q'.
+Proof.
+  intros disj hh1 hh2 ? [h1[ hv1 [? Qh1]]]%hh1.
+  destruct (hh2 hv1 (eval_hv_dom H0) _ Qh1) as [h2 [hv2 [ev ?]]].
+  exists h2, (hv1 \u hv2); split~.
+  applys eval_cup; eauto.
+Qed.
+
+Transparent hempty.
+
+Lemma hhoare_hv_dom fs H Q ht : 
+  hhoare fs ht H (fun hv => \[indom hv = indom fs] \-* Q hv) ->
+  hhoare fs ht H Q.
+Proof.
+  move=> hh ? /hh [h'][hv][ev IQ].
+  do ? eexists; eauto.
+  move/eval_hv_dom: ev=> ?.
+  case: IQ=> ? [?][?][?][][]/[swap]->/[swap].
+  by case=> _ ->; apply; do ? eexists; eauto.
+Qed.
+
+Opaque hempty.
+
 
 Section Hoare1.
 
@@ -1153,7 +1553,7 @@ Context (d : D).
 
 Definition hoare (t:trm) (H:hhprop) (Q:val->hhprop) :=
   forall h, H h -> 
-    exists h' v, eval d h t h' v /\ Q v h'.
+    exists h' v, eval1 d h t h' v /\ Q v h'.
 
 (** Structural rules for [hoare] triples. *)
 
@@ -1167,14 +1567,38 @@ Proof using.
   exists h' v. splits~. { applys* MQ. }
 Qed.
 
+Lemma hhoare_conseq : forall ht H' hQ' H hQ fs,
+  hhoare fs ht H' hQ' ->
+  H ==> H' ->
+  hQ' ===> hQ ->
+  hhoare fs ht H hQ.
+Proof using.
+  introv M MH MQ HF. forwards (h'&v&R&K): M h. { applys* MH. }
+  exists h' v. splits~. { applys* MQ. }
+Qed.
+
+
 Lemma hoare_hexists : forall t (A:Type) (J:A->hhprop) Q,
   (forall x, hoare t (J x) Q) ->
   hoare t (hexists J) Q.
 Proof using. introv M. intros h (x&Hh). applys M Hh. Qed.
 
+Lemma hhoare_hexists : forall ht (A:Type) (J:A->hhprop) Q fs,
+  (forall x, hhoare fs ht (J x) Q) ->
+  hhoare fs ht (hexists J) Q.
+Proof using. introv M. intros h (x&Hh). applys M Hh. Qed.
+
 Lemma hoare_hpure : forall t (P:Prop) H Q,
   (P -> hoare t H Q) ->
   hoare t (\[P] \* H) Q.
+Proof using.
+  introv M. intros h (h1&h2&M1&M2&D&U). destruct M1 as (M1&HP).
+  lets E: hempty_inv HP. subst. rewrite Fmap.union_empty_l. applys~ M.
+Qed.
+
+Lemma hhoare_hpure : forall ht (P:Prop) H Q fs,
+  (P -> hhoare fs ht H Q) ->
+  hhoare fs ht (\[P] \* H) Q.
 Proof using.
   introv M. intros h (h1&h2&M1&M2&D&U). destruct M1 as (M1&HP).
   lets E: hempty_inv HP. subst. rewrite Fmap.union_empty_l. applys~ M.
@@ -1190,17 +1614,33 @@ Proof using.
   applys* himpl_hforall_l.
 Qed.
 
+
+Lemma hhoare_hforall : forall ht (A:Type) (J:A->hhprop) Q fs,
+  (exists x, hhoare fs ht (J x) Q) ->
+  hhoare fs ht (hforall J) Q.
+Proof using.
+  introv (x&M) Hh. applys* hhoare_conseq (hforall J) Q M.
+  applys* himpl_hforall_l.
+Qed.
+
 Lemma hoare_hwand_hpure_l : forall t (P:Prop) H Q,
   P ->
   hoare t H Q ->
   hoare t (\[P] \-* H) Q.
 Proof using. introv HP M. rewrite* hwand_hpure_l. Qed.
 
+Lemma hhoare_hwand_hpure_l : forall ht (P:Prop) H Q fs,
+  P ->
+  hhoare fs ht H Q ->
+  hhoare fs ht (\[P] \-* H) Q.
+Proof using. introv HP M. rewrite* hwand_hpure_l. Qed.
+
+
 (** Reasoning rules for [hoare] triples. These rules follow directly
     from the big-step evaluation rules. *)
 
 Lemma hoare_eval_like : forall t1 t2 H Q,
-  eval_like d t1 t2 ->
+  eval1_like d t1 t2 ->
   hoare t1 H Q ->
   hoare t2 H Q.
 Proof using.
@@ -1208,12 +1648,32 @@ Proof using.
   exists s' v. split. { applys E R1. } { applys K1. }
 Qed.
 
+Lemma hhoare_eval_like : forall ht1 ht2 H Q fs,
+  eval_like fs ht1 ht2 ->
+  hhoare fs ht1 H Q ->
+  hhoare fs ht2 H Q.
+Proof using.
+  introv E M1 K0. forwards (s'&v&R1&K1): M1 K0.
+  exists s' v. split. { applys E R1. } { applys K1. }
+Qed.
+
+
 Lemma hoare_val : forall v H Q,
   H ==> Q v ->
   hoare (trm_val v) H Q.
 Proof using.
   introv M. intros h K. exists h v. splits.
-  { applys eval_val. }
+  { applys eval1_val. }
+  { applys* M. }
+Qed.
+
+Lemma hhoare_val :  forall (hv : fmap D val) H Q fs,
+  H ==> Q hv ->
+  indom hv = indom fs ->
+  hhoare fs (fun d => trm_val (read hv d)) H Q.
+Proof using.
+  introv M DE. intros h K. exists h hv. splits.
+  { applys* eval_val. }
   { applys* M. }
 Qed.
 
@@ -1222,7 +1682,18 @@ Lemma hoare_fun : forall x t1 H Q,
   hoare (trm_fun x t1) H Q.
 Proof using.
   introv M. intros h K. exists h __. splits.
-  { applys~ eval_fun. }
+  { applys~ eval1_fun. }
+  { applys* M. }
+Qed.
+
+Lemma hhoare_fun : forall (x : D -> var) ht1 H Q fs hv,
+  indom hv = indom fs -> 
+  (forall d, indom hv d -> read hv d = val_fun (x d) (ht1 d)) ->
+  H ==> Q hv ->
+  hhoare fs (fun d => trm_fun (x d) (ht1 d)) H Q.
+Proof using.
+  move=> >. intros ?? M h K. exists h __. splits.
+  { applys* eval_fun. }
   { applys* M. }
 Qed.
 
@@ -1231,7 +1702,18 @@ Lemma hoare_fix : forall f x t1 H Q,
   hoare (trm_fix f x t1) H Q.
 Proof using.
   introv M. intros h K. exists h __. splits.
-  { applys~ eval_fix. }
+  { applys~ eval1_fix. }
+  { applys* M. }
+Qed.
+
+Lemma hhoare_fix : forall (f x : D -> var) ht1 H Q fs hv,
+  indom hv = indom fs -> 
+  (forall d, indom hv d -> read hv d = val_fix (f d) (x d) (ht1 d)) ->
+  H ==> Q hv ->
+  hhoare fs (fun d => trm_fix (f d) (x d) (ht1 d)) H Q.
+Proof using.
+  move=> >. intros ?? M h K. exists h __. splits.
+  { applys* eval_fix. }
   { applys* M. }
 Qed.
 
@@ -1239,7 +1721,16 @@ Lemma hoare_app_fun : forall v1 v2 x t1 H Q,
   v1 = val_fun x t1 ->
   hoare (subst x v2 t1) H Q ->
   hoare (trm_app v1 v2) H Q.
-Proof using.
+Proof.
+  introv E M. intros s K0. forwards (s'&v&R1&K1): (rm M) K0.
+  exists s' v. splits. { applys eval1_app_fun E R1. } { applys K1. }
+Qed.
+
+Lemma hhoare_app_fun : forall hv1 hv2 (x : D -> var) ht1 H Q fs,
+  (forall d, indom fs d -> hv1 d = val_fun (x d) (ht1 d)) ->
+  hhoare fs (fun d => subst (x d) (hv2 d) (ht1 d)) H Q ->
+  hhoare fs (fun d => trm_app (hv1 d) (hv2 d)) H Q.
+Proof.
   introv E M. intros s K0. forwards (s'&v&R1&K1): (rm M) K0.
   exists s' v. splits. { applys eval_app_fun E R1. } { applys K1. }
 Qed.
@@ -1250,6 +1741,15 @@ Lemma hoare_app_fix : forall v1 v2 f x t1 H Q,
   hoare (trm_app v1 v2) H Q.
 Proof using.
   introv E M. intros s K0. forwards (s'&v&R1&K1): (rm M) K0.
+  exists s' v. splits. { applys eval1_app_fix E R1. } { applys K1. }
+Qed.
+
+Lemma hhoare_app_fix : forall hv1 hv2 (f x : D -> var) ht1 H Q fs,
+  (forall d, indom fs d -> hv1 d = val_fix (f d) (x d) (ht1 d)) ->
+  hhoare fs (fun d => subst (x d) (hv2 d) (subst (f d) (hv1 d) (ht1 d))) H Q ->
+  hhoare fs (fun d => trm_app (hv1 d) (hv2 d)) H Q.
+Proof using.
+  introv E M. intros s K0. forwards (s'&v&R1&K1): (rm M) K0.
   exists s' v. splits. { applys eval_app_fix E R1. } { applys K1. }
 Qed.
 
@@ -1257,6 +1757,17 @@ Lemma hoare_seq : forall t1 t2 H Q H1,
   hoare t1 H (fun r => H1) ->
   hoare t2 H1 Q ->
   hoare (trm_seq t1 t2) H Q.
+Proof using.
+  introv M1 M2 Hh.
+  forwards* (h1'&v1&R1&K1): (rm M1).
+  forwards* (h2'&v2&R2&K2): (rm M2).
+  exists h2' v2. splits~. { applys~ eval1_seq R1 R2. }
+Qed.
+
+Lemma hhoare_seq : forall ht1 ht2 H Q H1 fs,
+  hhoare fs ht1 H (fun hr => H1) ->
+  hhoare fs ht2 H1 Q ->
+  hhoare fs (fun d => trm_seq (ht1 d) (ht2 d)) H Q.
 Proof using.
   introv M1 M2 Hh.
   forwards* (h1'&v1&R1&K1): (rm M1).
@@ -1272,6 +1783,17 @@ Proof using.
   introv M1 M2 Hh.
   forwards* (h1'&v1&R1&K1): (rm M1).
   forwards* (h2'&v2&R2&K2): (rm M2).
+  exists h2' v2. splits~. { applys~ eval1_let R2. }
+Qed.
+
+Lemma hhoare_let : forall (x : D -> var) ht1 ht2 H Q Q1 fs,
+  hhoare fs ht1 H Q1 ->
+  (forall hv1, hhoare fs (fun d => subst (x d) (read hv1 d) (ht2 d)) (Q1 hv1) Q) ->
+  hhoare fs (fun d => trm_let (x d) (ht1 d) (ht2 d)) H Q.
+Proof using.
+  introv M1 M2 Hh.
+  forwards* (h1'&v1&R1&K1): (rm M1).
+  forwards* (h2'&v2&R2&K2): (rm M2).
   exists h2' v2. splits~. { applys~ eval_let R2. }
 Qed.
 
@@ -1280,8 +1802,17 @@ Lemma hoare_if : forall (b:bool) t1 t2 H Q,
   hoare (trm_if b t1 t2) H Q.
 Proof using.
   introv M1. intros h Hh. forwards* (h1'&v1&R1&K1): (rm M1).
+  exists h1' v1. splits~. { applys* eval1_if. }
+Qed.
+
+Lemma hhoare_if : forall (b: D -> bool) ht1 ht2 H Q fs,
+  hhoare fs (fun d => if b d then ht1 d else ht2 d) H Q ->
+  hhoare fs (fun d => trm_if (b d) (ht1 d) (ht2 d)) H Q.
+Proof using.
+  introv M1. intros h Hh. forwards* (h1'&v1&R1&K1): (rm M1).
   exists h1' v1. splits~. { applys* eval_if. }
 Qed.
+
 
 (** Operations on the state. *)
 
@@ -1352,7 +1883,7 @@ Lemma hoare_unop : forall v H op v1,
     (fun r => \[r = v] \* H).
 Proof using.
   introv R. intros h Hh. exists h v. splits.
-  { applys* eval_unop. }
+  { applys* eval1_unop. }
   { rewrite* hstar_hpure_l. }
 Qed.
 
@@ -1363,7 +1894,7 @@ Lemma hoare_binop : forall v H op v1 v2,
     (fun r => \[r = v] \* H).
 Proof using.
   introv R. intros h Hh. exists h v. splits.
-  { applys* eval_binop. }
+  { applys* eval1_binop. }
   { rewrite* hstar_hpure_l. }
 Qed.
 
@@ -1377,8 +1908,306 @@ Proof.
   dup.
   { intros. applys hoare_binop. applys evalbinop_add. }
   { intros. intros s K0. exists s (val_int (n1 + n2)). split.
-    { applys eval_binop. applys evalbinop_add. }
+    { applys eval1_binop. applys evalbinop_add. }
     { rewrite* hstar_hpure_l. } }
+Qed.
+
+Lemma hoare_frame H (P : hhprop) Q t fs: 
+  hlocal H fs ->
+  ~ indom fs d ->
+  hoare t P Q -> 
+  hoare t (P \* H) (fun v => Q v \* H).
+Proof.
+  move=> hl ? ht ? [Ph][Hh] [/[dup]?/ht] [h'][v] [ev ?].
+  case=> /[dup]/hl lfs ? [disj]->.
+  exists (h' \u Hh), v; split*.
+  { apply/eval1_frame; eauto. }
+  exists h', Hh; splits=> //.
+  case: (local_partition Ph d)=> Phd [Phnd] [?][?] E; subst.
+  case/eval1_local: ev=> // h'd [lh'] ->.
+  move: disj; rewrite ?disjoint_union_eq_l=> -[]; split=> //.
+  apply/disjoint_of_not_indom_both=> -[??] /lfs /[swap] /lh'.
+  by rewrite indom_single_eq=> <-.
+Qed.
+
+
+End Hoare1.
+
+Lemma indom_update {A B : Type} {fm : fmap A B} {x y} :
+  Fmap.indom (update fm x y) x.
+Admitted.
+
+Lemma update_neq {A B : Type} {fm : fmap A B} {x y z} `{Inhab B} :
+  z <> x -> 
+  read (update fm x y) z = read fm z.
+Admitted.
+
+Lemma update_eq {A B : Type} {fm : fmap A B} {x y} `{Inhab B} :
+  read (update fm x y) x = y.
+Admitted.
+
+Lemma update_empty {A B : Type} {x : A} {y : B} :
+  single x y = update empty x y.
+Admitted.
+
+Lemma indom_single {A B D : Type} {x : A} {y : B} (fm : fmap A D) `{Inhab D} :
+  indom fm = indom (single x y) -> 
+  fm = single x (read fm x).
+Admitted.
+
+Lemma update_update {A B : Type} {x z : A} {y w : B} (fm : fmap A B) :
+  x <> z ->
+    update (update fm x y) z w = 
+    update (update fm z w) x y.
+Proof.
+Admitted.
+
+Lemma fmapE'  {A B : Type} (fm1 fm2 : fmap A B) `{Inhab B} : 
+  (fm1 = fm2) <-> (forall x, read fm1 x = read fm2 x).
+Proof.
+Admitted.
+
+Lemma fmapE  {A B : Type} (fm1 fm2 : fmap A B) `{Inhab B} : 
+  (fm1 = fm2) = (forall x, indom (fm1 \u fm2) x -> read fm1 x = read fm2 x).
+Proof.
+Admitted.
+
+Lemma fmap0E A B (fm : fmap A B) `{Inhab B} : 
+  (fm = empty) = (forall x, indom fm x -> read fm x = arbitrary).
+Proof.
+Admitted.
+
+Lemma hhoare_update Q' H Q ht fs d :
+  ~ Fmap.indom fs d ->
+  hoare d (ht d) H Q' -> 
+  (forall v, hhoare fs ht (Q' v) (fun hv => Q (update hv d v))) ->
+  hhoare (update fs d tt) ht H Q.
+Proof.
+  move=> ? HH ?.
+  rewrite update_eq_union_single.
+  apply/(@hhoare_union _ _ _ _ (fun hv => Q' (read hv d))).
+  { exact/disjoint_single_of_not_indom. }
+  { move=> ? /HH[h'][v][ev ?].
+    exists h', (single d v); rewrite read_single; split*.
+    rewrite ?update_empty; econstructor; eauto; by constructor. }
+  move=> hv /indom_single->.
+  replace (fun hv' : fmap D val => Q (single d (read hv d) \u hv')) with 
+    (fun hv' : fmap D val => Q (update hv' d (read hv d)))=> //.
+  by rewrite read_single.
+Qed.
+
+Arguments hhoare_update _ {_}.
+
+Lemma hhoareP H Q ht fs : 
+  hhoare fs ht H Q <->
+  exists (f : fset D -> fmap D val -> hhprop),
+    (f empty empty = H) /\ 
+    (forall hv, f fs hv = Q hv) /\
+    (forall (fs' : fset D) d hv, 
+      indom fs d ->
+      ~ indom fs' d ->
+      hoare d (ht d) (f fs' hv) (fun v => f (update fs' d tt) (update hv d v))).
+Proof.
+  elim/fset_ind: fs H Q.
+  { move=> ??.
+    split. { admit. }
+    case=> f [<-][/(_ empty)] QE _.
+    move=> h /[! QE]; exists h, (@empty D val); split*.
+    by constructor. }
+  move=> fs x IHfs NIND H Q.
+  split. { admit. }
+  case=> f [<-] [QE] h1.
+  apply/(hhoare_update (fun v => f (single x tt) (single x v)))=> //.
+  { rewrite update_empty.
+    replace (fun v => f (update empty x tt) (single x v)) with 
+      (fun v => f (update empty x tt) (update empty x v))=> //.
+    { apply/(h1 _ x)=> //; exact/indom_update. }
+    apply/fun_ext_1=> ?; congr f. 
+    by rewrite update_empty. }
+  move=> v; apply/(IHfs _ _).
+  exists (fun fs hv => f (update fs x tt) (update hv x v)); splits*.
+  { by rewrite ?update_empty. }
+  move=> fs' d hv.
+  case: (prop_inv (x = d))=> [<- /NIND //|???].
+  replace (fun v0 => f (update (update fs' d tt) x tt) (update (update hv d v0) x v)) with 
+    (fun v0 => f (update (update fs' x tt) d tt) (update (update hv x v) d v0)).
+  { apply/h1; rewrite* indom_update_eq. }
+  apply/fun_ext_1=> ?. rewrite update_update //; congr f; exact/update_update.
+Admitted.
+
+Coercion read : fmap >-> Funclass.
+
+Definition diff (fs1 fs2 : fset D) : fset D. Admitted.
+
+Notation "fs1 '\-' fs2" := (diff fs1 fs2) (at level 20, right associativity).
+
+Lemma diff0 fs: fs \- empty = fs.  Admitted.
+Lemma diffxx fs: fs \- fs = empty.  Admitted.
+
+Lemma diff_indom fs1 fs2 x:
+  indom (fs1 \- fs2) x = (indom fs1 x /\ ~ indom fs2 x).
+Admitted.
+
+Lemma diff_upd d fs1 fs2 : 
+  indom fs1 d ->
+  fs1 \- fs2 = update (fs1 \- update fs2 d tt) d tt.
+Admitted.
+
+Arguments diff_upd : clear implicits.
+
+Lemma hoare_Q_eq d t H Q1 Q2 :
+  (forall v, Q1 v = Q2 v) -> 
+  hoare d t H Q1 = hoare d t H Q2.
+Admitted.
+
+Lemma hlocal_subset fs1 fs2 H :
+  (forall x, indom fs1 x -> indom fs2 x) ->
+  hlocal H fs1 -> hlocal H fs2.
+Admitted.
+
+Arguments hlocal_subset _ {_}.
+
+Lemma hhoare_hstar_fset H (P : D -> hhprop) (Q : D -> val -> hhprop) fs ht :
+  (forall d, hlocal (P d) (single d tt)) ->
+  (forall d v, hlocal (Q d v) (single d tt)) ->
+  (forall d, indom fs d -> 
+      hoare d (ht d) (P d \* H) (fun v => Q d v \* H)) ->
+  hhoare fs ht ((\*_(d <- fs) P d) \* H) (fun hv => (\*_(d <- fs) Q d (hv d)) \* H).
+Proof.
+  move=> l l2 h1. 
+  apply/hhoareP.
+  set f := fun fs' hv => 
+    ((\*_(d <- fs \- fs') P d) \* 
+    H) \*
+    (\*_(d <- fs') Q d (hv d)).
+  exists f; splits; rewrite/f.
+  { rewrite diff0 hstar_fset_empty; xsimpl. }
+  { move=> ?; rewrite diffxx hstar_fset_empty; xsimpl. }
+  move=> fs' d' hv *.
+  replace (fun v =>
+    ((\*_(d <- fs \- update fs' d' tt) P d) \* H) \*
+    \*_(d <- update fs' d' tt) Q d (update hv d' v d)) with 
+    (fun v0 =>
+      (((\*_(d <- fs \- update fs' d' tt) P d) \* H) \* Q d' v0) \*
+      \*_(d <- fs') Q d (hv d)).
+  { eapply hoare_frame; eauto.
+    { apply/hlocal_hstar_fset=> x ?.
+      apply/(hlocal_subset (single x tt))/l2.
+      by move=> ? /[! indom_single_eq]<-. }
+    rewrite (diff_upd d') // hstar_fset_update.
+    { replace ((P d' \* _) \* H) with 
+       ((P d' \* H) \* \*_(d <- fs \- update fs' d' tt) P d) by xsimpl.
+      replace (fun v => (_ \* H) \* _) with 
+        (fun v => (Q d' v \* H) \* \*_(d <- fs \- update fs' d' tt) P d).
+      { apply/hoare_frame; auto.
+        apply/hlocal_hstar_fset=> x ?.
+        { apply/(hlocal_subset (single x tt))=> // ?.
+          rewrite indom_single_eq=><-; eauto. }
+        rewrite diff_indom.
+        rewrite* indom_update_eq. }
+      apply/fun_ext_1. xsimpl. }
+    rewrite diff_indom; rewrite* indom_update_eq. }
+  apply/fun_ext_1=> v.
+  rewrite hstar_fset_update //.
+  under (@hstar_fset_eq fs' (fun _ => Q _ (update _ _ _ _))).
+  { move=> ??; rewrite update_neq; first over.
+    by move=> ?; subst. }
+  rewrite update_eq; xsimpl.
+Qed.
+
+Ltac hlocal := 
+  repeat (intros; 
+  match goal with 
+  | |- hlocal (_ \* _) _ => apply hlocal_hstar
+  | |- hlocal \[] _    => apply hlocal_hempty
+  | |- hlocal (hexists _) _ => apply hlocal_hexists
+  | |- hlocal (hsingle _ _ _) (single _ _) => apply hlocal_hsingle_single
+  | |- hlocal (hpure _) _ => apply hlocal_hpure
+  end).
+
+Hint Extern 1 (hlocal _ _) => hlocal.
+
+Lemma hhoare_ref : forall H (f : D -> val) fs,
+  hhoare fs (fun d => val_ref (f d))
+    H
+    (fun hr => (\*_(d <- fs) \exists p, \[hr d = val_loc p] \* p ~(d)~> f d) \* H).
+Proof.
+  intros.
+  replace H with ((\*_(_ <- fs) \[]) \* H) at 1; last (rewrite hstar_fset_emptys; xsimpl).
+  apply (hhoare_hstar_fset _ (fun d v => \exists p, \[v = _] \* _))=> *; autos~.
+  replace (\[] \* H) with H by xsimpl.
+  exact/hoare_ref.
+Qed.
+
+Lemma hhoare_get : forall H (v : D -> val) (p : D -> loc) fs,
+  hhoare fs (fun d => val_get (p d))
+    ((\*_(d <- fs) p d ~(d)~> v d) \* H)
+    (fun hr => 
+      \[forall d, indom fs d -> hr d = v d] \* 
+      (\*_(d <- fs) p d ~(d)~> v d) \* H).
+Proof using.
+  intros.
+  apply/hhoare_conseq=> [||?]; [|eauto|]; first last.
+  { rewrite -hstar_assoc -hstar_fset_pure_hstar=> ?. exact. }
+  apply (hhoare_hstar_fset _ (fun d v => \[v = _] \* _)); autos~.
+  move=> d ?. 
+  apply/hoare_conseq; by [apply hoare_get|eauto|xsimpl].
+Qed.
+
+Lemma hhoare_set : forall H (w : D -> val) (v : D -> val) (p : D -> loc) fs,
+  hhoare fs (fun d => val_set (val_loc (p d)) (v d))
+    ((\*_(d <- fs) p d ~(d)~> w d) \* H)
+    (fun hr => \[forall d, indom fs d -> hr d = val_unit] \* (\*_(d <- fs) p d ~(d)~> v d) \* H).
+Proof using.
+  intros.
+  apply/hhoare_conseq=> [||?]; [|eauto|]; first last.
+  { rewrite -hstar_assoc -hstar_fset_pure_hstar=> ?. exact. }
+  apply (hhoare_hstar_fset _ (fun d v => \[v = _] \* _)); autos~.
+  move=> d ?. 
+  apply/hoare_conseq; by [apply hoare_set|eauto|xsimpl].
+Qed.
+
+Lemma hhoare_free : forall H (v : D -> val) (p : D -> loc) fs,
+  hhoare fs (fun d => val_free (val_loc (p d)))
+    ((\*_(d <- fs) p d ~(d)~> v d) \* H)
+    (fun hr => \[forall d, indom fs d -> hr d = val_unit] \* H).
+Proof using.
+  intros.
+  apply/hhoare_conseq=> [||?]; [|eauto|]; first last.
+  { rewrite -hstar_fset_pure=> ?. exact. }
+  apply (hhoare_hstar_fset _ (fun d v => \[v = _])); autos~.
+  move=> d ?. 
+  apply/hoare_conseq; by [apply hoare_free|eauto|xsimpl].
+Qed.
+
+Lemma hhoare_unop : forall (v : D -> val) H (op : D -> prim) (v1 : D -> val) fs,
+  (forall d, indom fs d -> evalunop (op d) (v1 d) (v d)) ->
+  hhoare fs (fun d => (op d) (v1 d))
+    H
+    (fun hr => \[forall d, indom fs d -> hr d = v d] \* H).
+Proof using.
+  intros.
+  replace H with ((\*_(_ <- fs) \[]) \* H) at 1; last (rewrite hstar_fset_emptys; xsimpl).
+  apply/hhoare_conseq=> [||?]; [|eauto|]; first last.
+  { rewrite -hstar_fset_pure=> ?. exact. }
+  apply (hhoare_hstar_fset _ (fun d v => \[v = _])); autos~.
+  move=> d ?. 
+  apply/hoare_conseq; [apply hoare_unop|eauto|xsimpl]; by eauto.
+Qed.
+
+Lemma hhoare_binop :  forall (v : D -> val) H (op : D -> prim) (v1 v2 : D -> val) fs,
+  (forall d, indom fs d -> evalbinop (op d) (v1 d) (v2 d) (v d)) ->
+  hhoare fs (fun d => (op d) (v1 d) (v2 d))
+    H
+    (fun hr => \[forall d, indom fs d -> hr d = v d] \* H).
+Proof using.
+  intros.
+  replace H with ((\*_(_ <- fs) \[]) \* H) at 1; last (rewrite hstar_fset_emptys; xsimpl).
+  apply/hhoare_conseq=> [||?]; [|eauto|]; first last.
+  { rewrite -hstar_fset_pure=> ?. exact. }
+  apply (hhoare_hstar_fset _ (fun d v => \[v = _])); autos~.
+  move=> d ?. 
+  apply/hoare_conseq; [apply hoare_binop|eauto|xsimpl]; by eauto.
 Qed.
 
 (* ================================================================= *)
@@ -1388,12 +2217,13 @@ Qed.
     terms of Hoare triples, or in terms of [wp], as [H ==> wp t Q].
     We prefer the former route, which we find more elementary. *)
 
-Definition triple (t:trm) (H:hhprop) (Q:val->hhprop) : Prop :=
-  forall (H':hhprop), hoare t (H \* H') (Q \*+ H').
+Definition triple (t : trm) (H : hhprop) (Q:val -> hhprop) : Prop :=
+  forall (H' : hhprop), hoare t (H \* H') (Q \*+ H')
 
 
-Definition htriple (p : D -> bool) (t:trm) (H:hhprop) (Q:(D -> val)->hhprop) : Prop :=
-  forall (H':hhprop), hhoare p t (H \* H') (Q \*+ H').
+
+Definition htriple (fs : fset D) (t : D -> trm) (H : hhprop) (Q : fmap D val -> hhprop) : Prop :=
+  forall (H' : hhprop), hhoare fs t (H \* H') (Q \*+ H').
 
 (** We introduce a handy notation for postconditions of functions
     that return a pointer:  [funloc p => H] is short for
@@ -1515,7 +2345,7 @@ Qed.
 (** ** Rules for Terms *)
 
 Lemma triple_eval_like : forall t1 t2 H Q,
-  eval_like d t1 t2 ->
+  eval1_like d t1 t2 ->
   triple t1 H Q ->
   triple t2 H Q.
 Proof using.

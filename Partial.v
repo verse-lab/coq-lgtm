@@ -2,8 +2,8 @@
 
 Set Implicit Arguments.
 From SLF Require Export Nondet.
-Close Scope val_scope.
-Close Scope trm_scope.
+(* Close Scope val_scope. *)
+(* Close Scope trm_scope. *)
 
 Implicit Types f : var.
 Implicit Types b : bool.
@@ -54,7 +54,7 @@ Implicit Types Q : val->hprop.
     possibility of diverging executions. Importantly, the predicate [evalnp]
     still disallows executions that get stuck. *)
 
-CoInductive evalnp : state -> trm -> (val->state->Prop) -> Prop :=
+Inductive evalnp : state -> trm -> (val->state->Prop) -> Prop :=
   | evalnp_val : forall s v Q,
       Q v s ->
       evalnp s (trm_val v) Q
