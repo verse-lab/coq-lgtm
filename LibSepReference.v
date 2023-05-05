@@ -12,7 +12,7 @@ From SLF Require Export LibCore.
 From SLF Require Export LibSepTLCbuffer LibSepVar LibSepFmap.
 From SLF Require LibSepSimpl.
 
-From mathcomp Require Import ssreflect.
+From mathcomp Require Import ssreflect ssrfun.
 
 Module Fmap := LibSepFmap. (* Short name for Fmap module. *)
 
@@ -33,6 +33,8 @@ Axiom propositional_extensionality : forall (P Q:Prop),
   (P <-> Q) ->
   P = Q.
 
+Definition fset A := fmap A unit.
+
 Definition upd {A B : Type} (f : A -> B) x y :=
   fun z => If x = z then y else f z.
 
@@ -46,6 +48,63 @@ Lemma upd_neq A B (f : A -> B) x y z :
   upd f x y z = f z.
 Proof.
 Admitted.
+
+Definition uni {A B : Type} (fs : fset A) (f : A -> B) (g : A -> B) :=
+  fun z => If indom fs z then f z else g z.
+
+Notation "f '\u_(' fs ')' g" := (uni fs f g) (at level 30, right associativity).
+
+Lemma uni_in A B {f g : A -> B} {x fs} : 
+  indom fs x ->
+  uni fs f g x = f x.
+Proof.
+Admitted.
+
+Lemma uni0 A B (f g : A -> B) : 
+  uni empty f g = g.
+Proof.
+Admitted.
+
+Lemma uni_upd A B (f g : A -> B) x fs :
+  ~ indom fs x ->
+  uni (update fs x tt) f g = upd (uni fs f g) x (f x).
+Proof.
+Admitted.
+
+Lemma uni_nin A B (f g : A -> B) x fs : 
+  ~ indom fs x ->
+  uni fs f g x = g x.
+Proof.
+Admitted.
+
+Lemma upd_upd A B (f : A -> B) x y z w : 
+  x <> z -> 
+  upd (upd f x y) z w = upd (upd f z w) x y.
+Proof.
+Admitted.
+
+(* Definition fcomp A B C (f : A -> B) (g : C -> A) := fun x => f (g (x)). *)
+
+
+Lemma upd_uni_update A B (f g : A -> B) (x : A) (y : B) fs : 
+  ~ indom fs x ->
+  upd f x y \u_(update fs x tt) g = upd (f \u_(fs) g) x y.
+Proof.
+  move=> ND; apply/fun_ext_1=> z.
+  case: (prop_inv (indom (update fs x tt) z)).
+  { move=> /[dup]/(@uni_in _ _ _ _ _ _)->.
+    rewrite indom_update_eq=> -[->/[! upd_eq]//|].
+    move=> E. 
+    by rewrite ?upd_neq ?uni_in //; move: E=>/[swap]->. }
+   move=> /[dup]? E; rewrite indom_update_eq in E.
+  rewrite upd_neq ? uni_nin; autos*.
+Qed.
+
+Lemma updE A B (f : A -> B) x :
+  f = upd f x (f x).
+Admitted.
+(* Lemma updE A B (f g : A -> B) x y :
+  upd f x y = (fun _ => y) \u_() *)
 
 
 (* ================================================================= *)
@@ -168,12 +227,12 @@ Notation "h1 \u h2" := (Fmap.union h1 h2)
 
 
 
-Implicit Types f : var.
+(* Implicit Types f : var. *)
 Implicit Types b : bool.
 Implicit Types p : loc.
 Implicit Types n : int.
-Implicit Types v w r vf vx : val.
-Implicit Types t : trm.
+Implicit Types w r vf vx : val.
+(* Implicit Types t : trm. *)
 (* Implicit Types d : D. *)
 (* Implicit Types h : heap. *)
 (* Implicit Types s : state. *)
@@ -271,6 +330,9 @@ Section eval1.
 
 Context (D : Type) (d : D).
 
+Implicit Types f : var.
+Implicit Types v : val.
+
 Inductive eval1 : hheap D -> trm -> hheap D -> val -> Prop :=
   | eval1_val : forall s v,
       eval1 s (trm_val v) s v
@@ -310,6 +372,7 @@ Inductive eval1 : hheap D -> trm -> hheap D -> val -> Prop :=
       evalbinop op v1 v2 v ->
       eval1 m (op v1 v2) m v
   | eval1_ref : forall s v p,
+     (forall p',  ~ Fmap.indom s (p', d) -> (p <= p')%Z) ->
       ~ Fmap.indom s (p, d) ->
       eval1 s (val_ref v) (Fmap.update s (p, d) v) (val_loc p)
   | eval1_get : forall s p v,
@@ -345,15 +408,17 @@ End eval1.
 
 (* Section eval. *)
 
-Definition fset A := fmap A unit.
-
-Inductive eval (D : Type) : fset D -> hheap D -> (D -> trm) -> hheap D -> fmap D val -> Prop :=
-  | eval_empty h hv  : eval empty h hv h empty
+(* Inductive eval (D : Type) : fset D -> hheap D -> (D -> trm) -> hheap D -> (D -> val) -> Prop :=
+  | eval_empty h ht hv : eval empty h ht h hv
   | eval_step  h1 h2 h3 ht d v hv fs : 
     ~ Fmap.indom fs d        ->
       eval1 d h1 (ht d) h2 v ->
       eval fs h2 ht h3 hv    ->
-        eval (Fmap.update fs d tt) h1 ht h3 (Fmap.update hv d v).
+        eval (Fmap.update fs d tt) h1 ht h3 (upd hv d v). *)
+
+Definition eval D (fs : fset D) (h : hheap D) (ht : D -> trm) (h' : hheap D) (hv : D -> val) : Prop :=
+  (forall d, indom fs d -> eval1 d (proj h d) (ht d) (proj h' d) (hv d)) /\
+  forall d, ~indom fs d -> proj h d = proj h' d.
 
 Definition eval_like D (fs : fset D) ht1 ht2 : Prop :=
   forall s s' hv, eval fs s ht1 s' hv -> eval fs s ht2 s' hv.
@@ -385,7 +450,7 @@ Proof.
   rewrite remove_union_not_r //; by (econstructor; eauto).
 Qed.
 
-Lemma eval_hv_dom D (fs : fset D) ht h h' (hv : fmap D val) :
+(* Lemma eval_hv_dom D (fs : fset D) ht h h' (hv : fmap D val) :
   eval fs h ht h' hv ->
   Fmap.indom hv = Fmap.indom fs.
 Proof.
@@ -395,7 +460,7 @@ Proof.
     applys* prop_ext. }
   applys fun_ext_1; introv.
   rewrite ?indom_update_eq IHev; eauto.
-Qed.
+Qed. *)
 
 
 
@@ -417,30 +482,28 @@ Lemma fset_ind A : forall P : fset A -> Prop,
 Proof.
 Admitted.
 
-Lemma evalE D fs (h h' : hheap D) ht hv : 
-  indom hv = indom fs ->
+(* Lemma evalE D fs (h h' : hheap D) ht hv : 
+  (* indom hv = indom fs -> *)
   eval fs h ht h' hv =
-  (forall d, indom fs d -> eval1 d (proj h d) (ht d) (proj h' d) (read hv d)).
+  .
 Proof.
-Admitted.
+Admitted. *)
 
 Lemma eval_seq D fs : forall s1 s2 s3 (ht1 ht2 : D -> trm) hv1 hv,
   eval fs s1 ht1 s2 hv1 ->
   eval fs s2 ht2 s3 hv ->
   eval fs s1 (fun d => trm_seq (ht1 d) (ht2 d)) s3 hv.
 Proof.
-  move=> >; do 2? (move=>/[dup]/eval_hv_dom ? /[swap]).
-  rewrite ?evalE // => *.
+  move=> > [] ? E1 [? E2]; splits=> *; last rewrite -E2 ?E1 //.
   by apply/eval1_seq; eauto.
 Qed.
 
 Lemma eval_let D fs : forall s1 s2 s3 (ht1 ht2 : D -> trm) (x : D -> var) hv1 hv,
   eval fs s1 ht1 s2 hv1 ->
-  eval fs s2 (fun d => subst (x d) (read hv1 d) (ht2 d)) s3 hv ->
+  eval fs s2 (fun d => subst (x d) (hv1 d) (ht2 d)) s3 hv ->
   eval fs s1 (fun d => trm_let (x d) (ht1 d) (ht2 d)) s3 hv.
 Proof.
-  move=> >; do 2? (move=>/[dup]/eval_hv_dom ? /[swap]).
-  rewrite ?evalE// => *.
+  move=> > []? E1[? E2]; splits=> *; last rewrite -E2 ?E1 //.
   by apply/eval1_let; eauto.
 Qed.
 
@@ -448,8 +511,7 @@ Lemma eval_if D fs :  forall s1 s2 (b : D -> bool) hv ht1 ht2,
   eval fs s1 (fun d => if b d then ht1 d else ht2 d) s2 hv ->
   eval fs s1 (fun d => trm_if (val_bool (b d)) (ht1 d) (ht2 d)) s2 hv.
 Proof.
-  move=> >; do 2? (move=>/[dup]/eval_hv_dom ?; try move/[swap]).
-  rewrite ?evalE// => *.
+  move=> > [] *; splits*=>*.
   by apply/eval1_if; eauto.
 Qed.
 
@@ -457,8 +519,8 @@ Lemma eval_app_fun D fs : forall s1 s2 hv1 hv2 (x : D -> var) ht1 hv,
   (forall d, indom fs d -> hv1 d = val_fun (x d) (ht1 d)) ->
   eval fs s1 (fun d => subst (x d) (hv2 d) (ht1 d)) s2 hv ->
   eval fs s1 (fun d => trm_app (hv1 d) (hv2 d)) s2 hv.
-  move=> > ? /[dup]/eval_hv_dom ?.
-  rewrite ?evalE // => *.
+Proof.
+  move=> > ? -[]*; splits*=>*.
   by apply/eval1_app_fun; eauto.
 Qed.
 
@@ -466,39 +528,40 @@ Lemma eval_app_fix D fs : forall s1 s2 hv1 hv2 (x f : D -> var) ht1 hv,
   (forall d, indom fs d -> hv1 d = val_fix (f d) (x d) (ht1 d)) ->
   eval fs s1 (fun d => subst (x d) (hv2 d) (subst (f d) (hv1 d) (ht1 d))) s2 hv ->
   eval fs s1 (fun d => trm_app (hv1 d) (hv2 d)) s2 hv.
-  move=> > ? /[dup]/eval_hv_dom ?.
-  rewrite ?evalE// => *.
+  move=> >.
+  move=> ? -[]*; splits*=>*.
   by apply/eval1_app_fix; eauto.
 Qed.
 
-Lemma eval_val D fs : forall s (hv : fmap D val),
-  indom hv = indom fs ->
-  eval fs s (fun d => trm_val (read hv d)) s hv.
+Lemma eval_val D fs : forall s (hv : D -> val),
+  eval fs s (fun d => trm_val (hv d)) s hv.
 Proof.
-  move=> *.
-  rewrite evalE // => *.
+  move=> *; splits*=>*.
   exact/eval1_val.
 Qed.
 
 Lemma eval_fun D fs : forall (x : D -> var) ht1 hv s,
-  indom hv = indom fs ->
-  (forall d, indom hv d -> read hv d = val_fun (x d) (ht1 d)) ->
+  (forall d, indom fs d -> hv d = val_fun (x d) (ht1 d)) ->
   eval fs s (fun d => trm_fun (x d) (ht1 d)) s hv.
 Proof.
-  move=> > E1 E2.
-  rewrite evalE // => *; rewrite E2 ?E1 //.
+  move=> > E1 *.
+  splits*=>*; rewrite ?E1 //.
   exact/eval1_fun.
 Qed.
 
 Lemma eval_fix D fs : forall (f x : D -> var) ht1 hv s,
-  indom hv = indom fs ->
-  (forall d, indom hv d -> read hv d = val_fix (f d) (x d) (ht1 d)) ->
+  (forall d, indom fs d -> hv d = val_fix (f d) (x d) (ht1 d)) ->
   eval fs s (fun d => trm_fix (f d) (x d) (ht1 d)) s hv.
 Proof.
-  move=> > E1 E2.
-  rewrite evalE // => *; rewrite E2 ?E1 //.
+  move=> > E1 *; splits*=>*; rewrite ?E1 //.
   exact/eval1_fix.
 Qed.
+
+Lemma eval_hv D (fs : fset D) ht hv hv' s1 s2 :
+  eval fs s1 ht s2 hv' ->
+  (forall d, indom fs d -> hv d = hv' d) ->
+  eval fs s1 ht s2 hv.
+Proof. case=> ?? E; splits*=> * /[! E] //; eauto. Qed.
 
 (* ################################################################# *)
 (** * Heap Predicates *)
@@ -506,7 +569,14 @@ Qed.
 (** We next define heap predicates and establish their properties.
     All this material is wrapped in a module, allowing us to instantiate
     the functor from [LibSepSimpl] that defines the tactic [xsimpl]. *)
-Module SepSimplArgs.
+
+Module Type Domain.
+
+Parameter type : Type.
+
+End Domain.
+
+Module SepSimplArgs (Dom : Domain).
 
 (* ================================================================= *)
 (** ** Hprop and Entailment *)
@@ -514,7 +584,7 @@ Module SepSimplArgs.
 Declare Scope hprop_scope.
 Open Scope hprop_scope.
 
-Definition D := list nat.
+Definition D := Dom.type.
 
 (** The type of heap predicates is named [hhprop]. *)
 
@@ -876,7 +946,7 @@ Lemma hempty_eq_hpure_true :
 Proof using.
   applys himpl_antisym; intros h M.
   { applys* hpure_intro_hempty. }
-  { forwards*: hpure_inv_hempty M. }
+  { forwards* : hpure_inv_hempty M. }
 Qed.
 
 Lemma hfalse_hstar_any : forall H,
@@ -1153,6 +1223,10 @@ End SepSimplArgs.
 (** We are now ready to instantiate the functor that defines [xsimpl].
     Demos of [xsimpl] are presented in chapter [Himpl.v]. *)
 
+Module Reasoning (Dom : Domain).
+
+Module SepSimplArgs := SepSimplArgs(Dom).
+
 Module Export HS := LibSepSimpl.XsimplSetup(SepSimplArgs).
 
 Export SepSimplArgs.
@@ -1402,12 +1476,13 @@ Hint Resolve indom_single : core.
 
 Lemma eval_ref_sep : forall s1 s2 v p d,
   s2 = Fmap.single (p, d) v ->
+  (forall p', ~ Fmap.indom s1 (p', d) -> (p <= p')%Z) ->
   Fmap.disjoint s2 s1 ->
   eval1 d s1 (val_ref v) (Fmap.union s2 s1) (val_loc p).
 Proof using.
-  introv -> D. forwards Dv: Fmap.indom_single p v.
+  introv -> ? D. forwards Dv: Fmap.indom_single p v.
   rewrite <- Fmap.update_eq_union_single. applys~ eval1_ref.
-  { intros N. applys~ Fmap.disjoint_inv_not_indom_both D N. }
+  intros N. applys~ Fmap.disjoint_inv_not_indom_both D N.
 Qed.
 
 Lemma eval_get_sep : forall s s2 p d v,
@@ -1462,6 +1537,12 @@ Lemma eval1_local (d : D) hd h h' t v :
     h' = hd' \u h.
 Admitted.
 
+Lemma eval1_proj_nd d h h' t v : 
+  eval1 d h t h' v -> 
+  forall c, d <> c -> proj h c = proj h' c.
+Proof.
+Admitted.
+
 
 (* ================================================================= *)
 (** ** Hoare Reasoning Rules *)
@@ -1469,9 +1550,7 @@ Admitted.
 (* ################################################################# *)
 (** * Definition of total correctness Hoare Triples. *)
 
-(* From mathcomp Require Import ssreflect. *)
-
-Definition hhoare (fs : fset D) (ht : D -> trm) (H : hhprop) (Q: fmap D val -> hhprop) :=
+Definition hhoare (fs : fset D) (ht : D -> trm) (H : hhprop) (Q: (D -> val) -> hhprop) :=
   forall h, H h -> 
     exists h' hv, 
         eval fs h ht h' hv /\ Q hv h'.
@@ -1480,14 +1559,10 @@ Lemma eval_eq (fs : fset D) (ht1 ht2 : D -> trm) h h' hv :
   (forall d, Fmap.indom fs d -> ht1 d = ht2 d) ->
   eval fs h ht1 h' hv -> eval fs h ht2 h' hv.
 Proof.
-  introv eq ev; induction ev; try constructor.
-  econstructor; eauto.
-  { rewrite* <-eq. rewrite indom_update_eq; eauto. }
-  applys IHev. introv ?. applys eq.
-  rewrite indom_update_eq; eauto.
+  rewrite ?evalE=> E [??]; split=> // *; rewrite -E //; eauto.
 Qed.
 
-Lemma hhoare_eq (fs : fset D) (ht1 ht2 : D -> trm) H (Q: fmap D val -> hhprop) : 
+Lemma hhoare_eq (fs : fset D) (ht1 ht2 : D -> trm) H (Q: (D -> val) -> hhprop) : 
   (forall d, Fmap.indom fs d -> ht1 d = ht2 d) ->
   hhoare fs ht1 H Q -> hhoare fs ht2 H Q.
 Proof.
@@ -1495,46 +1570,789 @@ Proof.
   exists h', hv; splits~; applys~ eval_eq.
 Qed.
 
-Lemma disj_singleE (A B : Type) (h : fmap A B) (x : A) (v : B) :
-  disjoint h (single x v) = ~ indom h x.
-Admitted.
-
 Lemma eval_cup (fs1 fs2 : fset D) ht h1 h2 h3 hv1 hv2 : 
   disjoint fs1 fs2 ->
   eval fs1 h1 ht h2 hv1 ->
   eval fs2 h2 ht h3 hv2 ->
-    eval (fs1 \u fs2) h1 ht h3 (hv1 \u hv2).
+    eval (fs1 \u fs2) h1 ht h3 (hv1 \u_(fs1) hv2).
 Proof.
-  intros disj ev.
-  induction ev.
-  { rewrite ?Fmap.union_empty_l; auto. }
-  intros ?.
-  unfold update in disj.
-  rewrite Fmap.disjoint_union_eq_l disj_singleE in disj.  
-  destruct disj.
-  rewrite <-?update_union_not_r; eauto.
-  { econstructor; eauto; rewrite* indom_union_eq. }
-  erewrite eval_hv_dom; try apply H1; auto.
+  move=> disj; case=> ? E1[? E2]; splits*=> d.
+  2: { rewrite indom_union_eq=> ?; rewrite* E1. }
+  rewrite indom_union_eq=> -[] /[dup]/(disjoint_inv_not_indom_both disj) ??.
+  { by rewrite -E2 // uni_in; auto. }
+  by rewrite E1 // uni_nin; auto.
 Qed.
 
-Lemma hhoare_union (fs1 fs2 : fset D) ht H (Q Q': fmap D val -> hhprop) : 
+(* Lemma eval_cup2 (fs1 fs2 : fset D) ht h1 h3 hv : 
+  disjoint fs1 fs2 ->
+  eval (fs1 \u fs2) h1 ht h3 hv -> 
+  exists h2, 
+    eval fs1 h1 ht h2 hv /\ eval fs2 h2 ht h3 hv.
+Proof.
+Admitted. *)
+
+Lemma hhoare_union (fs1 fs2 : fset D) ht H (Q Q': (D -> val) -> hhprop) : 
   disjoint fs1 fs2 ->
   hhoare fs1 ht H Q ->
   (forall hv, 
-    indom hv = indom fs1 ->
-    hhoare fs2 ht (Q hv) (fun hv' => Q' (hv \u hv'))) -> 
+    hhoare fs2 ht (Q hv) (fun hv' => Q' (hv \u_(fs1) hv'))) -> 
     hhoare (fs1 \u fs2) ht H Q'.
 Proof.
   intros disj hh1 hh2 ? [h1[ hv1 [? Qh1]]]%hh1.
-  destruct (hh2 hv1 (eval_hv_dom H0) _ Qh1) as [h2 [hv2 [ev ?]]].
-  exists h2, (hv1 \u hv2); split~.
+  destruct (hh2 hv1 _ Qh1) as [h2 [hv2 [ev ?]]].
+  exists h2, (hv1 \u_(fs1) hv2); split~.
   applys eval_cup; eauto.
 Qed.
 
-Transparent hempty.
+Lemma filter_eq {A B : Type} (fs1 fs2 : fmap A B) (P : A -> B -> Prop) `{Inhab B} : 
+  (forall y x, P y x -> read fs1 y = read fs2 y) -> 
+  filter P fs1 = filter P fs2.
+Proof.
+Admitted.
 
-Lemma hhoare_hv_dom fs H Q ht : 
-  hhoare fs ht H (fun hv => \[indom hv = indom fs] \-* Q hv) ->
+Lemma filter_in {A B : Type} (fs : fmap A B) (P : A -> B -> Prop) `{Inhab B} x y : 
+  P y x ->
+  read (filter P fs) y = read fs y.
+Proof.
+Admitted.
+
+Lemma filter_indom {A B : Type} (fs : fmap A B) (P : A -> B -> Prop) y `{Inhab B} : 
+  indom (filter P fs) y <-> (indom fs y /\ exists x, P y x).
+Proof.
+Admitted.
+
+Lemma read_arb {A B : Type} (fs : fmap A B) x  `{Inhab B}: 
+  ~ indom fs x -> read fs x = arbitrary.
+Proof.
+Admitted.
+
+Lemma disj_filter {A B : Type} (fs1 fs2 : fmap A B) (P : A -> B -> Prop) : 
+  disjoint fs1 fs2 -> disjoint fs1 (filter P fs2).
+Admitted.
+
+Lemma filter_union {A B : Type} (fs1 fs2 : fmap A B) (P : A -> B -> Prop) :
+  disjoint fs1 fs2 ->
+  filter P (fs1 \u fs2) = filter P fs1 \u filter P fs2.
+Proof.
+Admitted.
+
+Lemma filter_union' {A B : Type} (fs1 fs2 : fmap A B) (P : A -> B -> Prop) :
+  (forall x y y', P x y <-> P x y') -> 
+  filter P (fs1 \u fs2) = filter P fs1 \u filter P fs2.
+Proof.
+  case: fs1 fs2=> f1 ? [f2 ?] E.
+  apply/fmap_extens=> /= x.
+  rewrite /map_filter /map_union /map_disjoint.
+  case: (f1 x)=> // ?.
+  case: classicT=> //; case: (f2 _)=> // ?. 
+  by case: classicT=> // /E ? [].
+Qed.
+
+Definition insert D (fs : fset D) (fm1 fm2 : hheap D) : hheap D :=
+  filter (fun '(_, d) _ => indom fs d) fm1 \u filter (fun '(_, d) _ => ~indom fs d) fm2.
+
+Lemma insert_proj_in D (fs : fset D) (fm1 fm2 : hheap D) (d : D) :
+  indom fs d -> proj (insert fs fm1 fm2) d = proj fm1 d.
+Admitted.
+
+Lemma insert_proj_nin D (fs : fset D) (fm1 fm2 : hheap D) (d : D) : 
+  ~indom fs d -> proj (insert fs fm1 fm2) d = proj fm2 d.
+Admitted.
+
+
+Definition diff {A B} (fs1 fs2 : fmap A B) : fmap A B. Admitted.
+
+Notation "fs1 '\-' fs2" := (diff fs1 fs2) (at level 20, right associativity).
+
+Lemma diff0 {A B} (fs : fmap A B) : fs \- empty = fs.  Admitted.
+Lemma diffxx {A B} (fs : fmap A B) : fs \- fs = empty.  Admitted.
+
+Lemma diff_indom {A B} (fs1 fs2 : fmap A B) x:
+  indom (fs1 \- fs2) x = (indom fs1 x /\ ~ indom fs2 x).
+Admitted.
+
+Lemma diff_upd d fs1 fs2 : 
+  indom fs1 d ->
+  fs1 \- fs2 = update (fs1 \- update fs2 d tt) d tt.
+Admitted.
+
+Lemma diff_disj {A B} (fm1 fm2 : fmap A B) : 
+  disjoint (fm1 \- fm2) fm2.
+Proof.
+Admitted.
+
+Lemma union_diff {A B} (fm1 fm2 : fmap A B) `{Inhab B} : 
+  disjoint fm1 fm2 ->
+  (fm1 \u fm2) \- fm2 = fm1.
+Proof.
+Admitted.
+
+
+Arguments diff_upd : clear implicits.
+
+
+Lemma filter_union_compl {A B : Type} (fs : fmap A B) (P : A -> B -> Prop) : 
+  filter P fs \u filter (fun x y => ~ (P x y)) fs = fs.
+Admitted.
+
+Lemma insert_distr_union (fs : fset D) h1 h2 h:
+  disjoint (filter (fun '(_, d) => fun=> ~ indom fs d) h1) h ->
+  disjoint (filter (fun '(_, d) => fun=> indom fs d) h2) h ->
+  insert fs h2 h1 \u h = insert fs (h2 \u h) (h1 \u h).
+Proof.
+  move=> ??; rewrite /insert ?filter_union' //; try by case.
+  rewrite union_assoc -[_ \u _ \u filter (fun '(_, d) => fun=> ~ indom fs d) h]union_assoc.
+  rewrite [filter _ h  \u _ ]union_comm_of_disjoint.
+  { rewrite ?union_assoc -{1}(filter_union_compl h (fun '(_, d) => fun=> indom fs d)).
+    do ? fequals. apply/fun_ext_2=> -[] //. }
+  apply/disjoint_of_not_indom_both=> -[??] /filter_indom[_][??].
+  by case/filter_indom=> _ [].
+Qed.
+
+(* Lemma inserthh (fs : fset D) h : 
+  insert fs h h = h.
+Admitted.
+
+Lemma insert_union_disj (fs : fset D) h1 h2: 
+  disjoint h2 h1 ->
+  insert fs h1 h2 \u h1 = (filter (fun '(_, d) _ => ~indom fs d) h2) \u h1.
+Admitted. *)
+
+Lemma eval_union_insert (fs1 fs2 : fset D) h1 h2 hv ht :
+  disjoint fs1 fs2 ->
+  eval (fs1 \u fs2) h1 ht h2 hv -> 
+    eval fs1 h1 ht (insert fs1 h2 h1) hv /\ 
+    eval fs2 (insert fs1 h2 h1) ht h2 hv.
+Proof.
+  move=> dj [IN OUT]; do ? split.
+  { move=> d ?. 
+    have->//: proj (insert fs1 h2 h1) d = proj h2 d.
+    { by apply/insert_proj_in. }
+    apply IN; rewrite* indom_union_eq. }
+  { by move=> d ? /[! insert_proj_nin]. }
+  { move=> d I.
+    have->//: proj (insert fs1 h2 h1) d = proj h1 d.
+    { apply/insert_proj_nin/disjoint_inv_not_indom_both/I.
+      autos*. }
+    apply IN; rewrite* indom_union_eq. }
+  move=> d ?.
+  case: (prop_inv (indom fs1 d))=> ?.
+  { exact/insert_proj_in. }
+  rewrite insert_proj_nin //. 
+  apply/OUT; rewrite* indom_union_eq.
+Qed.
+
+Lemma eval_cup2 (fs1 fs2 : fset D) h1 h2 hv ht: 
+  disjoint fs1 fs2 -> 
+  exists h', 
+    forall h,
+      disjoint (filter (fun '(_, d) => fun=> ~ indom fs1 d) h1) h -> 
+      disjoint (filter (fun '(_, d) => fun=> indom fs1 d) h2) h -> 
+      eval (fs1 \u fs2) (h1 \u h) ht (h2 \u h) hv -> 
+        disjoint h h'                      /\ 
+        eval fs1 (h1 \u h) ht (h' \u h) hv /\
+        eval fs2 (h' \u h) ht (h2 \u h) hv /\
+        h' = insert fs1 h2 h1.
+Proof.
+  move=> dj.
+  exists (insert fs1 h2 h1)=> h H1 H2 /(eval_union_insert dj)[].
+  rewrite -?insert_distr_union // => ??; splits=> //.
+  rewrite disjoint_comm /insert disjoint_union_eq_l; splits*. 
+Qed.
+
+Lemma foo (fs : fset D) H Q ht :
+  (forall h, hhoare fs ht (H \* (= h)) (Q \*+ (= h))) -> 
+  (forall H', hhoare fs ht (H \* H') (Q \*+ H')).
+Proof.
+  move=> HH H' ? [h1] [h][?][?][?]->.
+  case: (HH h (h1 \u h)).
+  { exists h1, h; autos*. }
+  move=> ? [hv][]/[swap]-[h'][?][?][->][?]-> ?.
+  exists (h' \u h), hv; splits*.
+  exists h', h; autos*.
+Qed.
+
+Lemma bar (fs : fset D) H Q ht :
+  hhoare fs ht H Q <->
+  (forall h, H h -> hhoare fs ht (= h) Q).
+Proof.
+  split=> hh ? /hh=> [|/(_ _ eq_refl)][h][hv][]??; exists h, hv; by subst.
+Qed.
+
+Lemma local_partition_fset h (fs : fset D) :
+  exists h1 h2 fs',
+    local fs h1     /\
+    local fs' h2    /\
+    disjoint fs fs' /\
+    disjoint h1 h2  /\ 
+    h = h1 \u h2.
+Admitted.
+
+Lemma proj_union h1 h2 d : 
+  proj (h1 \u h2) d = proj h1 d \u proj h2 d.
+Proof.
+Admitted.
+
+Lemma proj_diff h1 h2 d : 
+  proj (h1 \- h2) d = proj h1 d \- proj h2 d.
+Proof.
+Admitted.
+
+Lemma hheap_eq_proj h1 h2 :
+  (forall d, proj h1 d = proj h2 d) -> h1 = h2.
+Admitted.
+
+Lemma eval_frame h1 h2 h fs' (ht : D -> trm) (fs : fset D) hv: 
+  eval fs h1 ht h2 hv ->
+  local fs' h ->
+  disjoint fs fs' ->
+    eval fs (h1 \u h) ht (h2 \u h) hv.
+Proof.
+  case=> [IN OUT] lh dj.
+  split=> d I; rewrite ?proj_union; last by rewrite ?OUT.
+  apply/eval1_frame/IN=> // [??/filter_indom[/lh]|]; eauto.
+  apply/disjoint_inv_not_indom_both; eauto.
+Qed.
+
+(*
+  x ~(1)~> 5 [free x, ref 5] p ~~> 5
+
+  
+*)
+
+(* Lemma eval1_union_disj_fset t d hv h1 h2 h h3 hv': 
+  disjoint h1 h ->
+  disjoint h2 h ->
+  eval1 d h1 t h3 hv' -> 
+  eval1 d (h1 \u h) t (h2 \u h) hv ->
+  eval1 d h1 t h2 hv.
+Proof.
+  move=> ++ ev.
+  elim: ev h2 h hv.
+  { move=> > ?? ev.
+    inversion ev; subst. }
+  { move=> > ?? ev.
+    inversion ev; subst. }
+  { move=> > ?? ev.
+    inversion ev; subst. }
+  { do 7? intro. move=> -> ? IH > dj1 dj2 ev.
+    econstructor; first eauto.
+    apply/IH.
+    { apply/dj1. }
+    { apply/dj2. }
+    inversion ev=> //; subst; inversion H2; by subst. }
+  { do 8? intro. move=> -> ? IH > dj1 dj2 ev.
+    apply/eval1_app_fix; first eauto. 
+    apply/IH.
+    { apply/dj1. }
+    { apply/dj2. }
+    inversion ev=> //; subst; inversion H2; by subst. }
+  { do 7? intro. move=> ev1 IH1 ev2 IH2 > dj1 dj2 evh.
+    inver
+    econstructor.
+    { apply/IH1. } }
+    do 9? intro.
+    move=> T ev IH1 IH2 IH3 IH4 IH5.
+    intros ??? dj1 dj2 evh.
+    inversion evh; subst=> //; try by case: T=> //=.
+    { econstructor=> //. eauto. eauto.
+      apply/IH5. }
+    { econstructor=> //. eauto. eauto.
+      apply/IH5. }
+     }
+Admitted.*)
+
+(* Lemma eval_union_disj_fset ht (fs : fset D) hv h1 h2 h h3 hv': 
+  local fs h ->
+  eval fs h1 ht h3 hv' -> 
+  eval fs (h1 \u h) ht (h2 \u h) hv ->
+  eval fs h1 ht h2 hv.
+Proof.
+  move=> lh [IN1 OUT1] [IN2 OUT2]; split.
+  { move=> d IN.
+    apply/eval1_union_disj_fset.
+    { exact/IN1. }
+    move: (IN2 _ IN)=> /[! proj_union]; exact. }
+  admit.
+Admitted. *)
+
+Lemma eval1_part h1 h2 h fs ht d hv: 
+  ~indom fs d ->
+  eval1 d (h1 \u h) ht h2 hv -> 
+  local fs h ->
+  disjoint h1 h ->
+  exists h2', h2 = h2' \u h /\ disjoint h2' h.
+Proof.
+  remember (h1 \u h) as h1h eqn: HE1.
+  move=> +ev; move: ev h1 HE1.
+  elim; intros; subst; (try by eexists; eauto).
+  { case: (H1 h1)=> // s2'[E ?]; subst.
+    case: (H3 s2')=> // s3'[??]; subst.
+    case: (H5 s3')=> // s4'[??]; subst.
+    by eexists; eauto. }
+  1-2: try by (case: (H1 h1)=> // s2'[E ?]; subst;
+    by eexists; eauto).
+  1-2: (case: (H0 h1)=> // s2'[E ?]; subst;
+    case: (H2 s2')=> // s3'[??]; subst;
+    by eexists; eauto).
+  try by (case: (H0 h1)=> // s2'[E ?]; subst;
+    by eexists; eauto).
+  all: have ?: ~ indom h (p, d) by (move/H2 || move/H1).
+  1-2: exists (update h1 (p, d) v); 
+       rewrite update_union_not_r //; split=>//; 
+       exact/disjoint_update_not_r.
+  exists (remove h1 (p, d)).
+  rewrite remove_union_not_r //; split=>//.
+  exact/disjoint_remove_l.
+Qed.
+
+Lemma eval_part h1 h2 h (fs fs' : fset D) ht hv: 
+  disjoint fs fs' ->
+  eval fs (h1 \u h) ht h2 hv -> 
+  local fs' h ->
+  disjoint h1 h ->
+  exists h2', h2 = h2' \u h /\ disjoint h2' h.
+Proof.
+  move=> dj [IN OUT] lh dj'.
+  exists (h2 \- h); split; last exact/diff_disj.
+  apply/hheap_eq_proj=> d. 
+  rewrite proj_union proj_diff.
+  case: (prop_inv (indom fs d)).
+  { move/[dup]/IN; rewrite proj_union=> + ?. 
+    case/(@eval1_part _ _ _ fs').
+    { apply/disjoint_inv_not_indom_both; by eauto. }
+    { by move=> ?? /filter_indom[/lh]. }
+    { apply/disjoint_of_not_indom_both=> -[??].
+      case/filter_indom=> /[swap] _ /[swap] /filter_indom[+ _].
+      applys* disjoint_inv_not_indom_both. }
+    move=> ? [->] ? /[! @union_diff]; autos*. }
+  move/OUT<-; rewrite proj_union union_diff //.
+  apply/disj_filter; rewrite disjoint_comm.
+  applys* @disj_filter.
+Qed.
+
+Lemma read_union_l' [A B : Type] `{Inhab B} [h1 : fmap A B] (h2 : fmap A B) [x : A] :
+  ~indom h2 x -> read (h1 \u h2) x = read h1 x.
+Proof.
+  case: h1 h2=> ?? [??]. 
+  rewrite /indom /union /= /read /= /map_indom /map_union.
+  by case: (_ x)=> [?[]//|?]; case: (_ x).
+Qed.
+
+Lemma eval1_frame2 h1 h2 h fs ht d hv: 
+  eval1 d (h1 \u h) ht (h2 \u h) hv -> 
+  local fs h ->
+  ~indom fs d ->
+  disjoint h1 h ->
+  disjoint h2 h ->
+    eval1 d h1 ht h2 hv.
+Proof.
+  remember (h1 \u h) as h1h eqn: HE1.
+  remember (h2 \u h) as h2h eqn: HE2.
+  move=> ev; move: ev h1 h2 h HE1 HE2.
+  elim; intros; subst; (try by econstructor; eauto).
+  all: try have ?: h1 = h2 by (apply/union_eq_inv_of_disjoint; eauto).
+  all: subst; try by econstructor.
+  { case/(eval1_part H7): H0=> // ? [?]?; subst.
+    case/(eval1_part H7): H2=> // ? [?]?; subst.
+    econstructor=> //; [exact/H1|exact/H3|exact/H5]. }
+  1-2: try by (case/(eval1_part H4): H=> // ? [?]?; subst;
+    econstructor=> //; [exact/H0|exact/H2]).
+  all: try have ?: ~ indom h (p, d) by (move/H0 || move/H1).
+  all: try rewrite indom_union_eq in H.
+  { move: HE2; rewrite update_union_not_r //.
+    move/union_eq_inv_of_disjoint<-=> //.
+    { applys* eval1_ref.
+      { move=> ??; apply/H; rewrite* indom_union_eq. }
+      rewrite* indom_union_eq in H0. }
+    exact/disjoint_update_not_r. }
+  { rewrite read_union_l' //; applys* eval1_get. }
+  { move: HE2; rewrite update_union_not_r //.
+    move/union_eq_inv_of_disjoint<-=> //.
+    { applys* eval1_set. }
+    exact/disjoint_update_not_r. }
+  move: HE2. rewrite- remove_union_not_r //.
+  move/union_eq_inv_of_disjoint<-=> //.
+  { applys* eval1_free. }
+  exact/disjoint_remove_l.
+Qed.
+
+Lemma eval_frame2 h1 h2 h fs' (ht : D -> trm) (fs : fset D) hv: 
+  eval fs (h1 \u h) ht (h2 \u h) hv -> 
+  local fs' h ->
+  disjoint fs fs' ->
+  disjoint h1 h ->
+  disjoint h2 h ->
+    eval fs h1 ht h2 hv.
+Proof.
+  move=> [IN OUT] lh d1 d2 d3.
+  split.
+  { move=> ? /[dup]D {}/IN /[! proj_union] IN.
+    apply/eval1_frame2; first exact/IN.
+    { move=> ?? /filter_indom[/lh]; eauto. }
+    { exact/disjoint_inv_not_indom_both/D. }
+    all: apply/disj_filter; rewrite disjoint_comm; applys* @disj_filter. }
+  move=> ? /OUT /[! proj_union]/union_eq_inv_of_disjoint-> //.
+  all: apply/disj_filter; rewrite disjoint_comm; applys* @disj_filter.
+Qed.
+
+Lemma local_preserv h1 h2 (fs: fset D) ht hv :
+  local fs h1 -> 
+  eval fs h1 ht h2 hv ->
+    local fs h2.
+Proof.
+  move=> lh [IN OUT] x d; apply: contrapose_inv=> /[dup] I /OUT /(congr1 (@fmap_data _ _)).
+  move/(congr1 (@^~ (x, d))).
+  have: ~indom h1 (x, d) by move/lh.
+  case: (h1) (h2) I=> /= ?? [??].
+  rewrite /proj /indom /= /filter /= /map_indom /map_filter /=.
+  case: (_ (_, _))=> [??[]//|].
+  case: (_ (_, _))=> // ?; by case: classicT.
+Qed.
+
+Lemma baz (fs : fset D) H Q ht :
+  (forall h, local fs h -> hhoare fs ht (H \* (= h)) (Q \*+ (= h))) -> 
+  (forall H', hhoare fs ht (H \* H') (Q \*+ H')).
+Proof.
+  move=> hh.
+  apply/foo=> h'.
+  apply/bar=> ? [h][?][?][->][?]-> ? ->.
+  case: (local_partition_fset h' fs)=> h'1 [h'2] [fs'].
+  case=> lh'1 [lh'2] [?] [?] E; subst. 
+  move/(_ _ (h \u h'1)): (hh h'1)=> []//.
+  { exists h, h'1; splits*. }
+  move=>  h' [hv] [ev].
+  exists (h' \u h'2) hv; splits.
+  { rewrite -union_assoc; apply/eval_frame; by [|eauto|]. }
+  suff: disjoint h' h'2.
+  { case: b=> h'' [?][?][->][]?->; exists h'', (h'1 \u h'2); splits*. }
+  case: (local_partition_fset h fs)=> h1 [h2] [fs''][lh1][lh2][d][?]?; subst.
+  replace ((h1 \u h2) \u h'1) with ((h1 \u h'1) \u h2) in ev.
+  { case/(eval_part d): (ev); [autos*|autos*|].
+    move=> hx[?] ?; subst; rewrite disjoint_union_eq_l; split; last autos*.
+    apply/disjoint_of_not_indom_both=> -[??] /lh'2 /[swap]?.
+    case/(@disjoint_inv_not_indom_both _ _ _ fs _); autos*.
+    apply/local_preserv; [|apply/eval_frame2;first exact/ev; eauto|]; eauto.
+    by move=> ??; rewrite indom_union_eq=> -[/lh1|/lh'1]. }
+  rewrite ?union_assoc; fequals; apply union_comm_of_disjoint.
+  apply/disjoint_of_not_indom_both=> -[??] /lh'1/[swap]/lh2/[swap].
+  exact/disjoint_inv_not_indom_both.
+Qed.
+
+Lemma eval1_det h1 h2 ht d hv h2' hv' : 
+  eval1 d h1 ht h2 hv ->
+  eval1 d h1 ht h2' hv' ->
+    h2 = h2' /\ hv = hv'.
+Proof.
+  move=> ev; elim: ev h2' hv'.
+  all: intros; 
+    match goal with 
+    | H : eval1 _ _ _ _ _ |- _ => try by inversion H
+    end.
+  { inversion H6; subst. all: try by case: H=> /=.
+    { case: (H1 _ _ H10)=> ??; subst.
+      case: (H3 _ _ H12)=> ??; subst.
+      by case: (H5 _ _ H15)=> ??; subst. }
+    { inversion H0; subst; simpl in *; autos*.
+      all: try by inversion H12.
+      by inversion H12; inversion H13; subst. }
+    inversion H0; subst; simpl in *; autos*=> //.
+    inversion H13. }
+  all: try by (inversion H2; subst=> //; simpl in *; autos*;
+    case: H6=> *; subst; exact/H1).
+  { inversion H3; subst; apply/H2; case: (H0 _ _ H7)=>-> //. }
+  { inversion H3; subst; apply/H2; case: (H0 _ _ H10)=>->-> //. }
+  { by inversion H1; subst; apply/H0. }
+  { inversion H0; subst; simpl in *; autos*.
+    all: try by inversion H; subst=> //.
+    inversion H; inversion H6; subst; split=> //; by case: H5=>->. }
+  { inversion H0; subst; simpl in *; autos*.
+    all: try by inversion H; subst=> //.
+    { inversion H4; subst; simpl in *; autos*.
+      all: try by inversion H.
+      inversion H; inversion H10; subst=> //. }
+    inversion H; inversion H7; subst=> //; split=> //.
+    all: try by case: H6 H8=> -> [->] //.
+    all: try by case: H9 H10=> -> [->] //.
+    case: H9 H10 H1 H6=>-> [->] <-/eq_nat_of_eq_int-> //. }
+  { inversion H1; subst=> //; simpl in *; autos*.
+    { by inversion H7. }
+    have-> //: (p = p0). 
+    exact/eq_nat_of_eq_int/Z.le_antisymm/H3/H0/H. }
+  { inversion H1; subst=> //; simpl in *; autos*.
+    by inversion H7. }
+  { inversion H0; subst=> //; simpl in *; autos*.
+    { inversion H4; subst=> //; simpl in *; autos*.
+      by inversion H10. }
+    by inversion H7. }
+  inversion H0; subst=> //; simpl in *; autos*.
+  by inversion H6.
+Qed.
+
+Lemma eval_det h1 h2 ht (fs : fset D) hv h2' hv' : 
+  eval fs h1 ht h2 hv ->
+  eval fs h1 ht h2' hv' ->
+    h2 = h2' /\ (forall d, indom fs d -> hv d = hv' d).
+Proof.
+  case=> IN1 OUT1 [] IN2 OUT2.
+  split=> [|d].
+  { apply/hheap_eq_proj=> d.
+    case: (prop_inv (indom fs d))=> [|/[dup]/OUT1<-/OUT2] //.
+    by move=>/[dup]/IN1/[swap]/IN2/eval1_det/[apply]-[]. }
+  by move=> /[dup]/IN1/[swap]/IN2/eval1_det/[apply]-[].
+Qed.
+
+Lemma hhoare_union2_aux (fs1 fs2 : fset D) ht h h' (Q': (D -> val) -> hhprop) : 
+  disjoint fs1 fs2 ->
+  local fs1 h' ->
+  (forall H', hhoare (fs1 \u fs2) ht ((= h) \* H') (Q' \*+ H')) ->
+    hhoare fs1 ht ((= h) \* (= h')) (fun hv => 
+      \exists h'',
+        (= h'') \*  (= h') \* \[
+          forall h', local fs2 h' -> 
+            hhoare fs2 ht ((= h'') \* (= h')) (fun hv' => Q' (hv \u_(fs1) hv') \* (= h'))]
+      ).
+Proof.
+  move=> dj lh' hh ? -[h1][h2][->][->][?]->.
+  case/(_ (h \u h')): (hh (= h')).
+  { by exists h, h'. }
+  move=> ? [hv][] /[swap]-[he [?]][?][->][?]-> ev.
+  case: (eval_cup2 h he hv ht dj)=> // h'' HH.
+  case: (HH h')=> //.
+  1,2: rewrite disjoint_comm; applys* @disj_filter. 
+  move=> d1 [ev1][ev2] h''E.
+  exists (h'' \u h') hv; split=> //.
+  exists h'', h'', h'; splits*. 
+  exists h', (empty : hheap D); splits*.
+  split=> // hi lhi ? [?][?][->][->][dji'']->.
+  have ?: disjoint h hi.
+  { subst. move: dji''. 
+    rewrite /insert disjoint_union_eq_l=> -[_].
+    move/(@disjoint_inv_not_indom_both _ _ _ _ _)=> Dj.
+    apply/disjoint_of_not_indom_both=>-[? d] *.
+    apply/Dj; eauto. apply/filter_indom; do ? split=> //; eauto.
+    apply/disjoint_inv_not_indom_both/lhi; autos*. }
+  case/(_ (h \u hi \u h')): (hh (= hi \u h')).
+  { exists h (hi \u h'); autos*. }
+  move=> ? [hv'] [/[swap]][he'][?][?][->][?]-> ev'.
+  case: (eval_cup2 h he' hv' ht dj)=> // h''' HH'.
+  case: (HH' (hi \u h'))=> //.
+  1,2: rewrite disjoint_comm; applys* @disj_filter. 
+  move=> dji' [ev1'][ev2'] ?.
+  have ?: disjoint h' hi.
+  { apply/disjoint_of_not_indom_both=> -[??]. 
+    move=> /lh'/[swap]/lhi. applys* disjoint_inv_not_indom_both. }
+  move/eval_frame: ev1=> /(_ _ _ lhi dj).
+  rewrite ?union_assoc (union_comm_of_disjoint h' hi) //.
+  case/(eval_det ev1')=> /union_eq_inv_of_disjoint<-; autos*.
+  move=> hvE.
+  exists (he' \u hi), hv'; splits.
+  { apply/eval_frame2; first (rewrite ?union_assoc; eauto).
+    all: autos*. }
+  exists he', hi; splits*.
+  have->//: hv \u_(fs1) hv' = hv'.
+  apply/fun_ext_1=> x.
+  case: (prop_inv (indom fs1 x))=> ?.
+  { by rewrite uni_in // hvE. }
+  by rewrite uni_nin.
+Qed.
+
+  
+
+  (* move=> dj hh.
+  move: (part_ex h dj)=> [h1] [h2] [h3] [lh1] [lh2] [lh3] [?] [?] [?] ?.
+  exists () *)
+
+  (* move=> dj hh.
+  move=> ? -[h1][h2][H11][H22][?]->.
+  move: (part_ex h1 dj)=> [h11] [h12] [h13] [lh1] [lh2] [lh3] [?] [?] [?] ?.
+  case/(_ (h1 \u h2)): (hh (= h2)).
+  { exists __, __; eauto. }
+  move=> ? [hv'] [/[swap]] [h''][?][Qh'][->][?]->.
+  case: (eval_cup2 h1 h'' hv' ht dj)=> // h''' HH.
+  case/(HH h2)=> //.
+  1,2: rewrite disjoint_comm; apply/disj_filter; autos*.
+  move=>  ? [?][?] hE.
+  have: exists h', h''' = h' \u (h12 \u h13) /\ local fs1 h'.
+  { admit. }
+  move: hE.
+  subst=> /[swap].
+  case=> h'''' [? lh']. subst.
+  exists ((h'''' \u h12 \u h13) \u h2), hv'; splits*.
+  exists (h' \u h12 \u h13), h2; do ? split*.
+  exists (= h' \u h12 \u h13), (h' \u h12 \u h13), (empty : hheap D); splits*.
+  split=> // H'' ? [?][hH''] [->] [?][?] ->.
+  case/(_ (h1 \u (h3 \- h1))): (hh (= (h3 \- h1))).
+  { exists __, __; splits; eauto.
+     }
+  exists (h' \u h3), hv'; split.
+  
+  { admit. }
+  exists h', h3; splits.
+
+Admitted. *)
+
+Lemma hhoare_conseq : forall ht H' hQ' H hQ fs,
+  hhoare fs ht H' hQ' ->
+  H ==> H' ->
+  hQ' ===> hQ ->
+  hhoare fs ht H hQ.
+Proof using.
+  introv M MH MQ HF. forwards (h'&v&R&K): M h. { applys* MH. }
+  exists h' v. splits~. { applys* MQ. }
+Qed.
+
+Lemma hhoare_union2 (fs1 fs2 : fset D) ht H H' (Q': (D -> val) -> hhprop) : 
+  disjoint fs1 fs2 ->
+  (forall H', hhoare (fs1 \u fs2) ht (H \* H') (Q' \*+ H')) ->
+    hhoare fs1 ht (H \* H') (fun hv => (\exists Q,
+      Q \* 
+      \[forall H', hhoare fs2 ht (Q \* H') (fun hv' => Q' (hv \u_(fs1) hv') \* H')]) \* H').
+Proof.
+  move=> d hh.
+  apply/baz=> hx lh.
+  apply/bar=> h [?][?][Hx][->][?]->.
+  apply/hhoare_conseq; first (apply/hhoare_union2_aux; [apply/d|apply/lh|]).
+  { move=> P; apply/bar=> ?[?][?][->][?][?]->. 
+    move/bar: (hh P); apply; do ? eexists; eauto. }
+  { move=> ?->; do ? eexists; eauto. }
+  move=> ?? [h'] [h1][h2][->][][h3][h4][->][][?] ? [?]->[?]->.
+  exists (h' \u h4), hx; splits*.
+  exists (= h'), h' , h4; splits*.
+  split=> //.
+  exact/baz.
+Qed.
+(*   
+  move=> dj hh.
+  move: H'.
+  apply/foo=> ?.
+  apply/bar=> ? [h][h'][Hh][<-][?]->.
+  have->: (= (h \u h')) = ((= h) \* (= h')).
+  { apply/himpl_antisym=> [h1->|h1[h1'][h2'][->][->][]//].
+    exists h, h'; autos*. }
+  case: (@hhoare_union2_aux _ _ ht h Q' dj).
+  { move=> ?? [?][?][->][?][?]->.
+    apply/hh; exists h, __; autos*. }
+  move=> Q /[dup]/(_ h') [hh2 _] P.
+  eapply hhoare_conseq; [eauto|eauto|].
+  xsimpl. apply/foo=> h0. case: (P h0)=> //.
+Qed.
+
+  move=> dj hh.
+  move=> ? -[h1][h2][H11][H22][?]->.
+  move: (part_ex h1 dj)=> [h11] [h12] [h13] [lh1] [lh2] [lh3] [?] [?] [?] ?.
+  case/(_ (h1 \u h2)): (hh (= h2)).
+  { exists __, __; eauto. }
+  move=> ? [hv'] [/[swap]] [h''][?][Qh'][->][?]->.
+  case: (eval_cup2 h1 h'' hv' ht dj)=> // h HH.
+  case/(HH h2)=> //.
+  1,2: rewrite disjoint_comm; apply/disj_filter; autos*.
+  move=>  ? [?][?] hE.
+  have: exists h', h = h' \u (h12 \u h13) /\ local fs1 h'.
+  { admit. }
+  move: hE.
+  subst=> /[swap].
+  case=> h' [? lh']. subst.
+  exists ((h' \u h12 \u h13) \u h2), hv'; splits*.
+  exists (h' \u h12 \u h13), h2; do ? split*.
+  exists (= h' \u h12 \u h13), (h' \u h12 \u h13), (empty : hheap D); splits*.
+  split=> // H'' ? [?][hH''] [->] [?][?] ->.
+  case/(_ (h1 \u (h3 \- h1))): (hh (= (h3 \- h1))).
+  { exists __, __; splits; eauto.
+     }
+  exists (h' \u h3), hv'; split.
+  
+  { admit. }
+  exists h', h3; splits.
+  
+Admitted. *)
+
+
+  (* case/(_ (h2 \u h22)): (hh (= h22)).
+  exists 
+  
+  
+  
+  
+  { exists h', h22, hv'; splits*.
+    admit. }
+  exists h22, (empty : hheap D); splits*.
+   [h2][h3][h4][?][?]->.
+
+  {  }
+  
+   /hh[h2][hv2]. [/(eval_cup2 dj)][h'][??] ?.
+  exists h', hv2; splits*.
+  exists h', (empty : hheap D); splits*; last by split.
+  exists h2 hv2; splits*.
+  have-> //: (hv2 \u_(fs1) hv2 = hv2).
+  apply/fun_ext_1=> ?; rewrite /uni.
+  by case: classicT. *)
+
+
+(* Lemma hhoare_union2 (fs1 fs2 : fset D) ht H (Q': (D -> val) -> hhprop) : 
+  disjoint fs1 fs2 ->
+  hhoare (fs1 \u fs2) ht H Q' ->
+  exists Q,
+    hhoare fs1 ht H (fun hv => 
+      Q hv \* 
+      \[hhoare fs2 ht (Q hv) (fun hv' => Q' (hv \u_(fs1) hv'))]).
+Proof.
+  move=> dj hh.
+  exists (fun hv h => exists h' hv', eval fs2 h ht h' hv' /\ Q' (hv \u_(fs1) hv') h').
+  move=> h1 /hh[h2][hv2][/(eval_cup2 dj)][h'][??] ?.
+  exists h', hv2; splits*.
+  exists h', (empty : hheap D); splits*; last by split.
+  exists h2 hv2; splits*.
+  have-> //: (hv2 \u_(fs1) hv2 = hv2).
+  apply/fun_ext_1=> ?; rewrite /uni.
+  by case: classicT.
+Qed. *)
+
+(* Lemma hhoare_union2 (fs1 fs2 : fset D) ht H (Q Q': (D -> val) -> hhprop) : 
+  disjoint fs1 fs2 ->
+  hhoare (fs1 \u fs2) ht H Q' ->
+  exists Q,
+    hhoare fs1 ht H Q /\
+    (forall hv, 
+      hhoare fs2 ht (Q hv) (fun hv' => Q' (hv \u_(fs1) hv'))).
+Proof.
+  move=> dj hh.
+  (* case: (prop_inv (exists h, H h)). *)
+  (* { case=> ? /[dup] ? /hh[h'][hv][ev Q'h']. *)
+  exists (fun hv h => exists h', H h' /\ eval fs1 h' ht h hv).
+  split.
+  { move=> h /[dup] ? /hh[h'][hv][ev Q'h']. }
+  move=> hv h' [h][] /hh [h1][hv1][][IN1 OUT1]? [IN2 OUT2].
+  exists (filter (fun '(_, d) _ => ~indom fs2 d) h' \u 
+          filter (fun '(_, d) _ =>  indom fs2 d) h1), hv1; splits.
+  { splits=> d ?.  
+    { rewrite -OUT2.
+      { replace (proj (filter (fun '(_, d0) => fun=> ~ indom fs2 d0) h' \u 
+                       filter (fun '(_, d0) => fun=> indom fs2 d0) h1) d) with (proj h1 d).
+        { apply IN1; rewrite* indom_union_eq. }
+        apply/filter_eq=> -[a ? x ->]. 
+        rewrite read_union_r.
+        { exact/eq_sym/filter_in. }
+        by move=> /(@filter_indom _ _ _ _ _ _)[?][]. }
+      by move/(disjoint_inv_not_indom_both dj). }
+    apply/filter_eq=> -[a ??->].
+    case: (prop_inv (indom h' (a, d)))=> IN.
+    { rewrite read_union_l.
+      { exact/eq_sym/filter_in. }
+      apply/filter_indom; splits*. } 
+    rewrite ?read_arb // indom_union_eq=> -[]/filter_indom; autos*.
+    by case=> ? []. }
+  
+     }
+  move=> F. exists (fun (_ : D -> val) (_ : hheap D) => False).
+  splits*=> ?? //. 
+  case: F; eauto.
+Qed. *)
+
+
+(* Lemma hhoare_hv_dom fs H Q ht (f : D -> val): 
+  hhoare fs ht H Q ->
   hhoare fs ht H Q.
 Proof.
   move=> hh ? /hh [h'][hv][ev IQ].
@@ -1542,14 +2360,14 @@ Proof.
   move/eval_hv_dom: ev=> ?.
   case: IQ=> ? [?][?][?][][]/[swap]->/[swap].
   by case=> _ ->; apply; do ? eexists; eauto.
-Qed.
-
-Opaque hempty.
+Qed. *)
 
 
 Section Hoare1.
 
 Context (d : D).
+
+Implicit Type v : val.
 
 Definition hoare (t:trm) (H:hhprop) (Q:val->hhprop) :=
   forall h, H h -> 
@@ -1562,16 +2380,6 @@ Lemma hoare_conseq : forall t H' Q' H Q,
   H ==> H' ->
   Q' ===> Q ->
   hoare t H Q.
-Proof using.
-  introv M MH MQ HF. forwards (h'&v&R&K): M h. { applys* MH. }
-  exists h' v. splits~. { applys* MQ. }
-Qed.
-
-Lemma hhoare_conseq : forall ht H' hQ' H hQ fs,
-  hhoare fs ht H' hQ' ->
-  H ==> H' ->
-  hQ' ===> hQ ->
-  hhoare fs ht H hQ.
 Proof using.
   introv M MH MQ HF. forwards (h'&v&R&K): M h. { applys* MH. }
   exists h' v. splits~. { applys* MQ. }
@@ -1667,12 +2475,11 @@ Proof using.
   { applys* M. }
 Qed.
 
-Lemma hhoare_val :  forall (hv : fmap D val) H Q fs,
+Lemma hhoare_val :  forall hv H Q fs,
   H ==> Q hv ->
-  indom hv = indom fs ->
-  hhoare fs (fun d => trm_val (read hv d)) H Q.
+  hhoare fs (fun d => trm_val (hv d)) H Q.
 Proof using.
-  introv M DE. intros h K. exists h hv. splits.
+  introv M. intros h K. exists h hv. splits.
   { applys* eval_val. }
   { applys* M. }
 Qed.
@@ -1686,13 +2493,11 @@ Proof using.
   { applys* M. }
 Qed.
 
-Lemma hhoare_fun : forall (x : D -> var) ht1 H Q fs hv,
-  indom hv = indom fs -> 
-  (forall d, indom hv d -> read hv d = val_fun (x d) (ht1 d)) ->
-  H ==> Q hv ->
+Lemma hhoare_fun : forall (x : D -> var) ht1 H Q fs,
+  H ==> Q (fun d => val_fun (x d) (ht1 d)) ->
   hhoare fs (fun d => trm_fun (x d) (ht1 d)) H Q.
 Proof using.
-  move=> >. intros ?? M h K. exists h __. splits.
+  move=> >. intros M h K. exists h __. splits.
   { applys* eval_fun. }
   { applys* M. }
 Qed.
@@ -1706,13 +2511,11 @@ Proof using.
   { applys* M. }
 Qed.
 
-Lemma hhoare_fix : forall (f x : D -> var) ht1 H Q fs hv,
-  indom hv = indom fs -> 
-  (forall d, indom hv d -> read hv d = val_fix (f d) (x d) (ht1 d)) ->
-  H ==> Q hv ->
+Lemma hhoare_fix : forall (f x : D -> var) ht1 H Q fs,
+  H ==> Q (fun d => val_fix (f d) (x d) (ht1 d)) ->
   hhoare fs (fun d => trm_fix (f d) (x d) (ht1 d)) H Q.
 Proof using.
-  move=> >. intros ?? M h K. exists h __. splits.
+  move=> >. intros M h K. exists h __. splits.
   { applys* eval_fix. }
   { applys* M. }
 Qed.
@@ -1788,7 +2591,7 @@ Qed.
 
 Lemma hhoare_let : forall (x : D -> var) ht1 ht2 H Q Q1 fs,
   hhoare fs ht1 H Q1 ->
-  (forall hv1, hhoare fs (fun d => subst (x d) (read hv1 d) (ht2 d)) (Q1 hv1) Q) ->
+  (forall hv1, hhoare fs (fun d => subst (x d) (hv1 d) (ht2 d)) (Q1 hv1) Q) ->
   hhoare fs (fun d => trm_let (x d) (ht1 d) (ht2 d)) H Q.
 Proof using.
   introv M1 M2 Hh.
@@ -1817,7 +2620,9 @@ Qed.
 (** Operations on the state. *)
 
 Lemma single_fresh : forall null (h : hheap D) v,
-  exists l, Fmap.disjoint (single (l, d) v) h /\ l <> null.
+  exists l, 
+    Fmap.disjoint (single (l, d) v) h /\ l <> null /\ 
+    (forall p', ~ Fmap.indom h (p', d) -> (l <= p')%Z).
 Proof using.
 Admitted.
 
@@ -1827,7 +2632,7 @@ Lemma hoare_ref : forall H v,
     (fun r => (\exists p, \[r = val_loc p] \* p ~(d)~> v) \* H).
 Proof using.
   intros. intros s1 K0.
-  forwards~ (p&D&N): (single_fresh 0%nat s1 v).
+  forwards~ (p&D&N&M): (single_fresh 0%nat s1 v).
   exists (Fmap.union (Fmap.single (p, d) v) s1) (val_loc p). split.
   { applys~ eval_ref_sep. }
   { applys~ hstar_intro.
@@ -1977,83 +2782,65 @@ Lemma fmap0E A B (fm : fmap A B) `{Inhab B} :
 Proof.
 Admitted.
 
+Lemma eval1_proj_d d h h' t v : 
+  eval1 d h t h' v -> 
+  eval1 d (proj h d) t (proj h' d) v.
+Proof.
+Admitted.
+
 Lemma hhoare_update Q' H Q ht fs d :
   ~ Fmap.indom fs d ->
   hoare d (ht d) H Q' -> 
-  (forall v, hhoare fs ht (Q' v) (fun hv => Q (update hv d v))) ->
+  (forall v, hhoare fs ht (Q' v) (fun hv => Q (upd hv d v))) ->
   hhoare (update fs d tt) ht H Q.
 Proof.
   move=> ? HH ?.
   rewrite update_eq_union_single.
-  apply/(@hhoare_union _ _ _ _ (fun hv => Q' (read hv d))).
+  apply/(@hhoare_union _ _ _ _ (fun hv => Q' (hv d))).
   { exact/disjoint_single_of_not_indom. }
   { move=> ? /HH[h'][v][ev ?].
-    exists h', (single d v); rewrite read_single; split*.
-    rewrite ?update_empty; econstructor; eauto; by constructor. }
-  move=> hv /indom_single->.
-  replace (fun hv' : fmap D val => Q (single d (read hv d) \u hv')) with 
-    (fun hv' : fmap D val => Q (update hv' d (read hv d)))=> //.
-  by rewrite read_single.
+    exists h', (upd (fun (d : D) => v) d v); split*; rewrite ?upd_eq //.
+    splits*=> >; rewrite indom_single_eq.
+    { move=> <- /[! upd_eq]; exact/eval1_proj_d. }
+    apply/eval1_proj_nd; eauto. }
+  move=> hv; rewrite update_empty.
+  apply/hhoare_conseq; eauto=> ?.
+  by rewrite uni_upd ?uni0.
 Qed.
 
 Arguments hhoare_update _ {_}.
 
 Lemma hhoareP H Q ht fs : 
-  hhoare fs ht H Q <->
-  exists (f : fset D -> fmap D val -> hhprop),
-    (f empty empty = H) /\ 
+  (exists (f : fset D -> (D -> val) -> hhprop),
+    (exists hv, f empty hv = H) /\ 
     (forall hv, f fs hv = Q hv) /\
-    (forall (fs' : fset D) d hv, 
+    forall (fs' : fset D) d hv, 
       indom fs d ->
       ~ indom fs' d ->
-      hoare d (ht d) (f fs' hv) (fun v => f (update fs' d tt) (update hv d v))).
+      hoare d (ht d) (f fs' hv) (fun v => f (update fs' d tt) (upd hv d v))) -> 
+        hhoare fs ht H Q.
 Proof.
   elim/fset_ind: fs H Q.
   { move=> ??.
-    split. { admit. }
-    case=> f [<-][/(_ empty)] QE _.
-    move=> h /[! QE]; exists h, (@empty D val); split*.
+    case=> f [][hv <-][/(_ hv)] QE _.
+    move=> h /[! QE]. exists h, hv; split*.
     by constructor. }
   move=> fs x IHfs NIND H Q.
-  split. { admit. }
-  case=> f [<-] [QE] h1.
-  apply/(hhoare_update (fun v => f (single x tt) (single x v)))=> //.
-  { rewrite update_empty.
-    replace (fun v => f (update empty x tt) (single x v)) with 
-      (fun v => f (update empty x tt) (update empty x v))=> //.
-    { apply/(h1 _ x)=> //; exact/indom_update. }
-    apply/fun_ext_1=> ?; congr f. 
-    by rewrite update_empty. }
+  case=> f [][hv<-] [QE] h1.
+  apply/(hhoare_update (fun v => f (single x tt) (upd hv x v)))=> //.
+  { rewrite update_empty; apply/h1; rewrite // indom_update_eq; eauto. }
   move=> v; apply/(IHfs _ _).
-  exists (fun fs hv => f (update fs x tt) (update hv x v)); splits*.
-  { by rewrite ?update_empty. }
-  move=> fs' d hv.
+  exists (fun fs hv => f (update fs x tt) (upd hv x v)); splits*.
+  { eexists; by rewrite ?update_empty; eauto. }
+  move=> fs' d hv'.
   case: (prop_inv (x = d))=> [<- /NIND //|???].
-  replace (fun v0 => f (update (update fs' d tt) x tt) (update (update hv d v0) x v)) with 
-    (fun v0 => f (update (update fs' x tt) d tt) (update (update hv x v) d v0)).
+  replace (fun v0 => f (update (update fs' d tt) x tt) (upd (upd hv' d v0) x v)) with 
+    (fun v0 => f (update (update fs' x tt) d tt) (upd (upd hv' x v) d v0)).
   { apply/h1; rewrite* indom_update_eq. }
-  apply/fun_ext_1=> ?. rewrite update_update //; congr f; exact/update_update.
-Admitted.
+  apply/fun_ext_1=> ?. rewrite update_update 1?upd_upd //.
+Qed.
 
 Coercion read : fmap >-> Funclass.
-
-Definition diff (fs1 fs2 : fset D) : fset D. Admitted.
-
-Notation "fs1 '\-' fs2" := (diff fs1 fs2) (at level 20, right associativity).
-
-Lemma diff0 fs: fs \- empty = fs.  Admitted.
-Lemma diffxx fs: fs \- fs = empty.  Admitted.
-
-Lemma diff_indom fs1 fs2 x:
-  indom (fs1 \- fs2) x = (indom fs1 x /\ ~ indom fs2 x).
-Admitted.
-
-Lemma diff_upd d fs1 fs2 : 
-  indom fs1 d ->
-  fs1 \- fs2 = update (fs1 \- update fs2 d tt) d tt.
-Admitted.
-
-Arguments diff_upd : clear implicits.
 
 Lemma hoare_Q_eq d t H Q1 Q2 :
   (forall v, Q1 v = Q2 v) -> 
@@ -2081,12 +2868,13 @@ Proof.
     H) \*
     (\*_(d <- fs') Q d (hv d)).
   exists f; splits; rewrite/f.
-  { rewrite diff0 hstar_fset_empty; xsimpl. }
+  { exists (fun (d : D) => arbitrary : val).
+    rewrite diff0 hstar_fset_empty; xsimpl. }
   { move=> ?; rewrite diffxx hstar_fset_empty; xsimpl. }
   move=> fs' d' hv *.
   replace (fun v =>
     ((\*_(d <- fs \- update fs' d' tt) P d) \* H) \*
-    \*_(d <- update fs' d' tt) Q d (update hv d' v d)) with 
+    \*_(d <- update fs' d' tt) Q d (upd hv d' v d)) with 
     (fun v0 =>
       (((\*_(d <- fs \- update fs' d' tt) P d) \* H) \* Q d' v0) \*
       \*_(d <- fs') Q d (hv d)).
@@ -2109,10 +2897,10 @@ Proof.
     rewrite diff_indom; rewrite* indom_update_eq. }
   apply/fun_ext_1=> v.
   rewrite hstar_fset_update //.
-  under (@hstar_fset_eq fs' (fun _ => Q _ (update _ _ _ _))).
-  { move=> ??; rewrite update_neq; first over.
+  under (@hstar_fset_eq fs' (fun _ => Q _ (upd _ _ _ _))).
+  { move=> ??; rewrite upd_neq; first over.
     by move=> ?; subst. }
-  rewrite update_eq; xsimpl.
+  rewrite upd_eq; xsimpl.
 Qed.
 
 Ltac hlocal := 
@@ -2127,7 +2915,19 @@ Ltac hlocal :=
 
 Hint Extern 1 (hlocal _ _) => hlocal.
 
-Lemma hhoare_ref : forall H (f : D -> val) fs,
+Lemma hhoare_val_eq H Q fs (f : D -> val) ht :
+  hhoare fs ht H (fun hv => \[forall d, indom fs d -> hv d = f d] \* Q) ->
+  hhoare fs ht H (fun hv => \[hv = f] \* Q).
+Proof.
+  move=> hh ? /hh [h'][hv][?][h1][h2][] [E] /hempty_inv-> [?][].
+  rewrite union_empty_l=> *.
+  exists h2 f; splits*; subst*.
+  { by apply/eval_hv; eauto=> ? /E->. }
+  exists (empty : hheap D), h2; splits*.
+  by exists (@eq_refl _ f).
+Qed.
+
+Lemma hhoare_ref' : forall H (f : D -> val) fs,
   hhoare fs (fun d => val_ref (f d))
     H
     (fun hr => (\*_(d <- fs) \exists p, \[hr d = val_loc p] \* p ~(d)~> f d) \* H).
@@ -2139,14 +2939,23 @@ Proof.
   exact/hoare_ref.
 Qed.
 
+Lemma hhoare_ref : forall H (f : D -> val) fs,
+  hhoare fs (fun d => val_ref (f d))
+    H
+    (fun hr => (\exists (p : D -> loc), \[hr = val_loc \o p] \* \*_(d <- fs) p d ~(d)~> f d) \* H).
+Proof.
+Admitted.
+
+
 Lemma hhoare_get : forall H (v : D -> val) (p : D -> loc) fs,
   hhoare fs (fun d => val_get (p d))
     ((\*_(d <- fs) p d ~(d)~> v d) \* H)
     (fun hr => 
-      \[forall d, indom fs d -> hr d = v d] \* 
+      \[hr = v] \* 
       (\*_(d <- fs) p d ~(d)~> v d) \* H).
 Proof using.
   intros.
+  apply (hhoare_val_eq (fun _ => _)).
   apply/hhoare_conseq=> [||?]; [|eauto|]; first last.
   { rewrite -hstar_assoc -hstar_fset_pure_hstar=> ?. exact. }
   apply (hhoare_hstar_fset _ (fun d v => \[v = _] \* _)); autos~.
@@ -2157,9 +2966,10 @@ Qed.
 Lemma hhoare_set : forall H (w : D -> val) (v : D -> val) (p : D -> loc) fs,
   hhoare fs (fun d => val_set (val_loc (p d)) (v d))
     ((\*_(d <- fs) p d ~(d)~> w d) \* H)
-    (fun hr => \[forall d, indom fs d -> hr d = val_unit] \* (\*_(d <- fs) p d ~(d)~> v d) \* H).
+    (fun hr => \[hr = fun _ => val_unit] \* (\*_(d <- fs) p d ~(d)~> v d) \* H).
 Proof using.
   intros.
+  apply (hhoare_val_eq (fun _ => _)).
   apply/hhoare_conseq=> [||?]; [|eauto|]; first last.
   { rewrite -hstar_assoc -hstar_fset_pure_hstar=> ?. exact. }
   apply (hhoare_hstar_fset _ (fun d v => \[v = _] \* _)); autos~.
@@ -2170,9 +2980,10 @@ Qed.
 Lemma hhoare_free : forall H (v : D -> val) (p : D -> loc) fs,
   hhoare fs (fun d => val_free (val_loc (p d)))
     ((\*_(d <- fs) p d ~(d)~> v d) \* H)
-    (fun hr => \[forall d, indom fs d -> hr d = val_unit] \* H).
+    (fun hr => \[hr = fun _ => val_unit] \* H).
 Proof using.
   intros.
+  apply (hhoare_val_eq (fun _ => _)).
   apply/hhoare_conseq=> [||?]; [|eauto|]; first last.
   { rewrite -hstar_fset_pure=> ?. exact. }
   apply (hhoare_hstar_fset _ (fun d v => \[v = _])); autos~.
@@ -2184,9 +2995,10 @@ Lemma hhoare_unop : forall (v : D -> val) H (op : D -> prim) (v1 : D -> val) fs,
   (forall d, indom fs d -> evalunop (op d) (v1 d) (v d)) ->
   hhoare fs (fun d => (op d) (v1 d))
     H
-    (fun hr => \[forall d, indom fs d -> hr d = v d] \* H).
+    (fun hr => \[hr = v] \* H).
 Proof using.
   intros.
+  apply (hhoare_val_eq (fun _ => _)).
   replace H with ((\*_(_ <- fs) \[]) \* H) at 1; last (rewrite hstar_fset_emptys; xsimpl).
   apply/hhoare_conseq=> [||?]; [|eauto|]; first last.
   { rewrite -hstar_fset_pure=> ?. exact. }
@@ -2199,9 +3011,10 @@ Lemma hhoare_binop :  forall (v : D -> val) H (op : D -> prim) (v1 v2 : D -> val
   (forall d, indom fs d -> evalbinop (op d) (v1 d) (v2 d) (v d)) ->
   hhoare fs (fun d => (op d) (v1 d) (v2 d))
     H
-    (fun hr => \[forall d, indom fs d -> hr d = v d] \* H).
+    (fun hr => \[hr = v] \* H).
 Proof using.
   intros.
+  apply (hhoare_val_eq (fun _ => _)).
   replace H with ((\*_(_ <- fs) \[]) \* H) at 1; last (rewrite hstar_fset_emptys; xsimpl).
   apply/hhoare_conseq=> [||?]; [|eauto|]; first last.
   { rewrite -hstar_fset_pure=> ?. exact. }
@@ -2216,21 +3029,23 @@ Qed.
 (** A Separation Logic triple [triple t H Q] may be defined either in
     terms of Hoare triples, or in terms of [wp], as [H ==> wp t Q].
     We prefer the former route, which we find more elementary. *)
-
+(* 
 Definition triple (t : trm) (H : hhprop) (Q:val -> hhprop) : Prop :=
-  forall (H' : hhprop), hoare t (H \* H') (Q \*+ H')
+  forall (H' : hhprop), hoare t (H \* H') (Q \*+ H'). *)
 
+Section htriple.
 
+Context (fs : fset D).
 
-Definition htriple (fs : fset D) (t : D -> trm) (H : hhprop) (Q : fmap D val -> hhprop) : Prop :=
-  forall (H' : hhprop), hhoare fs t (H \* H') (Q \*+ H').
+Definition htriple (ht : D -> trm) (H : hhprop) (Q : (D -> val) -> hhprop) : Prop :=
+  forall (H' : hhprop), hhoare fs ht (H \* H') (Q \*+ H').
 
 (** We introduce a handy notation for postconditions of functions
     that return a pointer:  [funloc p => H] is short for
     [fun (r:val) => \exists (p:loc), \[r = val_loc p] \* H)]. *)
 
 Notation "'funloc' p '=>' H" :=
-  (fun (r:val) => \exists p, \[r = val_loc p] \* H)
+  (fun hr => \exists (p : D -> loc), \[hr = val_loc \o p] \* H)
   (at level 200, p ident, format "'funloc'  p  '=>'  H") : hprop_scope.
 
 (* ================================================================= *)
@@ -2238,86 +3053,86 @@ Notation "'funloc' p '=>' H" :=
 
 (** Consequence and frame rule. *)
 
-Lemma triple_conseq : forall t H' Q' H Q,
-  triple t H' Q' ->
+Lemma htriple_conseq : forall ht H' Q' H Q,
+  htriple ht H' Q' ->
   H ==> H' ->
   Q' ===> Q ->
-  triple t H Q.
+  htriple ht H Q.
 Proof using.
-  introv M MH MQ. intros HF. applys hoare_conseq M.
+  introv M MH MQ. intros HF. applys hhoare_conseq M.
   { xchanges MH. }
   { intros x. xchanges (MQ x). }
 Qed.
 
-Lemma triple_frame : forall t H Q H',
-  triple t H Q ->
-  triple t (H \* H') (Q \*+ H').
+Lemma htriple_frame : forall ht H Q H',
+  htriple ht H Q ->
+  htriple ht (H \* H') (Q \*+ H').
 Proof using.
-  introv M. intros HF. applys hoare_conseq (M (HF \* H')); xsimpl.
+  introv M. intros HF. applys hhoare_conseq (M (HF \* H')); xsimpl.
 Qed.
 
 (** Details for the proof of the frame rule. *)
 
-Lemma triple_frame' : forall t H Q H',
-  triple t H Q ->
-  triple t (H \* H') (Q \*+ H').
+Lemma htriple_frame' : forall ht H Q H',
+  htriple ht H Q ->
+  htriple ht (H \* H') (Q \*+ H').
 Proof using.
-  introv M. unfold triple in *. rename H' into H1. intros H2.
-  applys hoare_conseq. applys M (H1 \* H2).
+  introv M. unfold htriple in *. rename H' into H1. intros H2.
+  applys hhoare_conseq. applys M (H1 \* H2).
   { rewrite hstar_assoc. auto. }
   { intros v. rewrite hstar_assoc. auto. }
 Qed.
 
 (** Extraction rules. *)
 
-Lemma triple_hexists : forall t (A:Type) (J:A->hhprop) Q,
-  (forall x, triple t (J x) Q) ->
-  triple t (hexists J) Q.
+Lemma htriple_hexists : forall ht (A:Type) (J:A->hhprop) Q,
+  (forall x, htriple ht (J x) Q) ->
+  htriple ht (hexists J) Q.
 Proof using.
   introv M. intros HF. rewrite hstar_hexists.
-  applys hoare_hexists. intros. applys* M.
+  applys hhoare_hexists. intros. applys* M.
 Qed.
 
-Lemma triple_hpure : forall t (P:Prop) H Q,
-  (P -> triple t H Q) ->
-  triple t (\[P] \* H) Q.
+Lemma htriple_hpure : forall ht (P:Prop) H Q,
+  (P -> htriple ht H Q) ->
+  htriple ht (\[P] \* H) Q.
 Proof using.
   introv M. intros HF. rewrite hstar_assoc.
-  applys hoare_hpure. intros. applys* M.
+  applys hhoare_hpure. intros. applys* M.
 Qed. (* Note: can also be proved from [triple_hexists] *)
 
-Lemma triple_hforall : forall A (x:A) t (J:A->hhprop) Q,
-  triple t (J x) Q ->
-  triple t (hforall J) Q.
+Lemma htriple_hforall : forall A (x:A) ht (J:A->hhprop) Q,
+  htriple ht (J x) Q ->
+  htriple ht (hforall J) Q.
 Proof using.
-  introv M. applys* triple_conseq M. applys hforall_specialize.
+  introv M. applys* htriple_conseq M. applys hforall_specialize.
 Qed.
 
-Lemma triple_hwand_hpure_l : forall t (P:Prop) H Q,
+Lemma htriple_hwand_hpure_l : forall ht (P:Prop) H Q,
   P ->
-  triple t H Q ->
-  triple t (\[P] \-* H) Q.
+  htriple ht H Q ->
+  htriple ht (\[P] \-* H) Q.
 Proof using.
-  introv HP M. applys* triple_conseq M. rewrite* hwand_hpure_l.
+  introv HP M. applys* htriple_conseq M. rewrite* hwand_hpure_l.
 Qed.
 
 (** Combined and ramified rules. *)
 
-Lemma triple_conseq_frame : forall H2 H1 Q1 t H Q,
-  triple t H1 Q1 ->
+Lemma htriple_conseq_frame : forall H2 H1 Q1 ht H Q,
+  htriple ht H1 Q1 ->
   H ==> H1 \* H2 ->
   Q1 \*+ H2 ===> Q ->
-  triple t H Q.
+  htriple ht H Q.
 Proof using.
-  introv M WH WQ. applys triple_conseq WH WQ. applys triple_frame M.
+  introv M WH WQ. applys htriple_conseq WH WQ. applys htriple_frame M.
 Qed.
 
-Lemma triple_ramified_frame : forall H1 Q1 t H Q,
-  triple t H1 Q1 ->
+Lemma htriple_ramified_frame : forall H1 Q1 ht H Q,
+  htriple ht H1 Q1 ->
   H ==> H1 \* (Q1 \--* Q) ->
-  triple t H Q.
+  htriple ht H Q.
 Proof using.
-  introv M W. applys triple_conseq_frame (Q1 \--* Q) M W.
+  introv M W. applys htriple_conseq_frame (Q1 \--* Q) M W.
   { rewrite~ <- qwand_equiv. }
 Qed.
 
@@ -2332,265 +3147,267 @@ Proof using.
   { xpull. intros h K. intros ? ->. auto. }
 Qed.
 
-Lemma triple_named_heap : forall t H Q,
-  (forall h, H h -> triple t (= h) Q) ->
-  triple t H Q.
+Lemma htriple_named_heap : forall ht H Q,
+  (forall h, H h -> htriple ht (= h) Q) ->
+  htriple ht H Q.
 Proof using.
   introv M. rewrite (hexists_named_eq H).
-  applys triple_hexists. intros h.
-  applys* triple_hpure.
+  applys htriple_hexists. intros h.
+  applys* htriple_hpure.
 Qed.
 
 (* ================================================================= *)
 (** ** Rules for Terms *)
 
-Lemma triple_eval_like : forall t1 t2 H Q,
-  eval1_like d t1 t2 ->
-  triple t1 H Q ->
-  triple t2 H Q.
+Lemma htriple_eval_like : forall ht1 ht2 H Q,
+  eval_like fs ht1 ht2 ->
+  htriple ht1 H Q ->
+  htriple ht2 H Q.
 Proof using.
-  introv E M1. intros H'. applys hoare_eval_like E. applys M1.
+  introv E M1. intros H'. applys hhoare_eval_like E. applys M1.
 Qed.
 
-Lemma triple_val : forall v H Q,
+Lemma htriple_val : forall (v : D -> val) H Q,
   H ==> Q v ->
-  triple (trm_val v) H Q.
+  htriple (fun d => trm_val (v d)) H Q.
 Proof using.
-  introv M. intros HF. applys hoare_val. { xchanges M. }
+  introv M. intros HF. applys hhoare_val. { xchanges M. }
 Qed.
 
-Lemma triple_fun : forall x t1 H Q,
-  H ==> Q (val_fun x t1) ->
-  triple (trm_fun x t1) H Q.
+Lemma htriple_fun : forall (x : D -> var) ht1 H Q,
+  H ==> Q (fun d => val_fun (x d) (ht1 d)) ->
+  htriple (fun d => trm_fun (x d) (ht1 d)) H Q.
 Proof using.
-  introv M. intros HF. applys~ hoare_fun. { xchanges M. }
+  introv M. intros HF. applys~ hhoare_fun. { xchanges M. }
 Qed.
 
-Lemma triple_fix : forall f x t1 H Q,
-  H ==> Q (val_fix f x t1) ->
-  triple (trm_fix f x t1) H Q.
+Lemma htriple_fix : forall (f x : D -> var) ht1 H Q,
+  H ==> Q (fun d => val_fix (f d) (x d) (ht1 d)) ->
+  htriple (fun d => trm_fix (f d) (x d) (ht1 d)) H Q.
 Proof using.
-  introv M. intros HF. applys~ hoare_fix. { xchanges M. }
+  introv M. intros HF. applys~ hhoare_fix. { xchanges M. }
 Qed.
 
-Lemma triple_seq : forall t1 t2 H Q H1,
-  triple t1 H (fun v => H1) ->
-  triple t2 H1 Q ->
-  triple (trm_seq t1 t2) H Q.
+Lemma htriple_seq : forall ht1 ht2 H Q H1,
+  htriple ht1 H (fun hv => H1) ->
+  htriple ht2 H1 Q ->
+  htriple (fun d => trm_seq (ht1 d) (ht2 d)) H Q.
 Proof using.
-  introv M1 M2. intros HF. applys hoare_seq.
+  introv M1 M2. intros HF. applys hhoare_seq.
   { applys M1. }
-  { applys hoare_conseq M2; xsimpl. }
+  { applys hhoare_conseq M2; xsimpl. }
 Qed.
 
-Lemma triple_let : forall x t1 t2 Q1 H Q,
-  triple t1 H Q1 ->
-  (forall v1, triple (subst x v1 t2) (Q1 v1) Q) ->
-  triple (trm_let x t1 t2) H Q.
+Lemma htriple_let : forall x t1 t2 Q1 H Q,
+  htriple t1 H Q1 ->
+  (forall v1, htriple (fun d => subst (x d) (v1 d) (t2 d)) (Q1 v1) Q) ->
+  htriple (fun d => trm_let (x d) (t1 d) (t2 d)) H Q.
 Proof using.
-  introv M1 M2. intros HF. applys hoare_let.
+  introv M1 M2. intros HF. applys hhoare_let.
   { applys M1. }
-  { intros v. applys hoare_conseq M2; xsimpl. }
+  { intros v. applys hhoare_conseq M2; xsimpl. }
 Qed.
 
-Lemma triple_let_val : forall x v1 t2 H Q,
-  triple (subst x v1 t2) H Q ->
-  triple (trm_let x v1 t2) H Q.
+Lemma htriple_let_val : forall x v1 t2 H Q,
+  htriple (fun d => subst (x d) (v1 d) (t2 d)) H Q ->
+  htriple (fun d => trm_let (x d) (v1 d) (t2 d)) H Q.
 Proof using.
-  introv M. applys triple_let (fun v => \[v = v1] \* H).
-  { applys triple_val. xsimpl*. }
-  { intros v. applys triple_hpure. intros ->. applys M. }
+  introv M. applys htriple_let (fun v => \[v = v1] \* H).
+  { applys htriple_val. xsimpl*. }
+  { intros v. applys htriple_hpure. intros ->. applys M. }
 Qed.
 
-Lemma triple_if : forall (b:bool) t1 t2 H Q,
-  triple (if b then t1 else t2) H Q ->
-  triple (trm_if b t1 t2) H Q.
+Lemma htriple_if : forall (b:D -> bool) t1 t2 H Q,
+  htriple (fun d => if (b d) then (t1 d) else (t2 d)) H Q ->
+  htriple (fun d => trm_if (b d) (t1 d) (t2 d)) H Q.
 Proof using.
-  introv M1. intros HF. applys hoare_if. applys M1.
+  introv M1. intros HF. applys hhoare_if. applys M1.
 Qed.
 
-Lemma triple_app_fun : forall x v1 v2 t1 H Q,
-  v1 = val_fun x t1 ->
-  triple (subst x v2 t1) H Q ->
-  triple (trm_app v1 v2) H Q.
+Lemma htriple_app_fun : forall x v1 v2 t1 H Q,
+  (forall d, indom fs d -> v1 d = val_fun (x d) (t1 d)) ->
+  htriple (fun d => subst (x d) (v2 d) (t1 d)) H Q ->
+  htriple (fun d => trm_app (v1 d) (v2 d)) H Q.
 Proof using.
   (* can also be proved using [triple_eval_like] *)
-  unfold triple. introv E M1. intros H'.
-  applys hoare_app_fun E. applys M1.
+  unfold htriple. introv E M1. intros H'.
+  applys hhoare_app_fun E. applys M1.
 Qed.
 
-Lemma triple_app_fun_direct : forall x v2 t1 H Q,
-  triple (subst x v2 t1) H Q ->
-  triple (trm_app (val_fun x t1) v2) H Q.
-Proof using. introv M. applys* triple_app_fun. Qed.
+Lemma htriple_app_fun_direct : forall x v2 t1 H Q,
+  htriple (fun d => subst (x d) (v2 d) (t1 d)) H Q ->
+  htriple (fun d => trm_app (val_fun (x d) (t1 d)) (v2 d)) H Q.
+Proof using. introv M. applys* htriple_app_fun. Qed.
 
-Lemma triple_app_fix : forall v1 v2 f x t1 H Q,
-  v1 = val_fix f x t1 ->
-  triple (subst x v2 (subst f v1 t1)) H Q ->
-  triple (trm_app v1 v2) H Q.
+Lemma htriple_app_fix : forall v1 v2 f x t1 H Q,
+  (forall d, indom fs d -> v1 d = val_fix (f d) (x d) (t1 d)) ->
+  htriple (fun d => subst (x d) (v2 d) (subst (f d) (v1 d) (t1 d))) H Q ->
+  htriple (fun d => trm_app (v1 d) (v2 d)) H Q.
 Proof using.
-  (* can also be proved using [triple_eval_like] *)
-  unfold triple. introv E M1. intros H'.
-  applys hoare_app_fix E. applys M1.
+  (* can also be proved using [htriple_eval_like] *)
+  unfold htriple. introv E M1. intros H'.
+  applys hhoare_app_fix E. applys M1.
 Qed.
 
-Lemma triple_app_fix_direct : forall v2 f x t1 H Q,
-  triple (subst x v2 (subst f (val_fix f x t1) t1)) H Q ->
-  triple (trm_app (val_fix f x t1) v2) H Q.
-Proof using. introv M. applys* triple_app_fix. Qed.
+Lemma htriple_app_fix_direct : forall v2 f x t1 H Q,
+  htriple (fun d => subst x v2 (subst f (val_fix f x t1) t1)) H Q ->
+  htriple (fun d => trm_app (val_fix f x t1) v2) H Q.
+Proof using. introv M. applys* htriple_app_fix. Qed.
 
 (* ================================================================= *)
 (** ** Triple-Style Specification for Primitive Functions *)
 
 (** Operations on the state. *)
 
-Lemma triple_ref : forall v,
-  triple (val_ref v)
+Lemma htriple_ref : forall (v : D -> val),
+  htriple (fun d => val_ref (v d))
     \[]
-    (funloc p => p ~(d)~> v).
+    (funloc p => \*_(d <- fs) p d ~(d)~> v d).
 Proof using.
-  intros. unfold triple. intros H'. applys hoare_conseq hoare_ref; xsimpl~.
+  intros. unfold htriple. intros H'. applys hhoare_conseq hhoare_ref; xsimpl~.
 Qed.
 
-Lemma triple_get : forall v p,
-  triple (val_get p)
-    (p ~(d)~> v)
-    (fun r => \[r = v] \* (p ~(d)~> v)).
+Lemma htriple_get : forall v (p : D -> loc),
+  htriple (fun d => val_get (p d))
+    (\*_(d <- fs) p d ~(d)~> v d)
+    (fun hr => \[hr = v] \* (\*_(d <- fs) p d ~(d)~> v d)).
 Proof using.
-  intros. unfold triple. intros H'. applys hoare_conseq hoare_get; xsimpl~.
+  intros. unfold htriple. intros H'. applys hhoare_conseq hhoare_get; xsimpl~.
 Qed.
 
-Lemma triple_set : forall w p v,
-  triple (val_set (val_loc p) v)
-    (p ~(d)~> w)
-    (fun _ => p ~(d)~> v).
+Lemma htriple_set : forall (w : D -> val) (p : D -> loc) (v : D -> val),
+  htriple (fun d => val_set (val_loc (p d)) (v d))
+    (\*_(d <- fs) p d ~(d)~> w d)
+    (fun _ => \*_(d <- fs) p d ~(d)~> v d).
 Proof using.
-  intros. unfold triple. intros H'. applys hoare_conseq hoare_set; xsimpl~.
+  intros. unfold htriple. intros H'. applys hhoare_conseq hhoare_set; xsimpl~.
 Qed.
 
-Lemma triple_free : forall p v,
-  triple (val_free (val_loc p))
-    (p ~(d)~> v)
+Lemma htriple_free : forall (p : D -> loc) v,
+  htriple (fun d => val_free (val_loc (p d)))
+    (\*_(d <- fs) p d ~(d)~> v d)
     (fun _ => \[]).
 Proof using.
-  intros. unfold triple. intros H'. applys hoare_conseq hoare_free; xsimpl~.
+  intros. unfold htriple. intros H'. applys hhoare_conseq hhoare_free; xsimpl~.
 Qed.
 
 (** Other operations. *)
 
-Lemma triple_unop : forall v op v1,
-  evalunop op v1 v ->
-  triple (op v1) \[] (fun r => \[r = v]).
+Lemma htriple_unop : forall v op v1,
+  (forall d, indom fs d -> evalunop (op d) (v1 d) (v d)) ->
+  htriple (fun d => (op d) (v1 d)) \[] (fun hr => \[hr = v]).
 Proof using.
-  introv R. unfold triple. intros H'.
-  applys* hoare_conseq hoare_unop. xsimpl*.
+  introv R. unfold htriple. intros H'.
+  applys* hhoare_conseq hhoare_unop. xsimpl*.
 Qed.
 
-Lemma triple_binop : forall v op v1 v2,
-  evalbinop op v1 v2 v ->
-  triple (op v1 v2) \[] (fun r => \[r = v]).
+Lemma htriple_binop : forall v (op : D -> prim) v1 v2,
+  (forall d, indom fs d -> evalbinop (op d) (v1 d) (v2 d) (v d)) ->
+  htriple (fun d => (op d) (v1 d) (v2 d)) \[] (fun hr => \[hr = v]).
 Proof using.
-  introv R. unfold triple. intros H'.
-  applys* hoare_conseq hoare_binop. xsimpl*.
+  introv R. unfold htriple. intros H'.
+  applys* hhoare_conseq hhoare_binop. xsimpl*.
 Qed.
 
-Lemma triple_add : forall n1 n2,
-  triple (val_add n1 n2)
-    \[]
-    (fun r => \[r = val_int (n1 + n2)]).
-Proof using. intros. applys* triple_binop. applys* evalbinop_add. Qed.
 
-Lemma triple_div : forall n1 n2,
-  n2 <> 0 ->
-  triple (val_div n1 n2)
+Lemma htriple_add : forall (n1 n2 : D -> int),
+  htriple (fun d => val_add (n1 d) (n2 d))
     \[]
-    (fun r => \[r = val_int (Z.quot n1 n2)]).
-Proof using. intros. applys* triple_binop. applys* evalbinop_div. Qed.
+    (fun hr => \[hr = fun d => val_int (n1 d + n2 d)]).
+Proof using. intros. applys* htriple_binop; intros. apply evalbinop_add. Qed.
 
-Lemma triple_neg : forall (b1:bool),
-  triple (val_neg b1)
+Lemma htriple_div : forall (n1 n2 : D -> int),
+  (forall d, indom fs d -> n2 d <> 0) ->
+  htriple (fun d => val_div (n1 d) (n2 d))
     \[]
-    (fun r => \[r = val_bool (neg b1)]).
-Proof using. intros. applys* triple_unop. applys* evalunop_neg. Qed.
+    (fun hr => \[hr = fun d => val_int (Z.quot (n1 d) (n2 d))]).
+Proof using. intros. applys* htriple_binop; intros; applys* evalbinop_div. Qed.
 
-Lemma triple_opp : forall n1,
-  triple (val_opp n1)
+Lemma htriple_neg : forall (b1:D -> bool),
+  htriple (fun d => val_neg (b1 d))
     \[]
-    (fun r => \[r = val_int (- n1)]).
-Proof using. intros. applys* triple_unop. applys* evalunop_opp. Qed.
+    (fun hr => \[hr = fun d => val_bool (neg (b1 d))]).
+Proof using. intros. applys* htriple_unop; intros; applys* evalunop_neg. Qed.
 
-Lemma triple_eq : forall v1 v2,
-  triple (val_eq v1 v2)
+Lemma htriple_opp : forall (n1 : D -> int),
+  htriple (fun d => val_opp (n1 d))
     \[]
-    (fun r => \[r = isTrue (v1 = v2)]).
-Proof using. intros. applys* triple_binop. applys evalbinop_eq. Qed.
+    (fun hr => \[hr = fun d => val_int (- (n1 d))]).
+Proof using. intros. applys* htriple_unop; intros; applys* evalunop_opp. Qed.
 
-Lemma triple_neq : forall v1 v2,
-  triple (val_neq v1 v2)
+Lemma htriple_eq : forall (v1 v2 : D -> val),
+  htriple (fun d => val_eq (v1 d) (v2 d))
     \[]
-    (fun r => \[r = isTrue (v1 <> v2)]).
-Proof using. intros. applys* triple_binop. applys evalbinop_neq. Qed.
+    (fun hr => \[hr = fun d => isTrue ((v1 d) = (v2 d))]).
+Proof using. intros. applys* htriple_binop; intros; applys* evalbinop_eq. Qed.
 
-Lemma triple_sub : forall n1 n2,
-  triple (val_sub n1 n2)
+Lemma htriple_neq : forall (v1 v2 : D -> val),
+  htriple (fun d => val_neq (v1 d) (v2 d))
     \[]
-    (fun r => \[r = val_int (n1 - n2)]).
-Proof using. intros. applys* triple_binop. applys* evalbinop_sub. Qed.
+    (fun hr => \[hr = fun d => isTrue (v1 d <> v2 d)]).
+Proof using. intros. applys* htriple_binop; intros; applys evalbinop_neq. Qed.
 
-Lemma triple_mul : forall n1 n2,
-  triple (val_mul n1 n2)
+Lemma htriple_sub : forall (n1 n2 : D -> int),
+  htriple (fun d => val_sub (n1 d) (n2 d))
     \[]
-    (fun r => \[r = val_int (n1 * n2)]).
-Proof using. intros. applys* triple_binop. applys* evalbinop_mul. Qed.
+    (fun hr => \[hr = fun d => val_int (n1 d - n2 d)]).
+Proof using. intros. applys* htriple_binop; intros; applys* evalbinop_sub. Qed.
 
-Lemma triple_mod : forall n1 n2,
-  n2 <> 0 ->
-  triple (val_mod n1 n2)
+Lemma htriple_mul : forall (n1 n2 : D -> int),
+  htriple (fun d => val_mul (n1 d) (n2 d))
     \[]
-    (fun r => \[r = val_int (Z.rem n1 n2)]).
-Proof using. intros. applys* triple_binop. applys* evalbinop_mod. Qed.
+    (fun hr => \[hr = fun d => val_int (n1 d * n2 d)]).
+Proof using. intros. applys* htriple_binop; intros; applys* evalbinop_mul. Qed.
 
-Lemma triple_le : forall n1 n2,
-  triple (val_le n1 n2)
+Lemma htriple_mod : forall (n1 n2 : D -> int),
+  (forall d, indom fs d -> n2 d <> 0) ->
+  htriple (fun d => val_mod (n1 d) (n2 d))
     \[]
-    (fun r => \[r = isTrue (n1 <= n2)]).
-Proof using. intros. applys* triple_binop. applys* evalbinop_le. Qed.
+    (fun hr => \[hr = fun d => val_int (Z.rem (n1 d) (n2 d))]).
+Proof using. intros. applys* htriple_binop; intros; applys* evalbinop_mod. Qed.
 
-Lemma triple_lt : forall n1 n2,
-  triple (val_lt n1 n2)
+Lemma htriple_le : forall (n1 n2 : D -> int),
+  htriple (fun d => val_le (n1 d) (n2 d))
     \[]
-    (fun r => \[r = isTrue (n1 < n2)]).
-Proof using. intros. applys* triple_binop. applys* evalbinop_lt. Qed.
+    (fun hr => \[hr = fun d => isTrue (n1 d <= n2 d)]).
+Proof using. intros. applys* htriple_binop; intros; applys* evalbinop_le. Qed.
 
-Lemma triple_ge : forall n1 n2,
-  triple (val_ge n1 n2)
+Lemma htriple_lt : forall (n1 n2 : D -> int),
+  htriple (fun d => val_lt (n1 d) (n2 d))
     \[]
-    (fun r => \[r = isTrue (n1 >= n2)]).
-Proof using. intros. applys* triple_binop. applys* evalbinop_ge. Qed.
+    (fun hr => \[hr = fun d => isTrue (n1 d < n2 d)]).
+Proof using. intros. applys* htriple_binop; intros; applys* evalbinop_lt. Qed.
 
-Lemma triple_gt : forall n1 n2,
-  triple (val_gt n1 n2)
+Lemma htriple_ge : forall (n1 n2 : D -> int),
+  htriple (fun d => val_ge (n1 d) (n2 d))
     \[]
-    (fun r => \[r = isTrue (n1 > n2)]).
-Proof using. intros. applys* triple_binop. applys* evalbinop_gt. Qed.
+    (fun hr => \[hr = fun d => isTrue (n1 d >= n2 d)]).
+Proof using. intros. applys* htriple_binop; intros; applys* evalbinop_ge. Qed.
 
-Lemma triple_ptr_add : forall p n,
-  p + n >= 0 ->
-  triple (val_ptr_add p n)
+Lemma htriple_gt : forall (n1 n2 : D -> int),
+  htriple (fun d => val_gt (n1 d) (n2 d))
     \[]
-    (fun r => \[r = val_loc (abs (p + n))]).
+    (fun hr => \[hr = fun d => isTrue (n1 d > n2 d)]).
+Proof using. intros. applys* htriple_binop; intros; applys* evalbinop_gt. Qed.
+
+Lemma htriple_ptr_add : forall (p : D -> loc) (n : D -> int),
+  (forall d, indom fs d -> p d + n d >= 0) ->
+  htriple (fun d => val_ptr_add (p d) (n d))
+    \[]
+    (fun hr => \[hr = fun d => val_loc (abs (p d + n d))]).
 Proof using.
-  intros. applys* triple_binop. applys* evalbinop_ptr_add.
+  intros. applys* htriple_binop; intros; applys* evalbinop_ptr_add.
   { rewrite~ abs_nonneg. }
 Qed.
 
-Lemma triple_ptr_add_nat : forall p (f:nat),
-  triple (val_ptr_add p f)
+Lemma htriple_ptr_add_nat : forall (p : D -> loc) (f:D -> nat),
+  htriple (fun d => val_ptr_add (p d) (f d))
     \[]
-    (fun r => \[r = val_loc (p+f)%nat]).
+    (fun hr => \[hr = fun d => val_loc (p d + f d)%nat]).
 Proof using.
-  intros. applys triple_conseq triple_ptr_add. { math. } { xsimpl. }
-  { xsimpl. intros. subst. fequals.
+  intros. applys htriple_conseq htriple_ptr_add. { math. } { xsimpl. }
+  { xsimpl. intros. subst. 
+    applys fun_ext_1; intros; fequals.
     applys eq_nat_of_eq_int. rewrite abs_nonneg; math. }
 Qed.
 
@@ -2600,24 +3417,24 @@ Qed.
 (* ----------------------------------------------------------------- *)
 (** *** Definition of the Weakest-Precondition Judgment. *)
 
-(** [wp] is defined on top of [hoare] triples. More precisely [wp t Q]
+(** [wp] is defined on top of [hhoare] htriples. More precisely [wp t Q]
     is a heap predicate such that [H ==> wp t Q] if and only if
-    [triple t H Q], where [triple t H Q] is defined as
-    [forall H', hoare t (H \* H') (Q \*+ H')]. *)
+    [htriple t H Q], where [htriple t H Q] is defined as
+    [forall H', hhoare t (H \* H') (Q \*+ H')]. *)
 
-Definition wp (t:trm) := fun (Q:val->hhprop) =>
-  \exists H, H \* \[forall H', hoare t (H \* H') (Q \*+ H')].
+Definition wp t := fun Q =>
+  \exists H, H \* \[forall H', hhoare fs t (H \* H') (Q \*+ H')].
 
-(** Equivalence with triples. *)
+(** Equivalence with htriples. *)
 
 Lemma wp_equiv : forall t H Q,
-  (H ==> wp t Q) <-> (triple t H Q).
+  (H ==> wp t Q) <-> (htriple t H Q).
 Proof using.
-  unfold wp, triple. iff M.
-  { intros H'. applys hoare_conseq. 2:{ applys himpl_frame_l M. }
-     { clear M. rewrite hstar_hexists. applys hoare_hexists. intros H''.
+  unfold wp, htriple. iff M.
+  { intros H'. applys hhoare_conseq. 2:{ applys himpl_frame_l M. }
+     { clear M. rewrite hstar_hexists. applys hhoare_hexists. intros H''.
        rewrite (hstar_comm H''). rewrite hstar_assoc.
-       applys hoare_hpure. intros N. applys N. }
+       applys hhoare_hpure. intros N. applys N. }
      { auto. } }
   { xsimpl H. apply M. }
 Qed.
@@ -2632,7 +3449,7 @@ Lemma wp_ramified : forall Q1 Q2 t,
 Proof using.
   intros. unfold wp. xpull. intros H M.
   xsimpl (H \* (Q1 \--* Q2)). intros H'.
-  applys hoare_conseq M; xsimpl.
+  applys hhoare_conseq M; xsimpl.
 Qed.
 
 Arguments wp_ramified : clear implicits.
@@ -2663,75 +3480,89 @@ Proof using. introv M. xchange M. applys wp_ramified. Qed.
 (** *** Weakest-Precondition Style Reasoning Rules for Terms. *)
 
 Lemma wp_eval_like : forall t1 t2 Q,
-  eval_like d t1 t2 ->
+  eval_like fs t1 t2 ->
   wp t1 Q ==> wp t2 Q.
 Proof using.
   introv E. unfold wp. xpull. intros H M. xsimpl H.
-  intros H'. applys hoare_eval_like E M.
+  intros H'. applys hhoare_eval_like E M.
 Qed.
 
 Lemma wp_val : forall v Q,
-  Q v ==> wp (trm_val v) Q.
-Proof using. intros. unfold wp. xsimpl; intros H'. applys hoare_val. xsimpl. Qed.
+  Q v ==> wp (fun d => trm_val (v d)) Q.
+Proof using. intros. unfold wp. xsimpl; intros H'. applys hhoare_val. xsimpl. Qed.
 
 Lemma wp_fun : forall x t Q,
-  Q (val_fun x t) ==> wp (trm_fun x t) Q.
-Proof using. intros. unfold wp. xsimpl; intros H'. applys hoare_fun. xsimpl. Qed.
+  Q (fun d => val_fun (x d) (t d)) ==> wp (fun d => trm_fun (x d) (t d)) Q.
+Proof using. intros. unfold wp. xsimpl; intros H'. applys hhoare_fun. xsimpl. Qed.
 
 Lemma wp_fix : forall f x t Q,
-  Q (val_fix f x t) ==> wp (trm_fix f x t) Q.
-Proof using. intros. unfold wp. xsimpl; intros H'. applys hoare_fix. xsimpl. Qed.
+  Q (fun d => val_fix (f d) (x d) (t d)) ==> wp (fun d => trm_fix (f d) (x d) (t d)) Q.
+Proof using. intros. unfold wp. xsimpl; intros H'. applys hhoare_fix. xsimpl. Qed.
 
 Lemma wp_app_fun : forall x v1 v2 t1 Q,
-  v1 = val_fun x t1 ->
-  wp (subst x v2 t1) Q ==> wp (trm_app v1 v2) Q.
-Proof using. introv EQ1. unfold wp. xsimpl; intros. applys* hoare_app_fun. Qed.
+  (forall d, v1 d = val_fun (x d) (t1 d)) ->
+  wp (fun d => subst (x d) (v2 d) (t1 d)) Q ==> wp (fun d => trm_app (v1 d) (v2 d)) Q.
+Proof using. introv EQ1. unfold wp. xsimpl; intros. applys* hhoare_app_fun. Qed.
 (* variant: introv EQ1. applys wp_eval_like. introv R. applys* eval_app_fun. *)
 
 Lemma wp_app_fix : forall f x v1 v2 t1 Q,
-  v1 = val_fix f x t1 ->
-  wp (subst x v2 (subst f v1 t1)) Q ==> wp (trm_app v1 v2) Q.
-Proof using. introv EQ1. unfold wp. xsimpl; intros. applys* hoare_app_fix. Qed.
+  (forall d, v1 d = val_fix (f d) (x d) (t1 d)) ->
+  wp (fun d => subst (x d) (v2 d) (subst (f d) (v1 d) (t1 d))) Q ==> wp (fun d => trm_app (v1 d) (v2 d)) Q.
+Proof using. introv EQ1. unfold wp. xsimpl; intros. applys* hhoare_app_fix. Qed.
 (* variant: introv EQ1. applys wp_eval_like. introv R. applys* eval_app_fix. *)
 
 Lemma wp_seq : forall t1 t2 Q,
-  wp t1 (fun r => wp t2 Q) ==> wp (trm_seq t1 t2) Q.
+  wp t1 (fun hr => wp t2 Q) ==> wp (fun d => trm_seq (t1 d) (t2 d)) Q.
 Proof using.
   intros. unfold wp at 1. xsimpl. intros H' M1.
   unfold wp at 1. xsimpl. intros H''.
-  applys hoare_seq. applys (rm M1). unfold wp.
-  repeat rewrite hstar_hexists. applys hoare_hexists; intros H'''.
-  rewrite (hstar_comm H'''); repeat rewrite hstar_assoc.
-  applys hoare_hpure; intros M2. applys hoare_conseq M2; xsimpl.
+  applys hhoare_seq. applys (rm M1). applys* wp_equiv.
 Qed.
 
 Lemma wp_let : forall x t1 t2 Q,
-  wp t1 (fun v => wp (subst x v t2) Q) ==> wp (trm_let x t1 t2) Q.
+  wp t1 (fun v => wp (fun d => subst (x d) (v d) (t2 d)) Q) ==> wp (fun d => trm_let (x d) (t1 d) (t2 d)) Q.
 Proof using.
   intros. unfold wp at 1. xsimpl. intros H' M1.
   unfold wp at 1. xsimpl. intros H''.
-  applys hoare_let. applys (rm M1). intros v. simpl. unfold wp.
-  repeat rewrite hstar_hexists. applys hoare_hexists; intros H'''.
+  applys hhoare_let. applys (rm M1). intros v. simpl. unfold wp.
+  repeat rewrite hstar_hexists. applys hhoare_hexists; intros H'''.
   rewrite (hstar_comm H'''). rewrite hstar_assoc.
-  applys hoare_hpure; intros M2. applys hoare_conseq M2; xsimpl.
+  applys hhoare_hpure; intros M2. applys hhoare_conseq M2; xsimpl.
 Qed.
 
-Lemma wp_if : forall b t1 t2 Q,
-  wp (if b then t1 else t2) Q ==> wp (trm_if b t1 t2) Q.
+Lemma wp_if : forall (b : D -> bool) t1 t2 Q,
+  wp (fun d => if (b d) then (t1 d) else (t2 d)) Q ==> wp (fun d => trm_if (b d) (t1 d) (t2 d)) Q.
 Proof using.
   intros. repeat unfold wp. xsimpl; intros H M H'.
-  applys hoare_if. applys M.
+  applys hhoare_if. applys M.
 Qed.
 
 Lemma wp_if_case : forall b t1 t2 Q,
-  (if b then wp t1 Q else wp t2 Q) ==> wp (trm_if b t1 t2) Q.
+  (if b then wp t1 Q else wp t2 Q) ==> wp (fun d => trm_if b (t1 d) (t2 d)) Q.
 Proof using. intros. applys himpl_trans wp_if. case_if~. Qed.
 
+End htriple.
 
-End Hoare1.
+Lemma wp_union Q t fs1 fs2 : 
+  disjoint fs1 fs2 ->
+  wp fs1 t (fun hr1 => wp fs2 t (fun hr2 => Q (hr1 \u_(fs1) hr2))) = 
+  wp (fs1 \u fs2) t Q.
+Proof.
+  move=> dj.
+  apply/himpl_antisym.
+  { rewrite {1}/wp. xsimpl=> ? M1.
+    rewrite /wp; xsimpl=> ?. apply/hhoare_union=> //= ?.
+    by apply wp_equiv. }
+  rewrite {1}/wp. xsimpl=> P hh.
+  rewrite {1}/wp. xsimpl=> H.
+  rewrite /wp.
+  move/hhoare_union2: (hh)=> /(_ H dj) ?.
+  apply/hhoare_conseq; [eauto|xsimpl|].
+  xsimpl*.
+Qed. 
 
 Notation "'funloc' p '=>' H" :=
-  (fun (r:val) => \exists p, \[r = val_loc p] \* H)
+  (fun (r:D -> val) => \exists (p : D -> loc), \[r = val_loc \o p] \* H)
   (at level 200, p ident, format "'funloc'  p  '=>'  H") : hprop_scope.
 
 (* ################################################################# *)
@@ -2763,7 +3594,7 @@ Open Scope liblist_scope.
 
 (** A context is an association list from variables to values. *)
 
-Definition ctx : Type := list (var*val).
+(* Definition ctx : Type := list (var*val).
 
 (** [lookup x E] returns [Some v] if [x] is bound to a value [v],
     and [None] otherwise. *)
@@ -2852,7 +3683,9 @@ Proof using.
   { intros v2 K2 v1 K1. false* D. }
 Qed.
 
-End CtxOps.
+End CtxOps. *)
+
+
 
 (* ================================================================= *)
 (** ** Multi-Substitution *)
@@ -2863,7 +3696,7 @@ End CtxOps.
 (** The specification of the characteristic formula generator is expressed
     using the multi-substitution function, which substitutes a list of
     bindings inside a term. *)
-
+(* 
 Fixpoint isubst (E:ctx) (t:trm) : trm :=
   match t with
   | trm_val v =>
@@ -2983,7 +3816,7 @@ Proof using.
   { applys isubst_ctx_equiv. intros y. rew_list. simpl. do 2 rewrite lookup_rem. case_var~. }
   { intros y v1 v2 K1 K2. rew_listx in *. simpls. do 2 rewrite lookup_rem in K1. case_var. }
   
-  Qed.
+  Qed. *)
 (* ================================================================= *)
 (** ** Definition of [wpgen] *)
 
@@ -2996,7 +3829,11 @@ Proof using.
 
 (** Let [formula] denote the type of [wp t] and [wpgen t]. *)
 
-Definition formula := (val -> hhprop) -> hhprop.
+Section WPgen.
+
+Context (fs : fset D).
+
+Definition formula := ((D -> val) -> hhprop) -> hhprop.
 
 Implicit Type F : formula.
 
@@ -3046,35 +3883,35 @@ Qed.
 (** we state auxiliary definitions for [wpgen], one per term construct.
     For simplicity, we here assume the term [t] to be in A-normal form.
     If it is not, the formula generated will be incomplete, that is,
-    useless to prove triples about the term [t]. Note that the actual
+    useless to prove htriples about the term [t]. Note that the actual
     generator in CFML2 does support terms that are not in A-normal form. *)
 
 Definition wpgen_fail : formula := fun Q =>
   \[False].
 
-Definition wpgen_val (v:val) : formula := fun Q =>
+Definition wpgen_val (v:D->val) : formula := fun Q =>
   Q v.
 
-Definition wpgen_fun (Fof:val->formula) : formula := fun Q =>
-  \forall vf, \[forall vx Q', Fof vx Q' ==> wp (trm_app vf vx) Q'] \-* Q vf.
+Definition wpgen_fun (Fof:(D->val)->formula) : formula := fun Q =>
+  \forall (vf : D -> val), \[forall (vx : D -> val) Q', Fof vx Q' ==> wp fs (fun d => trm_app (vf d) (vx d)) Q'] \-* Q vf.
 
-Definition wpgen_fix (Fof:val->val->formula) : formula := fun Q =>
-  \forall vf, \[forall vx Q', Fof vf vx Q' ==> wp (trm_app vf vx) Q'] \-* Q vf.
+Definition wpgen_fix (Fof:(D->val)->(D->val)->formula) : formula := fun Q =>
+  \forall hvf, \[forall hvx Q', Fof hvf hvx Q' ==> wp fs (fun d => trm_app (hvf d) (hvx d)) Q'] \-* Q hvf.
 
-Definition wpgen_var (E:ctx) (x:var) : formula :=
+(* Definition wpgen_var (E:ctx) (x:var) : formula :=
   match lookup x E with
   | None => wpgen_fail
   | Some v => wpgen_val v
-  end.
+  end. *)
 
 Definition wpgen_seq (F1 F2:formula) : formula := fun Q =>
   F1 (fun v => F2 Q).
 
-Definition wpgen_let (F1:formula) (F2of:val->formula) : formula := fun Q =>
-  F1 (fun v => F2of v Q).
+Definition wpgen_let (F1:formula) (F2of:(D->val)->formula) : formula := fun Q =>
+  F1 (fun hv => F2of hv Q).
 
-Definition wpgen_if (t:trm) (F1 F2:formula) : formula := fun Q =>
-  \exists (b:bool), \[t = trm_val (val_bool b)] \* (if b then F1 Q else F2 Q).
+Definition wpgen_if (t:D->trm) (F1 F2:formula) : formula := fun Q =>
+  \exists (b:bool), \[t = fun=> trm_val (val_bool b)] \* (if b then F1 Q else F2 Q).
 
 Definition wpgen_if_trm (F0 F1 F2:formula) : formula :=
   wpgen_let F0 (fun v => mkstruct (wpgen_if v F1 F2)).
@@ -3086,40 +3923,161 @@ Definition wpgen_if_trm (F0 F1 F2:formula) : formula :=
     not recurse through values. Note also that the context [E] gets extended
     when traversing bindings, in the let-binding and the function cases. *)
 
-Fixpoint wpgen (E:ctx) (t:trm) : formula :=
+Definition is_val (t : D -> trm) :=
+  exists v, t = fun d => trm_val (v d).
+
+Definition get_val (t : D -> trm) :=
+  fun d => match t d with trm_val v => v | _ => arbitrary end.
+
+Lemma is_val_val hv : is_val (fun d => trm_val (hv d)).
+Proof. exists __; eauto. Qed.
+
+Definition is_fun (t : D -> trm) :=
+  exists x t, t = fun d => trm_fun (x d) (t d).
+
+Definition is_fix (t : D -> trm) :=
+  exists f x t, t = fun d => trm_fix (f d) (x d) (t d).
+
+Definition is_if (t : D -> trm) :=
+  exists t0 t1 t2, t = fun d => trm_if (t0 d) (t1 d) (t2 d).
+
+Definition is_seq (t : D -> trm) :=
+  exists t1 t2, t = fun d => trm_seq (t1 d) (t2 d).
+
+Definition is_let (t : D -> trm) :=
+  exists x t1 t2, t = fun d => trm_let (x d) (t1 d) (t2 d).
+
+Definition get_var (t : D -> trm) :=
+  fun d => 
+    match t d with
+    | trm_fun x _ | trm_let x _ _ | trm_fix _ x _ => x
+    | _ => arbitrary
+    end.
+
+Definition get_fun (t : D -> trm) :=
+  fun d => 
+    match t d with
+    | trm_fun _ t | trm_let _ _ t | trm_fix _ _ t => t
+    | _ => trm_val 0
+    end.
+
+Instance Inhab_trm : Inhab trm.
+split.
+by exists (trm_val 0).
+Qed.
+
+Definition get_f (t : D -> trm) :=
+  fun d => 
+    match t d with
+    | trm_fix f _ _ => f
+    | _ => arbitrary
+    end.
+
+Definition get_cond (t : D -> trm) :=
+  fun d => 
+    match t d with
+    | trm_if f _ _ => f
+    | _ => arbitrary
+    end.
+
+Definition get_then (t : D -> trm) :=
+  fun d => 
+    match t d with
+    | trm_if _ f _ => f
+    | _ => arbitrary
+    end.
+
+Definition get_else (t : D -> trm) :=
+  fun d => 
+    match t d with
+    | trm_if _ _ f => f
+    | _ => arbitrary
+    end.
+
+Definition get_seq1 (t : D -> trm) :=
+  fun d => 
+    match t d with
+    | trm_seq f _ => f
+    | _ => arbitrary
+    end.
+
+Definition get_seq2 (t : D -> trm) :=
+  fun d => 
+    match t d with
+    | trm_seq _ f => f
+    | _ => arbitrary
+    end.
+
+Definition get_letvar (t : D -> trm) :=
+  fun d => 
+    match t d with 
+    | trm_let _ f _ => f 
+    | _ => arbitrary
+    end.
+
+Definition wpgen (t : D -> trm) : formula :=
+  mkstruct (
+         If is_val t then wpgen_val (get_val t)
+    else If is_fun t then wpgen_fun (fun hv => wp fs (fun d => subst (get_var t d) (hv d) (get_fun t d)))
+    else If is_fix t then wpgen_fix (fun hvf hv => wp fs (fun d => subst (get_var t d) (hv d) (subst (get_f t d) (hvf d) (get_fun t d))))
+    else If is_if  t then wpgen_if  (get_cond t) (wp fs (fun d => get_then t d)) (wp fs (fun d => get_else t d))
+    else If is_seq t then wpgen_seq (wp fs (fun d => get_seq1 t d)) (wp fs (fun d => get_seq2 t d))
+    else If is_let t then wpgen_let (wp fs (fun d => get_letvar t d)) (fun hv => wp fs (fun d => subst (get_var t d) (hv d) (get_fun t d)))
+    else wp fs t
+  ).
+
+Lemma wpgenE :
+  (forall hv      , wpgen (fun d => trm_val (hv d))        
+    = mkstruct (wpgen_val hv))                                                                               *
+  (forall x t1    , wpgen (fun d => trm_fun (x d) (t1 d))  
+    = mkstruct (wpgen_fun (fun v => wp fs (fun d => subst (x d) (v d) (t1 d)))))                             *
+  (forall t1 t2   , wpgen (fun d => trm_seq (t1 d) (t2 d)) 
+    = mkstruct (wpgen_seq (wp fs t1) (wp fs t2))) *
+  (forall x t1 t2 , wpgen (fun d => trm_let (x d) (t1 d) (t2 d)) 
+    = mkstruct (wpgen_let (wp fs t1) (fun v => wp fs (fun d => subst (x d) (v d) (t2 d)))))                  *
+  (forall t1 t2   , wpgen (fun d => trm_app (t1 d) (t2 d)) 
+    = mkstruct (wp fs (fun d => trm_app (t1 d) (t2 d))))                                                     *
+  (forall f x t1  , wpgen (fun d => trm_fix (f d) (x d) (t1 d))
+    = mkstruct (wpgen_fix (fun hvf hv => wp fs (fun d => subst (x d) (hv d) (subst (f d) (hvf d) (t1 d)))))) *
+  (forall t0 t1 t2, wpgen (fun d => trm_if (t0 d) (t1 d) (t2 d))
+    = mkstruct (wpgen_if t0 (wp fs t1) (wp fs t2))).
+Proof.
+Admitted.
+
+(* Definition wpgen (t:trm) : formula :=
   mkstruct match t with
   | trm_val v => wpgen_val v
-  | trm_var x => wpgen_var E x
-  | trm_fun x t1 => wpgen_fun (fun v => wpgen ((x,v)::E) t1)
-  | trm_fix f x t1 => wpgen_fix (fun vf v => wpgen ((f,vf)::(x,v)::E) t1)
-  | trm_if t0 t1 t2 => wpgen_if (isubst E t0) (wpgen E t1) (wpgen E t2)
-  | trm_seq t1 t2 => wpgen_seq (wpgen E t1) (wpgen E t2)
-  | trm_let x t1 t2 => wpgen_let (wpgen E t1) (fun v => wpgen ((x,v)::E) t2)
-  | trm_app t1 t2 => wp (isubst E t)
-  end.
+  | trm_var x => wpgen_fail
+  | trm_fun x t1 => wpgen_fun (fun v => wp (subst x v t1))
+  | trm_fix f x t1 => wpgen_fix (fun vf v => wp (subst x v (subst f vf t1)))
+  | trm_if t0 t1 t2 => wpgen_if t0 (wp t1) (wp t2)
+  | trm_seq t1 t2 => wpgen_seq (wp t1) (wp t2)
+  | trm_let x t1 t2 => wpgen_let (wp t1) (fun v => wp (subst x v t2))
+  | trm_app t1 t2 => wp t
+  end. *)
 
 (* ----------------------------------------------------------------- *)
 (** *** Soundness of [wpgen] *)
 
 (** [formula_sound t F] asserts that, for any [Q], the Separation Logic
-    judgment [triple (F Q) t Q] is valid. In other words, it states that
+    judgment [htriple (fun d => F Q) t Q] is valid. In other words, it states that
     [F] is a stronger formula than [wp t].
 
     The soundness theorem that we are ultimately interested in asserts that
     [formula_sound (isubst E t) (wpgen E t)] holds for any [E] and [t]. *)
 
-Definition formula_sound (t:trm) (F:formula) : Prop :=
-  forall Q, F Q ==> wp t Q.
+Definition formula_sound (t:D -> trm) (F:formula) : Prop :=
+  forall Q, F Q ==> wp fs t Q.
 
 Lemma wp_sound : forall t,
-  formula_sound t (wp t).
+  formula_sound t (wp fs t).
 Proof using. intros. intros Q. applys himpl_refl. Qed.
 
 (** One soundness lemma for [mkstruct]. *)
 
 Lemma mkstruct_wp : forall t,
-  mkstruct (wp t) = (wp t).
-Proof using
+  mkstruct (wp fs t) = (wp fs t).
+Proof using.
   intros. applys fun_ext_1. intros Q. applys himpl_antisym.
   { unfold mkstruct. xpull. intros Q'. applys wp_ramified. }
   { applys mkstruct_erase. }
@@ -3140,24 +4098,24 @@ Lemma wpgen_fail_sound : forall t,
 Proof using. intros. intros Q. unfold wpgen_fail. xpull. Qed.
 
 Lemma wpgen_val_sound : forall v,
-  formula_sound (trm_val v) (wpgen_val v).
+  formula_sound (fun d => trm_val (v d)) (wpgen_val v).
 Proof using. intros. intros Q. unfolds wpgen_val. applys wp_val. Qed.
 
 Lemma wpgen_fun_sound : forall x t1 Fof,
-  (forall vx, formula_sound (subst x vx t1) (Fof vx)) ->
-  formula_sound (trm_fun x t1) (wpgen_fun Fof).
+  (forall hvx, formula_sound (fun d => subst (x d) (hvx d) (t1 d)) (Fof hvx)) ->
+  formula_sound (fun d => trm_fun (x d) (t1 d)) (wpgen_fun Fof).
 Proof using.
-  introv M. intros Q. unfolds wpgen_fun. applys himpl_hforall_l (val_fun x t1).
+  introv M. intros Q. unfolds wpgen_fun. applys himpl_hforall_l (fun d => val_fun (x d) (t1 d)).
   xchange hwand_hpure_l.
   { intros. applys himpl_trans_r. { applys* wp_app_fun. } { applys* M. } }
   { applys wp_fun. }
 Qed.
 
 Lemma wpgen_fix_sound : forall f x t1 Fof,
-  (forall vf vx, formula_sound (subst x vx (subst f vf t1)) (Fof vf vx)) ->
-  formula_sound (trm_fix f x t1) (wpgen_fix Fof).
+  (forall hvf hvx, formula_sound (fun d => subst (x d) (hvx d) (subst (f d) (hvf d) (t1 d))) (Fof hvf hvx)) ->
+  formula_sound (fun d => trm_fix (f d) (x d) (t1 d)) (wpgen_fix Fof).
 Proof using.
-  introv M. intros Q. unfolds wpgen_fix. applys himpl_hforall_l (val_fix f x t1).
+  introv M. intros Q. unfolds wpgen_fix. applys himpl_hforall_l (fun d => val_fix (f d) (x d) (t1 d)).
   xchange hwand_hpure_l.
   { intros. applys himpl_trans_r. { applys* wp_app_fix. } { applys* M. } }
   { applys wp_fix. }
@@ -3166,7 +4124,7 @@ Qed.
 Lemma wpgen_seq_sound : forall F1 F2 t1 t2,
   formula_sound t1 F1 ->
   formula_sound t2 F2 ->
-  formula_sound (trm_seq t1 t2) (wpgen_seq F1 F2).
+  formula_sound (fun d => trm_seq (t1 d) (t2 d)) (wpgen_seq F1 F2).
 Proof using.
   introv S1 S2. intros Q. unfolds wpgen_seq. applys himpl_trans wp_seq.
   applys himpl_trans S1. applys wp_conseq. intros v. applys S2.
@@ -3174,8 +4132,8 @@ Qed.
 
 Lemma wpgen_let_sound : forall F1 F2of x t1 t2,
   formula_sound t1 F1 ->
-  (forall v, formula_sound (subst x v t2) (F2of v)) ->
-  formula_sound (trm_let x t1 t2) (wpgen_let F1 F2of).
+  (forall hv, formula_sound (fun d => subst (x d) (hv d) (t2 d)) (F2of hv)) ->
+  formula_sound (fun d => trm_let (x d) (t1 d) (t2 d)) (wpgen_let F1 F2of).
 Proof using.
   introv S1 S2. intros Q. unfolds wpgen_let. applys himpl_trans wp_let.
   applys himpl_trans S1. applys wp_conseq. intros v. applys S2.
@@ -3184,7 +4142,7 @@ Qed.
 Lemma wpgen_if_sound : forall F1 F2 t0 t1 t2,
   formula_sound t1 F1 ->
   formula_sound t2 F2 ->
-  formula_sound (trm_if t0 t1 t2) (wpgen_if t0 F1 F2).
+  formula_sound (fun d => trm_if (t0 d) (t1 d) (t2 d)) (wpgen_if t0 F1 F2).
 Proof using.
   introv S1 S2. intros Q. unfold wpgen_if. xpull. intros b ->.
   applys himpl_trans wp_if. case_if. { applys S1. } { applys S2. }
@@ -3192,40 +4150,33 @@ Qed.
 
 (** The main inductive proof for the soundness theorem. *)
 
-Lemma wpgen_sound : forall E t,
-  formula_sound (isubst E t) (wpgen E t).
+Lemma wpgen_sound : forall t,
+  formula_sound t (wpgen t).
 Proof using.
-  intros. gen E. induction t; intros; simpl;
-   applys mkstruct_sound.
-  { applys wpgen_val_sound. }
-  { rename v into x. unfold wpgen_var. case_eq (lookup x E).
-    { intros v EQ. applys wpgen_val_sound. }
-    { intros N. applys wpgen_fail_sound. } }
-  { rename v into x. applys wpgen_fun_sound.
-    { intros vx. rewrite* <- isubst_rem. } }
-  { rename v into f, v0 into x. applys wpgen_fix_sound.
-    { intros vf vx. rewrite* <- isubst_rem_2. } }
-  { applys wp_sound. }
-  { applys* wpgen_seq_sound. }
-  { rename v into x. applys* wpgen_let_sound.
-    { intros v. rewrite* <- isubst_rem. } }
-  { applys* wpgen_if_sound. }
-Qed.
+Admitted.
 
 Lemma himpl_wpgen_wp : forall t Q,
-  wpgen nil t Q ==> wp t Q.
+  wpgen t Q ==> wp fs t Q.
 Proof using.
-  introv M. lets N: (wpgen_sound nil t). rewrite isubst_nil in N. applys* N.
+  introv M. lets N: (@wpgen_sound t). applys* N.
 Qed.
 
 (** The final theorem for closed terms. *)
 
-Lemma triple_of_wpgen : forall t H Q,
-  H ==> wpgen nil t Q ->
-  triple t H Q.
+Lemma htriple_of_wpgen : forall t H Q,
+  H ==> wpgen t Q ->
+  htriple fs t H Q.
 Proof using.
   introv M. rewrite <- wp_equiv. xchange M. applys himpl_wpgen_wp.
 Qed.
+
+Lemma wp_of_wpgen : forall t H Q,
+  H ==> wpgen t Q ->
+  H ==> wp fs t Q.
+Proof using.
+  introv M. rewrite wp_equiv. applys* htriple_of_wpgen.
+Qed.
+
 
 (* ################################################################# *)
 (** * Practical Proofs *)
@@ -3260,23 +4211,24 @@ Proof using. introv M. xchange M. Qed.
 Lemma xif_lemma : forall b H F1 F2 Q,
   (b = true -> H ==> F1 Q) ->
   (b = false -> H ==> F2 Q) ->
-  H ==> (wpgen_if b F1 F2) Q.
+  H ==> (wpgen_if (fun=>b) F1 F2) Q.
 Proof using. introv M1 M2. unfold wpgen_if. xsimpl* b. case_if*. Qed.
 
 Lemma xapp_lemma : forall t Q1 H1 H Q,
-  triple t H1 Q1 ->
+  htriple fs t H1 Q1 ->
   H ==> H1 \* (Q1 \--* protect Q) ->
-  H ==> wp t Q.
+  H ==> wp fs t Q.
 Proof using.
   introv M W. rewrite <- wp_equiv in M. xchange W. xchange M.
   applys wp_ramified_frame.
 Qed.
 
-Lemma xfun_spec_lemma : forall (S:val->Prop) H Q Fof,
-  (forall vf,
-    (forall vx H' Q', (H' ==> Fof vx Q') -> triple (trm_app vf vx) H' Q') ->
-    S vf) ->
-  (forall vf, S vf -> (H ==> Q vf)) ->
+Lemma xfun_spec_lemma : forall (S:(D -> val)->Prop) H Q Fof,
+  (forall (hvf : D -> val),
+    (forall (hvx : D -> val) H' Q', (H' ==> Fof hvx Q') -> 
+      htriple fs (fun d => trm_app (hvf d) (hvx d)) H' Q') ->
+        S hvf) ->
+  (forall hvf, S hvf -> (H ==> Q hvf)) ->
   H ==> wpgen_fun Fof Q.
 Proof using.
   introv M1 M2. unfold wpgen_fun. xsimpl. intros vf N.
@@ -3284,43 +4236,45 @@ Proof using.
 Qed.
 
 Lemma xfun_nospec_lemma : forall H Q Fof,
-  (forall vf,
-     (forall vx H' Q', (H' ==> Fof vx Q') -> triple (trm_app vf vx) H' Q') ->
-     (H ==> Q vf)) ->
+  (forall (hvf : D -> val),
+     (forall (hvx : D -> val)  H' Q', (H' ==> Fof hvx Q') -> 
+        htriple fs (fun d => trm_app (hvf d) (hvx d)) H' Q') ->
+     (H ==> Q hvf)) ->
   H ==> wpgen_fun Fof Q.
 Proof using.
   introv M. unfold wpgen_fun. xsimpl. intros vf N. applys M.
   introv K. rewrite <- wp_equiv. xchange K. applys N.
 Qed.
 
-Lemma xwp_lemma_fun : forall v1 v2 x t H Q,
-  v1 = val_fun x t ->
-  H ==> wpgen ((x,v2)::nil) t Q ->
-  triple (trm_app v1 v2) H Q.
+Lemma xwp_lemma_fun : forall hv1 (hv2 : D -> val) x t H Q,
+  (hv1 = fun d => val_fun (x d) (t d)) ->
+  H ==> wpgen (fun d => subst (x d) (hv2 d) (t d)) Q ->
+  htriple fs (fun d => trm_app (hv1 d) (hv2 d)) H Q.
 Proof using.
   introv M1 M2. rewrite <- wp_equiv. xchange M2.
-  xchange (>> wpgen_sound ((x,v2)::nil) t Q).
-  rewrite <- subst_eq_isubst_one. applys* wp_app_fun.
+  xchange (>> wpgen_sound (fun d => subst (x d) (hv2 d) (t d)) Q).
+  by applys* wp_app_fun; rewrite M1.
 Qed.
 
-Lemma xwp_lemma_fix : forall v1 v2 f x t H Q,
-  v1 = val_fix f x t ->
-  H ==> wpgen ((f,v1)::(x,v2)::nil) t Q ->
-  triple (trm_app v1 v2) H Q.
+Lemma xwp_lemma_fix : forall hv1 (hv2 : D -> val) f x t H Q,
+  (hv1 = fun d => val_fix (f d) (x d) (t d)) ->
+  H ==> wpgen (fun d => subst (x d) (hv2 d) (subst (f d) (hv1 d) (t d))) Q ->
+  htriple fs (fun d => trm_app (hv1 d) (hv2 d)) H Q.
 Proof using.
   introv M1 M2. rewrite <- wp_equiv. xchange M2.
-  xchange (>> wpgen_sound (((f,v1)::nil) ++ (x,v2)::nil) t Q).
-  rewrite isubst_app. do 2 rewrite <- subst_eq_isubst_one.
-  applys* wp_app_fix.
+  xchange (>> wpgen_sound (fun d => subst (x d) (hv2 d) (subst (f d) (hv1 d) (t d))) Q).
+  applys* wp_app_fix. by rewrite M1.
 Qed.
 
-Lemma xtriple_lemma : forall t H (Q:val->hhprop),
-  H ==> mkstruct (wp t) Q ->
-  triple t H Q.
+Lemma xhtriple_lemma : forall t H (Q:(D->val)->hhprop),
+  H ==> mkstruct (wp fs t) Q ->
+  htriple fs t H Q.
 Proof using.
   introv M. rewrite <- wp_equiv. xchange M. unfold mkstruct.
   xpull. intros Q'. applys wp_ramified_frame.
 Qed.
+
+End WPgen.
 
 (* ================================================================= *)
 (** ** Tactics to Manipulate [wpgen] Formulae *)
@@ -3329,11 +4283,11 @@ Qed.
 
 (** Database of hints for [xapp]. *)
 
-Hint Resolve triple_get triple_set triple_ref triple_free : triple.
+Hint Resolve htriple_get htriple_set htriple_ref htriple_free : htriple.
 
-Hint Resolve triple_add triple_div triple_neg triple_opp triple_eq
-   triple_neq triple_sub triple_mul triple_mod triple_le triple_lt
-   triple_ge triple_gt triple_ptr_add triple_ptr_add_nat : triple.
+Hint Resolve htriple_add htriple_div htriple_neg htriple_opp htriple_eq
+   htriple_neq htriple_sub htriple_mul htriple_mod htriple_le htriple_lt
+   htriple_ge htriple_gt htriple_ptr_add htriple_ptr_add_nat : htriple.
 
 (** [xstruct] removes the leading [mkstruct]. *)
 
@@ -3369,17 +4323,17 @@ Tactic Notation "xif" :=
     cleaning up unused variables. *)
 
 Tactic Notation "xapp_try_clear_unit_result" :=
-  try match goal with |- val -> _ => intros _ end.
+  try match goal with |- (_ -> val) -> _ => intros _ end.
 
-Tactic Notation "xtriple" :=
-  intros; applys xtriple_lemma.
+Tactic Notation "xhtriple" :=
+  intros; applys xhtriple_lemma.
 
-Tactic Notation "xtriple_if_needed" :=
-  try match goal with |- triple ?t ?H ?Q => applys xtriple_lemma end.
+Tactic Notation "xhtriple_if_needed" :=
+  try match goal with |- htriple ?t ?H ?Q => applys xhtriple_lemma end.
 
 (** [xapp_simpl] performs the final step of the tactic [xapp]. *)
 
-Lemma xapp_simpl_lemma : forall F H Q,
+Lemma xapp_simpl_lemma : forall (F : formula) H Q,
   H ==> F Q ->
   H ==> F Q \* (Q \--* protect Q).
 Proof using. introv M. xchange M. unfold protect. xsimpl. Qed.
@@ -3389,10 +4343,10 @@ Tactic Notation "xapp_simpl" :=
         | xsimpl; unfold protect; xapp_try_clear_unit_result ].
 
 Tactic Notation "xapp_pre" :=
-  xtriple_if_needed; xseq_xlet_if_needed; xstruct_if_needed.
+  xhtriple_if_needed; xseq_xlet_if_needed; xstruct_if_needed.
 
 (** [xapp_nosubst E] implements the heart of [xapp E]. If the argument [E] was
-    always a triple, it would suffice to run [applys xapp_lemma E; xapp_simpl].
+    always a htriple, it would suffice to run [applys xapp_lemma E; xapp_simpl].
     Yet, [E] might be an specification involving quantifiers. These quantifiers
     need to be first instantiated. This instantiation is achieved by means of
     the tactic [forwards_nounfold_then] offered by the TLC library. *)
@@ -3402,8 +4356,8 @@ Tactic Notation "xapp_nosubst" constr(E) :=
   forwards_nounfold_then E ltac:(fun K => applys xapp_lemma K; xapp_simpl).
 
 (** [xapp_apply_spec] implements the heart of [xapp], when called without
-    argument. If finds out the specification triple, either in the hint data
-    base named [triple], or in the context by looking for an induction
+    argument. If finds out the specification htriple, either in the hint data
+    base named [htriple], or in the context by looking for an induction
     hypothesis. Disclaimer: as explained in [WPgen], the simple
     implementation of [xapp_apply_spec] which we use here does not apply when
     the specification includes premises that cannot be solved by [eauto];
@@ -3412,7 +4366,7 @@ Tactic Notation "xapp_nosubst" constr(E) :=
     involved [Hint Extern] tricks in CFML 2.0. *)
 
 Tactic Notation "xapp_apply_spec" :=
-  first [ solve [ eauto with triple ]
+  first [ solve [ eauto with htriple ]
         | match goal with H: _ |- _ => eapply H end ].
 
 (** [xapp_nosubst_for_records] is place holder for implementing [xapp] on
@@ -3421,7 +4375,7 @@ Tactic Notation "xapp_apply_spec" :=
 Ltac xapp_nosubst_for_records tt :=
  fail.
 
-(** [xapp] first calls [xtriple] if the goal is [triple t H Q] instead
+(** [xapp] first calls [xhtriple] if the goal is [htriple t H Q] instead
     of [H ==> wp t Q]. *)
 
 Tactic Notation "xapp_nosubst" :=
@@ -3437,8 +4391,8 @@ Tactic Notation "xapp_nosubst" :=
 
 Tactic Notation "xapp_try_subst" :=
   try match goal with
-  | |- forall (r:val), (r = _) -> _ => intros ? ->
-  | |- forall (r:val), forall x, (r = _) -> _ =>
+  | |- forall (r:D->val), (r = _) -> _ => intros ? ->
+  | |- forall (r:D->val), forall x, (r = _) -> _ =>
       let y := fresh x in intros ? y ->; revert y
   end.
 
@@ -3472,17 +4426,18 @@ Tactic Notation "xvars" :=
 Ltac xwp_simpl :=
   xvars;
   cbn beta delta [
-     wpgen wpgen_var isubst lookup var_eq
+     var_eq subst
      string_dec string_rec string_rect
      sumbool_rec sumbool_rect
      Ascii.ascii_dec Ascii.ascii_rec Ascii.ascii_rect
      Bool.bool_dec bool_rec bool_rect ] iota zeta;
-  simpl.
+  simpl; rewrite ?wpgenE; try (unfold subst; simpl).
 
 Tactic Notation "xwp" :=
   intros;
   first [ applys xwp_lemma_fun; [ reflexivity | ]
-        | applys xwp_lemma_fix; [ reflexivity | ] ];
+        | applys xwp_lemma_fix; [ reflexivity | ] 
+        | applys wp_of_wpgen];
   xwp_simpl.
 
 (* ================================================================= *)
@@ -3549,6 +4504,10 @@ Notation "'Let' x ':=' F1 'in' F2" :=
    right associativity,
   format "'[v' '[' 'Let'  x  ':='  F1  'in' ']' '/' '[' F2 ']' ']'") : wp_scope.
 
+Notation "'WP' [ d 'in' fs  ':' t ] '{' v ',' Q '}'" := 
+    (wp fs (fun d => t) (fun v => Q)) (at level 30, d name, v name,
+  format "'[' 'WP'  [  d '['  'in'  ']' fs   ':' '/' '['     t ']'  ] '/' '['   '{'  v ','  Q  '}' ']' ']' ") : wp_scope.
+
 Notation "'Seq' F1 ; F2" :=
   ((wpgen_seq F1 F2))
   (in custom wp at level 68,
@@ -3557,13 +4516,13 @@ Notation "'Seq' F1 ; F2" :=
    right associativity,
    format "'[v' 'Seq'  '[' F1 ']'  ; '/' '[' F2 ']' ']'") : wp_scope.
 
-Notation "'App' f v1" :=
-  ((wp (trm_app f v1)))
-  (in custom wp at level 68, f, v1 at level 0) : wp_scope.
+Notation "'App' '[' d 'in' fs ']' f v1" :=
+  ((wp fs (fun d => trm_app (f d) (v1 d))))
+  (in custom wp at level 68, d name, f, fs, v1 at level 0) : wp_scope.
 
-Notation "'App' f v1 v2" :=
-  ((wp (trm_app (trm_app f v1) v2)))
-  (in custom wp at level 68, f, v1, v2 at level 0) : wp_scope.
+Notation "'App' '[' d 'in' fs ']' f v1 v2" :=
+  ((wp fs (fun d => trm_app (trm_app (f d) (v1 d)) (v2 d))))
+  (in custom wp at level 68, d name, f, fs, v1, v2 at level 0) : wp_scope.
 
 Notation "'If_' v 'Then' F1 'Else' F2" :=
   ((wpgen_if v F1 F2))
@@ -3782,91 +4741,6 @@ Coercion string_to_var (x:string) : var := x.
 
 End ProgramSyntax.
 
-(* ################################################################# *)
-(** * Bonus *)
-
-(* ================================================================= *)
-(** ** Disjunction: Definition and Properties of [hor] *)
-
-Definition hor (H1 H2 : hhprop) : hhprop :=
-  \exists (b:bool), if b then H1 else H2.
-
-Lemma hor_sym : forall H1 H2,
-  hor H1 H2 = hor H2 H1.
-Proof using.
-  intros. unfold hor. applys himpl_antisym.
-  { applys himpl_hexists_l. intros b.
-    applys himpl_hexists_r (neg b). destruct* b. }
-  { applys himpl_hexists_l. intros b.
-    applys himpl_hexists_r (neg b). destruct* b. }
-Qed.
-
-Lemma himpl_hor_r_l : forall H1 H2,
-  H1 ==> hor H1 H2.
-Proof using. intros. unfolds hor. exists* true. Qed.
-
-Lemma himpl_hor_r_r : forall H1 H2,
-  H2 ==> hor H1 H2.
-Proof using. intros. unfolds hor. exists* false. Qed.
-
-Lemma himpl_hor_l : forall H1 H2 H3,
-  H1 ==> H3 ->
-  H2 ==> H3 ->
-  hor H1 H2 ==> H3.
-Proof using.
-  introv M1 M2. unfolds hor. applys himpl_hexists_l. intros b. case_if*.
-Qed.
-
-Lemma triple_hor : forall t H1 H2 Q,
-  triple t H1 Q ->
-  triple t H2 Q ->
-  triple t (hor H1 H2) Q.
-Proof using.
-  introv M1 M2. unfold hor. applys triple_hexists.
-  intros b. destruct* b.
-Qed.
-
-(* ================================================================= *)
-(** ** Conjunction: Definition and Properties of [hand] *)
-
-Definition hand (H1 H2 : hhprop) : hhprop :=
-  \forall (b:bool), if b then H1 else H2.
-
-Lemma hand_sym : forall H1 H2,
-  hand H1 H2 = hand H2 H1.
-Proof using.
-  intros. unfold hand. applys himpl_antisym.
-  { applys himpl_hforall_r. intros b.
-    applys himpl_hforall_l (neg b). destruct* b. }
-  { applys himpl_hforall_r. intros b.
-    applys himpl_hforall_l (neg b). destruct* b. }
-Qed.
-
-Lemma himpl_hand_l_r : forall H1 H2,
-  hand H1 H2 ==> H1.
-Proof using. intros. unfolds hand. applys* himpl_hforall_l true. Qed.
-
-Lemma himpl_hand_l_l : forall H1 H2,
-  hand H1 H2 ==> H2.
-Proof using. intros. unfolds hand. applys* himpl_hforall_l false. Qed.
-
-Lemma himpl_hand_r : forall H1 H2 H3,
-  H1 ==> H2 ->
-  H1 ==> H3 ->
-  H1 ==> hand H2 H3.
-Proof using.
-  introv M1 M2. unfold hand. applys himpl_hforall_r. intros b. case_if*.
-Qed.
-
-Lemma triple_hand_l : forall t H1 H2 Q,
-  triple t H1 Q ->
-  triple t (hand H1 H2) Q.
-Proof using. introv M1. unfold hand. applys~ triple_hforall true. Qed.
-
-Lemma triple_hand_r : forall t H1 H2 Q,
-  triple t H2 Q ->
-  triple t (hand H1 H2) Q.
-Proof using. introv M1. unfold hand. applys~ triple_hforall false. Qed.
 
 (* ================================================================= *)
 (** ** Treatment of Functions of 2 and 3 Arguments *)
@@ -3937,7 +4811,7 @@ Notation "'fix_' f x1 x2 x3 '=>' t" :=
 
 (** [eval_like] judgment for applications to several arguments. *)
 
-Lemma eval_like_app_fun2 : forall v0 v1 v2 x1 x2 t1,
+(* Lemma eval_like_app_fun2 : forall v0 v1 v2 x1 x2 t1,
   v0 = val_fun x1 (trm_fun x2 t1) ->
   x1 <> x2 ->
   eval_like (subst x2 v2 (subst x1 v1 t1)) (v0 v1 v2).
@@ -3946,20 +4820,16 @@ Proof using.
   { applys eval_app_fun E. simpl. rewrite var_eq_spec. case_if. applys eval_fun. }
   { applys* eval_val. }
   { applys* eval_app_fun. }
-Qed.
+Qed. *)
 
-Lemma eval_like_app_fix2 : forall v0 v1 v2 f x1 x2 t1,
-  v0 = val_fix f x1 (trm_fun x2 t1) ->
-  (x1 <> x2 /\ f <> x2) ->
-  eval_like (subst x2 v2 (subst x1 v1 (subst f v0 t1))) (v0 v1 v2).
+Lemma eval_like_app_fix2 fs : forall v0 v1 v2 f x1 x2 t1,
+  (v0 = fun d => val_fix (f d) (x1 d) (trm_fun (x2 d) (t1 d))) ->
+  (forall d, x1 d <> x2 d /\ f d <> x2 d) ->
+  eval_like fs (fun d => subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (subst (f d) (v0 d) (t1 d)))) (fun d => (v0 d) (v1 d) (v2 d)).
 Proof using.
-  introv E (N1&N2). introv R. applys* eval_app_args.
-  { applys eval_app_fix E. simpl. do 2 (rewrite var_eq_spec; case_if). applys eval_fun. }
-  { applys* eval_val. }
-  { applys* eval_app_fun. }
-Qed.
+Admitted.
 
-Lemma eval_like_app_fun3 : forall v0 v1 v2 v3 x1 x2 x3 t1,
+(* Lemma eval_like_app_fun3 : forall v0 v1 v2 v3 x1 x2 x3 t1,
   v0 = val_fun x1 (trm_fun x2 (trm_fun x3 t1)) ->
   (x1 <> x2  /\ x1 <> x3 /\ x2 <> x3) ->
   eval_like (subst x3 v3 (subst x2 v2 (subst x1 v1 t1))) (v0 v1 v2 v3).
@@ -3979,26 +4849,26 @@ Proof using.
   { applys* eval_like_app_fix2 E. simpl. do 3 (rewrite var_eq_spec; case_if). applys eval_fun. }
   { applys eval_val. }
   { applys* eval_app_fun. }
-Qed.
+Qed. *)
 
 (* ----------------------------------------------------------------- *)
 (** *** Reasoning Rules for Applications to 2 or 3 Arguments *)
 
 (** Weakest preconditions for applications to several arguments. *)
 
-Lemma wp_app_fun2 : forall x1 x2 v0 v1 v2 t1 Q,
-  v0 = val_fun x1 (trm_fun x2 t1) ->
-  x1 <> x2 ->
-  wp (subst x2 v2 (subst x1 v1 t1)) Q ==> wp (trm_app v0 v1 v2) Q.
-Proof using. introv EQ1 N. applys wp_eval_like. applys* eval_like_app_fun2. Qed.
+(* Lemma wp_app_fun2 fs : forall x1 x2 v0 v1 v2 t1 Q,
+  (v0 = fun d => val_fun (x1 d) (trm_fun (x2 d) (t1 d))) ->
+  (forall d, x1 d <> x2 d) ->
+  wp fs (fun d => subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t1 d))) Q ==> wp fs (fun d => trm_app (v0 d) (v1 d) (v2 d)) Q.
+Proof using. introv EQ1 N. applys wp_eval_like. applys* eval_like_app_fun2. Qed. *)
 
-Lemma wp_app_fix2 : forall f x1 x2 v0 v1 v2 t1 Q,
-  v0 = val_fix f x1 (trm_fun x2 t1) ->
-  (x1 <> x2 /\ f <> x2) ->
-  wp (subst x2 v2 (subst x1 v1 (subst f v0 t1))) Q ==> wp (trm_app v0 v1 v2) Q.
+Lemma wp_app_fix2 fs : forall f x1 x2 v0 v1 v2 t1 Q,
+  (v0 = fun d => val_fix (f d) (x1 d) (trm_fun (x2 d) (t1 d))) ->
+  (forall d, x1 d <> x2 d /\ f d <> x2 d) ->
+  wp fs (fun d => subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (subst (f d) (v0 d) (t1 d)))) Q ==> wp fs (fun d => trm_app (v0 d) (v1 d) (v2 d)) Q.
 Proof using. introv EQ1 N. applys wp_eval_like. applys* eval_like_app_fix2. Qed.
 
-Lemma wp_app_fun3 : forall x1 x2 x3 v0 v1 v2 v3 t1 Q,
+(* Lemma wp_app_fun3 : forall x1 x2 x3 v0 v1 v2 v3 t1 Q,
   v0 = val_fun x1 (trm_fun x2 (trm_fun x3 t1)) ->
   (x1 <> x2 /\ x1 <> x3 /\ x2 <> x3) ->
   wp (subst x3 v3 (subst x2 v2 (subst x1 v1 t1))) Q ==> wp (trm_app v0 v1 v2 v3) Q.
@@ -4008,7 +4878,7 @@ Lemma wp_app_fix3 : forall f x1 x2 x3 v0 v1 v2 v3 t1 Q,
   v0 = val_fix f x1 (trm_fun x2 (trm_fun x3 t1)) ->
   (x1 <> x2 /\ f <> x2 /\ f <> x3 /\ x1 <> x3 /\ x2 <> x3) ->
   wp (subst x3 v3 (subst x2 v2 (subst x1 v1 (subst f v0 t1)))) Q ==> wp (trm_app v0 v1 v2 v3) Q.
-Proof using. introv EQ1 N. applys wp_eval_like. applys* eval_like_app_fix3. Qed.
+Proof using. introv EQ1 N. applys wp_eval_like. applys* eval_like_app_fix3. Qed. *)
 
 (* ----------------------------------------------------------------- *)
 (** *** Generalization of [xwp] to Handle Functions of Two Arguments *)
@@ -4016,37 +4886,36 @@ Proof using. introv EQ1 N. applys wp_eval_like. applys* eval_like_app_fix3. Qed.
 (** Generalization of [xwp] to handle functions of arity 2 and 3,
     and to handle weakening of an existing specification. *)
 
-Lemma xwp_lemma_fun2 : forall v0 v1 v2 x1 x2 t H Q,
+(* Lemma xwp_lemma_fun2 : forall v0 v1 v2 x1 x2 t H Q,
   v0 = val_fun x1 (trm_fun x2 t) ->
   var_eq x1 x2 = false ->
   H ==> wpgen ((x1,v1)::(x2,v2)::nil) t Q ->
-  triple (v0 v1 v2) H Q.
+  htriple (fun d => v0 v1 v2) H Q.
 Proof using.
   introv M1 N M2. rewrite var_eq_spec in N. rew_bool_eq in *.
   rewrite <- wp_equiv. xchange M2.
   xchange (>> wpgen_sound (((x1,v1)::nil) ++ ((x2,v2)::nil)) t Q).
   rewrite isubst_app. do 2 rewrite <- subst_eq_isubst_one.
   applys* wp_app_fun2.
-Qed.
+Qed. *)
 
-Lemma xwp_lemma_fix2 : forall f v0 v1 v2 x1 x2 t H Q,
-  v0 = val_fix f x1 (trm_fun x2 t) ->
-  (var_eq x1 x2 = false /\ var_eq f x2 = false) ->
-  H ==> wpgen ((f,v0)::(x1,v1)::(x2,v2)::nil) t Q ->
-  triple (v0 v1 v2) H Q.
+Lemma xwp_lemma_fix2 fs : forall f v0 v1 v2 x1 x2 t H Q,
+  (v0 = fun d => val_fix (f d) (x1 d) (trm_fun (x2 d) (t d))) ->
+  (forall d, var_eq (x1 d) (x2 d) = false /\ var_eq (f d) (x2 d) = false) ->
+  H ==> wpgen fs (fun d => subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (subst (f d) (v0 d) (t d)))) Q ->
+  htriple fs (fun d => (v0 d) (v1 d) (v2 d)) H Q.
 Proof using.
   introv M1 N M2. repeat rewrite var_eq_spec in N. rew_bool_eq in *.
   rewrite <- wp_equiv. xchange M2.
-  xchange (>> wpgen_sound (((f,v0)::nil) ++ ((x1,v1)::nil) ++ ((x2,v2)::nil)) t Q).
-  do 2 rewrite isubst_app. do 3 rewrite <- subst_eq_isubst_one.
-  applys* wp_app_fix2.
+  xchange (>> wpgen_sound (fun d => subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (subst (f d) (v0 d) (t d)))) Q).
+  applys* wp_app_fix2. move=> d. move: (N d). rewrite ?var_eq_spec. by rew_bool_eq.
 Qed.
 
-Lemma xwp_lemma_fun3 : forall v0 v1 v2 v3 x1 x2 x3 t H Q,
+(* Lemma xwp_lemma_fun3 : forall v0 v1 v2 v3 x1 x2 x3 t H Q,
   v0 = val_fun x1 (trm_fun x2 (trm_fun x3 t)) ->
   (var_eq x1 x2 = false /\ var_eq x1 x3 = false /\ var_eq x2 x3 = false) ->
   H ==> wpgen ((x1,v1)::(x2,v2)::(x3,v3)::nil) t Q ->
-  triple (v0 v1 v2 v3) H Q.
+  htriple (fun d => v0 v1 v2 v3) H Q.
 Proof using.
   introv M1 N M2. repeat rewrite var_eq_spec in N. rew_bool_eq in *.
   rewrite <- wp_equiv. xchange M2.
@@ -4060,23 +4929,24 @@ Lemma xwp_lemma_fix3 : forall f v0 v1 v2 v3 x1 x2 x3 t H Q,
   (   var_eq x1 x2 = false /\ var_eq f x2 = false /\ var_eq f x3 = false
    /\ var_eq x1 x3 = false /\ var_eq x2 x3 = false) ->
   H ==> wpgen ((f,v0)::(x1,v1)::(x2,v2)::(x3,v3)::nil) t Q ->
-  triple (v0 v1 v2 v3) H Q.
+  htriple (fun d => v0 v1 v2 v3) H Q.
 Proof using.
   introv M1 N M2. repeat rewrite var_eq_spec in N. rew_bool_eq in *.
   rewrite <- wp_equiv. xchange M2.
   xchange (>> wpgen_sound (((f,v0)::nil) ++ ((x1,v1)::nil) ++ ((x2,v2)::nil) ++ ((x3,v3)::nil)) t Q).
   do 3 rewrite isubst_app. do 4 rewrite <- subst_eq_isubst_one.
   applys* wp_app_fix3.
-Qed.
+Qed. *)
 
 Tactic Notation "xwp" :=
   intros;
   first [ applys xwp_lemma_fun; [ reflexivity | ]
         | applys xwp_lemma_fix; [ reflexivity | ]
-        | applys xwp_lemma_fun2; [ reflexivity | reflexivity | ]
-        | applys xwp_lemma_fix2; [ reflexivity | splits; reflexivity | ]
-        | applys xwp_lemma_fun3; [ reflexivity | splits; reflexivity | ]
-        | applys xwp_lemma_fix3; [ reflexivity | splits; reflexivity | ]
+        | applys xwp_lemma_fix2; [ try reflexivity | try reflexivity | ]
+        (* | applys xwp_lemma_fix2; [ reflexivity | splits; reflexivity | ] *)
+        (* | applys xwp_lemma_fun3; [ reflexivity | splits; reflexivity | ] *)
+        (* | applys xwp_lemma_fix3; [ reflexivity | splits; reflexivity | ] *)
+        | applys wp_of_wpgen
         | fail 1 "xwp only applies to functions defined using [val_fun] or [val_fix], with at most 3 arguments" ];
   xwp_simpl.
 
@@ -4087,22 +4957,22 @@ Tactic Notation "xwp" :=
     proved for 3 arguments. These rules are not needed for the verification
     framework. *)
 
-Lemma triple_app_fun2 : forall v0 v1 v2 x1 x2 t1 H Q,
+(* Lemma htriple_app_fun2 : forall v0 v1 v2 x1 x2 t1 H Q,
   v0 = val_fun x1 (trm_fun x2 t1) ->
   x1 <> x2 ->
-  triple (subst x2 v2 (subst x1 v1 t1)) H Q ->
-  triple (v0 v1 v2) H Q.
+  htriple (fun d => subst x2 v2 (subst x1 v1 t1)) H Q ->
+  htriple (fun d => v0 v1 v2) H Q.
 Proof using.
-  introv E N M1. applys triple_eval_like M1. applys* eval_like_app_fun2.
+  introv E N M1. applys htriple_eval_like M1. applys* eval_like_app_fun2.
 Qed.
 
-Lemma triple_app_fix2 : forall f x1 x2 v0 v1 v2 t1 H Q,
+Lemma htriple_app_fix2 : forall f x1 x2 v0 v1 v2 t1 H Q,
   v0 = val_fix f x1 (trm_fun x2 t1) ->
   (x1 <> x2 /\ f <> x2) ->
-  triple (subst x2 v2 (subst x1 v1 (subst f v0 t1))) H Q ->
-  triple (v0 v1 v2) H Q.
+  htriple (fun d => subst x2 v2 (subst x1 v1 (subst f v0 t1))) H Q ->
+  htriple (fun d => v0 v1 v2) H Q.
 Proof using.
-  introv E N M1. applys triple_eval_like M1. applys* eval_like_app_fix2.
+  introv E N M1. applys htriple_eval_like M1. applys* eval_like_app_fix2.
 Qed.
 
 (* ================================================================= *)
@@ -4203,9 +5073,9 @@ Fixpoint hfields_lookup (k:field) (kvs:hrecord_fields) : option val :=
 
 (** Specification of [val_get_field] in terms of [hrecord]. *)
 
-Parameter triple_get_field_hrecord : forall kvs p k v,
+Parameter htriple_get_field_hrecord : forall kvs p k v,
   hfields_lookup k kvs = Some v ->
-  triple (val_get_field k p)
+  htriple (fun d => val_get_field k p)
     (hrecord kvs p)
     (fun r => \[r = v] \* hrecord kvs p).
 
@@ -4239,9 +5109,9 @@ Fixpoint hfields_update (k:field) (v:val) (kvs:hrecord_fields)
 
 (** Specification of [val_set_field] in terms of [hrecord]. *)
 
-Parameter triple_set_field_hrecord : forall kvs kvs' k p v,
+Parameter htriple_set_field_hrecord : forall kvs kvs' k p v,
   hfields_update k v kvs = Some kvs' ->
-  triple (val_set_field k p v)
+  htriple (fun d => val_set_field k p v)
     (hrecord kvs p)
     (fun _ => hrecord kvs' p).
 
@@ -4253,9 +5123,9 @@ Parameter triple_set_field_hrecord : forall kvs kvs' k p v,
 
 Parameter val_alloc_hrecord : forall (ks:list field), trm.
 
-Parameter triple_alloc_hrecord : forall ks,
+Parameter htriple_alloc_hrecord : forall ks,
   ks = nat_seq 0 (LibListExec.length ks) ->
-  triple (val_alloc_hrecord ks)
+  htriple (fun d => val_alloc_hrecord ks)
     \[]
     (funloc p => hrecord (LibListExec.map (fun k => (k,val_uninit)) ks) p).
 
@@ -4276,14 +5146,14 @@ Notation "`{ k1 := v1 ; k2 := v2 }" :=
 
 Open Scope trm_scope.
 
-Parameter triple_new_hrecord_2 : forall k1 k2 v1 v2,
+Parameter htriple_new_hrecord_2 : forall k1 k2 v1 v2,
   k1 = 0%nat ->
   k2 = 1%nat ->
-  triple <{ `{ k1 := v1; k2 := v2 } }>
+  htriple <{ `{ k1 := v1; k2 := v2 } }>
     \[]
     (funloc p => p ~~~> `{ k1 := v1 ; k2 := v2 }).
 
-Hint Resolve val_new_hrecord_2 : triple.
+Hint Resolve val_new_hrecord_2 : htriple.
 
 (** [val_new_record_3 k1 k2 k3 v1 v2 v3], written
     [`{ k1 := v1 ; k2 := v2 ; k3 := v3 }],
@@ -4297,15 +5167,15 @@ Notation "`{ k1 := v1 ; k2 := v2 ; k3 := v3 }" :=
    k1, k2, k3 at level 0,
    v1, v2, v3 at level 65) : trm_scope.
 
-Parameter triple_new_hrecord_3 : forall k1 k2 k3 v1 v2 v3,
+Parameter htriple_new_hrecord_3 : forall k1 k2 k3 v1 v2 v3,
   k1 = 0%nat ->
   k2 = 1%nat ->
   k3 = 2%nat ->
-  triple <{ `{ k1 := v1; k2 := v2; k3 := v3 } }>
+  htriple <{ `{ k1 := v1; k2 := v2; k3 := v3 } }>
     \[]
     (funloc p => p ~~~> `{ k1 := v1 ; k2 := v2 ; k3 := v3 }).
 
-Hint Resolve val_new_hrecord_3 : triple.
+Hint Resolve val_new_hrecord_3 : htriple.
 
 (* ----------------------------------------------------------------- *)
 (** *** Deallocation of Records *)
@@ -4319,18 +5189,18 @@ Notation "'delete'" :=
   (trm_val val_dealloc_hrecord)
   (in custom trm at level 0) : trm_scope.
 
-Parameter triple_dealloc_hrecord : forall kvs p,
-  triple (val_dealloc_hrecord p)
+Parameter htriple_dealloc_hrecord : forall kvs p,
+  htriple (fun d => val_dealloc_hrecord p)
     (hrecord kvs p)
     (fun _ => \[]).
 
-Hint Resolve triple_dealloc_hrecord : triple.
+Hint Resolve htriple_dealloc_hrecord : htriple.
 
 (* ----------------------------------------------------------------- *)
 (** *** Extending [xapp] to Support Record Access Operations *)
 
 (** The tactic [xapp] is refined to automatically invoke the lemmas
-    [triple_get_field_hrecord] and [triple_set_field_hrecord]. *)
+    [htriple_get_field_hrecord] and [htriple_set_field_hrecord]. *)
 
 Parameter xapp_get_field_lemma : forall H k p Q,
   H ==> \exists kvs, (hrecord kvs p) \*
@@ -4378,13 +5248,218 @@ Ltac xsimpl_hook H ::=
   match H with
   | hsingle ?p ?v => xsimpl_hook_hsingle p
   | hrecord ?kvs ?p => xsimpl_hook_hrecord p
-  end.
+  end. *)
+
+
+End Reasoning.
+
+From mathcomp Require Import seq.
+
+Section Def.
+
+From mathcomp Require Import ssrbool ssrnat eqtype.
+
+
+
+Record htrm (D : Type) := {
+  fs : fset D  ;
+  ht : D -> trm;
+}.
+
+Definition htrm_def (D : Type) : htrm D := {|
+  fs := empty;
+  ht := fun=> 0 
+|}.
+
+(* Definition htrms  := seq (sigT (fun D => htrm D)). *)
+
+Record HD (f : nat -> Type) := {
+  num : nat;
+  tp  : f num;
+}.
+
+Definition htrms (f : nat -> Type) :=
+  forall n : nat, htrm (f n).
+
+Definition ht_of (f : nat -> Type) (hts : htrms f) : HD f -> trm :=
+  fun '(Build_HD n tp) => (hts n).(ht) tp.
+
+Definition fs_of (f : nat -> Type) (hts : htrms f) (ids : seq nat) : fset (HD f).
+refine (make 
+  (fun '(Build_HD n tp) => 
+    if n \in ids then 
+      fmap_data (hts n).(fs) tp
+    else None
+  ) _).
+Admitted.
+
+Definition prj f (P : nat -> Prop) (fs : fset (HD f)) := 
+  LibSepFmap.filter (fun d _ => P d.(num)) fs.
+
+End Def.
+
+Module Type HT.
+
+Parameter f : nat -> Type.
+
+End HT.
+
+Module Reasoning_htrms (H : HT).
+
+Export H.
+
+Module Dom : Domain with Definition type := HD f.
+Definition type := HD f.
+End Dom.
+
+Module Export RD := Reasoning(Dom).
+Include Dom.
+
+
+Section Focus.
+
+Context (hts : htrms f).
+
+Definition ht_of_f := @ht_of f.
+Coercion ht_of_f : htrms >-> Funclass.
+
+Implicit Type hts : htrms f.
+Implicit Type fs  : fset (HD f).
+
+
+Lemma focus hts fs (Q : (D -> trm) -> hhprop) n : 
+  let fs 
+  wp (fs_of hts) hts Q =
+  wp (prj (= n) )
+
+End Focus.
+
+End Reasoning_htrms.
+
+
+
+
 
 (* ################################################################# *)
 (** * Demo Programs *)
 
+
 Module DemoPrograms.
+
+Module Pow.
+
+Module Dom : Domain with Definition type := int.
+Definition type := int.
+End Dom.
+
+Module Export RD := Reasoning(Dom).
+Include Dom.
+
 Export ProgramSyntax.
+Import Vars.
+
+Print Dom.type.
+
+Section pow.
+
+
+Context (i : int).
+Context (iL0 : i >= 0).
+Context (int0i : fset int).
+Hypotheses (int0iH : forall x, indom int0i x = (0 <= x <= i)%Z).
+
+Notation "'[0,i]'" := (int0i).
+
+Definition to_int (v : val) : int := 
+  match v with 
+  | val_int i => i 
+  | _ => 0
+  end.
+
+Coercion to_int : val >-> Z.
+
+Definition pow_aux : D -> val := fun d => 
+  <{ fix f n p =>
+     let b = (n <= 0) in
+     if b then 
+      let x = ! p in x
+     else 
+      let x = ! p   in
+      let y = x * d in
+      p := y;
+      let m = n - 1 in
+      f m p }>.
+
+Definition pow : D -> val := fun d => 
+  let f := pow_aux d in
+  <{ fun n => let p = ref 1 in f n p }>.
+
+From mathcomp Require Import zify.
+
+Context (sum : fset int -> (int -> int) -> int).
+Reserved Notation "'Σ_' ( i <- r ) F"
+  (at level 41, F at level 41, i, r at level 50,
+           format "'[' Σ_ ( i  <-  r ) '/  '  F ']'").
+
+Notation "'Σ_' ( i <- r ) F" :=
+  (sum r (fun i => F)) : nat_scope.
+
+
+Hypotheses (Distr : forall fs f i, (Σ_(j <- fs) f j) * i = Σ_(j <- fs) f j * i).
+Hypotheses (Monot : forall fs f g, (forall i, indom fs i -> (f i <= g i)%Z) -> (Σ_(j <- fs) f j <= Σ_(j <- fs) g j)%Z).
+Hypotheses (Const : forall c, Σ_(i <- [0,i]) c = c * i).
+
+Lemma htriple_pow_aux (s : int -> int) (n : int) (p : D -> loc):
+
+  (forall j, (0 <= j)%Z -> (0 <= s j)%Z) ->
+
+  (Σ_(j <- [0,i]) s j <= s i * i)%Z ->
+
+    htriple [0,i] 
+      (fun d => pow_aux d n (p d))
+      (\*_(d <- [0,i]) p d ~(d)~> s d)
+      (fun v => \[Σ_(j <- [0,i]) v j <= v i * i]%Z \* \Top).
+Proof.
+  move: s p.
+  induction_wf IH: (downto 0) n; rewrite /downto in IH.
+  move=> s p H H'.
+  xwp; autos*; xapp.
+  xwp; xif.
+  { move=> _. xwp; xapp. xwp; xval. xsimpl*. }
+  move=> ?.
+  xwp; xapp.
+  xwp; xapp.
+  xwp; xapp.
+  xwp; xapp.
+  rewrite wp_equiv.
+  apply IH.
+  { math. }
+  { move=> ? /[dup]/H. math. }
+  have: ((Σ_(j <- [0,i]) s j) * i <= s i * i * i)%Z.
+  apply/Zmult_le_compat_r=> //.
+  apply/Z.le_trans. 
+  rewrite Distr.
+  apply/Monot=> ? /[! int0iH] -[??].
+  apply/Z.mul_le_mono_nonneg_l; eauto.
+Qed.
+
+Lemma htriple_pow_sum (k : int) :
+  htriple [0,i] 
+    (fun d => (pow d) k)
+    \[]
+    (fun v => \[Σ_(j <- [0,i]) v j <= v i * i]%Z \* \Top).
+Proof.
+  rewrite /pow /=.
+  xwp; xapp=> p /=.
+  rewrite wp_equiv.
+  apply/htriple_pow_aux.
+  { math. }
+  rewrite Const; math.
+Qed.
+
+End pow.
+
+End Pow.
 
 (* ----------------------------------------------------------------- *)
 (** *** Definition and Verification of [incr]. *)
@@ -4401,30 +5476,43 @@ OCaml:
 
 The notation ['p] stands for [("x":var)]. It is defined in [LibSepVar.v]. *)
 
-Definition incr : val :=
+Definition incr : D -> val := fun d => 
+  let s := length d in
   <{ fun 'p =>
      let 'n = ! 'p in
-     let 'm = 'n + 1 in
+     let 'm = 'n + s in
+     'p := 'm;
      'p := 'm }>.
 
-(** Here is the Separation Logic triple specifying increment.
+(** Here is the Separation Logic htriple specifying increment.
     And the proof follows. Note that the script contains explicit
     references to the specification lemmas of the functions being
-    called (e.g. [triple_get] for the [get] operation). The actual
+    called (e.g. [htriple_get] for the [get] operation). The actual
     CFML2 setup is able to automatically infer those names. *)
 
-Lemma triple_incr : forall (p:loc) (n:int),
-  triple (incr p)
-    (p ~~> n)
-    (fun _ => (p ~~> (n+1))).
+Arguments subst /.
+
+Opaque wpgen.
+
+Lemma htriple_incr fs : forall (p:loc) (n:int),
+  htriple fs (fun d => incr d p)
+    (\*_(d <- fs) p ~(d)~> n)
+    (fun _ => \*_(d <- fs) p ~(d)~> (n + length d)).
 Proof using.
-  xwp. xapp. xapp. xapp. xsimpl*.
+  xwp; xapp. 
+  xwp; xlet. 
+  xwp; xapp. 
+  xwp; xapp. 
+  xapp. 
+  xsimpl*.
 Qed.
+
+Definition pow : D -> val 
 
 (** We register this specification so that it may be automatically invoked
     in further examples. *)
 
-Hint Resolve triple_incr : triple.
+Hint Resolve htriple_incr : htriple.
 
 (** Alternative definition using variable names without quotes, obtained
     by importing the module [Vars] from [LibSepVar.v]. *)
@@ -4439,8 +5527,8 @@ Definition incr' : val :=
 
 End Def_incr.
 
-Lemma triple_incr' : forall (p:loc) (n:int),
-  triple (incr' p)
+Lemma htriple_incr' : forall (p:loc) (n:int),
+  htriple (fun d => incr' p)
     (p ~~> n)
     (fun _ => (p ~~> (n+1))).
 Proof using.
@@ -4466,15 +5554,15 @@ Definition decr : val :=
 
 End Def_decr.
 
-Lemma triple_decr : forall (p:loc) (n:int),
-  triple (trm_app decr p)
+Lemma htriple_decr : forall (p:loc) (n:int),
+  htriple (fun d => trm_app decr p)
     (p ~~> n)
     (fun _ => p ~~> (n-1)).
 Proof using.
   xwp. xapp. xapp. xapp. xsimpl*.
 Qed.
 
-Hint Resolve triple_decr : triple.
+Hint Resolve htriple_decr : htriple.
 
 (* ----------------------------------------------------------------- *)
 (** *** Definition and Verification of [mysucc]. *)
@@ -4493,8 +5581,8 @@ Definition mysucc : val :=
 
 End Def_mysucc.
 
-Lemma triple_mysucc : forall n,
-  triple (trm_app mysucc n)
+Lemma htriple_mysucc : forall n,
+  htriple (fun d => trm_app mysucc n)
     \[]
     (fun v => \[v = n+1]).
 Proof using.
@@ -4524,8 +5612,8 @@ Definition myrec : val :=
        let m2 = m1 + n2 in
        p`.myfield := m2 }>.
 
-Lemma triple_myrec : forall (p:loc) (n n1 n2:int),
-  triple (myrec p n1 n2)
+Lemma htriple_myrec : forall (p:loc) (n n1 n2:int),
+  htriple (fun d => myrec p n1 n2)
     (p ~~~> `{ myfield := n})
     (fun _ => p ~~~> `{ myfield := (n+n1+n2) }).
 Proof using.
@@ -4549,14 +5637,14 @@ Definition myfun : val :=
 
 End Def_myfun.
 
-Lemma triple_myfun : forall (p:loc) (n:int),
-  triple (myfun p)
+Lemma htriple_myfun : forall (p:loc) (n:int),
+  htriple (fun d => myfun p)
     (p ~~> n)
     (fun _ => p ~~> (n+2)).
 Proof using.
   xwp.
   xfun (fun (f:val) => forall (m:int),
-    triple (f())
+    htriple (fun d => f())
       (p ~~> m)
       (fun _ => p ~~> (m+1))); intros f Hf.
   { intros. applys Hf. clear Hf. xapp. xsimpl. }
