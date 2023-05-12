@@ -33,8 +33,6 @@ Axiom propositional_extensionality : forall (P Q:Prop),
   (P <-> Q) ->
   P = Q.
 
-Definition fset A := fmap A unit.
-
 Definition upd {A B : Type} (f : A -> B) x y :=
   fun z => If x = z then y else f z.
 
@@ -52,7 +50,7 @@ Admitted.
 Definition uni {A B : Type} (fs : fset A) (f : A -> B) (g : A -> B) :=
   fun z => If indom fs z then f z else g z.
 
-Notation "f '\u_(' fs ')' g" := (uni fs f g) (at level 30, right associativity).
+Notation "f '\u_' fs " := (uni fs f) (at level 10, left associativity).
 
 Lemma uni_in A B {f g : A -> B} {x fs} : 
   indom fs x ->
@@ -88,7 +86,7 @@ Admitted.
 
 Lemma upd_uni_update A B (f g : A -> B) (x : A) (y : B) fs : 
   ~ indom fs x ->
-  upd f x y \u_(update fs x tt) g = upd (f \u_(fs) g) x y.
+  upd f x y \u_ (update fs x tt) g = upd (f \u_fs g) x y.
 Proof.
   move=> ND; apply/fun_ext_1=> z.
   case: (prop_inv (indom (update fs x tt) z)).
@@ -106,6 +104,67 @@ Admitted.
 (* Lemma updE A B (f g : A -> B) x y :
   upd f x y = (fun _ => y) \u_() *)
 
+Section LabeledType.
+
+From mathcomp Require Import seq ssrbool ssrnat eqtype.
+
+Section Gen.
+
+Context (T : Type) (def : T).
+
+Definition labType := nat.
+
+Record labeled := Lab {
+  lab  :  labType; 
+  el   :> T;
+}.
+
+Definition labSeq := seq labeled.
+
+Definition lookup (s : labSeq) (l : labType) : labeled := 
+  nth (Lab 0%nat def) s (find [pred lt | lab lt == l] s).
+
+Definition remove (s : labSeq) (l : labType) := 
+  [seq lt <- s | lab lt != l].
+
+Definition has_lab (s : labSeq) (l : labType) :=
+  has (fun x => lab x == l) s.
+
+Lemma hasnt_lab s l : 
+  ~ has_lab s l -> 
+    s = remove s l.
+Proof using.
+Admitted.
+
+End Gen.
+
+Context (S : Type) (T : Type) (def : T).
+
+Definition lab_union (fss : labSeq (fset T)) : fset (labeled T).
+Proof using. Admitted.
+Definition label (lfs : labeled (fset T)) : fset (labeled T). 
+Proof using. Admitted.
+Definition lab_funs (f : labSeq (S -> T)) : labeled S -> T :=
+  fun ls => 
+    el (nth (Lab 0%nat (fun=> def)) f (lab ls)) (el ls).
+
+Definition lab_fun (f : labeled (S -> T)) : labeled S -> T :=
+  fun ls => el f (el ls).
+
+Definition lab_fun_upd (f g : labeled S -> T) l : labeled S -> T :=
+  fun ls => 
+    if lab ls == l then f ls else g ls.
+
+Lemma lab_fun_upd_neq f g l (l' : labType) x : 
+  l' <> l -> lab_fun_upd f g l (Lab l' x) = g (Lab l' x).
+Proof.
+  by rewrite/lab_fun_upd; move/(negPP eqP)/negbTE->.
+Qed.
+
+Definition app_lab (f : labeled S -> T) : labType -> S -> T := 
+  fun l s => f (Lab l s).
+
+End LabeledType.
 
 (* ================================================================= *)
 (** ** Variables *)
@@ -428,7 +487,7 @@ Definition local D (fs : fset D) (h : hheap D) :=
 
 Lemma remove_union_not_r  [A B : Type] [h1 h2 : fmap A B] [x : A] :
   ~ indom h2 x -> 
-  remove h1 x \u h2 = remove (h1 \u h2) x.
+  Fmap.remove h1 x \u h2 = Fmap.remove (h1 \u h2) x.
 Proof.
 Admitted.
 
@@ -605,7 +664,8 @@ Implicit Types Q : val->hhprop.
 Definition himpl (H1 H2:hhprop) : Prop :=
   forall h, H1 h -> H2 h.
 
-Notation "H1 ==> H2" := (himpl H1 H2) (at level 55) : hprop_scope.
+Notation "H1 ==> H2" := (himpl H1 H2) (at level 55, 
+  format "'[' H1 ']' '/  '  ==>  '/  ' '[' H2 ']'") : hprop_scope.
 
 (** Entailment between postconditions, written [Q1 ===> Q2]. *)
 
@@ -655,7 +715,11 @@ Definition hlocal (H : hhprop) (fs : fset D) :=
 Notation "\[]" := (hempty)
   (at level 0) : hprop_scope.
 
-Notation "p '~(' d ')~>' v" := (hsingle p d v) (at level 32) : hprop_scope.
+Declare Scope arr_scope.
+Delimit Scope arr_scope with arr.
+
+Notation "p '~⟨' l ',' x '⟩~>' v" := (hsingle p (Lab l%nat x) v) (at level 32, format "p  ~⟨ l ,  x ⟩~>  v") : hprop_scope.
+Notation "p '~(' d ')~>' v" := (hsingle p d%arr v) (at level 32, format "p  ~( d )~>  v") : hprop_scope.
 
 Notation "H1 '\*' H2" := (hstar H1 H2)
   (at level 41, right associativity) : hprop_scope.
@@ -1570,6 +1634,21 @@ Proof.
   exists h', hv; splits~; applys~ eval_eq.
 Qed.
 
+Lemma hheap_eq_proj h1 h2 :
+  (forall d, proj h1 d = proj h2 d) -> h1 = h2.
+Admitted.
+
+Lemma hhoare0 ht H Q : 
+  hhoare empty ht H (fun=> Q) = (H ==> Q).
+Proof.
+  apply/prop_ext; split.
+  { move=> hh ? /hh[?][?][][_] ev.
+    apply: applys_eq_init; fequals.
+    apply/hheap_eq_proj=> ?; exact/ev. }
+  move=> hq h /hq ?; exists h, (fun (_ : D) => val_unit); by do ? split.
+Qed.
+
+
 Lemma eval_cup (fs1 fs2 : fset D) ht h1 h2 h3 hv1 hv2 : 
   disjoint fs1 fs2 ->
   eval fs1 h1 ht h2 hv1 ->
@@ -1595,7 +1674,7 @@ Lemma hhoare_union (fs1 fs2 : fset D) ht H (Q Q': (D -> val) -> hhprop) :
   disjoint fs1 fs2 ->
   hhoare fs1 ht H Q ->
   (forall hv, 
-    hhoare fs2 ht (Q hv) (fun hv' => Q' (hv \u_(fs1) hv'))) -> 
+    hhoare fs2 ht (Q hv) (fun hv' => Q' (hv \u_fs1 hv'))) -> 
     hhoare (fs1 \u fs2) ht H Q'.
 Proof.
   intros disj hh1 hh2 ? [h1[ hv1 [? Qh1]]]%hh1.
@@ -1798,10 +1877,6 @@ Lemma proj_diff h1 h2 d :
 Proof.
 Admitted.
 
-Lemma hheap_eq_proj h1 h2 :
-  (forall d, proj h1 d = proj h2 d) -> h1 = h2.
-Admitted.
-
 Lemma eval_frame h1 h2 h fs' (ht : D -> trm) (fs : fset D) hv: 
   eval fs h1 ht h2 hv ->
   local fs' h ->
@@ -1901,7 +1976,7 @@ Proof.
   1-2: exists (update h1 (p, d) v); 
        rewrite update_union_not_r //; split=>//; 
        exact/disjoint_update_not_r.
-  exists (remove h1 (p, d)).
+  exists (Fmap.remove h1 (p, d)).
   rewrite remove_union_not_r //; split=>//.
   exact/disjoint_remove_l.
 Qed.
@@ -2110,7 +2185,7 @@ Lemma hhoare_union2_aux (fs1 fs2 : fset D) ht h h' (Q': (D -> val) -> hhprop) :
       \exists h'',
         (= h'') \*  (= h') \* \[
           forall h', local fs2 h' -> 
-            hhoare fs2 ht ((= h'') \* (= h')) (fun hv' => Q' (hv \u_(fs1) hv') \* (= h'))]
+            hhoare fs2 ht ((= h'') \* (= h')) (fun hv' => Q' (hv \u_fs1 hv') \* (= h'))]
       ).
 Proof.
   move=> dj lh' hh ? -[h1][h2][->][->][?]->.
@@ -2191,6 +2266,15 @@ Qed.
   exists h', h3; splits.
 
 Admitted. *)
+
+Lemma hhoare_hv H Q fs ht : 
+  hhoare fs ht H (fun hr => \exists hr', Q (hr \u_(fs) hr')) ->
+  hhoare fs ht H Q.
+Proof.
+  move=> hh ? /hh[h'][hv][ev][hv']?.
+  exists h', (hv \u_( fs) hv'); split=>//.
+  by apply/eval_hv; eauto=> ?? /[! uni_in].
+Qed.
 
 Lemma hhoare_conseq : forall ht H' hQ' H hQ fs,
   hhoare fs ht H' hQ' ->
@@ -3541,6 +3625,21 @@ Lemma wp_if_case : forall b t1 t2 Q,
   (if b then wp t1 Q else wp t2 Q) ==> wp (fun d => trm_if b (t1 d) (t2 d)) Q.
 Proof using. intros. applys himpl_trans wp_if. case_if~. Qed.
 
+Lemma wp_ht_eq ht1 ht2 Q : 
+  (forall d, indom fs d -> ht1 d = ht2 d) ->
+  wp ht1 Q = wp ht2 Q.
+Proof.
+Admitted.
+
+Lemma wp_hv ht Q :
+  wp ht (fun hv => \exists hv', Q (hv \u_(fs) hv')) ==>
+  wp ht Q.
+Proof.
+  rewrite /wp. xsimpl=> H' hh ?.
+  apply/hhoare_hv/hhoare_conseq; eauto.
+  by xsimpl.
+Qed.
+
 End htriple.
 
 Lemma wp_union Q t fs1 fs2 : 
@@ -3560,6 +3659,29 @@ Proof.
   apply/hhoare_conseq; [eauto|xsimpl|].
   xsimpl*.
 Qed. 
+
+(* Lemma wp_union2 Q t fs1 fs2 : 
+  disjoint fs1 fs2 ->
+  wp (fs1 \u fs2) t Q ==>
+  wp fs1 t (fun hr1 => \exists hv, wp fs2 t (fun hr2 => \[forall d, indom fs1 d -> hr2 d = hv d] \* Q (hr1 \u_(fs1) hr2))).
+Proof.
+  move=> dj.
+  rewrite {1}/wp. xsimpl=> P hh.
+  rewrite {1}/wp. xsimpl=> H.
+  rewrite /wp.
+  move/hhoare_union2: (hh)=> /(_ H dj) ?.
+  apply/hhoare_conseq; [eauto|xsimpl|].
+  move=> ?. xpull=> ?? HH; xsimpl*.
+Qed. *)
+
+Lemma wp0 ht Q : wp empty ht (fun=> Q) = Q.
+Proof.
+  rewrite /wp. xsimpl.
+  { move=> ? /(_ \[]) /[! hhoare0]; by rew_heap. }
+  move=> ?; by rewrite hhoare0.
+Qed.
+
+
 
 Notation "'funloc' p '=>' H" :=
   (fun (r:D -> val) => \exists (p : D -> loc), \[r = val_loc \o p] \* H)
@@ -4256,12 +4378,32 @@ Proof using.
   by applys* wp_app_fun; rewrite M1.
 Qed.
 
+Lemma xwp_lemma_wp_fun : forall hv1 (hv2 : D -> val) x t H Q,
+  (hv1 = fun d => val_fun (x d) (t d)) ->
+  H ==> wpgen (fun d => subst (x d) (hv2 d) (t d)) Q ->
+  H ==> wp fs (fun d => trm_app (hv1 d) (hv2 d)) Q.
+Proof using.
+  introv M1 M2. xchange M2.
+  xchange (>> wpgen_sound (fun d => subst (x d) (hv2 d) (t d)) Q).
+  by applys* wp_app_fun; rewrite M1.
+Qed.
+
 Lemma xwp_lemma_fix : forall hv1 (hv2 : D -> val) f x t H Q,
   (hv1 = fun d => val_fix (f d) (x d) (t d)) ->
   H ==> wpgen (fun d => subst (x d) (hv2 d) (subst (f d) (hv1 d) (t d))) Q ->
   htriple fs (fun d => trm_app (hv1 d) (hv2 d)) H Q.
 Proof using.
   introv M1 M2. rewrite <- wp_equiv. xchange M2.
+  xchange (>> wpgen_sound (fun d => subst (x d) (hv2 d) (subst (f d) (hv1 d) (t d))) Q).
+  applys* wp_app_fix. by rewrite M1.
+Qed.
+
+Lemma xwp_lemma_wp_fix : forall hv1 (hv2 : D -> val) f x t H Q,
+  (hv1 = fun d => val_fix (f d) (x d) (t d)) ->
+  H ==> wpgen (fun d => subst (x d) (hv2 d) (subst (f d) (hv1 d) (t d))) Q ->
+  H ==> wp fs (fun d => trm_app (hv1 d) (hv2 d)) Q.
+Proof using.
+  introv M1 M2. xchange M2.
   xchange (>> wpgen_sound (fun d => subst (x d) (hv2 d) (subst (f d) (hv1 d) (t d))) Q).
   applys* wp_app_fix. by rewrite M1.
 Qed.
@@ -4339,8 +4481,8 @@ Lemma xapp_simpl_lemma : forall (F : formula) H Q,
 Proof using. introv M. xchange M. unfold protect. xsimpl. Qed.
 
 Tactic Notation "xapp_simpl" :=
-  first [ applys xapp_simpl_lemma (* handles specification coming from [xfun] *)
-        | xsimpl; unfold protect; xapp_try_clear_unit_result ].
+  first [ applys xapp_simpl_lemma; do 2? xsimpl (* handles specification coming from [xfun] *)
+        | (do 2? xsimpl); unfold protect; xapp_try_clear_unit_result ].
 
 Tactic Notation "xapp_pre" :=
   xhtriple_if_needed; xseq_xlet_if_needed; xstruct_if_needed.
@@ -4366,7 +4508,7 @@ Tactic Notation "xapp_nosubst" constr(E) :=
     involved [Hint Extern] tricks in CFML 2.0. *)
 
 Tactic Notation "xapp_apply_spec" :=
-  first [ solve [ eauto with htriple ]
+  first [ first [solve [ eauto with lhtriple ]| solve [ eauto with htriple ]]
         | match goal with H: _ |- _ => eapply H end ].
 
 (** [xapp_nosubst_for_records] is place holder for implementing [xapp] on
@@ -4504,9 +4646,9 @@ Notation "'Let' x ':=' F1 'in' F2" :=
    right associativity,
   format "'[v' '[' 'Let'  x  ':='  F1  'in' ']' '/' '[' F2 ']' ']'") : wp_scope.
 
-Notation "'WP' [ d 'in' fs  ':' t ] '{' v ',' Q '}'" := 
+Notation "'WP' [ d 'in' fs  '=>' t ] '{' v ',' Q '}'" := 
     (wp fs (fun d => t) (fun v => Q)) (at level 30, d name, v name,
-  format "'[' 'WP'  [  d '['  'in'  ']' fs   ':' '/' '['     t ']'  ] '/' '['   '{'  v ','  Q  '}' ']' ']' ") : wp_scope.
+  format "'[' 'WP'  [  d '['  'in'  ']' fs   '=>' '/    ' '['  t ']'  ] '/' '['   '{'  v ','  Q  '}' ']' ']' ") : wp_scope.
 
 Notation "'Seq' F1 ; F2" :=
   ((wpgen_seq F1 F2))
@@ -4860,13 +5002,13 @@ Qed. *)
   (v0 = fun d => val_fun (x1 d) (trm_fun (x2 d) (t1 d))) ->
   (forall d, x1 d <> x2 d) ->
   wp fs (fun d => subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t1 d))) Q ==> wp fs (fun d => trm_app (v0 d) (v1 d) (v2 d)) Q.
-Proof using. introv EQ1 N. applys wp_eval_like. applys* eval_like_app_fun2. Qed. *)
+Proof using. introv EQ1 N. applys wp_eval_like. applys* eval_like_app_fun2. Qed.
 
 Lemma wp_app_fix2 fs : forall f x1 x2 v0 v1 v2 t1 Q,
   (v0 = fun d => val_fix (f d) (x1 d) (trm_fun (x2 d) (t1 d))) ->
   (forall d, x1 d <> x2 d /\ f d <> x2 d) ->
   wp fs (fun d => subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (subst (f d) (v0 d) (t1 d)))) Q ==> wp fs (fun d => trm_app (v0 d) (v1 d) (v2 d)) Q.
-Proof using. introv EQ1 N. applys wp_eval_like. applys* eval_like_app_fix2. Qed.
+Proof using. introv EQ1 N. applys wp_eval_like. applys* eval_like_app_fix2. Qed. *)
 
 (* Lemma wp_app_fun3 : forall x1 x2 x3 v0 v1 v2 v3 t1 Q,
   v0 = val_fun x1 (trm_fun x2 (trm_fun x3 t1)) ->
@@ -4886,18 +5028,22 @@ Proof using. introv EQ1 N. applys wp_eval_like. applys* eval_like_app_fix3. Qed.
 (** Generalization of [xwp] to handle functions of arity 2 and 3,
     and to handle weakening of an existing specification. *)
 
-(* Lemma xwp_lemma_fun2 : forall v0 v1 v2 x1 x2 t H Q,
-  v0 = val_fun x1 (trm_fun x2 t) ->
-  var_eq x1 x2 = false ->
-  H ==> wpgen ((x1,v1)::(x2,v2)::nil) t Q ->
-  htriple (fun d => v0 v1 v2) H Q.
+Lemma xwp_lemma_fun2 : forall v0 v1 v2 x1 x2 t H Q fs,
+  (v0 = fun d => val_fun (x1 d) (trm_fun (x2 d) (t d))) ->
+  (forall d, var_eq (x1 d) (x2 d) = false) ->
+  H ==> wpgen fs (fun d => subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t d))) Q ->
+  htriple fs (fun d => (v0 d) (v1 d) (v2 d)) H Q.
 Proof using.
-  introv M1 N M2. rewrite var_eq_spec in N. rew_bool_eq in *.
-  rewrite <- wp_equiv. xchange M2.
-  xchange (>> wpgen_sound (((x1,v1)::nil) ++ ((x2,v2)::nil)) t Q).
-  rewrite isubst_app. do 2 rewrite <- subst_eq_isubst_one.
-  applys* wp_app_fun2.
-Qed. *)
+Admitted.
+
+
+Lemma xwp_lemma_wp_fun2 : forall v0 v1 v2 x1 x2 t H Q fs,
+  (v0 = fun d => val_fun (x1 d) (trm_fun (x2 d) (t d))) ->
+  (forall d, var_eq (x1 d) (x2 d) = false) ->
+  H ==> wpgen fs (fun d => subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t d))) Q ->
+  H ==> wp fs (fun d => (v0 d) (v1 d) (v2 d)) Q.
+Proof using.
+Admitted.
 
 Lemma xwp_lemma_fix2 fs : forall f v0 v1 v2 x1 x2 t H Q,
   (v0 = fun d => val_fix (f d) (x1 d) (trm_fun (x2 d) (t d))) ->
@@ -4905,47 +5051,77 @@ Lemma xwp_lemma_fix2 fs : forall f v0 v1 v2 x1 x2 t H Q,
   H ==> wpgen fs (fun d => subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (subst (f d) (v0 d) (t d)))) Q ->
   htriple fs (fun d => (v0 d) (v1 d) (v2 d)) H Q.
 Proof using.
-  introv M1 N M2. repeat rewrite var_eq_spec in N. rew_bool_eq in *.
-  rewrite <- wp_equiv. xchange M2.
-  xchange (>> wpgen_sound (fun d => subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (subst (f d) (v0 d) (t d)))) Q).
-  applys* wp_app_fix2. move=> d. move: (N d). rewrite ?var_eq_spec. by rew_bool_eq.
-Qed.
+Admitted.
 
-(* Lemma xwp_lemma_fun3 : forall v0 v1 v2 v3 x1 x2 x3 t H Q,
-  v0 = val_fun x1 (trm_fun x2 (trm_fun x3 t)) ->
-  (var_eq x1 x2 = false /\ var_eq x1 x3 = false /\ var_eq x2 x3 = false) ->
-  H ==> wpgen ((x1,v1)::(x2,v2)::(x3,v3)::nil) t Q ->
-  htriple (fun d => v0 v1 v2 v3) H Q.
-Proof using.
-  introv M1 N M2. repeat rewrite var_eq_spec in N. rew_bool_eq in *.
-  rewrite <- wp_equiv. xchange M2.
-  xchange (>> wpgen_sound (((x1,v1)::nil) ++ ((x2,v2)::nil) ++ ((x3,v3)::nil)) t Q).
-  do 2 rewrite isubst_app. do 3 rewrite <- subst_eq_isubst_one.
-  applys* wp_app_fun3.
-Qed.
 
-Lemma xwp_lemma_fix3 : forall f v0 v1 v2 v3 x1 x2 x3 t H Q,
-  v0 = val_fix f x1 (trm_fun x2 (trm_fun x3 t)) ->
-  (   var_eq x1 x2 = false /\ var_eq f x2 = false /\ var_eq f x3 = false
-   /\ var_eq x1 x3 = false /\ var_eq x2 x3 = false) ->
-  H ==> wpgen ((f,v0)::(x1,v1)::(x2,v2)::(x3,v3)::nil) t Q ->
-  htriple (fun d => v0 v1 v2 v3) H Q.
+Lemma xwp_lemma_wp_fix2 fs : forall f v0 v1 v2 x1 x2 t H Q,
+  (v0 = fun d => val_fix (f d) (x1 d) (trm_fun (x2 d) (t d))) ->
+  (forall d, var_eq (x1 d) (x2 d) = false /\ var_eq (f d) (x2 d) = false) ->
+  H ==> wpgen fs (fun d => subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (subst (f d) (v0 d) (t d)))) Q ->
+  H ==> wp fs (fun d => (v0 d) (v1 d) (v2 d)) Q.
 Proof using.
-  introv M1 N M2. repeat rewrite var_eq_spec in N. rew_bool_eq in *.
-  rewrite <- wp_equiv. xchange M2.
-  xchange (>> wpgen_sound (((f,v0)::nil) ++ ((x1,v1)::nil) ++ ((x2,v2)::nil) ++ ((x3,v3)::nil)) t Q).
-  do 3 rewrite isubst_app. do 4 rewrite <- subst_eq_isubst_one.
-  applys* wp_app_fix3.
-Qed. *)
+Admitted.
+
+
+Lemma xwp_lemma_fun3 : forall v0 v1 v2 v3 x1 x2 x3 t H Q fs,
+  (v0 = fun d => val_fun (x1 d) (trm_fun (x2 d) (trm_fun (x3 d) (t d)))) ->
+  (forall d, var_eq (x1 d) (x2 d) = false /\ var_eq (x1 d) (x3 d) = false /\ var_eq (x2 d) (x3 d) = false) ->
+  H ==> wpgen fs (fun d => subst (x3 d) (v3 d) (subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t d)))) Q ->
+  htriple fs (fun d => (v0 d) (v1 d) (v2 d) (v3 d)) H Q.
+Proof using.
+Admitted.
+
+Lemma xwp_lemma_wp_fun3 : forall v0 v1 v2 v3 x1 x2 x3 t H Q fs,
+  (v0 = fun d => val_fun (x1 d) (trm_fun (x2 d) (trm_fun (x3 d) (t d)))) ->
+  (forall d, var_eq (x1 d) (x2 d) = false /\ var_eq (x1 d) (x3 d) = false /\ var_eq (x2 d) (x3 d) = false) ->
+  H ==> wpgen fs (fun d => subst (x3 d) (v3 d) (subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t d)))) Q ->
+  H ==> wp fs (fun d => (v0 d) (v1 d) (v2 d) (v3 d)) Q.
+Proof using.
+Admitted.
+
+
+Lemma xwp_lemma_fix3 : forall f v0 v1 v2 v3 x1 x2 x3 t H Q fs,
+  (v0 = fun d => val_fix (f d) (x1 d) (trm_fun (x2 d) (trm_fun (x3 d) (t d)))) ->
+  (forall d,
+         var_eq (x1 d) (x2 d) = false 
+      /\ var_eq (f  d) (x2 d) = false 
+      /\ var_eq (f  d) (x3 d) = false
+      /\ var_eq (x1 d) (x3 d) = false 
+      /\ var_eq (x2 d) (x3 d) = false) ->
+  H ==> wpgen fs (fun d => subst (x3 d) (v3 d) (subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (subst (f d) (v0 d) (t d))))) Q ->
+  htriple fs (fun d => (v0 d) (v1 d) (v2 d) (v3 d)) H Q.
+Proof using.
+Admitted.
+
+Lemma xwp_lemma_wp_fix3 : forall f v0 v1 v2 v3 x1 x2 x3 t H Q fs,
+  (v0 = fun d => val_fix (f d) (x1 d) (trm_fun (x2 d) (trm_fun (x3 d) (t d)))) ->
+  (forall d,
+         var_eq (x1 d) (x2 d) = false 
+      /\ var_eq (f  d) (x2 d) = false 
+      /\ var_eq (f  d) (x3 d) = false
+      /\ var_eq (x1 d) (x3 d) = false 
+      /\ var_eq (x2 d) (x3 d) = false) ->
+  H ==> wpgen fs (fun d => subst (x3 d) (v3 d) (subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (subst (f d) (v0 d) (t d))))) Q ->
+  H ==> wp fs (fun d => (v0 d) (v1 d) (v2 d) (v3 d)) Q.
+Proof using.
+Admitted.
+
 
 Tactic Notation "xwp" :=
   intros;
-  first [ applys xwp_lemma_fun; [ reflexivity | ]
-        | applys xwp_lemma_fix; [ reflexivity | ]
-        | applys xwp_lemma_fix2; [ try reflexivity | try reflexivity | ]
-        (* | applys xwp_lemma_fix2; [ reflexivity | splits; reflexivity | ] *)
-        (* | applys xwp_lemma_fun3; [ reflexivity | splits; reflexivity | ] *)
-        (* | applys xwp_lemma_fix3; [ reflexivity | splits; reflexivity | ] *)
+  first [ applys xwp_lemma_fun;     [ reflexivity | ]
+        | applys xwp_lemma_wp_fun;  [ reflexivity | ]
+        | applys xwp_lemma_fix;     [ reflexivity | ]
+        | applys xwp_lemma_wp_fix;  [ reflexivity | ]
+        | applys xwp_lemma_fix2;    [ reflexivity | reflexivity | ]
+        | applys xwp_lemma_wp_fun2; [ reflexivity | reflexivity | ]
+        | applys xwp_lemma_fun2;    [ reflexivity | reflexivity | ]
+        | applys xwp_lemma_fix2;    [ reflexivity | (do ? split); reflexivity | ]
+        | applys xwp_lemma_fun3;    [ reflexivity | (do ? split); reflexivity | ]
+        | applys xwp_lemma_fix3;    [ reflexivity | (do ? split); reflexivity | ]
+        | applys xwp_lemma_wp_fix2;    [ reflexivity | (do ? split); reflexivity | ]
+        | applys xwp_lemma_wp_fun3;    [ reflexivity | (do ? split); reflexivity | ]
+        | applys xwp_lemma_wp_fix3;    [ reflexivity | (do ? split); reflexivity | ]
         | applys wp_of_wpgen
         | fail 1 "xwp only applies to functions defined using [val_fun] or [val_fix], with at most 3 arguments" ];
   xwp_simpl.
@@ -5253,7 +5429,7 @@ Ltac xsimpl_hook H ::=
 
 End Reasoning.
 
-From mathcomp Require Import seq.
+(* From mathcomp Require Import seq.
 
 Section Def.
 
@@ -5279,7 +5455,9 @@ Record HD (f : nat -> Type) := {
 }.
 
 Definition htrms (f : nat -> Type) :=
-  forall n : nat, htrm (f n).
+  seq (sigT (fun (n : nat) => htrm (f n))).
+
+Definition lookup f n (hts : htrms f) : trm 
 
 Definition ht_of (f : nat -> Type) (hts : htrms f) : HD f -> trm :=
   fun '(Build_HD n tp) => (hts n).(ht) tp.
@@ -5334,11 +5512,388 @@ Lemma focus hts fs (Q : (D -> trm) -> hhprop) n :
 
 End Focus.
 
-End Reasoning_htrms.
+End Reasoning_htrms. *)
+
+(* From mathcomp Require Import seq.
+
+Fixpoint vec (n : nat) : Type := 
+  match n with
+  | S n => nat * vec n
+  | O   => nat
+  end.
+
+Definition Vec := sigT vec.
+
+Module VecDom : Domain with Definition type := Vec.
+Definition type := Vec.
+End VecDom.
+
+
+Module RV := Reasoning(VecDom).
+
+Definition Vec_union (fss : seq (fset Vec)) : fset Vec.
+Admitted.
+
+Definition mark (n : nat) (fs : (fset Vec)) : fset Vec.
+Admitted.
+
+Definition htrm := Vec -> trm.
+
+(* Definition htrm_def : htrm := {|
+  fs := empty;
+  ht := fun=> 0
+|}. *)
+
+Definition htrms := seq htrm.
+
+Implicit Type hts : htrms.
+Implicit Type fss  : seq (fset Vec).
+
+
+Definition hts_of hts : Vec -> trm := 
+  fun '(existT n v) => 
+    nth n 
+
+Lemma focus hts fss (Q : (D -> trm) -> hhprop) n : 
+  wp (Vec_union fss) hts Q =
+  wp (mak n (nth empty n fss))  *)
+
+(* Section Def.
+From mathcomp Require Import ssrbool ssrnat eqtype.
+
+Fixpoint lookup (hts : htrms) (n : nat) : htrm := 
+  match hts with 
+  | [::] => htrm_def 
+  | (k, ht) :: hts => if k == n then ht else lookup hts n
+  end.
+
+End Def. *)
+
+Module nReasoning(D : Domain).
+
+Module HD : Domain with Definition type := labeled D.type.
+Definition type := labeled D.type.
+End HD.
+
+Module NR := Reasoning(HD).
+Export NR.
+
+Record fset_htrm := FH {
+  fs_of : fset D.type;
+  ht_of : D.type -> trm;
+}.
+
+From mathcomp Require Import seq.
+
+(* Definition htrm := D.type -> trm. *)
+(* Definition htrms := labSeq htrm. *)
+(* Definition fset_htrm := labSeq ( * htrm). *)
+
+(* Implicit Type ht  : htrm. *)
+(* Implicit Type hts : htrms. *)
+(* Implicit Type fss : labSeq (fset D.type). *)
+
+Definition fset_of : labSeq fset_htrm -> fset (HD.type). Admitted.
+Definition htrm_of : labSeq fset_htrm -> (HD.type -> trm). Admitted.
+
+Lemma fset_of_cons fs_ht fs_hts l : 
+    fset_of ((Lab l fs_ht) :: fs_hts) = 
+    label (Lab l (fs_of fs_ht)) \u fset_of fs_hts.
+Admitted.
+
+Lemma fset_of_nil : 
+    fset_of nil = empty.
+Admitted.
+
+
+Definition adequate (Q : (HD.type -> val) -> hhprop) (fs : fset HD.type) :=
+  forall hv' hv, Q hv = Q (hv \u_(fs) hv').
+
+
+Definition nwp (fs_hts : labSeq fset_htrm) Q := wp (fset_of fs_hts) (htrm_of fs_hts) Q.
+
+Definition eld : D -> D.type := @el _.
+
+Coercion eld : D >-> D.type.
+
+Lemma fset_htrm_lookup_remove l fs_hts : 
+  let fs_ht := lookup (FH empty (fun=> val_unit : trm)) fs_hts l in
+  let fs    := fs_of (el fs_ht) in 
+    fset_of fs_hts = 
+    label (Lab l fs) \u 
+    fset_of (remove fs_hts l).
+Proof.
+Admitted.
+
+Lemma fset_htrm_label_remove_disj l fs_hts fs : 
+    disjoint
+      (label (Lab l fs))
+      (fset_of (remove fs_hts l)).
+Proof.
+Admitted.
+
+Lemma lookup_eq l fs_hts (d : D) : 
+  let fs_ht := lookup (FH empty (fun=> val_unit : trm)) fs_hts l in
+  let fs    := fs_of (el fs_ht) in 
+  let ht    := ht_of (el fs_ht) in
+    indom (label (Lab l fs)) d ->
+      htrm_of fs_hts d = ht d.
+Proof.
+Admitted.
+
+Lemma remove_eq l fs_hts (d : D) : 
+  let fs_ht := lookup (FH empty (fun=> val_unit : trm)) fs_hts l in
+  let fs    := fs_of (el fs_ht) in 
+  let ht    := ht_of (el fs_ht) in
+    indom (fset_of (remove fs_hts l)) d ->
+      htrm_of fs_hts d = htrm_of (remove fs_hts l) d.
+Proof.
+Admitted.
+
+Lemma indom_label l (fs : fset D.type) l' x :
+  indom (label (Lab l fs)) (Lab l' x) -> l' = l.
+Proof.
+Admitted.
+
+Lemma indom_remove l fs_hts l' x :
+  indom (fset_of (remove fs_hts l)) (Lab l' x) -> l' <> l.
+Proof.
+Admitted.
+
+(* Declare Scope labfset_scope.
+Delimit Scope labfset_scope with lbfs. *)
+Declare Scope fset_scope.
+Delimit Scope fset_scope with fs.
+(**
+Declare Scope labtrm_scope.
+Delimit Scope labtrm_scope with lbtrm. *)
+Declare Scope fs_hts.
+Delimit Scope fs_hts with fh.
+
+Declare Scope fun_scope.
+Delimit Scope fun_scope with fn.
+
+Notation "'⟨' l ',' x '⟩'" := (label (Lab l%nat x%fs)) (at level 5, right associativity, format "⟨ l ,  x ⟩").
+
+Lemma xfocus_lemma (l : labType) fs_hts (Q : (HD.type -> val) -> hhprop) H : 
+  let fs_ht := lookup (FH empty (fun=> val_unit : trm)) fs_hts l in
+  let fs    := fs_of (el fs_ht) in 
+  let ht    := ht_of (el fs_ht) in
+    H ==> wp ⟨l, fs⟩ [eta ht]
+            (fun hr => nwp (remove fs_hts l) (fun hr' => Q (hr \u_⟨l, fs⟩ hr'))) ->
+    H ==> nwp fs_hts Q.
+Proof.
+  move=> fs_ht fs ht.
+  apply: himpl_trans_r.
+  rewrite /nwp (fset_htrm_lookup_remove l fs_hts) -wp_union -/fs_ht; first last.
+  { exact/fset_htrm_label_remove_disj. }
+  under (wp_ht_eq (htrm_of fs_hts))=> ? IN.
+  { rewrite (lookup_eq _ IN); over. }
+  rewrite -/fs_ht -/ht.
+  apply/wp_conseq=> hv.
+  under (wp_ht_eq (htrm_of fs_hts))=> ? IN.
+  { rewrite (remove_eq _ _ IN); over. }
+  move=> h Hwp; rewrite -/fs //.
+  (* apply/wp_hv/wp_conseq; eauto=> hv' ?. 
+  simpl=> Qv; exists (lab_fun_upd hv hv' l).
+  set (hvv := _ \u_(_) _).
+  suff-> //: hvv = lab_fun_upd hv hv' l by eauto.
+  apply/fun_ext_1; rewrite /hvv /uni=> -[] l' e.
+  case: classicT.
+  { by move/indom_label->; rewrite /lab_fun_upd eqtype.eqxx. }
+  case: classicT=> // /indom_remove ?; by rewrite lab_fun_upd_neq. *)
+Qed.
+
+Lemma xunfocus_lemma (Q : (HD.type -> val) (*-> (HD.type -> val)*) -> hhprop) fs_hts 
+  (ht : D.type -> trm) (fs : fset D.type) H (ht' : HD.type -> _)
+  (l : labType) :
+  ~ has_lab fs_hts l ->
+  (forall l, ht = (fun d => ht' (Lab l d))) ->
+  (* (forall hr1 hr2 hr hr', Q hr hr' = Q (lab_fun_upd hr1 hr l) (lab_fun_upd hr' hr2 l)) -> *)
+  (* adequate (fun hr => Q hr hr) (⟨l, fs⟩ \u fset_of fs_hts) -> *)
+  H ==> nwp ((Lab l (FH fs ht)) :: fs_hts) (fun hr => Q hr) ->
+  H ==> wp ⟨l, fs⟩ ht' (fun hr => nwp fs_hts (fun hr' => Q (hr \u_⟨l, fs⟩ hr'))).
+Proof.
+  rewrite /nwp=> /hasnt_lab /[dup]rE {1}-> /[! fset_of_cons] htE (*QE*).
+  apply: himpl_trans_r.
+  (* apply: himpl_trans. *)
+  rewrite -wp_union /=; first last.
+  {  exact/fset_htrm_label_remove_disj. }
+  under wp_ht_eq=> -[l' d] IN.
+  { move: (htE l')=> /(congr1 (@^~ d)) {}htE.
+    rewrite (@lookup_eq l) /lookup /= eqtype.eqxx //= htE. over. }
+  move=> /= h Hwp; simpl; apply/wp_conseq; eauto=> hr /=; simpl.
+  (* xpull=> hv' {Hwp}h Hwp; exists hv'. *)
+  (* move: h Hwp. *)
+  under wp_ht_eq=> ? IN.
+  { rewrite (@remove_eq l) /= eqtype.eqxx /= // -rE; over. }
+  rewrite -rE // => {Hwp}h Hwp. 
+  (* apply/wp_hv/wp_conseq; eauto.
+  move=> hr' {Hwp}h Qh. exists hr'; move: Qh.
+
+
+  rewrite /nwp=> /hasnt_lab /[dup]rE {1}-> /[! fset_of_cons] htE QE.
+  apply: himpl_trans_r.
+  rewrite -wp_union /=; first last.
+  {  exact/fset_htrm_label_remove_disj. }
+  under wp_ht_eq=> -[l' d] IN.
+  { move: (htE l')=> /(congr1 (@^~ d)) {}htE.
+    rewrite (@lookup_eq l) /lookup /= eqtype.eqxx //= htE. over. }
+  move=> /= h Hwp; simpl; apply/wp_conseq; eauto=> hr /=; simpl.
+  (* xpull=> hv' {Hwp}h Hwp; exists hv'. *)
+  (* move: h Hwp. *)
+  under wp_ht_eq=> ? IN.
+  { rewrite (@remove_eq l) /= eqtype.eqxx /= // -rE; over. }
+  rewrite -rE // => {Hwp}h Hwp. apply/wp_hv/wp_conseq; eauto.
+  move=> hr' {Hwp}h Qh. exists hr'; move: Qh. *)
+  (* xsimpl=> ?. 
+  rewrite (AD hr'). 
+  rewrite (QE hr' hr).
+  apply: applys_eq_init; fequals; apply fun_ext_1=> -[l' ?]; 
+  case: (prop_inv (l' = l))=> [->|N].
+  { rewrite /lab_fun_upd /= ?eqtype.eqxx //.
+    rewrite /uni; case: classicT; eauto. }
+  { rewrite lab_fun_upd_neq //.
+    do ? (rewrite /uni; case: classicT; eauto).
+    all: by move/indom_label/N. }
+  { rewrite /lab_fun_upd /= ?eqtype.eqxx.
+    do ? rewrite /uni; case: classicT; eauto. }
+ 
+  (* => {}h {}Hwp; apply/wp_hv/wp_conseq; eauto=> hr' /=; simpl.
+  rewrite rE=> ? Qh; exists (hr \u_(label (lab )))
+  xsimpl.  *)
+Qed. *)
+Qed.
+
+Lemma nwp0 Q : 
+  nwp nil (fun=> Q) = Q.
+Proof.
+  by rewrite /nwp fset_of_nil wp0.
+Qed.
+
+Lemma xunion_cleanup_lemma fs_hts Q v l fs H : 
+  ~ has_lab fs_hts l ->
+  H ==> nwp fs_hts (fun hr => Q (lab_fun_upd v hr l)) -> 
+  H ==> nwp fs_hts (fun hr => Q (v \u_⟨l, fs⟩ hr)).
+Proof.
+  move=> /hasnt_lab->.
+  apply: himpl_trans_r; rewrite /nwp.
+  move=> ? Hwp; apply/wp_hv; apply: wp_conseq Hwp=> hr ? Qh.
+  exists (lab_fun_upd v hr l).
+  move: Qh; apply: applys_eq_init; fequals; apply/fun_ext_1=> -[l' ?].
+  rewrite /uni; case: classicT=> [/indom_label->|].
+  { by rewrite /lab_fun_upd eqtype.eqxx. }
+  by case: classicT=> // /indom_remove /(@lab_fun_upd_neq _ _ _ _ _ _ _)->.
+Qed.
 
 
 
+Lemma hhoare_ref_lab : forall H (f : D.type -> val) fs l,
+  hhoare ⟨l, fs⟩ (fun d => val_ref (f d))
+    H
+    (fun hr => (\exists (p : D.type -> loc), \[hr = fun d => val_loc (p d)] \* \*_(d <- ⟨l, fs⟩) p d ~(d)~> f d) \* H).
+Proof.
+Admitted.
 
+Lemma lhtriple_ref : forall (f : val)  l x, 
+  htriple ⟨l, (single x tt)⟩ (fun d => val_ref f)
+    \[]
+    (fun hr => (\exists (p : loc), \[hr = fun=> val_loc p] \*  p ~(Lab l x)~> f)).
+Proof.
+Admitted.
+
+Lemma htriple_ref_lab : forall (f : val) fs l,
+  htriple ⟨l, fs⟩ (fun d => val_ref f)
+    \[]
+    (fun hr => (\exists (p : D.type -> loc), \[hr = fun d => val_loc (p d)] \* \*_(d <- ⟨l, fs⟩) p d ~(d)~> f)).
+Proof.
+Admitted.
+
+Lemma lhtriple_get : forall v (p : loc) fs,
+  htriple fs (fun d => val_get p)
+    (\*_(d <- fs) p ~(d)~> v)
+    (fun hr => \[hr = fun => v] \* (\*_(d <- fs) p ~(d)~> v)).
+Proof using.
+  intros. unfold htriple. intros H'. applys hhoare_conseq hhoare_get; xsimpl~.
+Qed.
+
+Lemma lhtriple_set : forall v (w : _ -> val) (p : loc) fs,
+  htriple fs (fun d => val_set p (w d))
+  (\*_(d <- fs) p ~(d)~> v)
+  (fun hr => \[hr = w] \* (\*_(d <- fs) p ~(d)~> w d)).
+Proof using.
+Admitted.
+
+Hint Resolve htriple_ref_lab lhtriple_ref lhtriple_get lhtriple_set : lhtriple.
+
+Opaque label.
+Opaque nwp.
+
+Arguments xfocus_lemma _ {_}.
+Arguments xunfocus_lemma _ {_}.
+
+(* From mathcomp Require Import seq. *)
+
+
+Lemma xnwp0_lemma H Q l fs ht' :
+  H ==> wp ⟨l, fs⟩ ht' Q ->
+  H ==> wp ⟨l, fs⟩ ht' (fun hr => nwp nil (fun _ => Q hr)).
+Proof.
+  apply: himpl_trans_r.
+  by apply: wp_conseq=> ?; rewrite nwp0.
+Qed.
+
+
+Notation "'N-WP' fs_hts '{{' v ',' Q '}}'" := 
+    (nwp 
+      fs_hts%fh
+      (fun v => Q%fn)) (at level 20, v name,
+      format "'N-WP'  '[' fs_hts '/'  '{{'  v ','  Q  '}}' ']' ") 
+    : wp_scope.
+
+Notation "'[{' fs1 ';' fs2 ';' .. ';' fsn '}]'" := 
+  (cons fs1%fh (cons fs2%fh .. (cons fsn%fh nil) ..)) (at level 30
+  , format "[{ '['  fs1 ';' '/'  fs2 ';' '/' .. ';' '/' fsn  ']' }] "
+  ) : fs_hts.
+
+Notation "'[{' fs '}]'" := 
+  (cons fs%fh nil) (at level 30, format "[{  fs  }]") : fs_hts.
+
+Export ProgramSyntax.
+
+Notation "'[' l '|' d 'in' fs '=>' t ]" := (Lab l%nat (FH fs%fs (fun d => <{ t }>))) (at level 20, d name) : fs_hts.
+
+Tactic Notation "xfocus" constr(S) := 
+  let n := eval vm_compute in (Z.to_nat S) in
+  apply (xfocus_lemma n); simpl; try apply xnwp0_lemma.
+
+Tactic Notation "xunfocus" := 
+eapply xunfocus_lemma=> //=.
+
+Tactic Notation "xin" constr(S1) constr(S2) ":" tactic(tac) := 
+  let n1 := eval vm_compute in (Z.to_nat S1) in
+  let n2 := eval vm_compute in (Z.to_nat S2) in
+  xfocus n1; tac; xunfocus;
+  xfocus n2; tac; xunfocus.
+
+Notation "f '[' i ']' '(' j ')'" := (f (Lab i%nat j)) (at level 30, format "f [ i ] ( j )") : fun_scope.
+Notation "'⟨' l ',' x '⟩'" := ((Lab l%nat x%fs)) (at level 5, right associativity, format "⟨ l ,  x ⟩") : arr_scope.
+
+Lemma hstar_fset_label_single Q x l : 
+  \*_(d <- ⟨l, single x tt⟩) Q d = 
+  Q (Lab l x).
+Proof.
+Admitted.
+
+
+Hint Rewrite hstar_fset_label_single : hstar_fset.
+
+
+Arguments lab_fun_upd /.
+
+End nReasoning.
+
+Hint Resolve eqtype.eqxx : lhtriple.
 
 (* ################################################################# *)
 (** * Demo Programs *)
@@ -5378,21 +5933,20 @@ Definition to_int (v : val) : int :=
 
 Coercion to_int : val >-> Z.
 
-Definition pow_aux : D -> val := fun d => 
-  <{ fix f n p =>
+Definition pow_aux : trm :=
+  <{ fix f n d p =>
      let b = (n <= 0) in
-     if b then 
-      let x = ! p in x
-     else 
-      let x = ! p   in
-      let y = x * d in
-      p := y;
-      let m = n - 1 in
-      f m p }>.
+      if b then 
+        let x = ! p in x
+      else 
+        let x = ! p   in
+        let y = x * d in
+        p := y;
+        let m = n - 1 in
+        f m d p }>.
 
-Definition pow : D -> val := fun d => 
-  let f := pow_aux d in
-  <{ fun n => let p = ref 1 in f n p }>.
+Definition pow : trm :=
+  <{ fun d n => let p = ref 1 in pow_aux n d p }>.
 
 From mathcomp Require Import zify.
 
@@ -5416,21 +5970,21 @@ Lemma htriple_pow_aux (s : int -> int) (n : int) (p : D -> loc):
   (Σ_(j <- [0,i]) s j <= s i * i)%Z ->
 
     htriple [0,i] 
-      (fun d => pow_aux d n (p d))
+      (fun d => pow_aux n d (p d))
       (\*_(d <- [0,i]) p d ~(d)~> s d)
       (fun v => \[Σ_(j <- [0,i]) v j <= v i * i]%Z \* \Top).
 Proof.
   move: s p.
   induction_wf IH: (downto 0) n; rewrite /downto in IH.
   move=> s p H H'.
-  xwp; autos*; xapp.
+  xwp; autos*; xapp; rewrite -/pow_aux.
   xwp; xif.
   { move=> _. xwp; xapp. xwp; xval. xsimpl*. }
   move=> ?.
-  xwp; xapp.
-  xwp; xapp.
-  xwp; xapp.
-  xwp; xapp.
+  xwp; xapp; rewrite -/pow_aux.
+  xwp; xapp; rewrite -/pow_aux.
+  xwp; xapp; rewrite -/pow_aux.
+  xwp; xapp; rewrite -/pow_aux.
   rewrite wp_equiv.
   apply IH.
   { math. }
@@ -5445,12 +5999,12 @@ Qed.
 
 Lemma htriple_pow_sum (k : int) :
   htriple [0,i] 
-    (fun d => (pow d) k)
+    (fun d => pow d k)
     \[]
     (fun v => \[Σ_(j <- [0,i]) v j <= v i * i]%Z \* \Top).
 Proof.
   rewrite /pow /=.
-  xwp; xapp=> p /=.
+  xwp; xapp=> p /=; rewrite -/pow_aux.
   rewrite wp_equiv.
   apply/htriple_pow_aux.
   { math. }
@@ -5460,6 +6014,152 @@ Qed.
 End pow.
 
 End Pow.
+
+Module Pow1.
+
+Module Dom : Domain with Definition type := int.
+Definition type := int.
+End Dom.
+
+Module Export RD := nReasoning(Dom).
+Include Dom.
+
+(* Export ProgramSyntax. *)
+Import Vars.
+
+Print Dom.type.
+
+Section pow.
+
+Context    (i : int).
+Context    (iL0 : i >= 0).
+Context    (int0i : fset int).
+Hypotheses (int0iH : forall x, indom int0i x = (0 <= x <= i)%Z).
+
+Notation "'{::' i '}'" := (single i tt) (at level 10) : fset_scope.
+Notation "'[0,i]'" := (int0i).
+
+Definition to_int (v : val) : int := 
+  match v with 
+  | val_int i => i 
+  | _ => 0
+  end.
+
+Coercion to_int : val >-> Z.
+
+Definition pow_aux : trm :=
+  <{ fix f n d p =>
+     let b = (n <= 0) in
+     if b then 
+      let x = ! p in x
+     else 
+      let x = ! p   in
+      let y = x * d in
+      p := y;
+      let m = n - 1 in
+      f m d p }>.
+
+Definition pow : trm :=
+  <{ fun d n => let p = ref 1 in pow_aux n d p }>.
+
+From mathcomp Require Import zify.
+
+Context (sum : fset int -> (int -> int) -> int).
+Reserved Notation "'Σ_' ( i <- r ) F"
+  (at level 41, F at level 41, i, r at level 50,
+           format "'[' Σ_ ( i  <-  r ) '/  '  F ']'").
+
+Notation "'Σ_' ( i <- r ) F" :=
+  (sum r (fun i => F)) : nat_scope.
+
+
+Hypotheses (Distr : forall fs f i, (Σ_(j <- fs) f j) * i = Σ_(j <- fs) f j * i).
+Hypotheses (Monot : forall fs f g, (forall i, indom fs i -> (f i <= g i)%Z) -> (Σ_(j <- fs) f j <= Σ_(j <- fs) g j)%Z).
+Hypotheses (Const : forall c, Σ_(i <- [0,i]) c = c * i).
+
+Open Scope Z_scope.
+
+Lemma htriple_pow_times_aux n (s : Dom.type -> int) v (p : Dom.type -> loc) q :
+  n >= 0 ->
+  (forall j, 0 <= j -> 0 <= s j) ->
+  Σ_(j <- [0,i]) s j <= v * i ->
+  0 <= v ->
+
+    q ~⟨2, i⟩~> v \*
+    \*_(d <- ⟨1, [0,i]⟩) p d ~(d)~> s d ==> 
+    N-WP [{ 
+            [1 | ld in [0,i] => pow_aux n ld (p ld)];
+            [2 | ld in {::i} => pow_aux (n + 1) ld q] }]
+        {{ hr, \[Σ_(j <- [0,i]) hr[1](j) <= hr[2](i)] \* \Top }}.
+Proof.
+  move: s p v.
+  induction_wf IH: (downto 0) n; rewrite /downto in IH.
+  move=> s p v H H'.
+  move=> *.
+  xfocus 1.
+  xwp; xapp; rewrite -/pow_aux.
+  xwp; xif.
+  { move=> ?.
+    have->: (n = 0) by math.
+    xwp; xapp.
+    xwp; xval=> /=.
+    xfocus 2.
+    xwp; xapp; rewrite -/pow_aux.
+    xwp; xif=> // _; rewrite -/pow_aux.
+    xwp; xapp; rewrite -/pow_aux.
+    xwp; xapp; rewrite -/pow_aux.
+    xwp; xapp; rewrite -/pow_aux.
+    xwp; xapp; rewrite -/pow_aux.
+    xwp; xapp; rewrite -/pow_aux.
+    xwp; xif=> ?; try (exfalso; math).
+    xwp; xapp.
+    xwp; xval.
+    xsimpl*. }
+  move=> ?.
+  rewrite -/pow_aux.
+  xunfocus.
+  xfocus 2.
+  xwp; xapp; rewrite -/pow_aux.
+  xwp; xif=> ?; try (exfalso; math).
+  rewrite -/pow_aux.
+  xunfocus.
+  xin 2 1 : xwp; xapp; rewrite -/pow_aux.
+  xin 2 1 : xwp; xapp; rewrite -/pow_aux.
+  xin 2 1 : xwp; xapp; rewrite -/pow_aux.
+  xin 2 1 : xwp; xapp; rewrite -/pow_aux.
+  replace (n + 1 - 1) with (n - 1 + 1); last math.
+  rewrite hstar_comm.
+  apply/(IH (n - 1) _ (fun d => s d * d)); try math.
+  { move=> ? /[dup]/H'. math. }
+  have: ((Σ_(j <- [0,i]) s j) * i <= v * i * i)%Z.
+  apply/Zmult_le_compat_r=> //.
+  apply/Z.le_trans. 
+  rewrite Distr.
+  apply/Monot=> ? /[! int0iH] -[??].
+  apply/Z.mul_le_mono_nonneg_l; eauto.
+Qed.
+
+Lemma htriple_pow_times n :
+  \[n>=0] ==> 
+  N-WP [{ 
+          [1| ld in [0,i] => pow ld n ];
+          [2| ld in {::i} => pow ld (n+1)%Z ] 
+        }] {{ v , \[Σ_(j <- [0,i]) v[1](j) <= v[2](i)] \* \Top }}.
+Proof.
+  xsimpl=> ?.
+  xfocus 2.
+  xwp; xapp=> p; rewrite -/pow_aux.
+  xunfocus.
+  xfocus 1.
+  xwp; xapp=> q; rewrite -/pow_aux.
+  xunfocus.
+  rewrite hstar_comm.
+  apply (htriple_pow_times_aux (fun _ => 1)); try math.
+  rewrite Const; math.
+Qed.
+  
+End pow.
+End Pow1.
 
 (* ----------------------------------------------------------------- *)
 (** *** Definition and Verification of [incr]. *)

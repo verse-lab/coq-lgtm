@@ -400,7 +400,7 @@ Ltac remove_empty_heaps_from H :=
               set (X := H1);
               rewrite (@hstar_hempty_r X);
               subst X
-    end end.
+    end end; try autorewrite with hstar_fset; simpl.
 
 Ltac remove_empty_heaps_haffine tt :=
   repeat match goal with |- haffine ?H => remove_empty_heaps_from H end.

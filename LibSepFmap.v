@@ -185,6 +185,8 @@ Inductive fmap (A B : Type) : Type := make {
   fmap_data :> map A B;
   fmap_finite : map_finite fmap_data }.
 
+Definition fset A := fmap A unit.
+
 Arguments make [A] [B].
 
 (* ----------------------------------------------------------------- *)
