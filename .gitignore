@@ -86,3 +86,5 @@ Makefile.conf
 *.vok
 *.vos
 .Makefile.coq.d
+.lia.cache
+Makefile.coq.conf
