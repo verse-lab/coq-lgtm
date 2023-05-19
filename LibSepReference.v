@@ -75,6 +75,14 @@ Lemma uni_nin A B (f g : A -> B) x fs :
 Proof.
 Admitted.
 
+Lemma uniA A B (f1 f2 g : A -> B) fs1 fs2 : 
+  uni fs1 f1 (uni fs2 f2 g) = 
+  uni (fs1 \+ fs2) (uni fs1 f1 f2) g.
+Proof.
+  rewrite /uni; apply/fun_ext_1=> ?.
+  do ? case: classicT=> //.
+Admitted.
+
 Lemma upd_upd A B (f : A -> B) x y z w : 
   x <> z -> 
   upd (upd f x y) z w = upd (upd f z w) x y.
@@ -712,6 +720,24 @@ Definition hforall (A : Type) (J : A -> hhprop) : hhprop :=
 Definition hlocal (H : hhprop) (fs : fset D) :=
   H ==> local fs.
 
+Definition fsubst {A B C : Type} (fm : fmap A B) (f : A -> C) : fmap C B. Admitted.
+(* Lemma fsubst_read {A B C : Type} `{Inhab B} (fm : fmap A B) (f : C -> A) x :
+  read (fsubst fm f) x = read fm (f x).
+Admitted.
+
+Lemma fsubst_empty {A B C : Type} `{Inhab B} (f : C -> A) :
+  fsubst (empty : fmap A B) f = empty.
+Admitted. *)
+
+Lemma fsubst_single {A B C : Type} `{Inhab B} (f : A -> C) (x : A) (y : B) :
+  bijective f ->
+  fsubst (single x y) f = single (f x) y.
+Admitted.
+
+
+Definition hsubst (H : hhprop) (f : D -> D) :=
+  fun h => H (fsubst h (fun '(x, d) => (x, f d))).
+
 Notation "\[]" := (hempty)
   (at level 0) : hprop_scope.
 
@@ -733,6 +759,10 @@ Notation "'\forall' x1 .. xn , H" :=
   (hforall (fun x1 => .. (hforall (fun xn => H)) ..))
   (at level 39, x1 binder, H at level 50, right associativity,
    format "'[' '\forall' '/ '  x1  ..  xn , '/ '  H ']'") : hprop_scope.
+
+Notation "'\{' x |-> f '}' H" := (hsubst H (fun x => f)) 
+  (at level 39, x binder, H at level 50, right associativity,
+  format "'[' \{ x  |->  f } ']' '/   '  H").
 
 (** The remaining operators are defined in terms of the preivous above,
     rather than directly as functions over heaps. Doing so reduces the
@@ -1279,6 +1309,34 @@ Lemma hstar_hgc_hgc :
   \GC \* \GC = \GC.
 Proof using. applys hstar_htop_htop. Qed.
 
+Lemma hsubst_hempty f : 
+  \{ x |-> f x } \[] = \[].
+Proof.
+  apply fun_ext_1=> ?; rewrite /hempty /hsubst.
+Admitted.
+
+Lemma hsubst_hpure f P : 
+  \{ x |-> f x } \[P] = \[P].
+Proof.
+Admitted.
+
+Lemma hsubst_hstar H1 H2 f :
+  \{x |-> f x} H1 \* H2 = (\{x |-> f x} H1) \* (\{x |-> f x} H2).
+Proof.
+Admitted.
+
+Lemma hsubst_htop f :
+  \{x |-> f x} \Top = \Top.
+Proof.
+Admitted.
+
+
+Lemma hsubst_hsingle f d x p: 
+  \{ x |-> f x } p ~(d)~> x = p ~(f d)~> x.
+Admitted.
+
+Hint Rewrite hsubst_hempty hsubst_hsingle : hsubst.
+
 (* ----------------------------------------------------------------- *)
 (** *** Functor Instantiation to Obtain [xsimpl] *)
 
@@ -1618,6 +1676,13 @@ Definition hhoare (fs : fset D) (ht : D -> trm) (H : hhprop) (Q: (D -> val) -> h
   forall h, H h -> 
     exists h' hv, 
         eval fs h ht h' hv /\ Q hv h'.
+
+Lemma hhoare_hsubst (fs : fset D) ht H Q f g : 
+  cancel f g -> cancel g f ->
+  hhoare fs ht H Q =
+  hhoare (fsubst fs f) (ht \o g) (\{x |-> f x} H) (fun hv => \{x |-> f x} (Q (hv \o f))).
+Proof.
+Admitted.
 
 Lemma eval_eq (fs : fset D) (ht1 ht2 : D -> trm) h h' hv : 
   (forall d, Fmap.indom fs d -> ht1 d = ht2 d) ->
@@ -3137,6 +3202,7 @@ Notation "'funloc' p '=>' H" :=
 
 (** Consequence and frame rule. *)
 
+
 Lemma htriple_conseq : forall ht H' Q' H Q,
   htriple ht H' Q' ->
   H ==> H' ->
@@ -3642,6 +3708,15 @@ Qed.
 
 End htriple.
 
+Lemma htriple_hsubst f g fs ht H Q: 
+  cancel f g -> cancel g f ->
+  htriple fs ht H Q = 
+  htriple (fsubst fs f) (ht \o g) (\{x |-> f x} H) (fun hv => \{x |-> f x} Q (hv \o f)).
+Proof.
+Admitted.
+
+Arguments htriple_hsubst _ _ {_}.
+
 Lemma wp_union Q t fs1 fs2 : 
   disjoint fs1 fs2 ->
   wp fs1 t (fun hr1 => wp fs2 t (fun hr2 => Q (hr1 \u_(fs1) hr2))) = 
@@ -3659,6 +3734,13 @@ Proof.
   apply/hhoare_conseq; [eauto|xsimpl|].
   xsimpl*.
 Qed. 
+
+Lemma wp_union2 Q t fs1 fs2 : 
+  disjoint fs1 fs2 ->
+  wp (fs1 \u fs2) t Q ==>
+  wp fs1 t (fun=> wp fs2 t Q).
+Proof.
+Admitted.
 
 (* Lemma wp_union2 Q t fs1 fs2 : 
   disjoint fs1 fs2 ->
@@ -4336,6 +4418,17 @@ Lemma xif_lemma : forall b H F1 F2 Q,
   H ==> (wpgen_if (fun=>b) F1 F2) Q.
 Proof using. introv M1 M2. unfold wpgen_if. xsimpl* b. case_if*. Qed.
 
+Lemma xapp_lemma' : forall t t' Q1 H1 H Q,
+  (forall d, indom fs d -> t' d = t d) ->
+  htriple fs t' H1 Q1 ->
+  H ==> H1 \* (Q1 \--* protect Q) ->
+  H ==> wp fs t Q.
+Proof using.
+  introv tE M W. rewrite <- wp_equiv in M. xchange W. xchange M.
+  rewrite (wp_ht_eq _ t)=> //.
+  applys wp_ramified_frame.
+Qed.
+
 Lemma xapp_lemma : forall t Q1 H1 H Q,
   htriple fs t H1 Q1 ->
   H ==> H1 \* (Q1 \--* protect Q) ->
@@ -4495,7 +4588,7 @@ Tactic Notation "xapp_pre" :=
 
 Tactic Notation "xapp_nosubst" constr(E) :=
   xapp_pre;
-  forwards_nounfold_then E ltac:(fun K => applys xapp_lemma K; xapp_simpl).
+  forwards_nounfold_then E ltac:(fun K => applys xapp_lemma' K=>//; xapp_simpl).
 
 (** [xapp_apply_spec] implements the heart of [xapp], when called without
     argument. If finds out the specification htriple, either in the hint data
@@ -4967,7 +5060,7 @@ Qed. *)
 Lemma eval_like_app_fix2 fs : forall v0 v1 v2 f x1 x2 t1,
   (v0 = fun d => val_fix (f d) (x1 d) (trm_fun (x2 d) (t1 d))) ->
   (forall d, x1 d <> x2 d /\ f d <> x2 d) ->
-  eval_like fs (fun d => subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (subst (f d) (v0 d) (t1 d)))) (fun d => (v0 d) (v1 d) (v2 d)).
+  eval_like fs (fun d => subst (f d) (v0 d) (subst (x1 d) (v1 d) (subst (x2 d) (v2 d) (t1 d)))) (fun d => (v0 d) (v1 d) (v2 d)).
 Proof using.
 Admitted.
 
@@ -5048,7 +5141,7 @@ Admitted.
 Lemma xwp_lemma_fix2 fs : forall f v0 v1 v2 x1 x2 t H Q,
   (v0 = fun d => val_fix (f d) (x1 d) (trm_fun (x2 d) (t d))) ->
   (forall d, var_eq (x1 d) (x2 d) = false /\ var_eq (f d) (x2 d) = false) ->
-  H ==> wpgen fs (fun d => subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (subst (f d) (v0 d) (t d)))) Q ->
+  H ==> wpgen fs (fun d => subst (f d) (v0 d) (subst (x1 d) (v1 d) (subst (x2 d) (v2 d) (t d)))) Q ->
   htriple fs (fun d => (v0 d) (v1 d) (v2 d)) H Q.
 Proof using.
 Admitted.
@@ -5057,7 +5150,7 @@ Admitted.
 Lemma xwp_lemma_wp_fix2 fs : forall f v0 v1 v2 x1 x2 t H Q,
   (v0 = fun d => val_fix (f d) (x1 d) (trm_fun (x2 d) (t d))) ->
   (forall d, var_eq (x1 d) (x2 d) = false /\ var_eq (f d) (x2 d) = false) ->
-  H ==> wpgen fs (fun d => subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (subst (f d) (v0 d) (t d)))) Q ->
+  H ==> wpgen fs (fun d => subst  (f d) (v0 d) (subst (x1 d) (v1 d) (subst (x2 d) (v2 d) (t d)))) Q ->
   H ==> wp fs (fun d => (v0 d) (v1 d) (v2 d)) Q.
 Proof using.
 Admitted.
@@ -5088,7 +5181,7 @@ Lemma xwp_lemma_fix3 : forall f v0 v1 v2 v3 x1 x2 x3 t H Q fs,
       /\ var_eq (f  d) (x3 d) = false
       /\ var_eq (x1 d) (x3 d) = false 
       /\ var_eq (x2 d) (x3 d) = false) ->
-  H ==> wpgen fs (fun d => subst (x3 d) (v3 d) (subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (subst (f d) (v0 d) (t d))))) Q ->
+  H ==> wpgen fs (fun d => subst (f d) (v0 d) (subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (subst (x3 d) (v3 d) (t d))))) Q ->
   htriple fs (fun d => (v0 d) (v1 d) (v2 d) (v3 d)) H Q.
 Proof using.
 Admitted.
@@ -5101,7 +5194,7 @@ Lemma xwp_lemma_wp_fix3 : forall f v0 v1 v2 v3 x1 x2 x3 t H Q fs,
       /\ var_eq (f  d) (x3 d) = false
       /\ var_eq (x1 d) (x3 d) = false 
       /\ var_eq (x2 d) (x3 d) = false) ->
-  H ==> wpgen fs (fun d => subst (x3 d) (v3 d) (subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (subst (f d) (v0 d) (t d))))) Q ->
+  H ==> wpgen fs (fun d => subst  (f d) (v0 d)  (subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (subst (x3 d) (v3 d) (t d))))) Q ->
   H ==> wp fs (fun d => (v0 d) (v1 d) (v2 d) (v3 d)) Q.
 Proof using.
 Admitted.
@@ -5119,9 +5212,9 @@ Tactic Notation "xwp" :=
         | applys xwp_lemma_fix2;    [ reflexivity | (do ? split); reflexivity | ]
         | applys xwp_lemma_fun3;    [ reflexivity | (do ? split); reflexivity | ]
         | applys xwp_lemma_fix3;    [ reflexivity | (do ? split); reflexivity | ]
-        | applys xwp_lemma_wp_fix2;    [ reflexivity | (do ? split); reflexivity | ]
-        | applys xwp_lemma_wp_fun3;    [ reflexivity | (do ? split); reflexivity | ]
-        | applys xwp_lemma_wp_fix3;    [ reflexivity | (do ? split); reflexivity | ]
+        | applys xwp_lemma_wp_fix2; [ reflexivity | (do ? split); reflexivity | ]
+        | applys xwp_lemma_wp_fun3; [ reflexivity | (do ? split); reflexivity | ]
+        | applys xwp_lemma_wp_fix3; [ reflexivity | (do ? split); reflexivity | ]
         | applys wp_of_wpgen
         | fail 1 "xwp only applies to functions defined using [val_fun] or [val_fix], with at most 3 arguments" ];
   xwp_simpl.
@@ -5425,6 +5518,176 @@ Ltac xsimpl_hook H ::=
   | hsingle ?p ?v => xsimpl_hook_hsingle p
   | hrecord ?kvs ?p => xsimpl_hook_hrecord p
   end. *)
+Section For_loop.
+
+Import ProgramSyntax Vars.
+
+Definition For_aux (N : int) (body : trm) : trm :=
+  trm_fix "for" "cnt"
+    <{ let "cond" = ("cnt" < N) in 
+      if "cond" then 
+        let "body" = body in
+        "body" "cnt";
+        let "cnt" = "cnt" + 1 in 
+        "for" "cnt"
+      else 0 }>.
+
+Definition For (Z : int) (N : int) (body : trm) : trm :=
+  let f := For_aux N body in <{ let g = f in g Z }>.
+
+Notation "'for' i <- '[' Z ',' N ']' '{' t '}'"  :=
+  (For Z N <{ fun_ i => t }>)
+  (in custom trm at level 69,
+   Z, N, i at level 0,
+   format "'[' for  i  <-  [ Z ','  N ] ']'  '{' '/   ' '[' t  '}' ']'") : trm_scope.
+
+
+Open Scope Z_scope.
+
+Definition Union {T D : Type} (l : fset T) (fs : T -> fset D) : fset D. Admitted.
+Definition interval (x y : int) : fset int. Admitted.
+
+Lemma intervalU x y : x < y -> interval x y = update (interval (x + 1) y) x tt.
+Admitted.
+
+Lemma intervalUr x y : x <= y -> interval x (y + 1) = update (interval x y) y tt.
+Admitted.
+
+Lemma intervalgt x y : x <= y -> interval y x = empty.
+Admitted.
+
+
+Lemma Union_upd {T} (x : T) (fs : fset T) (fsi : T -> fset D) : 
+  (forall i j, i <> j -> disjoint (fsi i) (fsi j)) ->
+  Union (update fs x tt) fsi = fsi x \u Union fs fsi.
+Admitted.
+
+Lemma Union0 {T} (fsi : T -> fset D) : Union empty fsi = empty.
+Admitted.
+
+Lemma Union_union {T D} (fs : fset T) (fsi1 fsi2 : T -> fset D) :
+  Union fs fsi1 \u Union fs fsi2 = Union fs (fun t => fsi1 t \u fsi2 t).
+Admitted.
+
+Lemma Union_label {T D} (fs : fset T) l  (fsi : T -> fset D) :
+  label (Lab l (Union fs fsi)) = Union fs (fun t => label (Lab l (fsi t))).
+Admitted.
+
+
+Hint Resolve eqtype.eqxx : lhtriple.
+
+Lemma wp_for_aux i fs fs' ht (H : int -> int -> int -> (D -> val) -> hhprop) Z N f fsi hv0 k :
+  (Z <= i <= N) ->
+  (* (forall x y z hv1 hv2, x <= y <= z -> H x y hv1 \* H y z hv2 ==> \exists hv, H x z hv) -> *)
+  (* (forall k Z i hv, exists k', forall j, H k' i j hv = H k Z j hv) -> *)
+  (forall i j k hv1 hv2, (forall x, indom (Union (interval i j) fsi) x -> hv1 x = hv2 x) -> H k i j hv1 = H k i j hv2) ->
+  (forall i j, i <> j -> disjoint (fsi i) (fsi j)) ->
+  fs = Union (interval i N) fsi ->
+  (forall t, subst "for" t f = f) ->
+  (forall t, subst "cnt" t f = f) ->
+  (forall t, subst "cond" t f = f) ->
+  disjoint fs' fs ->
+  (forall x, indom fs' x -> ht x = For i N f) ->
+  (forall j k hv, H k Z j hv ==> wp (fs' \u fsi j) ((fun=> f j) \u_fs' ht) (fun hr => H k Z (j + 1) (hv \u_(Union (interval Z j) fsi) hr))) ->
+  (H k Z i hv0) ==> wp (fs' \u fs) ht (fun hr => H k Z N (hv0 \u_(Union (interval Z i) fsi) hr)).
+Proof. 
+  move=> + hP ?-> sfor scnt scond  + +.
+  move: ht hv0.
+  induction_wf IH: (upto N) i; rewrite /upto le_zarith lt_zarith in IH.
+  move=> ht hv0 lN dj htE.
+  rewrite -wp_union // (wp_ht_eq _ _ _ htE) /For /For_aux.
+  Opaque subst.
+  (* xwp. rewrite wp_of_wpgen. xapp.
+  Transparent subst. 
+  rewrite sfor /=. 
+  xapp; rewrite scnt scond -/(For_aux N f).
+  xwp; xif; rewrite lt_zarith.
+  { move=> ?.
+    xwp; xseq.
+    apply: himpl_trans; first last.
+    { apply/wp_conseq=> ?. xwp. xlet. xapp. }
+    apply: himpl_trans; first last.
+    { apply/wp_conseq=> ?. 
+      rewrite hstar_hempty_l. 
+      apply himpl_qwand_r=> ?. rewrite /protect. 
+      xsimpl=>->.
+      set (ht' := (fun=> For_aux N f (i + 1)) \u_fs' ht).
+      rewrite (wp_ht_eq _ ht').
+      { apply/wp_conseq=> ?; rewrite (wp_ht_eq _ ht'). xsimpl*. admit. }
+      admit. }
+    rewrite (wp_union (fun hr2 => H k Z N (_ \u_ _ hr2))) //.
+    rewrite // intervalU // Union_upd // -union_assoc.
+    rewrite union_comm_of_disjoint -?union_assoc; first rewrite union_comm_of_disjoint.
+    2-3: admit.
+    rewrite -wp_union; first last.
+    { admit. }
+    set (ht' := (fun=> f i) \u_fs' ht).
+    rewrite (wp_ht_eq _ ht'); first last.
+    { admit. }
+    rewrite (wp_ht_eq (_ \u_ _ _) ht'); first last.
+    { admit. }
+    apply: himpl_trans; last apply/wp_union2; first last.
+    { admit. }
+    move: (H0 i k hv0)=> /wp_equiv S; xapp S.
+    move=> hr.
+    apply: himpl_trans; first last.
+    { apply: wp_conseq=> ?; rewrite uniA=> ?; exact. }
+    set (hv0 \u_ _ _); rewrite [_ \u fsi i]union_comm_of_disjoint; first last.
+    { admit. }
+    rewrite -Union_upd // -intervalUr; last math.
+    rewrite union_comm_of_disjoint; last admit.
+    apply IH; try math.
+    { admit. }
+    { admit. }
+    move=> j ??.
+    rewrite (wp_ht_eq _ ((fun=> f j) \u_ fs' ht)) //.
+    move=> ??; rewrite /uni; case: classicT=> //. }
+    move=> ?; have->: i = N by math.
+    xwp; xval.
+    rewrite intervalgt ?Union0; last math.
+    apply: himpl_trans; first last.
+    { apply: wp_conseq=> ?. rewrite (hP _ _ _ _ hv0)=> [?|*]; first exact.
+      by rewrite uni_in. }
+    by rewrite wp0. *)
+Admitted.
+
+Lemma wp_for fs fs' ht (H : int -> int -> int -> (D -> val) -> hhprop) Z N (f : trm) fsi hv0 k (P : hhprop) Q :
+(* (forall x y z hv1 hv2, x <= y <= z -> H x y hv1 \* H y z hv2 ==> \exists hv, H x z hv) -> *)
+  (forall k Z i hv, exists k', forall j hv', (forall x, indom (Union (interval Z i) fsi) x -> hv x = hv' x) -> H k' i j hv' = H k Z j hv') ->
+  (forall j k hv, H k j j hv ==> wp (fs' \u fsi j) ((fun=> f j) \u_fs' ht) (H k j (j + 1))) ->
+  (forall i j k hv1 hv2, (forall x, indom (Union (interval i j) fsi) x -> hv1 x = hv2 x) -> H k i j hv1 = H k i j hv2) ->
+  (P ==> H k Z Z hv0) -> 
+  (H k Z N ===> Q) ->
+  (Z <= N) ->
+  (forall i j, i <> j -> disjoint (fsi i) (fsi j)) ->
+  fs = Union (interval Z N) fsi ->
+  (forall t, subst "for" t f = f) ->
+  (forall t, subst "cnt" t f = f) ->
+  (forall t, subst "cond" t f = f) ->
+  disjoint fs' fs ->
+  (forall x, indom fs' x -> ht x = For Z N f) ->
+  P ==> wp (fs' \u fs) ht Q.
+Proof.
+  move=> hp Hwp Heq HP HQ *.
+  apply: himpl_trans; first exact/HP.
+  apply: himpl_trans; first last.
+  { apply: wp_conseq; exact/HQ. }
+  apply: himpl_trans.
+  { apply/(@wp_for_aux Z); eauto; first math.
+    clear k HP HQ=> i k hv.
+    case: (hp k Z i hv)=> k' /[dup]HE<- ? // /Hwp; apply/wp_conseq=> hr.
+    rewrite -(HE _ (hv \u_ (Union (interval Z i) fsi) hr)).
+    { erewrite Heq; eauto. admit. }
+    admit. }
+  apply/wp_conseq=> ?; rewrite intervalgt ?Union0 ?uni0 //; by math.
+Admitted.
+      (* rewrite wp_union // intervalU // Union_upd // -union_assoc. *)
+    (*   }
+Qed. *)
+
+
+End For_loop.
+
 
 
 End Reasoning.
@@ -5675,13 +5938,15 @@ Delimit Scope fun_scope with fn.
 
 Notation "'⟨' l ',' x '⟩'" := (label (Lab l%nat x%fs)) (at level 5, right associativity, format "⟨ l ,  x ⟩").
 
+Definition ntriple H fs_hts Q := H ==> nwp fs_hts Q.
+
 Lemma xfocus_lemma (l : labType) fs_hts (Q : (HD.type -> val) -> hhprop) H : 
   let fs_ht := lookup (FH empty (fun=> val_unit : trm)) fs_hts l in
   let fs    := fs_of (el fs_ht) in 
   let ht    := ht_of (el fs_ht) in
     H ==> wp ⟨l, fs⟩ [eta ht]
             (fun hr => nwp (remove fs_hts l) (fun hr' => Q (hr \u_⟨l, fs⟩ hr'))) ->
-    H ==> nwp fs_hts Q.
+    ntriple H fs_hts Q.
 Proof.
   move=> fs_ht fs ht.
   apply: himpl_trans_r.
@@ -5694,27 +5959,20 @@ Proof.
   under (wp_ht_eq (htrm_of fs_hts))=> ? IN.
   { rewrite (remove_eq _ _ IN); over. }
   move=> h Hwp; rewrite -/fs //.
-  (* apply/wp_hv/wp_conseq; eauto=> hv' ?. 
-  simpl=> Qv; exists (lab_fun_upd hv hv' l).
-  set (hvv := _ \u_(_) _).
-  suff-> //: hvv = lab_fun_upd hv hv' l by eauto.
-  apply/fun_ext_1; rewrite /hvv /uni=> -[] l' e.
-  case: classicT.
-  { by move/indom_label->; rewrite /lab_fun_upd eqtype.eqxx. }
-  case: classicT=> // /indom_remove ?; by rewrite lab_fun_upd_neq. *)
 Qed.
 
 Lemma xunfocus_lemma (Q : (HD.type -> val) (*-> (HD.type -> val)*) -> hhprop) fs_hts 
   (ht : D.type -> trm) (fs : fset D.type) H (ht' : HD.type -> _)
+  (Q' : (HD.type -> val) -> (HD.type -> val) -> hhprop)
   (l : labType) :
   ~ has_lab fs_hts l ->
   (forall l, ht = (fun d => ht' (Lab l d))) ->
-  (* (forall hr1 hr2 hr hr', Q hr hr' = Q (lab_fun_upd hr1 hr l) (lab_fun_upd hr' hr2 l)) -> *)
+  (forall hr hr', Q' hr hr' = Q (hr \u_⟨l, fs⟩ hr')) ->
   (* adequate (fun hr => Q hr hr) (⟨l, fs⟩ \u fset_of fs_hts) -> *)
-  H ==> nwp ((Lab l (FH fs ht)) :: fs_hts) (fun hr => Q hr) ->
-  H ==> wp ⟨l, fs⟩ ht' (fun hr => nwp fs_hts (fun hr' => Q (hr \u_⟨l, fs⟩ hr'))).
+  ntriple H ((Lab l (FH fs ht)) :: fs_hts) (fun hr => Q hr) ->
+  H ==> wp ⟨l, fs⟩ ht' (fun hr => nwp fs_hts (fun hr' => Q' hr hr')).
 Proof.
-  rewrite /nwp=> /hasnt_lab /[dup]rE {1}-> /[! fset_of_cons] htE (*QE*).
+  rewrite /ntriple/nwp=> /hasnt_lab /[dup]rE {1}-> /[! fset_of_cons] htE QE.
   apply: himpl_trans_r.
   (* apply: himpl_trans. *)
   rewrite -wp_union /=; first last.
@@ -5727,65 +5985,30 @@ Proof.
   (* move: h Hwp. *)
   under wp_ht_eq=> ? IN.
   { rewrite (@remove_eq l) /= eqtype.eqxx /= // -rE; over. }
-  rewrite -rE // => {Hwp}h Hwp. 
-  (* apply/wp_hv/wp_conseq; eauto.
-  move=> hr' {Hwp}h Qh. exists hr'; move: Qh.
-
-
-  rewrite /nwp=> /hasnt_lab /[dup]rE {1}-> /[! fset_of_cons] htE QE.
-  apply: himpl_trans_r.
-  rewrite -wp_union /=; first last.
-  {  exact/fset_htrm_label_remove_disj. }
-  under wp_ht_eq=> -[l' d] IN.
-  { move: (htE l')=> /(congr1 (@^~ d)) {}htE.
-    rewrite (@lookup_eq l) /lookup /= eqtype.eqxx //= htE. over. }
-  move=> /= h Hwp; simpl; apply/wp_conseq; eauto=> hr /=; simpl.
-  (* xpull=> hv' {Hwp}h Hwp; exists hv'. *)
-  (* move: h Hwp. *)
-  under wp_ht_eq=> ? IN.
-  { rewrite (@remove_eq l) /= eqtype.eqxx /= // -rE; over. }
-  rewrite -rE // => {Hwp}h Hwp. apply/wp_hv/wp_conseq; eauto.
-  move=> hr' {Hwp}h Qh. exists hr'; move: Qh. *)
-  (* xsimpl=> ?. 
-  rewrite (AD hr'). 
-  rewrite (QE hr' hr).
-  apply: applys_eq_init; fequals; apply fun_ext_1=> -[l' ?]; 
-  case: (prop_inv (l' = l))=> [->|N].
-  { rewrite /lab_fun_upd /= ?eqtype.eqxx //.
-    rewrite /uni; case: classicT; eauto. }
-  { rewrite lab_fun_upd_neq //.
-    do ? (rewrite /uni; case: classicT; eauto).
-    all: by move/indom_label/N. }
-  { rewrite /lab_fun_upd /= ?eqtype.eqxx.
-    do ? rewrite /uni; case: classicT; eauto. }
- 
-  (* => {}h {}Hwp; apply/wp_hv/wp_conseq; eauto=> hr' /=; simpl.
-  rewrite rE=> ? Qh; exists (hr \u_(label (lab )))
-  xsimpl.  *)
-Qed. *)
+  rewrite -rE // => {Hwp}h Hwp.
+  eapply wp_conseq; last exact/Hwp.
+  by move=> ??; rewrite QE.
 Qed.
 
 Lemma nwp0 Q : 
   nwp nil (fun=> Q) = Q.
-Proof.
-  by rewrite /nwp fset_of_nil wp0.
-Qed.
+Proof. by rewrite /nwp fset_of_nil wp0. Qed.
 
-Lemma xunion_cleanup_lemma fs_hts Q v l fs H : 
+Lemma xcleanup_lemma fs_hts Q v l fs H Q' : 
   ~ has_lab fs_hts l ->
-  H ==> nwp fs_hts (fun hr => Q (lab_fun_upd v hr l)) -> 
-  H ==> nwp fs_hts (fun hr => Q (v \u_⟨l, fs⟩ hr)).
+  (forall hr, Q' hr = Q (v \u_⟨l, fs⟩ hr)) ->
+  ntriple H fs_hts (fun hr => Q (lab_fun_upd v hr l)) -> 
+  H ==> nwp fs_hts (fun hr => Q' hr).
 Proof.
-  move=> /hasnt_lab->.
+  move=> /hasnt_lab-> QE.
   apply: himpl_trans_r; rewrite /nwp.
   move=> ? Hwp; apply/wp_hv; apply: wp_conseq Hwp=> hr ? Qh.
-  exists (lab_fun_upd v hr l).
+  exists (lab_fun_upd v hr l); rewrite QE.
   move: Qh; apply: applys_eq_init; fequals; apply/fun_ext_1=> -[l' ?].
   rewrite /uni; case: classicT=> [/indom_label->|].
   { by rewrite /lab_fun_upd eqtype.eqxx. }
   by case: classicT=> // /indom_remove /(@lab_fun_upd_neq _ _ _ _ _ _ _)->.
 Qed.
-
 
 
 Lemma hhoare_ref_lab : forall H (f : D.type -> val) fs l,
@@ -5826,23 +6049,31 @@ Admitted.
 
 Hint Resolve htriple_ref_lab lhtriple_ref lhtriple_get lhtriple_set : lhtriple.
 
-Opaque label.
-Opaque nwp.
-
 Arguments xfocus_lemma _ {_}.
 Arguments xunfocus_lemma _ {_}.
 
 (* From mathcomp Require Import seq. *)
 
 
-Lemma xnwp0_lemma H Q l fs ht' :
+(* Lemma xnwp0_lemma H Q l fs ht' :
   H ==> wp ⟨l, fs⟩ ht' Q ->
   H ==> wp ⟨l, fs⟩ ht' (fun hr => nwp nil (fun _ => Q hr)).
 Proof.
   apply: himpl_trans_r.
   by apply: wp_conseq=> ?; rewrite nwp0.
+Qed. *)
+
+Lemma xnwp0_lemma H Q :
+  H ==> Q ->
+  ntriple H nil (fun=> Q).
+Proof.
+  by apply: himpl_trans_r=> ? /[! nwp0].
 Qed.
 
+Lemma nwp_of_ntriple H Q fs_hts :
+  ntriple H fs_hts Q =
+  H ==> nwp fs_hts Q.
+Proof. by []. Qed.
 
 Notation "'N-WP' fs_hts '{{' v ',' Q '}}'" := 
     (nwp 
@@ -5851,9 +6082,17 @@ Notation "'N-WP' fs_hts '{{' v ',' Q '}}'" :=
       format "'N-WP'  '[' fs_hts '/'  '{{'  v ','  Q  '}}' ']' ") 
     : wp_scope.
 
+Notation "'{{' H '}}' fs_hts '{{' v ',' Q '}}'" := 
+    (ntriple 
+      H%fn
+      fs_hts%fh
+      (fun v => Q%fn)) (at level 20, v name,
+      format " '[' '[' '{{'  H  '}}' ']' '/   ' '[' fs_hts ']' '/' '[' '{{'  v ','  Q  '}}' ']' ']' ") 
+    : wp_scope.
+
 Notation "'[{' fs1 ';' fs2 ';' .. ';' fsn '}]'" := 
   (cons fs1%fh (cons fs2%fh .. (cons fsn%fh nil) ..)) (at level 30
-  , format "[{ '['  fs1 ';' '/'  fs2 ';' '/' .. ';' '/' fsn  ']' }] "
+  , format "[{ '['  fs1 ';' '/'  fs2 ';' '/'  .. ';' '/'  fsn  ']' }] "
   ) : fs_hts.
 
 Notation "'[{' fs '}]'" := 
@@ -5868,13 +6107,28 @@ Tactic Notation "xfocus" constr(S) :=
   apply (xfocus_lemma n); simpl; try apply xnwp0_lemma.
 
 Tactic Notation "xunfocus" := 
-eapply xunfocus_lemma=> //=.
+eapply xunfocus_lemma=> //=; [intros; remember ((_ \u_ _) _); reflexivity|].
+
+Tactic Notation "xcleanup" constr(n) := 
+match goal with 
+| |- context G [?v \u_ ⟨_, ?fs⟩] => eapply ((@xcleanup_lemma _ _ v n fs))
+end=>//; [intros; remember ((_ \u_ _) _); reflexivity|].
+
+
+Tactic Notation "xin" constr(S1) ":" tactic(tac) := 
+  let n := eval vm_compute in (Z.to_nat S1) in
+  xfocus n; tac; try(
+  first [xunfocus | xcleanup n]; simpl; try apply xnwp0_lemma).
+
 
 Tactic Notation "xin" constr(S1) constr(S2) ":" tactic(tac) := 
   let n1 := eval vm_compute in (Z.to_nat S1) in
   let n2 := eval vm_compute in (Z.to_nat S2) in
-  xfocus n1; tac; xunfocus;
-  xfocus n2; tac; xunfocus.
+  xfocus n1; tac; first [xunfocus | xcleanup n1];
+  xfocus n2; tac; first [xunfocus | xcleanup n2]; simpl; try apply xnwp0_lemma.
+
+Tactic Notation "xnsimpl" := 
+  rewrite /ntriple; xsimpl; rewrite -nwp_of_ntriple.
 
 Notation "f '[' i ']' '(' j ')'" := (f (Lab i%nat j)) (at level 30, format "f [ i ] ( j )") : fun_scope.
 Notation "'⟨' l ',' x '⟩'" := ((Lab l%nat x%fs)) (at level 5, right associativity, format "⟨ l ,  x ⟩") : arr_scope.
@@ -5890,6 +6144,108 @@ Hint Rewrite hstar_fset_label_single : hstar_fset.
 
 
 Arguments lab_fun_upd /.
+
+Context (bigop : forall {A}, (int -> int -> int) -> fset A -> (A -> int) -> int).
+Reserved Notation "'\big[' f ']' ( i <- r ) F"
+  (at level 41, F at level 41, i, r at level 50,
+           format "'[' \big[ f ] ( i  <-  r ) '/  '  F ']'").
+
+Notation "'\big[' f ']' ( i <- r ) F" :=
+  (bigop f r (fun i => F)) : nat_scope.
+
+Lemma bigopxSx op l : bigop op (interval l (l + 1)) = @^~ l.
+Proof.
+Admitted.
+
+Lemma op_bigop0 {T} op x F : op x (\big[op](i <- (empty : fset T)) F i) = x.
+Proof.
+Admitted.
+
+
+(* Hypotheses (Distr : forall fs f i, (Σ_(j <- fs) f j) * i = Σ_(j <- fs) f j * i). *)
+(* Hypotheses (Monot : forall fs f g, (forall i, indom fs i -> (f i <= g i)%Z) -> (Σ_(j <- fs) f j <= Σ_(j <- fs) g j)%Z). *)
+(* Hypotheses (Const : forall c, Σ_(i <- [0,i]) c = c * i). *)
+
+Arguments wp_for _ _ {_}.
+
+Lemma Union_singleE (x y : int) : 
+  Union (interval x y) (fun x => single x tt) = 
+  interval x y.
+Proof.
+Admitted.
+
+
+Definition Sum : fset int -> (int -> int) -> int. Admitted.
+Reserved Notation "'Σ_' ( i <- r ) F"
+  (at level 41, F at level 41, i, r at level 50,
+           format "'[' Σ_ ( i  <-  r ) '/  '  F ']'").
+
+Notation "'Σ_' ( i <- r ) F" :=
+  (Sum r (fun i => F)) : nat_scope.
+
+Lemma xfor_big_op_lemma H (R R' : D.type -> hhprop) op p s fsi1 (*fsi2*) vr
+  Z N  (*op1 : int -> int -> int*) (i : nat) j (*k*) (C1 : D.type -> trm) (*C2 : D.type -> trm*) (C : trm)
+  Pre Post: 
+  (forall (l : int) (x : int), 
+    Z <= l <= N ->
+    {{ H l \* 
+       (\*_(d <- ⟨j, fsi1 l⟩) R d) \* 
+       p ~⟨i, s⟩~> x }}
+      [{
+        [i| _  in single s tt  => subst vr l C];
+        [j| ld in fsi1 l       => C1 ld]
+        (* [k| ld in fsi2 l       => C2 ld] *)
+      }]
+    {{ hv, 
+        H (l + 1) \* 
+        (\*_(d <- ⟨j, fsi1 l⟩) R' d) \* 
+        p ~⟨i, s⟩~> (x + (op hv l)) }}) ->
+  (Z <= N)%Z ->
+  (forall t : val, subst "for" t C = C) -> 
+  (forall t : val, subst "cnt" t C = C) ->
+  (forall t : val, subst "cond" t C = C) ->
+  (Pre ==> 
+    H Z \* 
+    (\*_(d <- ⟨j, Union (interval Z N) fsi1⟩) R d) \*
+    p ~⟨i, s⟩~> 0) ->
+  (forall hv, 
+    H N \* 
+    (\*_(d <- ⟨j, Union (interval Z N) fsi1⟩) R' d) \* 
+    p ~⟨i, s⟩~> (Σ_(i <- interval Z N) (op hv i)) ==>
+    Post hv) -> 
+  {{ Pre }}
+    [{
+      [i| _  in single s tt => For Z N (trm_fun vr C)];
+      [j| ld in Union (interval Z N) fsi1 => C1 ld]
+      (* [k| ld in Union (interval Z N) fsi2 => C2 ld] *)
+    }]
+  {{ hv, Post hv }}.
+Proof.
+  (* move=> IH *.
+  rewrite /ntriple /nwp ?fset_of_cons /= ?Union_label.
+  rewrite fset_of_nil union_empty_r Union_union.
+  apply/(
+    wp_for _ ⟨i, single s tt⟩
+      (fun x (r : int) q hv => H q \* p ~⟨i, s⟩~> op1 x (\big[op1](l <- interval r q) op2 hv l))
+      Z N C
+      (fun t : int => ⟨j, fsi1 t⟩ \u ⟨k, fsi2 t⟩)
+      (fun=> 0) x)=> //.
+  { admit. }
+  { clear -IH. 
+    move=>l x hv; move: (IH l x).
+    rewrite /ntriple /nwp ?fset_of_cons /= ?fset_of_nil bigopxSx.
+    rewrite union_empty_r intervalgt; last math.
+    rewrite op_bigop0; apply:himpl_trans_r.
+    erewrite wp_ht_eq; eauto. }
+  { admit. }
+  { admit. }
+  { admit. }
+  { admit. }
+  admit. *)
+Admitted.
+
+Opaque label.
+Opaque nwp.
 
 End nReasoning.
 
@@ -5913,6 +6269,13 @@ Include Dom.
 Export ProgramSyntax.
 Import Vars.
 
+Reserved Notation "'Σ_' ( i <- r ) F"
+  (at level 41, F at level 41, i, r at level 50,
+           format "'[' Σ_ ( i  <-  r ) '/  '  F ']'").
+
+Notation "'Σ_' ( i <- r ) F" :=
+  (sum r (fun i => F)) : nat_scope.
+
 Print Dom.type.
 
 Section pow.
@@ -5922,8 +6285,10 @@ Context (i : int).
 Context (iL0 : i >= 0).
 Context (int0i : fset int).
 Hypotheses (int0iH : forall x, indom int0i x = (0 <= x <= i)%Z).
-
+(*  *)
 Notation "'[0,i]'" := (int0i).
+
+
 
 Definition to_int (v : val) : int := 
   match v with 
@@ -5946,24 +6311,13 @@ Definition pow_aux : trm :=
         f m d p }>.
 
 Definition pow : trm :=
-  <{ fun d n => let p = ref 1 in pow_aux n d p }>.
+  <{ fun d n => let p = ref 1 in pow_aux n d p; free p }>.
+
+
 
 From mathcomp Require Import zify.
 
-Context (sum : fset int -> (int -> int) -> int).
-Reserved Notation "'Σ_' ( i <- r ) F"
-  (at level 41, F at level 41, i, r at level 50,
-           format "'[' Σ_ ( i  <-  r ) '/  '  F ']'").
-
-Notation "'Σ_' ( i <- r ) F" :=
-  (sum r (fun i => F)) : nat_scope.
-
-
-Hypotheses (Distr : forall fs f i, (Σ_(j <- fs) f j) * i = Σ_(j <- fs) f j * i).
-Hypotheses (Monot : forall fs f g, (forall i, indom fs i -> (f i <= g i)%Z) -> (Σ_(j <- fs) f j <= Σ_(j <- fs) g j)%Z).
-Hypotheses (Const : forall c, Σ_(i <- [0,i]) c = c * i).
-
-Lemma htriple_pow_aux (s : int -> int) (n : int) (p : D -> loc):
+(* Lemma htriple_pow_aux (s : int -> int) (n : int) (p : D -> loc):
 
   (forall j, (0 <= j)%Z -> (0 <= s j)%Z) ->
 
@@ -5981,8 +6335,8 @@ Proof.
   xwp; xif.
   { move=> _. xwp; xapp. xwp; xval. xsimpl*. }
   move=> ?.
-  xwp; xapp; rewrite -/pow_aux.
-  xwp; xapp; rewrite -/pow_aux.
+  xwp; xapp. rewrite -/pow_aux.
+  xwp; xapp. rewrite -/pow_aux.
   xwp; xapp; rewrite -/pow_aux.
   xwp; xapp; rewrite -/pow_aux.
   rewrite wp_equiv.
@@ -5995,9 +6349,9 @@ Proof.
   rewrite Distr.
   apply/Monot=> ? /[! int0iH] -[??].
   apply/Z.mul_le_mono_nonneg_l; eauto.
-Qed.
+Qed. *)
 
-Lemma htriple_pow_sum (k : int) :
+(* Lemma htriple_pow_sum (k : int) :
   htriple [0,i] 
     (fun d => pow d k)
     \[]
@@ -6009,7 +6363,7 @@ Proof.
   apply/htriple_pow_aux.
   { math. }
   rewrite Const; math.
-Qed.
+Qed. *)
 
 End pow.
 
@@ -6033,11 +6387,30 @@ Section pow.
 
 Context    (i : int).
 Context    (iL0 : i >= 0).
-Context    (int0i : fset int).
-Hypotheses (int0iH : forall x, indom int0i x = (0 <= x <= i)%Z).
+(* Context    (int0i : fset int). *)
+(* Hypotheses (int0iH : forall x, indom int0i x = (0 <= x <= i)%Z). *)
 
 Notation "'{::' i '}'" := (single i tt) (at level 10) : fset_scope.
-Notation "'[0,i]'" := (int0i).
+Notation "'[0,i]'" := (interval 0 i).
+
+Notation "'for' i <- '[' Z ',' N ']' '{' t '}'"  :=
+  (For Z N <{ fun_ i => t }>)
+  (in custom trm at level 69,
+   Z, N, i at level 0,
+   format "'[' for  i  <-  [ Z ','  N ] ']'  '{' '/   ' '[' t  '}' ']'") : trm_scope.
+
+
+Reserved Notation "'Σ_' ( i <- r ) F"
+  (at level 41, F at level 41, i, r at level 50,
+           format "'[' Σ_ ( i  <-  r ) '/  '  F ']'").
+
+Notation "'Σ_' ( i <- r ) F" :=
+  (Sum r (fun i => F)) : nat_scope.
+
+
+(* Hypotheses (Distr : forall fs f i, (Σ_(j <- fs) f j) * i = Σ_(j <- fs) f j * i).
+Hypotheses (Monot : forall fs f g, (forall i, indom fs i -> (f i <= g i)%Z) -> (Σ_(j <- fs) f j <= Σ_(j <- fs) g j)%Z).
+Hypotheses (Const : forall c, Σ_(i <- [0,i]) c = c * i). *)
 
 Definition to_int (v : val) : int := 
   match v with 
@@ -6062,20 +6435,101 @@ Definition pow_aux : trm :=
 Definition pow : trm :=
   <{ fun d n => let p = ref 1 in pow_aux n d p }>.
 
-From mathcomp Require Import zify.
+Definition pow_sum : trm := 
+  <{ fun x a => 
+      let p = ref 1 in
+      for j <- [0, i] { 
+        let n = ! p in 
+        let k = ! x in 
+        let l = k + n in 
+        let m = n * a in
+        x := l;
+        p := m
+    } 
+  }>.
 
-Context (sum : fset int -> (int -> int) -> int).
-Reserved Notation "'Σ_' ( i <- r ) F"
-  (at level 41, F at level 41, i, r at level 50,
-           format "'[' Σ_ ( i  <-  r ) '/  '  F ']'").
-
-Notation "'Σ_' ( i <- r ) F" :=
-  (sum r (fun i => F)) : nat_scope.
-
+(* Opaque For. *)
 
 Hypotheses (Distr : forall fs f i, (Σ_(j <- fs) f j) * i = Σ_(j <- fs) f j * i).
 Hypotheses (Monot : forall fs f g, (forall i, indom fs i -> (f i <= g i)%Z) -> (Σ_(j <- fs) f j <= Σ_(j <- fs) g j)%Z).
-Hypotheses (Const : forall c, Σ_(i <- [0,i]) c = c * i).
+Hypotheses (Const : forall c i, Σ_(i <- interval 0 i) c = c * i).
+
+
+Lemma himpl_hstar_fset (R R' : D -> hhprop) (fs : fset D) : 
+  (forall d, indom fs d -> R d ==> R' d) ->
+  \*_(d <- fs) R d ==> \*_(d <- fs) R' d.
+Proof.
+Admitted.
+
+Lemma label_single {T} (t : T) l : 
+  ⟨l, {:: t}⟩ = {:: Lab l t}%fs.
+Proof using.
+Admitted.
+
+Lemma optimize_pow_sum (x : int) (q : loc) :
+  {{ q ~⟨1, 0⟩~> 0 }}
+  [{
+    [1| ld in {::0} => pow_sum q x ];
+    [2| ld in [0,i] => pow x ld]
+  }]
+  {{ v, \Top \* q ~⟨1, 0⟩~> Σ_(j <- [0,i]) v[2](j) }}.
+Proof.
+  xin 2: xwp; xapp=> r; rewrite -/pow_aux.
+  xin 1: xwp; xapp=> p; rewrite -/(For_aux i _)-/(For 0 i _).
+  rewrite -{2}Union_singleE.
+  set (H i := 
+     \exists (a : int), 
+       p ~⟨1,0⟩~> a \* 
+       \[forall (r : loc) (y : int), 
+            htriple 
+              ⟨2, {::i}⟩ 
+              (fun ld => pow_aux i x r) 
+              (r ~⟨2, i⟩~> y) 
+              (fun hv => \[hv[2](i) = a * y] \* \Top) ] ).
+  set (R i := r i ~⟨2, i⟩~> 1).
+  set (R' (i : int) := \Top).
+  apply/(xfor_big_op_lemma H R R')=> //=; try xsimpl*; simpl.
+  { move=> l y lb.
+    rewrite /H /R /R' /ntriple; xsimpl=> z htg.
+    move=> ht.
+    xin 1: do ? (xwp; xapp).
+    xin 2: xapp htg=> [|hv hvE].
+    { by move=> ?; rewrite label_single indom_single_eq=> <-. }
+    xsimpl. 
+    { clear -htg lb=> r y.
+      set (f d := Lab (lab d) (el d - 1)).
+      set (g d := Lab (lab d) (el d + 1)).
+      have [??]: cancel f g /\ cancel g f.
+      { rewrite /f /g; split=> -[] ??; fequals=> /=; math. }
+      rewrite (htriple_hsubst f g) //= /=.
+      rewrite label_single fsubst_single /= -?label_single //. last exists g=> //.
+      rewrite /comp /= -/eld hsubst_hsingle /=.
+      apply/htriple_conseq; first last. 
+      { move=> ?; rewrite hsubst_hstar hsubst_hpure hsubst_htop=> ?.
+        exact. }
+      { eauto. }
+      replace (l + 1 - 1) with l; [|math].
+      xwp; xapp; rewrite -/pow_aux.
+      xwp; xif=> //; try math.
+      move=> _. 
+      do 4? (xwp; xapp); rewrite -/pow_aux.
+      replace (l + 1 - 1) with l; [|math].
+      xapp htg=> ? ->.
+      rewrite fun_eta_1; xsimpl; math. }
+    rewrite hvE /= Z.mul_1_r. 
+    xsimpl*. }
+  rewrite Union_singleE /R /H; xsimpl.
+  { move=> {R}r y.
+    xwp; xapp. 
+    xwp; xif; rewrite -/pow_aux; try math.
+    move=> _.
+    xwp; xapp.
+    xwp; xval.
+    xsimpl*; math. }
+  apply/himpl_hstar_fset=> -[l d]/= /indom_label-> //.
+Qed.
+
+From mathcomp Require Import zify.
 
 Open Scope Z_scope.
 
@@ -6085,48 +6539,34 @@ Lemma htriple_pow_times_aux n (s : Dom.type -> int) v (p : Dom.type -> loc) q :
   Σ_(j <- [0,i]) s j <= v * i ->
   0 <= v ->
 
-    q ~⟨2, i⟩~> v \*
-    \*_(d <- ⟨1, [0,i]⟩) p d ~(d)~> s d ==> 
-    N-WP [{ 
-            [1 | ld in [0,i] => pow_aux n ld (p ld)];
-            [2 | ld in {::i} => pow_aux (n + 1) ld q] }]
-        {{ hr, \[Σ_(j <- [0,i]) hr[1](j) <= hr[2](i)] \* \Top }}.
+    {{ q ~⟨2, i⟩~> v \* \*_(d <- ⟨1, [0,i]⟩) p d ~(d)~> s d }}
+      [{ 
+        [1| ld in [0,i] => pow_aux n ld (p ld)];
+        [2| ld in {::i} => pow_aux (n + 1) ld q]
+      }]
+    {{ hr, \[Σ_(j <- [0,i]) hr[1](j) <= hr[2](i)] \* \Top }}.
 Proof.
   move: s p v.
   induction_wf IH: (downto 0) n; rewrite /downto in IH.
   move=> s p v H H'.
   move=> *.
-  xfocus 1.
-  xwp; xapp; rewrite -/pow_aux.
-  xwp; xif.
+  xin 1: xwp; xapp; rewrite -/pow_aux.
+  xin 1: xwp; xif=> cond.
   { move=> ?.
     have->: (n = 0) by math.
-    xwp; xapp.
-    xwp; xval=> /=.
-    xfocus 2.
-    xwp; xapp; rewrite -/pow_aux.
-    xwp; xif=> // _; rewrite -/pow_aux.
-    xwp; xapp; rewrite -/pow_aux.
-    xwp; xapp; rewrite -/pow_aux.
-    xwp; xapp; rewrite -/pow_aux.
-    xwp; xapp; rewrite -/pow_aux.
-    xwp; xapp; rewrite -/pow_aux.
-    xwp; xif=> ?; try (exfalso; math).
-    xwp; xapp.
-    xwp; xval.
+    xin 1: xwp; xapp.
+    xin 1: xwp; xval.
+    xin 2: xwp; xapp; rewrite -/pow_aux.
+    xin 2: xwp; xif=> // _; rewrite -/pow_aux.
+    xin 2: do 5? (xwp; xapp); rewrite -/pow_aux.
+    xin 2: xwp; xif=> // ?; try (exfalso; math).
+    xin 2: xwp; xapp.
+    xin 2: xwp; xval.
     xsimpl*. }
   move=> ?.
-  rewrite -/pow_aux.
-  xunfocus.
-  xfocus 2.
-  xwp; xapp; rewrite -/pow_aux.
-  xwp; xif=> ?; try (exfalso; math).
-  rewrite -/pow_aux.
-  xunfocus.
-  xin 2 1 : xwp; xapp; rewrite -/pow_aux.
-  xin 2 1 : xwp; xapp; rewrite -/pow_aux.
-  xin 2 1 : xwp; xapp; rewrite -/pow_aux.
-  xin 2 1 : xwp; xapp; rewrite -/pow_aux.
+  xin 2: xwp; xapp; rewrite -/pow_aux.
+  xin 2: xwp; xif=> ?; try (exfalso; math).
+  xin 2 1 : do 4? (xwp; xapp); rewrite -/pow_aux.
   replace (n + 1 - 1) with (n - 1 + 1); last math.
   rewrite hstar_comm.
   apply/(IH (n - 1) _ (fun d => s d * d)); try math.
@@ -6140,19 +6580,16 @@ Proof.
 Qed.
 
 Lemma htriple_pow_times n :
-  \[n>=0] ==> 
-  N-WP [{ 
-          [1| ld in [0,i] => pow ld n ];
-          [2| ld in {::i} => pow ld (n+1)%Z ] 
-        }] {{ v , \[Σ_(j <- [0,i]) v[1](j) <= v[2](i)] \* \Top }}.
+  {{ \[n>=0] }}
+    [{ 
+      [1| ld in [0,i] => pow ld n ];
+      [2| ld in {::i} => pow ld (n+1)%Z ]
+    }] 
+  {{ v , \[Σ_(j <- [0,i]) v[1](j) <= v[2](i)] \* \Top }}.
 Proof.
-  xsimpl=> ?.
-  xfocus 2.
-  xwp; xapp=> p; rewrite -/pow_aux.
-  xunfocus.
-  xfocus 1.
-  xwp; xapp=> q; rewrite -/pow_aux.
-  xunfocus.
+  xnsimpl=> ?.
+  xin 2: xwp; xapp=> p; rewrite -/pow_aux.
+  xin 1: xwp; xapp=> q; rewrite -/pow_aux.
   rewrite hstar_comm.
   apply (htriple_pow_times_aux (fun _ => 1)); try math.
   rewrite Const; math.
