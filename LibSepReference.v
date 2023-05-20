@@ -579,6 +579,13 @@ Lemma fmap_rectE A B (P : Type) (p : P) (f : A -> B -> P -> P) :
     forall fm x y, ~ Fmap.indom fm x -> fmap_rect p f (update fm x y) = f x y (fmap_rect p f fm)).
 Admitted.
 
+Lemma fmap_rectE' A B (P : Type) (p : P) (f : A -> B -> P -> P) :
+  (fmap_rect p f empty = p) *
+  ((forall (a b : A) (a' b' : B) (p : P), a <> b -> f a a' (f b b' p) = f b b' (f a a' p)) ->
+   (forall x (y : B) y' y (p : P), f x y (f x y' p) = f x y p) ->
+    forall fm x y, fmap_rect p f (update fm x y) = f x y (fmap_rect p f fm)).
+Admitted.
+
 Lemma fset_rect A : forall P : Type,
   P -> 
   (A -> P -> P) -> fset A -> P.
@@ -798,18 +805,24 @@ Lemma update_update {A B : Type} {x z : A} {y w : B} (fm : fmap A B) :
 Proof.
 Admitted.
 
+Lemma update_updatexx {A B : Type} {x : A} {y w : B} (fm : fmap A B) :
+    update (update fm x y) x w = 
+    update fm x w.
+Proof.
+Admitted.
+
 Lemma fsubst_empty {A B C : Type} (f : A -> C) : 
   fsubst empty f = empty :> fmap C B.
 Proof. by rewrite /fsubst fmap_rectE. Qed.
 
 Lemma fsubst_update {A B C : Type} (f : A -> C) (g : C -> A) (fm : fmap A B) x y: 
   cancel f g ->
-  ~ Fmap.indom fm x ->
   fsubst (update fm x y) f = update (fsubst fm f) (f x) y.
 Proof.
-  move=> c ?. 
-  rewrite /fsubst fmap_rectE // => > ?.
-  by rewrite update_update // => /(congr1 g)/[! c]/(@eq_sym _ _ _).
+  move=> c. 
+  rewrite /fsubst fmap_rectE' // => > ?.
+  { by rewrite update_update // => /(congr1 g)/[! c]/(@eq_sym _ _ _). }
+  by move=> ???; rewrite update_updatexx .
 Qed.
 
 Lemma fsubst_single {A B C : Type} (f : A -> C) (g : C -> A) (x : A) (y : B) :
@@ -817,7 +830,7 @@ Lemma fsubst_single {A B C : Type} (f : A -> C) (g : C -> A) (x : A) (y : B) :
   fsubst (single x y) f = single (f x) y.
 Proof.
   move=> c.
-  by rewrite ?update_empty (fsubst_update _ c) // fsubst_empty.
+  by rewrite ?update_empty (fsubst_update _ _ _ c) // fsubst_empty.
 Qed.
 
 Lemma fsubst_labf_of {A B : Type} (g : B -> A) (fs : fset A) l (f : A -> B) :
@@ -829,7 +842,7 @@ Proof.
   elim/fset_ind: fs=> [|fs x].
   { by rewrite ?(label_empty, fsubst_empty). }
   rewrite label_update=> fE ?.
-  rewrite (fsubst_update _ c) ?indom_label_eq; autos*.
+  rewrite (fsubst_update _ _ _ c) ?indom_label_eq; autos*.
   erewrite fsubst_update; eauto.
   by rewrite label_update fE.
 Qed.
@@ -843,12 +856,12 @@ Proof.
   elim/fmap_ind=> [|fm x y IHfm D].
   { by rewrite ?fsubst_empty. }
   do ? erewrite fsubst_update; eauto.
-  { by rewrite c2 IHfm. }
-  move=> D'; apply: D; move: D'.
+  by rewrite c2 IHfm.
+  (* move=> D'; apply: D; move: D'.
   elim/fmap_ind: {IHfm} fm=> [|fm z {}y IH D].
   { by rewrite fsubst_empty. }
   erewrite fsubst_update; eauto.
-  rewrite ?indom_update_eq=> -[/(can_inj c2)|/IH]; by autos*.
+  rewrite ?indom_update_eq=> -[/(can_inj c2)|/IH]; by autos*. *)
 Qed.
 
 Lemma proj_fsubst  (f g : D -> D) h d : 
@@ -864,7 +877,20 @@ Lemma fsubst_indom {A B C : Type} (f : A -> C) g (fm : fmap A B) x :
   indom (fsubst fm f) (f x) = indom fm x.
 Proof.
 Admitted.
-  
+
+Lemma fsubst_read {A B C : Type} `{Inhab B} (f : A -> C) g (fm : fmap A B) x :
+  cancel f g -> 
+  cancel g f ->
+  read (fsubst fm f) (f x) = read fm x.
+Proof.
+Admitted.
+
+Lemma fsubst_remove {A B C : Type} (f : A -> C) g (fm : fmap A B) x : 
+  cancel f g -> 
+  cancel g f ->
+  Fmap.remove (fsubst fm f) (f x) = fsubst (Fmap.remove fm x) f.
+Proof.
+Admitted.
 
 Definition hsubst (H : hhprop) (f : D -> D) :=
   fun h => H (fsubst h (fun '(x, d) => (x, f d))).
@@ -911,8 +937,8 @@ Definition hwand (H1 H2 : hhprop) : hhprop :=
 Definition qwand A (Q1 Q2:A->hhprop) : hhprop :=
   \forall x, hwand (Q1 x) (Q2 x).
 
-Definition hstar_fset (fs : fset D) (f : D -> hhprop) : hhprop :=
-  fset_rect \[] (fun d H => f d \* H) fs.
+Definition hstar_fset {A} (fs : fset A) (f : A -> hhprop) : hhprop :=
+  fset_rect \[] (fun a H => f a \* H) fs.
 
 Notation "\[ P ]" := (hpure P)
   (at level 0, format "\[ P ]") : hprop_scope.
@@ -1526,13 +1552,13 @@ Export SepSimplArgs.
 (* ----------------------------------------------------------------- *)
 (** *** Properties of [hlocal] *)
 
-Lemma hstar_fset_empty (f : D -> hhprop) :
+Lemma hstar_fset_empty {A} (f : A -> hhprop) :
   hstar_fset empty f = \[].
 Proof.
   by rewrite /hstar_fset fset_rectE.
 Qed.
 
-Lemma hstar_fset_update fs x (f : D -> hhprop) :
+Lemma hstar_fset_update {A} fs x (f : A -> hhprop) :
   ~ Fmap.indom fs x ->
   hstar_fset (update fs x tt) f = f x \* hstar_fset fs f.
 Proof.
@@ -1542,19 +1568,19 @@ Proof.
 Qed.
 
 
-Lemma hstar_fset_union fs1 fs2 (f : D -> hhprop) :
+Lemma hstar_fset_union {A} (fs1 fs2 : fset A) (f : A -> hhprop) :
   disjoint fs1 fs2 ->
   hstar_fset (fs1 \u fs2) f = hstar_fset fs1 f \* hstar_fset fs2 f.
 Proof.
 Admitted.
 
-Lemma hstar_fset_eq fs (f1 f2 : D -> hhprop) :
+Lemma hstar_fset_eq {A} (fs : fset A) (f1 f2 : A -> hhprop) :
   (forall d, indom fs d -> f1 d = f2 d) ->
   hstar_fset fs f1 = hstar_fset fs f2.
 Proof.
 Admitted.
 
-Lemma hstar_fset_emptys fs :
+Lemma hstar_fset_emptys {A} (fs : fset A) :
   hstar_fset fs (fun _ => \[]) = \[].
 Proof.
   elim/fset_ind: fs=> [|?? E ?].
@@ -1562,7 +1588,7 @@ Proof.
   rewrite hstar_fset_update // E; xsimpl.
 Qed.
 
-Lemma hstar_fset_hstar fs P Q: 
+Lemma hstar_fset_hstar {A} (fs : fset A) P Q: 
   \*_(d <- fs) P d \* Q d = (\*_(d <- fs) P d) \* (\*_(d <- fs) Q d).
 Proof.
   elim/fset_ind: fs=> [|?? E ?].
@@ -1571,14 +1597,14 @@ Proof.
 Qed.
 
 
-Lemma hstar_fset_pure fs P: 
+Lemma hstar_fset_pure {A} (fs : fset A) P: 
   \*_(d <- fs) \[P d] = \[forall d, indom fs d -> P d].
 Proof.
   elim/fset_ind: fs=> [|??].
   { rewrite hstar_fset_empty.
     apply/fun_ext_1=> ?; apply/prop_ext; split.
     { move->.
-      have p: (forall d, indom (empty : fset D) d -> P d) by [].
+      have p: (forall a, indom (empty : fset A) a -> P a) by [].
       by exists p. }
   by case. }
   move=> E ?; rewrite hstar_fset_update // E.
@@ -1591,7 +1617,7 @@ Proof.
   all: eexists=> //*; apply/p; rewrite* indom_update_eq.
 Qed.
 
-Lemma hstar_fset_pure_hstar fs P H: 
+Lemma hstar_fset_pure_hstar {A} (fs : fset A) P H: 
   \*_(d <- fs) \[P d] \* H d = \[forall d, indom fs d -> P d] \* \*_(d <- fs) H d.
 Proof. by rewrite hstar_fset_hstar hstar_fset_pure. Qed.
 
@@ -1835,6 +1861,38 @@ Lemma eval1_proj_nd d h h' t v :
 Proof.
 Admitted.
 
+Lemma eval1_fsubst ht h h' (f g : D -> D) v d : 
+  cancel f g ->
+  cancel g f ->
+  eval1 (f d) (fsubst h (fun '(x, d) => (x, f d))) (ht d) h' v ->
+  eval1 d h (ht d) (fsubst h' (fun '(x, d) => (x, g d))) v.
+Proof.
+  move=> c1 c2.
+  rewrite -{-1}[d]c1; move: (f d) (ht _)=> {}d {}ht.
+  have [c1' c2']: 
+    cancel (fun '(x, d) => (x : loc, g d)) (fun '(x, d) => (x, f d)) /\
+    cancel (fun '(x, d) => (x : loc, f d)) (fun '(x, d) => (x, g d)).
+  { by split; case=> ??; rewrite (c1, c2). }
+  rewrite -[h](fsubstK c1' c2') (fsubstK c2' c1').
+  move: (fsubst h _)=> {}h.
+  elim; try by intros; econstructor; eauto.
+  { move=> {}h {}v p min dm.
+    erewrite fsubst_update; eauto.
+    apply/eval1_ref.
+    { move=> ??; apply/min.
+      by rewrite -(fsubst_indom _ _ c1' c2'). }
+    by rewrite -(fsubst_indom _ _ c1' c2') in dm. }
+  { move=> {}h ?? dm ?; apply/eval1_get; subst.
+    { by rewrite -(fsubst_indom _ _ c1' c2') in dm. }
+    by rewrite -(fsubst_read _ _ c1' c2'). }
+  { move=> > dm. erewrite fsubst_update; eauto. 
+    apply/eval1_set.
+    by rewrite -(fsubst_indom _ _ c1' c2') in dm. }
+  move=> > dm; erewrite <-fsubst_remove; eauto.
+  apply/eval1_free.
+  by rewrite -(fsubst_indom _ _ c1' c2') in dm.
+Qed.
+
 Lemma eval_fsubst (fs : fset D) ht h h' (f g : D -> D) hv :
   cancel f g ->
   cancel g f ->
@@ -1842,9 +1900,12 @@ Lemma eval_fsubst (fs : fset D) ht h h' (f g : D -> D) hv :
   eval fs h ht (fsubst h' (fun '(x, d) => (x, g d))) (hv \o f).
 Proof.
   move=> c1 c2 [IN OUT]; split=> d IND.
-  { move }
-  move=> d IND; erewrite proj_fsubst=> //.
-  move: (OUT (f d)). erewrite  fsubst_indom=> // /(_ IND).
+  { rewrite (proj_fsubst _ _ c2 c1).
+    move: (IN (f d)); rewrite (fsubst_indom _ _ c1 c2)=> /(_ IND).
+    rewrite (proj_fsubst _ _ c1 c2) c1 /comp c1.
+    exact/eval1_fsubst. }
+  erewrite proj_fsubst=> //.
+  move: (OUT (f d)). erewrite fsubst_indom=> // /(_ IND).
   erewrite proj_fsubst=> // <-.
   by rewrite fsubstK 1?c1 //; case=> ??; rewrite (c1, c2).
 Qed.
@@ -3234,7 +3295,7 @@ Proof.
     rewrite diff_indom; rewrite* indom_update_eq. }
   apply/fun_ext_1=> v.
   rewrite hstar_fset_update //.
-  under (@hstar_fset_eq fs' (fun _ => Q _ (upd _ _ _ _))).
+  under (@hstar_fset_eq _ fs' (fun _ => Q _ (upd _ _ _ _))).
   { move=> ??; rewrite upd_neq; first over.
     by move=> ?; subst. }
   rewrite upd_eq; xsimpl.
@@ -6067,8 +6128,10 @@ Definition adequate (Q : (HD.type -> val) -> hhprop) (fs : fset HD.type) :=
 Definition nwp (fs_hts : labSeq fset_htrm) Q := wp (fset_of fs_hts) (htrm_of fs_hts) Q.
 
 Definition eld : D -> D.type := @el _.
+Definition eld' : labeled D.type -> D.type := @el _.
 
 Coercion eld : D >-> D.type.
+Coercion eld' : labeled >-> D.type.
 
 Lemma fset_htrm_lookup_remove l fs_hts : 
   let fs_ht := lookup (FH empty (fun=> val_unit : trm)) fs_hts l in
@@ -6205,7 +6268,7 @@ Qed.
 Lemma hhoare_ref_lab : forall H (f : D.type -> val) fs l,
   hhoare ⟨l, fs⟩ (fun d => val_ref (f d))
     H
-    (fun hr => (\exists (p : D.type -> loc), \[hr = fun d => val_loc (p d)] \* \*_(d <- ⟨l, fs⟩) p d ~(d)~> f d) \* H).
+    (fun hr => (\exists (p : D.type -> loc), \[hr = fun d => val_loc (p d)] \* \*_(d <- ⟨l, fs⟩) p (eld d) ~(d)~> f (eld d)) \* H).
 Proof.
 Admitted.
 
@@ -6219,7 +6282,7 @@ Admitted.
 Lemma htriple_ref_lab : forall (f : val) fs l,
   htriple ⟨l, fs⟩ (fun d => val_ref f)
     \[]
-    (fun hr => (\exists (p : D.type -> loc), \[hr = fun d => val_loc (p d)] \* \*_(d <- ⟨l, fs⟩) p d ~(d)~> f)).
+    (fun hr => (\exists (p : D.type -> loc), \[hr = fun d => val_loc (p d)] \* \*_(d <- ⟨l, fs⟩) p (eld d) ~(d)~> f)).
 Proof.
 Admitted.
 
@@ -6291,7 +6354,11 @@ Notation "'[{' fs '}]'" :=
 
 Export ProgramSyntax.
 
-Notation "'[' l '|' d 'in' fs '=>' t ]" := (Lab l%nat (FH fs%fs (fun d => <{ t }>))) (at level 20, d name) : fs_hts.
+Notation "'[' l '|' d 'in' fs '=>' t ]" := (Lab l%nat (FH fs%fs (fun d => t))) 
+  (at level 20, t custom trm at level 100, d name) : fs_hts.
+
+Notation "'{' l '|' d 'in' fs '=>' t }" := (Lab l%nat (FH fs%fs (fun d => t))) 
+  (at level 20, d name, only parsing) : fs_hts.
 
 Tactic Notation "xfocus" constr(S) := 
   let n := eval vm_compute in (Z.to_nat S) in
@@ -6324,15 +6391,18 @@ Tactic Notation "xnsimpl" :=
 Notation "f '[' i ']' '(' j ')'" := (f (Lab i%nat j)) (at level 30, format "f [ i ] ( j )") : fun_scope.
 Notation "'⟨' l ',' x '⟩'" := ((Lab l%nat x%fs)) (at level 5, right associativity, format "⟨ l ,  x ⟩") : arr_scope.
 
-Lemma hstar_fset_label_single Q x l : 
-  \*_(d <- ⟨l, single x tt⟩) Q d = 
-  Q (Lab l x).
+Lemma hstar_fset_label_single Q (x : D.type) : 
+  \*_(d <- single x tt) Q d = Q x.
 Proof.
 Admitted.
 
+Lemma hstar_fset_Lab (Q : D -> hhprop) l fs : 
+  \*_(d <- ⟨l, fs⟩) Q d = 
+  \*_(d <- fs) (Q (Lab l d)).
+Proof.
+Admitted.
 
-Hint Rewrite hstar_fset_label_single : hstar_fset.
-
+Hint Rewrite hstar_fset_label_single hstar_fset_Lab : hstar_fset.
 
 Arguments lab_fun_upd /.
 
@@ -6378,13 +6448,14 @@ Lemma xfor_big_op_lemma H (R R' : D.type -> hhprop) op p s fsi1 (*fsi2*) vr
   Z N  (*op1 : int -> int -> int*) (i : nat) j (*k*) (C1 : D.type -> trm) (*C2 : D.type -> trm*) (C : trm)
   Pre Post: 
   (forall (l : int) (x : int), 
+    let sub := subst vr l C in
     Z <= l <= N ->
     {{ H l \* 
        (\*_(d <- ⟨j, fsi1 l⟩) R d) \* 
        p ~⟨i, s⟩~> x }}
       [{
-        [i| _  in single s tt  => subst vr l C];
-        [j| ld in fsi1 l       => C1 ld]
+        [i| _  in single s tt  => sub];
+        {j| ld in fsi1 l       => C1 ld}
         (* [k| ld in fsi2 l       => C2 ld] *)
       }]
     {{ hv, 
@@ -6406,8 +6477,8 @@ Lemma xfor_big_op_lemma H (R R' : D.type -> hhprop) op p s fsi1 (*fsi2*) vr
     Post hv) -> 
   {{ Pre }}
     [{
-      [i| _  in single s tt => For Z N (trm_fun vr C)];
-      [j| ld in Union (interval Z N) fsi1 => C1 ld]
+      {i| _  in single s tt => For Z N (trm_fun vr C)};
+      {j| ld in Union (interval Z N) fsi1 => C1 ld}
       (* [k| ld in Union (interval Z N) fsi2 => C2 ld] *)
     }]
   {{ hv, Post hv }}.
@@ -6624,7 +6695,7 @@ Notation "'for' i <- '[' Z ',' N ']' '{' t '}'"  :=
   (For Z N <{ fun_ i => t }>)
   (in custom trm at level 69,
    Z, N, i at level 0,
-   format "'[' for  i  <-  [ Z ','  N ] ']'  '{' '/   ' '[' t  '}' ']'") : trm_scope.
+   format "'[' '[' for  i  <-  [ Z ','  N ] ']'  '{' '/   ' '[' t  '}' ']' ']'") : trm_scope.
 
 
 Reserved Notation "'Σ_' ( i <- r ) F"
@@ -6689,13 +6760,6 @@ Hypotheses (Distr : forall fs f i, (Σ_(j <- fs) f j) * i = Σ_(j <- fs) f j * i
 Hypotheses (Monot : forall fs f g, (forall i, indom fs i -> (f i <= g i)%Z) -> (Σ_(j <- fs) f j <= Σ_(j <- fs) g j)%Z).
 Hypotheses (Const : forall c i, Σ_(i <- interval 0 i) c = c * i).
 
-
-Lemma himpl_hstar_fset (R R' : D -> hhprop) (fs : fset D) : 
-  (forall d, indom fs d -> R d ==> R' d) ->
-  \*_(d <- fs) R d ==> \*_(d <- fs) R' d.
-Proof.
-Admitted.
-
 Lemma optimize_pow_sum (x : int) (q : loc) :
   {{ q ~⟨1, 0⟩~> 0 }}
   [{
@@ -6705,7 +6769,7 @@ Lemma optimize_pow_sum (x : int) (q : loc) :
   {{ v, \Top \* q ~⟨1, 0⟩~> Σ_(j <- [0,i]) v[2](j) }}.
 Proof.
   xin 2: xwp; xapp=> r; rewrite -/pow_aux.
-  xin 1: xwp; xapp=> p; rewrite -/(For_aux i _)-/(For 0 i _).
+  xin 1: xwp; xapp=> p; rewrite -/(For_aux _ _)-/(For _ _ _).
   rewrite -{2}Union_singleE.
   set (H i := 
      \exists (a : int), 
@@ -6713,14 +6777,14 @@ Proof.
        \[forall (r : loc) (y : int), 
             htriple 
               ⟨2, {::i}⟩ 
-              (fun ld => pow_aux i x r) 
+              (fun=> pow_aux i x r) 
               (r ~⟨2, i⟩~> y) 
               (fun hv => \[hv[2](i) = a * y] \* \Top) ] ).
   set (R i := r i ~⟨2, i⟩~> 1).
   set (R' (i : int) := \Top).
   apply/(xfor_big_op_lemma H R R')=> //=; try xsimpl*; simpl.
   { move=> l y lb.
-    rewrite /H /R /R'. 
+    rewrite /H /R /R'.
     xnsimpl=> z htg.
     xin 1: do ? (xwp; xapp).
     xin 2: xapp htg=> [|hv hvE].
@@ -6730,22 +6794,19 @@ Proof.
       xsubst (labf_of (fun d => d - 1)) (labf_of (Z.add 1)).
       replace (l + 1 - 1) with l; [|math].
       xwp; xapp; rewrite -/pow_aux.
-      xwp; xif=> //; try math.
-      move=> _. 
+      xwp; xif=> // ?; try math.
       do 4? (xwp; xapp); rewrite -/pow_aux.
       replace (l + 1 - 1) with l; [|math].
       xapp htg=> ? ->. xsimpl; math. }
-    rewrite hvE /= Z.mul_1_r. 
-    xsimpl*. }
+    rewrite hvE /= Z.mul_1_r.
+    xsimpl. }
   rewrite Union_singleE /R /H; xsimpl.
-  { move=> {R}r y.
-    xwp; xapp. 
-    xwp; xif; rewrite -/pow_aux; try math.
-    move=> _.
-    xwp; xapp.
-    xwp; xval.
-    xsimpl*; math. }
-  apply/himpl_hstar_fset=> -[l d]/= /indom_label-> //.
+  move=> {R}r y.
+  xwp; xapp. 
+  xwp; xif=> ?; rewrite -/pow_aux; try math.
+  xwp; xapp.
+  xwp; xval.
+  xsimpl; math.
 Qed.
 
 From mathcomp Require Import zify.
