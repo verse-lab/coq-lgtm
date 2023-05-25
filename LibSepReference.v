@@ -6500,7 +6500,7 @@ Tactic Notation "xin" constr(S1) constr(S2) ":" tactic(tac) :=
   xfocus n2; tac; first [xunfocus | xcleanup n2]; simpl; try apply xnwp0_lemma.
 
 Tactic Notation "xnsimpl" := 
-  rewrite /ntriple; xsimpl; try setoid_rewrite <-nwp_of_ntriple.
+  rewrite /ntriple; xsimpl; try first [ setoid_rewrite <-nwp_of_ntriple| rewrite -nwp_of_ntriple].
 
 Notation "f '[' i ']' '(' j ')'" := (f (Lab i%nat j)) (at level 30, format "f [ i ] ( j )") : fun_scope.
 Notation "'⟨' l ',' x '⟩'" := ((Lab l%nat x%fs)) (at level 5, right associativity, format "⟨ l ,  x ⟩") : arr_scope.
@@ -6621,10 +6621,10 @@ Lemma xfor_big_op_lemma H (R R' : D.type -> hhprop) op p s fsi1 (*fsi2*) vr
         {j| ld in fsi1 l       => C1 ld}
         (* [k| ld in fsi2 l       => C2 ld] *)
       }]
-    {{ hv, 
+    {{ v, 
         H (l + 1) \* 
         (\*_(d <- ⟨j, fsi1 l⟩) R' d) \* 
-        p ~⟨i, s⟩~> (x + (op hv l)) }}) ->
+        p ~⟨i, s⟩~> (x + (op v l)) }}) ->
   (forall i0 j0 : int, i0 <> j0 -> disjoint (fsi1 i0) (fsi1 j0)) ->
   (forall (hv hv' : D -> val) m,
     (forall i, indom (fsi1 m) i -> hv[j](i) = hv'[j](i)) ->
@@ -6652,7 +6652,7 @@ Lemma xfor_big_op_lemma H (R R' : D.type -> hhprop) op p s fsi1 (*fsi2*) vr
       {j| ld in Union (interval Z N) fsi1 => C1 ld}
       (* [k| ld in Union (interval Z N) fsi2 => C2 ld] *)
     }]
-  {{ hv, Post hv }}.
+  {{ v, Post v }}.
 Proof.
   move=> IH Dj opP iNj ?? ??? ??? PostH.
   apply:himpl_trans; first eauto.
@@ -6765,15 +6765,15 @@ Ltac xsubst f g :=
     | clear c1 c2
   ]]]; rewrite /labf_of /comp /=.
 
-Ltac xfor H R R' :=
-  apply/(xfor_big_op_lemma H R R')=> //=; 
+Ltac xfor I R R' :=
+  apply/(xfor_big_op_lemma I R R')=> //=; 
   [ | | | | try by xsimpl*]; simpl;
   [ 
   | intros; autorewrite with disjointE; try math
   | let hvE := fresh "hvE" in
     intros ??? hvE; try setoid_rewrite hvE; [eauto|autorewrite with indomE; try math]
   | 
-  ].
+  ]; try xnsimpl.
 
 Opaque label.
 Opaque nwp.
@@ -6912,8 +6912,6 @@ Include Dom.
 (* Export ProgramSyntax. *)
 Import Vars.
 
-Print Dom.type.
-
 Section pow.
 
 Context    (i : int).
@@ -6945,6 +6943,8 @@ Reserved Notation "'\U_' ( i <- r ) F"
 Notation "'\U_' ( i <- r ) F" :=
   (Union r (fun i => F)).
 
+Notation __ := (single 30%nat tt).
+
 
 
 (* Hypotheses (Distr : forall fs f i, (Σ_(j <- fs) f j) * i = Σ_(j <- fs) f j * i).
@@ -6960,65 +6960,61 @@ Definition to_int (v : val) : int :=
 Coercion to_int : val >-> Z.
 
 Definition pow_aux : trm :=
-  <{ fix f n d p =>
+  <{ fix f n x r =>
      let b = (n <= 0) in
      if b then 
-      let x = ! p in x
+      let a = ! r in a
      else 
-      let x = ! p   in
-      let y = x * d in
-      p := y;
+      let a = ! r   in
+      let y = a * x in
+      r := y;
       let m = n - 1 in
-      f m d p }>.
+      f m x r }>.
 
 Definition pow : trm :=
-  <{ fun d n => let p = ref 1 in pow_aux n d p }>.
+  <{ fun x n => let r = ref 1 in pow_aux n x r }>.
 
 Definition pow_sum : trm := 
-  <{ fun x a => 
+  <{ fun q x => 
       let p = ref 1 in
       for j <- [0, i] { 
         let n = ! p in 
-        let k = ! x in 
+        let k = ! q in 
         let l = k + n in 
-        let m = n * a in
-        x := l;
+        let m = n * x in
+        q := l;
         p := m
     } 
   }>.
 
-(* Opaque For. *)
+Ltac myfold := rewrite -/pow_aux-/(For_aux _ _)-/(For _ _ _).
 
-Hypotheses (Distr : forall fs f i, (Σ_(j <- fs) f j) * i = Σ_(j <- fs) f j * i).
-Hypotheses (Monot : forall fs f g, (forall i, indom fs i -> (f i <= g i)%Z) -> (Σ_(j <- fs) f j <= Σ_(j <- fs) g j)%Z).
-Hypotheses (Const : forall c i, Σ_(i <- interval 0 i) c = c * i).
-
-Lemma optimize_pow_sum (x : int) (q : loc) :
+Theorem optimize_pow_sum (x : int) (q : loc) :
   {{ q ~⟨1, 0⟩~> 0 }}
   [{
     [1| ld in {::0} => pow_sum q x];
     [2| ld in [0,i] => pow x ld]
   }]
   {{ v, \Top \* q ~⟨1, 0⟩~> Σ_(j <- [0,i]) v[2](j) }}.
-Proof.
-  xin 2: xwp; xapp=> r; rewrite -/pow_aux.
-  xin 1: xwp; xapp=> p; rewrite -/(For_aux _ _)-/(For _ _ _).
+Proof with myfold.
+  xin 2: xwp; xapp=> r...
+  xin 1: xwp; xapp=> p...
   rewrite -{2}Union_singleE.
-  set (H i := 
+  set (I i := 
      \exists (a : int), 
        p ~⟨1,0⟩~> a \* 
-       \[forall (r : loc) (y : int), 
+       \[forall (r : loc) (y : int),
             htriple 
               ⟨2, {::i}⟩ 
               (fun=> pow_aux i x r) 
               (r ~⟨2, i⟩~> y) 
-              (fun hv => \[hv[2](i) = a * y] \* \Top) ] ).
+              (fun v => \[v[2](i) = a * y] \* \Top) ] ).
   set (R i := r i ~⟨2, i⟩~> 1).
   set (R' (i : int) := \Top).
-  xfor H R R.
-  { move=> l y lb.
-    rewrite /H /R /R'.
-    xnsimpl=> z htg.
+  xfor I R R.
+  { intros l y lb.
+    unfold I, R, R'.
+    xnsimpl=> a htg.
     xin 1: do ? (xwp; xapp).
     xin 2: xapp htg=> [|hv hvE].
     { by move=> ?; rewrite label_single indom_single_eq=> <-. }
@@ -7026,17 +7022,17 @@ Proof.
     { clear -htg lb=> r y.
       xsubst (labf_of (fun d => d - 1)) (labf_of (Z.add 1)).
       replace (l + 1 - 1) with l; [|math].
-      xwp; xapp; rewrite -/pow_aux.
+      xwp; xapp...
       xwp; xif=> // ?; try math.
-      do 4? (xwp; xapp); rewrite -/pow_aux.
+      do 4? (xwp; xapp)...
       replace (l + 1 - 1) with l; [|math].
       xapp htg=> ? ->. xsimpl; math. }
     rewrite hvE /= Z.mul_1_r.
     xsimpl. }
-  rewrite Union_singleE /R /H; xsimpl.
+  rewrite Union_singleE /R /I; xsimpl.
   move=> {R}r y.
-  xwp; xapp. 
-  xwp; xif=> ?; rewrite -/pow_aux; try math.
+  xwp; xapp... 
+  xwp; xif=> ?; try math...
   xwp; xapp.
   xwp; xval.
   xsimpl; math.
