@@ -11,6 +11,7 @@ Set Implicit Arguments.
 From SLF Require Export LibCore.
 From SLF Require Export LibSepTLCbuffer LibSepVar LibSepFmap.
 From SLF Require LibSepSimpl.
+From SLF Require Import Fun LabType.
 
 From mathcomp Require Import ssreflect ssrfun.
 
@@ -24,192 +25,8 @@ Module Fmap := LibSepFmap. (* Short name for Fmap module. *)
 
 (** These standard extensionality axioms may also be found in
     the [LibAxiom.v] file associated with the TLC library. *)
-
-Axiom functional_extensionality : forall A B (f g:A->B),
-  (forall x, f x = g x) ->
-  f = g.
-
-Axiom propositional_extensionality : forall (P Q:Prop),
-  (P <-> Q) ->
-  P = Q.
-
-Definition upd {A B : Type} (f : A -> B) x y :=
-  fun z => If x = z then y else f z.
-
-Lemma upd_eq A B (f : A -> B) x y : 
-  upd f x y x = y.
-Proof.
-Admitted.
-
-Lemma upd_neq A B (f : A -> B) x y z : 
-  z <> x ->
-  upd f x y z = f z.
-Proof.
-Admitted.
-
-Definition uni {A B : Type} (fs : fset A) (f : A -> B) (g : A -> B) :=
-  fun z => If indom fs z then f z else g z.
-
-Notation "f '\u_' fs " := (uni fs f) (at level 10, left associativity).
-
-Lemma uni_in A B {f g : A -> B} {x fs} : 
-  indom fs x ->
-  uni fs f g x = f x.
-Proof.
-Admitted.
-
-Lemma uni0 A B (f g : A -> B) : 
-  uni empty f g = g.
-Proof.
-Admitted.
-
-Lemma uni_upd A B (f g : A -> B) x fs :
-  ~ indom fs x ->
-  uni (update fs x tt) f g = upd (uni fs f g) x (f x).
-Proof.
-Admitted.
-
-Lemma uni_nin A B (f g : A -> B) x fs : 
-  ~ indom fs x ->
-  uni fs f g x = g x.
-Proof.
-Admitted.
-
-Lemma uniA A B (f1 f2 g : A -> B) fs1 fs2 : 
-  uni fs1 f1 (uni fs2 f2 g) = 
-  uni (fs1 \+ fs2) (uni fs1 f1 f2) g.
-Proof.
-  rewrite /uni; apply/fun_ext_1=> ?.
-  do ? case: classicT=> //.
-Admitted.
-
-Lemma upd_upd A B (f : A -> B) x y z w : 
-  x <> z -> 
-  upd (upd f x y) z w = upd (upd f z w) x y.
-Proof.
-Admitted.
-
-(* Definition fcomp A B C (f : A -> B) (g : C -> A) := fun x => f (g (x)). *)
-
-
-Lemma upd_uni_update A B (f g : A -> B) (x : A) (y : B) fs : 
-  ~ indom fs x ->
-  upd f x y \u_ (update fs x tt) g = upd (f \u_fs g) x y.
-Proof.
-  move=> ND; apply/fun_ext_1=> z.
-  case: (prop_inv (indom (update fs x tt) z)).
-  { move=> /[dup]/(@uni_in _ _ _ _ _ _)->.
-    rewrite indom_update_eq=> -[->/[! upd_eq]//|].
-    move=> E. 
-    by rewrite ?upd_neq ?uni_in //; move: E=>/[swap]->. }
-   move=> /[dup]? E; rewrite indom_update_eq in E.
-  rewrite upd_neq ? uni_nin; autos*.
-Qed.
-
-Lemma updE A B (f : A -> B) x :
-  f = upd f x (f x).
-Admitted.
 (* Lemma updE A B (f g : A -> B) x y :
   upd f x y = (fun _ => y) \u_() *)
-
-Section LabeledType.
-
-From mathcomp Require Import seq ssrbool ssrnat eqtype.
-
-Section Gen.
-
-Context (T : Type) (def : T).
-
-Definition labType := nat.
-
-Record labeled := Lab {
-  lab  :  labType; 
-  el   :> T;
-}.
-
-Definition labSeq := seq labeled.
-
-Definition lookup (s : labSeq) (l : labType) : labeled := 
-  nth (Lab 0%nat def) s (find [pred lt | lab lt == l] s).
-
-Definition remove (s : labSeq) (l : labType) := 
-  [seq lt <- s | lab lt != l].
-
-Definition has_lab (s : labSeq) (l : labType) :=
-  has (fun x => lab x == l) s.
-
-Lemma hasnt_lab s l : 
-  ~ has_lab s l -> 
-    s = remove s l.
-Proof using.
-Admitted.
-
-End Gen.
-
-Context (S : Type) (T : Type) (def : T).
-
-Definition lab_union (fss : labSeq (fset T)) : fset (labeled T).
-Proof using. Admitted.
-Definition label (lfs : labeled (fset T)) : fset (labeled T). 
-Proof using. Admitted.
-Definition lab_funs (f : labSeq (S -> T)) : labeled S -> T :=
-  fun ls => 
-    el (nth (Lab 0%nat (fun=> def)) f (lab ls)) (el ls).
-
-Definition lab_fun (f : labeled (S -> T)) : labeled S -> T :=
-  fun ls => el f (el ls).
-
-Definition labf_of (f : S -> T) : labeled S -> labeled T :=
-  fun ls => Lab (lab ls) (f (el ls)).
-
-Definition lab_fun_upd (f g : labeled S -> T) l : labeled S -> T :=
-  fun ls => 
-    if lab ls == l then f ls else g ls.
-
-Lemma lab_fun_upd_neq f g l (l' : labType) x : 
-  l' <> l -> lab_fun_upd f g l (Lab l' x) = g (Lab l' x).
-Proof.
-  by rewrite/lab_fun_upd; move/(negPP eqP)/negbTE->.
-Qed.
-
-Definition app_lab (f : labeled S -> T) : labType -> S -> T := 
-  fun l s => f (Lab l s).
-
-End LabeledType.
-
-Lemma label_single {T} (t : T) l : 
-  label (Lab l (single t tt)) = single (Lab l t) tt.
-Proof using.
-Admitted.
-
-Lemma label_empty {T} l : 
-  label (Lab l empty) = empty :> fset (labeled T).
-Proof using.
-Admitted.
-
-Lemma label_update {T : Type} (fs : fset T) t l : 
-  label (Lab l (update fs t tt)) = update (label (Lab l fs)) (Lab l t) tt.
-Proof using.
-Admitted.
-
-Lemma indom_label_eq {T} l (fs : fset T) l' x :
-  indom (label (Lab l fs)) (Lab l' x) = (l = l' /\ indom fs x).
-Proof.
-Admitted.
-
-Lemma labf_ofK {T S} (f : T -> S) g : 
-  cancel (labf_of f) (labf_of g) -> 
-  cancel f g.
-Proof.
-  move=> c x; move: (c (Lab 0%nat x)).
-  rewrite /labf_of /=; by case.
-Qed.
-
-Lemma labf_ofK' {T S} (f : T -> S) g : 
-  cancel f g ->
-  cancel (labf_of f) (labf_of g).
-Proof. by move=> c [?? /=]; rewrite /labf_of /=; rewrite c. Qed.
-
 
 
 (* ================================================================= *)
@@ -531,11 +348,11 @@ Definition eval_like D (fs : fset D) ht1 ht2 : Prop :=
 Definition local D (fs : fset D) (h : hheap D) :=
   forall x d, indom h (x, d) -> indom fs d.
 
-Lemma remove_union_not_r  [A B : Type] [h1 h2 : fmap A B] [x : A] :
+(* Lemma remove_union_not_r  [A B : Type] [h1 h2 : fmap A B] [x : A] :
   ~ indom h2 x -> 
   Fmap.remove h1 x \u h2 = Fmap.remove (h1 \u h2) x.
 Proof.
-Admitted.
+Admitted. *)
 
 Lemma eval1_frame D (d : D) t h1 h2 h fs v : 
   local fs h -> 
@@ -567,35 +384,35 @@ Proof.
   rewrite ?indom_update_eq IHev; eauto.
 Qed. *)
 
-Lemma fmap_rect A B : forall P : Type,
+(* Lemma fmap_fold A B : forall P : Type,
   P -> 
   (A -> B -> P -> P) -> fmap A B -> P.
 Proof.
 Admitted.
 
-Lemma fmap_rectE A B (P : Type) (p : P) (f : A -> B -> P -> P) :
-  (fmap_rect p f empty = p) *
+Lemma fmap_foldE A B (P : Type) (p : P) (f : A -> B -> P -> P) :
+  (fmap_fold p f empty = p) *
   ((forall (a b : A) (a' b' : B) (p : P), a <> b -> f a a' (f b b' p) = f b b' (f a a' p)) ->
-    forall fm x y, ~ Fmap.indom fm x -> fmap_rect p f (update fm x y) = f x y (fmap_rect p f fm)).
+    forall fm x y, ~ Fmap.indom fm x -> fmap_fold p f (update fm x y) = f x y (fmap_fold p f fm)).
 Admitted.
 
-Lemma fmap_rectE' A B (P : Type) (p : P) (f : A -> B -> P -> P) :
-  (fmap_rect p f empty = p) *
+Lemma fmap_foldE' A B (P : Type) (p : P) (f : A -> B -> P -> P) :
+  (fmap_fold p f empty = p) *
   ((forall (a b : A) (a' b' : B) (p : P), a <> b -> f a a' (f b b' p) = f b b' (f a a' p)) ->
    (forall x (y : B) y' y (p : P), f x y (f x y' p) = f x y p) ->
-    forall fm x y, fmap_rect p f (update fm x y) = f x y (fmap_rect p f fm)).
+    forall fm x y, fmap_fold p f (update fm x y) = f x y (fmap_fold p f fm)).
 Admitted.
 
-Lemma fset_rect A : forall P : Type,
+Lemma fset_fold A : forall P : Type,
   P -> 
   (A -> P -> P) -> fset A -> P.
 Proof.
 Admitted.
 
-Lemma fset_rectE A (P : Type) (p : P) (f : A -> P -> P) :
-  (fset_rect p f empty = p) *
+Lemma fset_foldE A (P : Type) (p : P) (f : A -> P -> P) :
+  (fset_fold p f empty = p) *
   ((forall (a b : A) (p : P), f a (f b p) = f b (f a p)) ->
-    forall fs x, ~ Fmap.indom fs x -> fset_rect p f (update fs x tt) = f x (fset_rect p f fs)).
+    forall fs x, ~ Fmap.indom fs x -> fset_fold p f (update fs x tt) = f x (fset_fold p f fs)).
 Admitted.
 
 
@@ -610,7 +427,7 @@ Lemma fset_ind A : forall P : fset A -> Prop,
   P empty -> 
   (forall fs x, P fs -> ~ Fmap.indom fs x -> P (update fs x tt)) -> forall fs, P fs.
 Proof.
-Admitted.
+Admitted. *)
 
 (* Lemma evalE D fs (h h' : hheap D) ht hv : 
   (* indom hv = indom fs -> *)
@@ -783,56 +600,6 @@ Definition hforall (A : Type) (J : A -> hhprop) : hhprop :=
 Definition hlocal (H : hhprop) (fs : fset D) :=
   H ==> local fs.
 
-Definition fsubst {A B C : Type} (fm : fmap A B) (f : A -> C) : fmap C B :=
-  fmap_rect empty (fun x y fm => update fm (f x) y) fm.
-
-(* Lemma fsubst_read {A B C : Type} `{Inhab B} (fm : fmap A B) (f : C -> A) x :
-read (fsubst fm f) x = read fm (f x).
-Admitted.
-
-Lemma fsubst_empty {A B C : Type} `{Inhab B} (f : C -> A) :
-fsubst (empty : fmap A B) f = empty.
-Admitted. *)
-
-Lemma update_empty {A B : Type} {x : A} {y : B} :
-  single x y = update empty x y.
-Admitted.
-
-Lemma update_update {A B : Type} {x z : A} {y w : B} (fm : fmap A B) :
-  x <> z ->
-    update (update fm x y) z w = 
-    update (update fm z w) x y.
-Proof.
-Admitted.
-
-Lemma update_updatexx {A B : Type} {x : A} {y w : B} (fm : fmap A B) :
-    update (update fm x y) x w = 
-    update fm x w.
-Proof.
-Admitted.
-
-Lemma fsubst_empty {A B C : Type} (f : A -> C) : 
-  fsubst empty f = empty :> fmap C B.
-Proof. by rewrite /fsubst fmap_rectE. Qed.
-
-Lemma fsubst_update {A B C : Type} (f : A -> C) (g : C -> A) (fm : fmap A B) x y: 
-  cancel f g ->
-  fsubst (update fm x y) f = update (fsubst fm f) (f x) y.
-Proof.
-  move=> c. 
-  rewrite /fsubst fmap_rectE' // => > ?.
-  { by rewrite update_update // => /(congr1 g)/[! c]/(@eq_sym _ _ _). }
-  by move=> ???; rewrite update_updatexx .
-Qed.
-
-Lemma fsubst_single {A B C : Type} (f : A -> C) (g : C -> A) (x : A) (y : B) :
-  cancel f g ->
-  fsubst (single x y) f = single (f x) y.
-Proof.
-  move=> c.
-  by rewrite ?update_empty (fsubst_update _ _ _ c) // fsubst_empty.
-Qed.
-
 Lemma fsubst_labf_of {A B : Type} (g : B -> A) (fs : fset A) l (f : A -> B) :
   cancel (labf_of f) (labf_of g) ->
   fsubst (label (Lab l fs)) (labf_of f) = 
@@ -847,49 +614,11 @@ Proof.
   by rewrite label_update fE.
 Qed.
 
-Lemma fsubstK {A B C : Type} (f : A -> C) (g : C -> A) : 
-  cancel f g ->
-  cancel g f ->
-  @cancel (fmap A B) (fmap C B) (fsubst^~ g) (fsubst ^~ f).
-Proof.
-  move=> c1 c2. 
-  elim/fmap_ind=> [|fm x y IHfm D].
-  { by rewrite ?fsubst_empty. }
-  do ? erewrite fsubst_update; eauto.
-  by rewrite c2 IHfm.
-  (* move=> D'; apply: D; move: D'.
-  elim/fmap_ind: {IHfm} fm=> [|fm z {}y IH D].
-  { by rewrite fsubst_empty. }
-  erewrite fsubst_update; eauto.
-  rewrite ?indom_update_eq=> -[/(can_inj c2)|/IH]; by autos*. *)
-Qed.
-
 Lemma proj_fsubst  (f g : D -> D) h d : 
   cancel f g ->
   cancel g f ->
   proj (fsubst h (fun '(x, d) => (x, f d))) d = 
   fsubst (proj h (g d)) (fun '(x, d) => (x, f d)).
-Admitted.
-
-Lemma fsubst_indom {A B C : Type} (f : A -> C) g (fm : fmap A B) x :
-  cancel f g -> 
-  cancel g f ->
-  indom (fsubst fm f) (f x) = indom fm x.
-Proof.
-Admitted.
-
-Lemma fsubst_read {A B C : Type} `{Inhab B} (f : A -> C) g (fm : fmap A B) x :
-  cancel f g -> 
-  cancel g f ->
-  read (fsubst fm f) (f x) = read fm x.
-Proof.
-Admitted.
-
-Lemma fsubst_remove {A B C : Type} (f : A -> C) g (fm : fmap A B) x : 
-  cancel f g -> 
-  cancel g f ->
-  Fmap.remove (fsubst fm f) (f x) = fsubst (Fmap.remove fm x) f.
-Proof.
 Admitted.
 
 Definition hsubst (H : hhprop) (f : D -> D) :=
@@ -938,7 +667,7 @@ Definition qwand A (Q1 Q2:A->hhprop) : hhprop :=
   \forall x, hwand (Q1 x) (Q2 x).
 
 Definition hstar_fset {A} (fs : fset A) (f : A -> hhprop) : hhprop :=
-  fset_rect \[] (fun a H => f a \* H) fs.
+  fset_fold \[] (fun a H => f a \* H) fs.
 
 Notation "\[ P ]" := (hpure P)
   (at level 0, format "\[ P ]") : hprop_scope.
@@ -1521,7 +1250,9 @@ Proof.
   apply fun_ext_1=> fm; rewrite /hstar /hsubst.
   apply/prop_ext; split; first last.
   { case=> h1 [h2] [?][?][?]->.
-    do 2? eexists; do ? split; [eauto|eauto| | ]. }
+    do 2? eexists; do ? split; [eauto|eauto| | ]. 
+    { admit. }
+    admit. }
 Admitted.
 
 Lemma hsubst_hstar_fset f g (H : D -> hhprop) fs :
@@ -1555,7 +1286,7 @@ Export SepSimplArgs.
 Lemma hstar_fset_empty {A} (f : A -> hhprop) :
   hstar_fset empty f = \[].
 Proof.
-  by rewrite /hstar_fset fset_rectE.
+  by rewrite /hstar_fset fset_foldE.
 Qed.
 
 Lemma hstar_fset_update {A} fs x (f : A -> hhprop) :
@@ -1563,7 +1294,7 @@ Lemma hstar_fset_update {A} fs x (f : A -> hhprop) :
   hstar_fset (update fs x tt) f = f x \* hstar_fset fs f.
 Proof.
   move=> ?.
-  rewrite /hstar_fset fset_rectE //.
+  rewrite /hstar_fset fset_foldE //.
   move=> *; by rewrite hstar_comm_assoc.
 Qed.
 
@@ -2029,105 +1760,25 @@ Proof.
   applys eval_cup; eauto.
 Qed.
 
-Lemma filter_eq {A B : Type} (fs1 fs2 : fmap A B) (P : A -> B -> Prop) `{Inhab B} : 
-  (forall y x, P y x -> read fs1 y = read fs2 y) -> 
-  filter P fs1 = filter P fs2.
-Proof.
-Admitted.
+Definition insert {D} (fs : fset D) (fm1 fm2 : hheap D) : hheap D :=
+  filter (fun '(_, d) _ => indom fs d) fm1 \+ filter (fun '(_, d) _ => ~indom fs d) fm2.
 
-Lemma filter_in {A B : Type} (fs : fmap A B) (P : A -> B -> Prop) `{Inhab B} x y : 
-  P y x ->
-  read (filter P fs) y = read fs y.
-Proof.
-Admitted.
-
-Lemma filter_indom {A B : Type} (fs : fmap A B) (P : A -> B -> Prop) y `{Inhab B} : 
-  indom (filter P fs) y <-> (indom fs y /\ exists x, P y x).
-Proof.
-Admitted.
-
-Lemma read_arb {A B : Type} (fs : fmap A B) x  `{Inhab B}: 
-  ~ indom fs x -> read fs x = arbitrary.
-Proof.
-Admitted.
-
-Lemma disj_filter {A B : Type} (fs1 fs2 : fmap A B) (P : A -> B -> Prop) : 
-  disjoint fs1 fs2 -> disjoint fs1 (filter P fs2).
-Admitted.
-
-Lemma filter_union {A B : Type} (fs1 fs2 : fmap A B) (P : A -> B -> Prop) :
-  disjoint fs1 fs2 ->
-  filter P (fs1 \u fs2) = filter P fs1 \u filter P fs2.
-Proof.
-Admitted.
-
-Lemma filter_union' {A B : Type} (fs1 fs2 : fmap A B) (P : A -> B -> Prop) :
-  (forall x y y', P x y <-> P x y') -> 
-  filter P (fs1 \u fs2) = filter P fs1 \u filter P fs2.
-Proof.
-  case: fs1 fs2=> f1 ? [f2 ?] E.
-  apply/fmap_extens=> /= x.
-  rewrite /map_filter /map_union /map_disjoint.
-  case: (f1 x)=> // ?.
-  case: classicT=> //; case: (f2 _)=> // ?. 
-  by case: classicT=> // /E ? [].
-Qed.
-
-Definition insert D (fs : fset D) (fm1 fm2 : hheap D) : hheap D :=
-  filter (fun '(_, d) _ => indom fs d) fm1 \u filter (fun '(_, d) _ => ~indom fs d) fm2.
-
-Lemma insert_proj_in D (fs : fset D) (fm1 fm2 : hheap D) (d : D) :
+Lemma insert_proj_in {D} (fs : fset D) (fm1 fm2 : hheap D) (d : D) :
   indom fs d -> proj (insert fs fm1 fm2) d = proj fm1 d.
 Admitted.
 
-Lemma insert_proj_nin D (fs : fset D) (fm1 fm2 : hheap D) (d : D) : 
+Lemma insert_proj_nin {D} (fs : fset D) (fm1 fm2 : hheap D) (d : D) : 
   ~indom fs d -> proj (insert fs fm1 fm2) d = proj fm2 d.
 Admitted.
 
-
-Definition diff {A B} (fs1 fs2 : fmap A B) : fmap A B. Admitted.
-
-Notation "fs1 '\-' fs2" := (diff fs1 fs2) (at level 20, right associativity).
-
-Lemma diff0 {A B} (fs : fmap A B) : fs \- empty = fs.  Admitted.
-Lemma diffxx {A B} (fs : fmap A B) : fs \- fs = empty.  Admitted.
-
-Lemma diff_indom {A B} (fs1 fs2 : fmap A B) x:
-  indom (fs1 \- fs2) x = (indom fs1 x /\ ~ indom fs2 x).
-Admitted.
-
-Lemma diff_upd d fs1 fs2 : 
-  indom fs1 d ->
-  fs1 \- fs2 = update (fs1 \- update fs2 d tt) d tt.
-Admitted.
-
-Lemma diff_disj {A B} (fm1 fm2 : fmap A B) : 
-  disjoint (fm1 \- fm2) fm2.
-Proof.
-Admitted.
-
-Lemma union_diff {A B} (fm1 fm2 : fmap A B) `{Inhab B} : 
-  disjoint fm1 fm2 ->
-  (fm1 \u fm2) \- fm2 = fm1.
-Proof.
-Admitted.
-
-
-Arguments diff_upd : clear implicits.
-
-
-Lemma filter_union_compl {A B : Type} (fs : fmap A B) (P : A -> B -> Prop) : 
-  filter P fs \u filter (fun x y => ~ (P x y)) fs = fs.
-Admitted.
-
-Lemma insert_distr_union (fs : fset D) h1 h2 h:
+Lemma insert_distr_union (fs : fset D) (h1 h2 h : hheap D):
   disjoint (filter (fun '(_, d) => fun=> ~ indom fs d) h1) h ->
   disjoint (filter (fun '(_, d) => fun=> indom fs d) h2) h ->
-  insert fs h2 h1 \u h = insert fs (h2 \u h) (h1 \u h).
+  insert fs h2 h1 \+ h = insert fs (h2 \+ h) (h1 \+ h).
 Proof.
   move=> ??; rewrite /insert ?filter_union' //; try by case.
-  rewrite union_assoc -[_ \u _ \u filter (fun '(_, d) => fun=> ~ indom fs d) h]union_assoc.
-  rewrite [filter _ h  \u _ ]union_comm_of_disjoint.
+  rewrite union_assoc -[_ \+ _ \+ filter (fun '(_, d) => fun=> ~ indom fs d) h]union_assoc.
+  rewrite [filter _ h  \+ _ ]union_comm_of_disjoint.
   { rewrite ?union_assoc -{1}(filter_union_compl h (fun '(_, d) => fun=> indom fs d)).
     do ? fequals. apply/fun_ext_2=> -[] //. }
   apply/disjoint_of_not_indom_both=> -[??] /filter_indom[_][??].
@@ -2154,7 +1805,7 @@ Proof.
     have->//: proj (insert fs1 h2 h1) d = proj h2 d.
     { by apply/insert_proj_in. }
     apply IN; rewrite* indom_union_eq. }
-  { by move=> d ? /[! insert_proj_nin]. }
+  { by move=> d ? /[! @insert_proj_nin]. }
   { move=> d I.
     have->//: proj (insert fs1 h2 h1) d = proj h1 d.
     { apply/insert_proj_nin/disjoint_inv_not_indom_both/I.
@@ -3175,39 +2826,6 @@ Qed.
 
 End Hoare1.
 
-Lemma indom_update {A B : Type} {fm : fmap A B} {x y} :
-  Fmap.indom (update fm x y) x.
-Admitted.
-
-Lemma update_neq {A B : Type} {fm : fmap A B} {x y z} `{Inhab B} :
-  z <> x -> 
-  read (update fm x y) z = read fm z.
-Admitted.
-
-Lemma update_eq {A B : Type} {fm : fmap A B} {x y} `{Inhab B} :
-  read (update fm x y) x = y.
-Admitted.
-
-Lemma indom_single {A B D : Type} {x : A} {y : B} (fm : fmap A D) `{Inhab D} :
-  indom fm = indom (single x y) -> 
-  fm = single x (read fm x).
-Admitted.
-
-Lemma fmapE'  {A B : Type} (fm1 fm2 : fmap A B) `{Inhab B} : 
-  (fm1 = fm2) <-> (forall x, read fm1 x = read fm2 x).
-Proof.
-Admitted.
-
-Lemma fmapE  {A B : Type} (fm1 fm2 : fmap A B) `{Inhab B} : 
-  (fm1 = fm2) = (forall x, indom (fm1 \u fm2) x -> read fm1 x = read fm2 x).
-Proof.
-Admitted.
-
-Lemma fmap0E A B (fm : fmap A B) `{Inhab B} : 
-  (fm = empty) = (forall x, indom fm x -> read fm x = arbitrary).
-Proof.
-Admitted.
-
 Lemma eval1_proj_d d h h' t v : 
   eval1 d h t h' v -> 
   eval1 d (proj h d) t (proj h' d) v.
@@ -3308,7 +2926,7 @@ Proof.
     { apply/hlocal_hstar_fset=> x ?.
       apply/(hlocal_subset (single x tt))/l2.
       by move=> ? /[! indom_single_eq]<-. }
-    rewrite (diff_upd d') // hstar_fset_update.
+    rewrite (diff_upd _ d') // hstar_fset_update.
     { replace ((P d' \* _) \* H) with 
        ((P d' \* H) \* \*_(d <- fs \- update fs' d' tt) P d) by xsimpl.
       replace (fun v => (_ \* H) \* _) with 
@@ -3902,12 +3520,6 @@ Lemma wp_ramified_trans : forall t H Q1 Q2,
   H ==> (wp t Q1) \* (Q1 \--* Q2) ->
   H ==> (wp t Q2).
 Proof using. introv M. xchange M. applys wp_ramified. Qed.
-
-Lemma wp_conseq_frame : forall t H1 Q1 H2 Q2 (R : hhprop),
-  H1 ==> wp t Q1 ->
-  H2 ==> H1 \* (Q2 \--* Q1) ->
-  H2 ==> (wp t Q2).
-Proof using. Admitted.
 
 
 (* ----------------------------------------------------------------- *)
@@ -5854,45 +5466,10 @@ Notation "'for' i <- '[' Z ',' N ']' '{' t '}'"  :=
 
 Open Scope Z_scope.
 
-Definition Union {T D : Type} (l : fset T) (fs : T -> fset D) : fset D. Admitted.
-Definition interval (x y : int) : fset int. Admitted.
-
-Lemma intervalU x y : x < y -> interval x y = update (interval (x + 1) y) x tt.
-Admitted.
-
-Lemma intervalUr x y : x <= y -> interval x (y + 1) = update (interval x y) y tt.
-Admitted.
-
-Lemma intervalgt x y : x <= y -> interval y x = empty.
-Admitted.
-
-Lemma indom_interval x y z : indom (interval x y) z = (x <= z < y).
-Admitted.
-
-Lemma Union_upd {T D} (x : T) (fs : fset T) (fsi : T -> fset D) : 
-  (forall i j, i <> j -> disjoint (fsi i) (fsi j)) ->
-  Union (update fs x tt) fsi = fsi x \u Union fs fsi.
-Admitted.
-
-Lemma Union0 {T D} (fsi : T -> fset D) : Union empty fsi = empty.
-Admitted.
-
-Lemma Union_union {T D} (fs : fset T) (fsi1 fsi2 : T -> fset D) :
-  Union fs fsi1 \u Union fs fsi2 = Union fs (fun t => fsi1 t \u fsi2 t).
-Admitted.
-
 Lemma Union_label {T D} (fs : fset T) l  (fsi : T -> fset D) :
   label (Lab l (Union fs fsi)) = Union fs (fun t => label (Lab l (fsi t))).
 Admitted.
 
-Lemma disjoint_Union {T D} (fs : fset T) (fsi : T -> fset D) fs' :
-  ((disjoint (Union fs fsi) fs' = forall i, indom fs i -> disjoint (fsi i) fs') * 
-  (disjoint fs' (Union fs fsi) = forall i, indom fs i -> disjoint (fsi i) fs'))%type.
-Admitted.
-  
-Lemma indom_Union {T S} (fs : fset T) (fsi : T -> fset S) x : 
-  indom (Union fs fsi) x = exists f, indom fs f /\ indom (fsi f) x.
-Admitted.
 
 Hint Resolve eqtype.eqxx : lhtriple.
 
@@ -5957,7 +5534,8 @@ Proof.
         by move=> ? IND; rewrite /ht' uni_nin // => /(disjoint_inv_not_indom_both dj). }
         by move=> ??; rewrite /ht' uni_in. }
     rewrite (wp_union (fun hr2 => H k Z N (_ \u_ _ hr2))) //.
-    rewrite // intervalU // Union_upd // -union_assoc.
+    rewrite // intervalU; last math. 
+    rewrite // Union_upd // -union_assoc.
     rewrite union_comm_of_disjoint -?union_assoc; first rewrite union_comm_of_disjoint.
     2-3: move: dj; rewrite disjoint_union_eq_l ?disjoint_Union.
     2-3: setoid_rewrite indom_interval=> dj; do ?split.
@@ -6943,8 +6521,6 @@ Reserved Notation "'\U_' ( i <- r ) F"
 Notation "'\U_' ( i <- r ) F" :=
   (Union r (fun i => F)).
 
-Notation __ := (single 30%nat tt).
-
 
 
 (* Hypotheses (Distr : forall fs f i, (Σ_(j <- fs) f j) * i = Σ_(j <- fs) f j * i).
@@ -7038,7 +6614,7 @@ Proof with myfold.
   xsimpl; math.
 Qed.
 
-From mathcomp Require Import zify.
+(* From mathcomp Require Import zify.
 
 Open Scope Z_scope.
 
@@ -7297,8 +6873,10 @@ Proof using.
   xapp.
   xapp.
   replace (n+1+1) with (n+2); [|math]. xsimpl.
-Qed.
+Qed. *)
 
+End pow.
+End Pow1.
 End DemoPrograms.
 
 (* 2023-03-25 11:36 *)
