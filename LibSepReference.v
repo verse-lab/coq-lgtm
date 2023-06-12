@@ -372,70 +372,6 @@ Proof.
   rewrite remove_union_not_r //; by (econstructor; eauto).
 Qed.
 
-(* Lemma eval_hv_dom D (fs : fset D) ht h h' (hv : fmap D val) :
-  eval fs h ht h' hv ->
-  Fmap.indom hv = Fmap.indom fs.
-Proof.
-  intros ev; induction ev.
-  { apply fun_ext_1; introv.
-    unfold indom, map_indom; simpls.
-    applys* prop_ext. }
-  applys fun_ext_1; introv.
-  rewrite ?indom_update_eq IHev; eauto.
-Qed. *)
-
-(* Lemma fmap_fold A B : forall P : Type,
-  P -> 
-  (A -> B -> P -> P) -> fmap A B -> P.
-Proof.
-Admitted.
-
-Lemma fmap_foldE A B (P : Type) (p : P) (f : A -> B -> P -> P) :
-  (fmap_fold p f empty = p) *
-  ((forall (a b : A) (a' b' : B) (p : P), a <> b -> f a a' (f b b' p) = f b b' (f a a' p)) ->
-    forall fm x y, ~ Fmap.indom fm x -> fmap_fold p f (update fm x y) = f x y (fmap_fold p f fm)).
-Admitted.
-
-Lemma fmap_foldE' A B (P : Type) (p : P) (f : A -> B -> P -> P) :
-  (fmap_fold p f empty = p) *
-  ((forall (a b : A) (a' b' : B) (p : P), a <> b -> f a a' (f b b' p) = f b b' (f a a' p)) ->
-   (forall x (y : B) y' y (p : P), f x y (f x y' p) = f x y p) ->
-    forall fm x y, fmap_fold p f (update fm x y) = f x y (fmap_fold p f fm)).
-Admitted.
-
-Lemma fset_fold A : forall P : Type,
-  P -> 
-  (A -> P -> P) -> fset A -> P.
-Proof.
-Admitted.
-
-Lemma fset_foldE A (P : Type) (p : P) (f : A -> P -> P) :
-  (fset_fold p f empty = p) *
-  ((forall (a b : A) (p : P), f a (f b p) = f b (f a p)) ->
-    forall fs x, ~ Fmap.indom fs x -> fset_fold p f (update fs x tt) = f x (fset_fold p f fs)).
-Admitted.
-
-
-Lemma fmap_ind A B : forall P : fmap A B -> Prop,
-  P empty -> 
-  (forall fs x y, P fs -> ~ Fmap.indom fs x -> P (update fs x y)) -> forall fs, P fs.
-Proof.
-Admitted.
-
-
-Lemma fset_ind A : forall P : fset A -> Prop,
-  P empty -> 
-  (forall fs x, P fs -> ~ Fmap.indom fs x -> P (update fs x tt)) -> forall fs, P fs.
-Proof.
-Admitted. *)
-
-(* Lemma evalE D fs (h h' : hheap D) ht hv : 
-  (* indom hv = indom fs -> *)
-  eval fs h ht h' hv =
-  .
-Proof.
-Admitted. *)
-
 Lemma eval_seq D fs : forall s1 s2 s3 (ht1 ht2 : D -> trm) hv1 hv,
   eval fs s1 ht1 s2 hv1 ->
   eval fs s2 ht2 s3 hv ->
@@ -619,7 +555,21 @@ Lemma proj_fsubst  (f g : D -> D) h d :
   cancel g f ->
   proj (fsubst h (fun '(x, d) => (x, f d))) d = 
   fsubst (proj h (g d)) (fun '(x, d) => (x, f d)).
-Admitted.
+Proof.
+  move=> c1 c2.
+  rewrite /proj.
+  have->: (fun '(_, c) => fun=> c = d) = fun (x : loc * _) (_ : val)=> snd x = d.
+  { by apply/fun_ext_1=> -[]. }
+  have [c1' c2']:
+    cancel (fun '(x, d) => (x:loc, f d)) (fun '(x, d) => (x, g d)) /\
+    cancel (fun '(x, d) => (x:loc, g d)) (fun '(x, d) => (x, f d)).
+  { split; by case=> >; rewrite (c1, c2). }
+  erewrite filter_fsubst; eauto.
+  do ? fequals.
+  apply/fun_ext_1=> -[]/= _ ?.
+  apply/fun_ext_1=> _; apply/prop_ext.
+  by split=> [<-|->]; rewrite (c1, c2).
+Qed.
 
 Definition hsubst (H : hhprop) (f : D -> D) :=
   fun h => H (fsubst h (fun '(x, d) => (x, f d))).
@@ -1247,20 +1197,21 @@ Lemma hsubst_hstar f g H1 H2 :
   \{x |-> f x} H1 \* H2 = (\{x |-> f x} H1) \* (\{x |-> f x} H2).
 Proof.
   move=> c1 c2.
+  have [c1' c2']:
+    cancel (fun '(x, d) => (x:loc, f d)) (fun '(x, d) => (x, g d)) /\
+    cancel (fun '(x, d) => (x:loc, g d)) (fun '(x, d) => (x, f d)).
+  { split; by case=> >; rewrite (c1, c2). }
   apply fun_ext_1=> fm; rewrite /hstar /hsubst.
   apply/prop_ext; split; first last.
   { case=> h1 [h2] [?][?][?]->.
     do 2? eexists; do ? split; [eauto|eauto| | ]. 
-    { admit. }
-    admit. }
-Admitted.
-
-Lemma hsubst_hstar_fset f g (H : D -> hhprop) fs :
-  cancel f g ->
-  cancel g f -> 
-  \{x |-> f x} \*_(d <- fs) H d = \*_(d <- fs) \{x |-> f x} H d.
-Proof.
-Admitted.
+    { by apply (fsubst_disjoint (g := fun '(x, d) => (x, g d))). }
+    erewrite fsubst_union; eauto. }
+  case=> h1 []h2 [?][?][?]E.
+  exists (fsubst h1 (fun '(x, d) => (x, g d))), (fsubst h2 (fun '(x, d) => (x, g d))).
+  rewrite -(fsubst_union _ _ c2' c1') -E ?fsubstK //; splits=> //.
+  apply/fsubst_disjoint; eauto.
+Qed.
 
 (* Hint Rewrite hsubst_hempty hsubst_hsingle : hsubst. *)
 
@@ -1298,18 +1249,33 @@ Proof.
   move=> *; by rewrite hstar_comm_assoc.
 Qed.
 
+Lemma hsubst_hstar_fset f g (H : D -> hhprop) fs :
+  cancel f g ->
+  cancel g f -> 
+  \{x |-> f x} \*_(d <- fs) H d = \*_(d <- fs) \{x |-> f x} H d.
+Proof.
+  move=> c1 c2.
+  elim/fset_ind: fs.
+  { by rewrite ?hstar_fset_empty (hsubst_hempty c1 c2). }
+  move=> fs x IH ?.
+  by rewrite ?hstar_fset_update // (hsubst_hstar _ _ c1 c2) IH.
+Qed.
 
 Lemma hstar_fset_union {A} (fs1 fs2 : fset A) (f : A -> hhprop) :
   disjoint fs1 fs2 ->
   hstar_fset (fs1 \u fs2) f = hstar_fset fs1 f \* hstar_fset fs2 f.
 Proof.
-Admitted.
+  elim/fset_ind: fs1.
+  { rewrite hstar_fset_empty union_empty_l; xsimpl. }
+  move=> > IH ? /[! @disjoint_update]-[??].
+  rewrite -update_union_not_r' ?hstar_fset_update // ?indom_union_eq; autos*.
+  rewrite IH //; xsimpl.
+Qed.
 
 Lemma hstar_fset_eq {A} (fs : fset A) (f1 f2 : A -> hhprop) :
   (forall d, indom fs d -> f1 d = f2 d) ->
   hstar_fset fs f1 = hstar_fset fs f2.
-Proof.
-Admitted.
+Proof. move=> E; by apply/fold_fset_eq=> ?? /[!E]. Qed.
 
 Lemma hstar_fset_emptys {A} (fs : fset A) :
   hstar_fset fs (fun _ => \[]) = \[].
@@ -1570,12 +1536,43 @@ Proof using.
   { applys~ Fmap.indom_union_l. }
 Qed.
 
+Lemma local_partition_fset h (fs : fset D) :
+  exists h1 h2 fs',
+    local fs h1     /\
+    local fs' h2    /\
+    disjoint fs fs' /\
+    disjoint h1 h2  /\ 
+    h = h1 \u h2.
+Proof.
+  elim/fmap_ind: h fs.
+  { move=> fs. 
+    do ? apply/(ex_intro _ empty).
+    by splits*=> //; rewrite union_empty_l. }
+  move=> h [l d] y IHfs ? fs.
+  case: (IHfs fs)=> h1 [h2] [fs'] [lc1][lc2][?][?]->.
+  case: (prop_inv (indom fs d))=> dm.
+  { have: ~ indom h2 (l, d).
+    { move/lc2; apply/disjoint_inv_not_indom_both; eauto. }
+    exists (update h1 (l, d) y), h2, fs'; splits=>//.
+    { move=> >; rewrite indom_update_eq=> -[[_<-]|]; eauto. }
+    { by rewrite disjoint_update. }
+  by rewrite update_union_not_r. }
+  have?: ~ indom h1 (l, d) by move/lc1.
+  exists h1 (update h2 (l, d) y) (update fs' d tt); splits=> //.
+  { move=> >; rewrite ?indom_update_eq=> -[[_<-]|/lc2]; autos*. }
+  1,2: rewrite disjoint_comm disjoint_update; autos*.
+  by rewrite update_union_not_l.
+Qed.
+
 Lemma local_partition h d :
   exists h1 h2,
     local (single d tt) h1 /\
     disjoint h1 h2         /\ 
     h = h1 \u h2.
-Admitted.
+Proof.
+  case: (local_partition_fset h (single d tt))=> h1 [h2][fs]?.
+  exists h1 h2; autos*.
+Qed.
 
 Lemma eval1_local (d : D) hd h h' t v :
   local (single d tt) hd ->
@@ -1692,7 +1689,12 @@ Qed.
 
 Lemma hheap_eq_proj h1 h2 :
   (forall d, proj h1 d = proj h2 d) -> h1 = h2.
-Admitted.
+Proof.
+  move=> e; apply/fmapE'=> -[l d].
+  rewrite -(filter_in h1 ((fun '(_, c) => fun=> c = d)) 0) //.
+  rewrite -(filter_in h2 ((fun '(_, c) => fun=> c = d)) 0) //.
+  move: (l, d); exact/fmapE'/e.
+Qed.
 
 Lemma hhoare_hv H Q fs ht : 
   hhoare fs ht H (fun hr => \exists hr', Q (hr \u_(fs) hr')) ->
@@ -1763,13 +1765,37 @@ Qed.
 Definition insert {D} (fs : fset D) (fm1 fm2 : hheap D) : hheap D :=
   filter (fun '(_, d) _ => indom fs d) fm1 \+ filter (fun '(_, d) _ => ~indom fs d) fm2.
 
+Lemma filter_false {A B : Type} (fm : fmap A B) (P : A -> B -> Prop):
+  (forall x y, ~ P x y) -> 
+  filter P fm = empty.
+Proof.
+  move=> np.
+  apply/fmap_extens=> /= y; rewrite /map_filter.
+  by case: (_ y)=> // ?; case: classicT=> // /np.
+Qed.
+
+
 Lemma insert_proj_in {D} (fs : fset D) (fm1 fm2 : hheap D) (d : D) :
   indom fs d -> proj (insert fs fm1 fm2) d = proj fm1 d.
-Admitted.
+Proof.
+  move=> dm.
+  rewrite /proj /insert filter_union'; last by case.
+  rewrite ?filter_filter (filter_false fm2) ?union_empty_r.
+  { fequals. apply/fun_ext_2=> -[]_ ? _.
+    by apply/prop_ext; splits*=>->. }
+  case=>* [->]; exact.
+Qed.
 
 Lemma insert_proj_nin {D} (fs : fset D) (fm1 fm2 : hheap D) (d : D) : 
   ~indom fs d -> proj (insert fs fm1 fm2) d = proj fm2 d.
-Admitted.
+Proof.
+  move=> dm.
+  rewrite /proj /insert filter_union'; last by case.
+  rewrite ?filter_filter (filter_false fm1) ?union_empty_l.
+  { fequals. apply/fun_ext_2=> -[]_ ? _.
+    by apply/prop_ext; splits*=>->. }
+  case=>* [->]; exact.
+Qed.
 
 Lemma insert_distr_union (fs : fset D) (h1 h2 h : hheap D):
   disjoint (filter (fun '(_, d) => fun=> ~ indom fs d) h1) h ->
@@ -1784,15 +1810,6 @@ Proof.
   apply/disjoint_of_not_indom_both=> -[??] /filter_indom[_][??].
   by case/filter_indom=> _ [].
 Qed.
-
-(* Lemma inserthh (fs : fset D) h : 
-  insert fs h h = h.
-Admitted.
-
-Lemma insert_union_disj (fs : fset D) h1 h2: 
-  disjoint h2 h1 ->
-  insert fs h1 h2 \u h1 = (filter (fun '(_, d) _ => ~indom fs d) h2) \u h1.
-Admitted. *)
 
 Lemma eval_union_insert (fs1 fs2 : fset D) h1 h2 hv ht :
   disjoint fs1 fs2 ->
@@ -1855,24 +1872,23 @@ Proof.
   split=> hh ? /hh=> [|/(_ _ eq_refl)][h][hv][]??; exists h, hv; by subst.
 Qed.
 
-Lemma local_partition_fset h (fs : fset D) :
-  exists h1 h2 fs',
-    local fs h1     /\
-    local fs' h2    /\
-    disjoint fs fs' /\
-    disjoint h1 h2  /\ 
-    h = h1 \u h2.
-Admitted.
-
 Lemma proj_union h1 h2 d : 
   proj (h1 \u h2) d = proj h1 d \u proj h2 d.
 Proof.
-Admitted.
+  rewrite /proj filter_union' //.
+  by case.
+Qed.
 
 Lemma proj_diff h1 h2 d : 
   proj (h1 \- h2) d = proj h1 d \- proj h2 d.
 Proof.
-Admitted.
+  rewrite /diff /proj ?filter_filter.
+  fequals; apply/fun_ext_2=> -[??] _.
+  apply/prop_ext; split.
+  { by case=>-> dm; split=> // /filter_indom []/dm. }
+  case=> /[swap]-> dm; split=> // dm'; apply/dm/filter_indom.
+  do ? split=> //; exact/0.
+Qed.
 
 Lemma eval_frame h1 h2 h fs' (ht : D -> trm) (fs : fset D) hv: 
   eval fs h1 ht h2 hv ->
@@ -1885,68 +1901,6 @@ Proof.
   apply/eval1_frame/IN=> // [??/filter_indom[/lh]|]; eauto.
   apply/disjoint_inv_not_indom_both; eauto.
 Qed.
-
-(*
-  x ~(1)~> 5 [free x, ref 5] p ~~> 5
-
-  
-*)
-
-(* Lemma eval1_union_disj_fset t d hv h1 h2 h h3 hv': 
-  disjoint h1 h ->
-  disjoint h2 h ->
-  eval1 d h1 t h3 hv' -> 
-  eval1 d (h1 \u h) t (h2 \u h) hv ->
-  eval1 d h1 t h2 hv.
-Proof.
-  move=> ++ ev.
-  elim: ev h2 h hv.
-  { move=> > ?? ev.
-    inversion ev; subst. }
-  { move=> > ?? ev.
-    inversion ev; subst. }
-  { move=> > ?? ev.
-    inversion ev; subst. }
-  { do 7? intro. move=> -> ? IH > dj1 dj2 ev.
-    econstructor; first eauto.
-    apply/IH.
-    { apply/dj1. }
-    { apply/dj2. }
-    inversion ev=> //; subst; inversion H2; by subst. }
-  { do 8? intro. move=> -> ? IH > dj1 dj2 ev.
-    apply/eval1_app_fix; first eauto. 
-    apply/IH.
-    { apply/dj1. }
-    { apply/dj2. }
-    inversion ev=> //; subst; inversion H2; by subst. }
-  { do 7? intro. move=> ev1 IH1 ev2 IH2 > dj1 dj2 evh.
-    inver
-    econstructor.
-    { apply/IH1. } }
-    do 9? intro.
-    move=> T ev IH1 IH2 IH3 IH4 IH5.
-    intros ??? dj1 dj2 evh.
-    inversion evh; subst=> //; try by case: T=> //=.
-    { econstructor=> //. eauto. eauto.
-      apply/IH5. }
-    { econstructor=> //. eauto. eauto.
-      apply/IH5. }
-     }
-Admitted.*)
-
-(* Lemma eval_union_disj_fset ht (fs : fset D) hv h1 h2 h h3 hv': 
-  local fs h ->
-  eval fs h1 ht h3 hv' -> 
-  eval fs (h1 \u h) ht (h2 \u h) hv ->
-  eval fs h1 ht h2 hv.
-Proof.
-  move=> lh [IN1 OUT1] [IN2 OUT2]; split.
-  { move=> d IN.
-    apply/eval1_union_disj_fset.
-    { exact/IN1. }
-    move: (IN2 _ IN)=> /[! proj_union]; exact. }
-  admit.
-Admitted. *)
 
 Lemma eval1_part h1 h2 h fs ht d hv: 
   ~indom fs d ->
@@ -2229,40 +2183,6 @@ Proof.
   by rewrite uni_nin.
 Qed.
 
-  
-
-  (* move=> dj hh.
-  move: (part_ex h dj)=> [h1] [h2] [h3] [lh1] [lh2] [lh3] [?] [?] [?] ?.
-  exists () *)
-
-  (* move=> dj hh.
-  move=> ? -[h1][h2][H11][H22][?]->.
-  move: (part_ex h1 dj)=> [h11] [h12] [h13] [lh1] [lh2] [lh3] [?] [?] [?] ?.
-  case/(_ (h1 \u h2)): (hh (= h2)).
-  { exists __, __; eauto. }
-  move=> ? [hv'] [/[swap]] [h''][?][Qh'][->][?]->.
-  case: (eval_cup2 h1 h'' hv' ht dj)=> // h''' HH.
-  case/(HH h2)=> //.
-  1,2: rewrite disjoint_comm; apply/disj_filter; autos*.
-  move=>  ? [?][?] hE.
-  have: exists h', h''' = h' \u (h12 \u h13) /\ local fs1 h'.
-  { admit. }
-  move: hE.
-  subst=> /[swap].
-  case=> h'''' [? lh']. subst.
-  exists ((h'''' \u h12 \u h13) \u h2), hv'; splits*.
-  exists (h' \u h12 \u h13), h2; do ? split*.
-  exists (= h' \u h12 \u h13), (h' \u h12 \u h13), (empty : hheap D); splits*.
-  split=> // H'' ? [?][hH''] [->] [?][?] ->.
-  case/(_ (h1 \u (h3 \- h1))): (hh (= (h3 \- h1))).
-  { exists __, __; splits; eauto.
-     }
-  exists (h' \u h3), hv'; split.
-  
-  { admit. }
-  exists h', h3; splits.
-
-Admitted. *)
 Lemma hhoare_conseq : forall ht H' hQ' H hQ fs,
   hhoare fs ht H' hQ' ->
   H ==> H' ->
@@ -2293,146 +2213,6 @@ Proof.
   split=> //.
   exact/baz.
 Qed.
-(*   
-  move=> dj hh.
-  move: H'.
-  apply/foo=> ?.
-  apply/bar=> ? [h][h'][Hh][<-][?]->.
-  have->: (= (h \u h')) = ((= h) \* (= h')).
-  { apply/himpl_antisym=> [h1->|h1[h1'][h2'][->][->][]//].
-    exists h, h'; autos*. }
-  case: (@hhoare_union2_aux _ _ ht h Q' dj).
-  { move=> ?? [?][?][->][?][?]->.
-    apply/hh; exists h, __; autos*. }
-  move=> Q /[dup]/(_ h') [hh2 _] P.
-  eapply hhoare_conseq; [eauto|eauto|].
-  xsimpl. apply/foo=> h0. case: (P h0)=> //.
-Qed.
-
-  move=> dj hh.
-  move=> ? -[h1][h2][H11][H22][?]->.
-  move: (part_ex h1 dj)=> [h11] [h12] [h13] [lh1] [lh2] [lh3] [?] [?] [?] ?.
-  case/(_ (h1 \u h2)): (hh (= h2)).
-  { exists __, __; eauto. }
-  move=> ? [hv'] [/[swap]] [h''][?][Qh'][->][?]->.
-  case: (eval_cup2 h1 h'' hv' ht dj)=> // h HH.
-  case/(HH h2)=> //.
-  1,2: rewrite disjoint_comm; apply/disj_filter; autos*.
-  move=>  ? [?][?] hE.
-  have: exists h', h = h' \u (h12 \u h13) /\ local fs1 h'.
-  { admit. }
-  move: hE.
-  subst=> /[swap].
-  case=> h' [? lh']. subst.
-  exists ((h' \u h12 \u h13) \u h2), hv'; splits*.
-  exists (h' \u h12 \u h13), h2; do ? split*.
-  exists (= h' \u h12 \u h13), (h' \u h12 \u h13), (empty : hheap D); splits*.
-  split=> // H'' ? [?][hH''] [->] [?][?] ->.
-  case/(_ (h1 \u (h3 \- h1))): (hh (= (h3 \- h1))).
-  { exists __, __; splits; eauto.
-     }
-  exists (h' \u h3), hv'; split.
-  
-  { admit. }
-  exists h', h3; splits.
-  
-Admitted. *)
-
-
-  (* case/(_ (h2 \u h22)): (hh (= h22)).
-  exists 
-  
-  
-  
-  
-  { exists h', h22, hv'; splits*.
-    admit. }
-  exists h22, (empty : hheap D); splits*.
-   [h2][h3][h4][?][?]->.
-
-  {  }
-  
-   /hh[h2][hv2]. [/(eval_cup2 dj)][h'][??] ?.
-  exists h', hv2; splits*.
-  exists h', (empty : hheap D); splits*; last by split.
-  exists h2 hv2; splits*.
-  have-> //: (hv2 \u_(fs1) hv2 = hv2).
-  apply/fun_ext_1=> ?; rewrite /uni.
-  by case: classicT. *)
-
-
-(* Lemma hhoare_union2 (fs1 fs2 : fset D) ht H (Q': (D -> val) -> hhprop) : 
-  disjoint fs1 fs2 ->
-  hhoare (fs1 \u fs2) ht H Q' ->
-  exists Q,
-    hhoare fs1 ht H (fun hv => 
-      Q hv \* 
-      \[hhoare fs2 ht (Q hv) (fun hv' => Q' (hv \u_(fs1) hv'))]).
-Proof.
-  move=> dj hh.
-  exists (fun hv h => exists h' hv', eval fs2 h ht h' hv' /\ Q' (hv \u_(fs1) hv') h').
-  move=> h1 /hh[h2][hv2][/(eval_cup2 dj)][h'][??] ?.
-  exists h', hv2; splits*.
-  exists h', (empty : hheap D); splits*; last by split.
-  exists h2 hv2; splits*.
-  have-> //: (hv2 \u_(fs1) hv2 = hv2).
-  apply/fun_ext_1=> ?; rewrite /uni.
-  by case: classicT.
-Qed. *)
-
-(* Lemma hhoare_union2 (fs1 fs2 : fset D) ht H (Q Q': (D -> val) -> hhprop) : 
-  disjoint fs1 fs2 ->
-  hhoare (fs1 \u fs2) ht H Q' ->
-  exists Q,
-    hhoare fs1 ht H Q /\
-    (forall hv, 
-      hhoare fs2 ht (Q hv) (fun hv' => Q' (hv \u_(fs1) hv'))).
-Proof.
-  move=> dj hh.
-  (* case: (prop_inv (exists h, H h)). *)
-  (* { case=> ? /[dup] ? /hh[h'][hv][ev Q'h']. *)
-  exists (fun hv h => exists h', H h' /\ eval fs1 h' ht h hv).
-  split.
-  { move=> h /[dup] ? /hh[h'][hv][ev Q'h']. }
-  move=> hv h' [h][] /hh [h1][hv1][][IN1 OUT1]? [IN2 OUT2].
-  exists (filter (fun '(_, d) _ => ~indom fs2 d) h' \u 
-          filter (fun '(_, d) _ =>  indom fs2 d) h1), hv1; splits.
-  { splits=> d ?.  
-    { rewrite -OUT2.
-      { replace (proj (filter (fun '(_, d0) => fun=> ~ indom fs2 d0) h' \u 
-                       filter (fun '(_, d0) => fun=> indom fs2 d0) h1) d) with (proj h1 d).
-        { apply IN1; rewrite* indom_union_eq. }
-        apply/filter_eq=> -[a ? x ->]. 
-        rewrite read_union_r.
-        { exact/eq_sym/filter_in. }
-        by move=> /(@filter_indom _ _ _ _ _ _)[?][]. }
-      by move/(disjoint_inv_not_indom_both dj). }
-    apply/filter_eq=> -[a ??->].
-    case: (prop_inv (indom h' (a, d)))=> IN.
-    { rewrite read_union_l.
-      { exact/eq_sym/filter_in. }
-      apply/filter_indom; splits*. } 
-    rewrite ?read_arb // indom_union_eq=> -[]/filter_indom; autos*.
-    by case=> ? []. }
-  
-     }
-  move=> F. exists (fun (_ : D -> val) (_ : hheap D) => False).
-  splits*=> ?? //. 
-  case: F; eauto.
-Qed. *)
-
-
-(* Lemma hhoare_hv_dom fs H Q ht (f : D -> val): 
-  hhoare fs ht H Q ->
-  hhoare fs ht H Q.
-Proof.
-  move=> hh ? /hh [h'][hv][ev IQ].
-  do ? eexists; eauto.
-  move/eval_hv_dom: ev=> ?.
-  case: IQ=> ? [?][?][?][][]/[swap]->/[swap].
-  by case=> _ ->; apply; do ? eexists; eauto.
-Qed. *)
-
 
 Section Hoare1.
 
@@ -2885,11 +2665,6 @@ Proof.
 Qed.
 
 Coercion read : fmap >-> Funclass.
-
-Lemma hoare_Q_eq d t H Q1 Q2 :
-  (forall v, Q1 v = Q2 v) -> 
-  hoare d t H Q1 = hoare d t H Q2.
-Admitted.
 
 Lemma hlocal_subset fs1 fs2 H :
   (forall x, indom fs1 x -> indom fs2 x) ->
@@ -6289,7 +6064,8 @@ Proof.
     rewrite uni_nin ?indom_label_eq /= /htrm_of; autos*.
     do ? (case: classicT; autos* ).
     move=> [_]?[]; split=> //.
-    rewrite indom_Union; setoid_rewrite indom_interval; do ? (eexists; eauto). }
+    rewrite indom_Union; setoid_rewrite indom_interval; do ? (eexists; eauto).
+    all: math. }
   { move=> q r k hv hv' hvE.
     suff->:
       Σ_(l <- interval q r) op hv l = 
@@ -6571,7 +6347,7 @@ Theorem optimize_pow_sum (x : int) (q : loc) :
     [1| ld in {::0} => pow_sum q x];
     [2| ld in [0,i] => pow x ld]
   }]
-  {{ v, \Top \* q ~⟨1, 0⟩~> Σ_(j <- [0,i]) v[2](j) }}.
+  {{ hv, \Top \* q ~⟨1, 0⟩~> Σ_(j <- [0,i]) hv[2](j) }}.
 Proof with myfold.
   xin 2: xwp; xapp=> r...
   xin 1: xwp; xapp=> p...
@@ -6587,7 +6363,7 @@ Proof with myfold.
               (fun v => \[v[2](i) = a * y] \* \Top) ] ).
   set (R i := r i ~⟨2, i⟩~> 1).
   set (R' (i : int) := \Top).
-  xfor I R R.
+  xfor I R R'.
   { intros l y lb.
     unfold I, R, R'.
     xnsimpl=> a htg.

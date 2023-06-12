@@ -1226,6 +1226,10 @@ Lemma fset_foldE A (P : Type) (p : P) (f : A -> P -> P) :
     forall fs x, ~ indom fs x -> fset_fold p f (update fs x tt) = f x (fset_fold p f fs)).
 Admitted.
 
+Lemma disjoint_update {A B} x y (fm1 fm2 : fmap A B) : 
+  disjoint (update fm1 x y) fm2 = (~ indom fm2 x /\ disjoint fm1 fm2).
+Proof.
+Admitted.
 
 Lemma fmap_ind A B : forall P : fmap A B -> Prop,
   P empty -> 
@@ -1238,6 +1242,11 @@ Lemma fset_ind A : forall P : fset A -> Prop,
   P empty -> 
   (forall fs x, P fs -> ~ indom fs x -> P (update fs x tt)) -> forall fs, P fs.
 Proof.
+Admitted.
+
+Lemma fold_fset_eq {A P : Type} (fs : fset A) (f1 f2 : A -> P -> P) (p : P):
+  (forall d, indom fs d -> f1 d = f2 d) ->
+  fset_fold p f1 fs = fset_fold p f2 fs.
 Admitted.
 
 Lemma update_empty {A B : Type} {x : A} {y : B} :
@@ -1372,7 +1381,14 @@ Proof.
   by case: classicT=> // /E ? [].
 Qed.
 
-Definition diff {A B} (fs1 fs2 : fmap A B) : fmap A B. Admitted.
+Lemma filter_filter  {A B : Type} (fm : fmap A B) (P Q : A -> B -> Prop) : 
+  filter P (filter Q fm) = 
+  filter (fun x y => P x y /\ Q x y) fm.
+Proof.
+Admitted.
+
+Definition diff {A B} (fs1 fs2 : fmap A B) : fmap A B := 
+  filter (fun x _ => ~indom fs1 x) fs2.
 
 Notation "fs1 '\-' fs2" := (diff fs1 fs2) (at level 20, right associativity).
 
@@ -1475,5 +1491,67 @@ Admitted.
 Lemma indom_Union {T S} (fs : fset T) (fsi : T -> fset S) x : 
   indom (Union fs fsi) x = exists f, indom fs f /\ indom (fsi f) x.
 Admitted.
+
+Lemma update_union_not_r' [A B : Type] `{Inhab B} (h1 : fmap A B) [h2 : fmap A B] [x : A] (v : B) :
+  update (h1 \+ h2) x v = update h1 x v \+ h2.
+Proof.
+  rewrite fmapE=> y ?.
+  case: (prop_inv (y = x))=> [->|?].
+  { rewrite ?(update_eq, read_union_l) // indom_update_eq; autos*. }
+  rewrite update_neq //.
+  case: (prop_inv (indom h1 y))=> ?.
+  { rewrite 2?read_union_l // ?indom_union_eq; autos*.
+    by rewrite update_neq. }
+  rewrite ?read_union_r // indom_union_eq indom_single_eq; autos*.
+Qed.
+
+Lemma fsubst_disjoint {A B C} (fm1 fm2 : fmap A B) (f : A -> C) g : 
+  cancel f g ->
+  cancel g f ->
+  disjoint fm1 fm2 -> 
+    disjoint (fsubst fm1 f) (fsubst fm2 f).
+Proof.
+  move=> c1 c2 dj.
+  apply/disjoint_of_not_indom_both=> x.
+  rewrite -[x]c2 ?(fsubst_indom _ _ c1 c2).
+  exact/disjoint_inv_not_indom_both.
+Qed.
+
+Lemma fsubst_union {A B C} `{Inhab B} (fm1 fm2 : fmap A B) (f : A -> C) g : 
+  cancel f g ->
+  cancel g f ->
+  fsubst (fm1 \+ fm2) f = fsubst fm1 f \+ fsubst fm2 f.
+Proof.
+  move=> c1 c2.
+  elim/fmap_ind: fm1.
+  { by rewrite fsubst_empty ?union_empty_l. }
+  move=> fm ?? IH ?.
+  by rewrite -update_union_not_r' ?(fsubst_update _ _ _ c1) IH update_union_not_r'.
+Qed.
+
+Lemma filter_update {A B : Type} (fs : fmap A B) x y (P : A -> B -> Prop) :
+  (forall (x : A) (y y' : B), P x y <-> P x y') ->
+  filter P (update fs x y) = If P x y then update (filter P fs) x y else filter P fs.
+Admitted.
+
+Lemma filter_empty {A B : Type} (P : A -> B -> Prop) : 
+  filter P empty = empty.
+Proof.
+Admitted.
+
+Lemma filter_fsubst {A B C} (fm : fmap A B) (f : A -> C) g (P : C -> Prop) : 
+  cancel f g ->
+  cancel g f ->
+  filter (fun x _=> P x) (fsubst fm f) = 
+  fsubst (filter (fun x _ => (P (f x))) fm) f.
+Proof.
+  move=> c1 c2.
+  elim/fmap_ind: fm.
+  { by rewrite ?(fsubst_empty, filter_empty). }
+  move=> > IH ?.
+  rewrite (fsubst_update _ _ _ c1) ?filter_update //.
+  case: classicT=> //.
+  by rewrite IH (fsubst_update _ _ _ c1).
+Qed.
 
 (* 2023-03-25 11:36 *)
