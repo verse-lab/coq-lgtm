@@ -1388,9 +1388,18 @@ Proof.
 Admitted.
 
 Definition diff {A B} (fs1 fs2 : fmap A B) : fmap A B := 
-  filter (fun x _ => ~indom fs1 x) fs2.
+  filter (fun x _ => ~indom fs2 x) fs1.
 
 Notation "fs1 '\-' fs2" := (diff fs1 fs2) (at level 20, right associativity).
+
+
+Lemma remove_diff {A B} (fm : fmap A B) `{Inhab B} x :
+  remove fm x = fm \- (single x arbitrary).
+Proof.
+  apply/fmap_extens=> -?.
+  rewrite /remove /= /map_remove /map_filter indom_single_eq.
+  (do 2? case: classicT)=> ??; subst*; by case: (fmap_data _ _).
+Qed.
 
 Lemma diff0 {A B} (fs : fmap A B) : fs \- empty = fs.  Admitted.
 Lemma diffxx {A B} (fs : fmap A B) : fs \- fs = empty.  Admitted.
