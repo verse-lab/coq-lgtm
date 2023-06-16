@@ -49,6 +49,14 @@ Definition map_union (A B : Type) (f1 f2 : map A B) : map A B :=
            | None => f2 x
            end.
 
+Definition map_merge (A B : Type) (m : B -> B -> B) (f1 f2 : map A B) : map A B :=
+  fun (x:A) => 
+    match f1 x, f2 x with
+    | Some x, Some y => Some (m x y)
+    | Some x, None   => Some x 
+    | None  , x      => x
+    end.
+
 (** Removal from a partial functions *)
 
 Definition map_remove (A B : Type) (f : map A B) (k:A) : map A B :=
@@ -143,6 +151,17 @@ Proof using.
   apply mem_app. destruct~ (f1 x).
 Qed.
 
+Lemma map_merge_finite m : forall f1 f2,
+  map_finite f1 ->
+  map_finite f2 ->
+  map_finite (map_merge m f1 f2).
+Proof using.
+  introv [L1 F1] [L2 F2]. exists (L1 ++ L2). intros x M.
+  specializes F1 x. specializes F2 x. unfold map_merge in M.
+  apply mem_app; destruct (f1 x), (f2 x); try by ((left; apply F1)+(right;apply F2)).
+Qed.
+
+
 (** Finiteness of removal *)
 
 Definition map_remove_finite : forall x f,
@@ -227,8 +246,17 @@ Program Definition union A B (h1 h2:fmap A B) : fmap A B :=
   make (map_union h1 h2) _.
 Next Obligation. destruct h1. destruct h2. apply~ map_union_finite. Qed.
 
+Program Definition merge A B m (h1 h2:fmap A B) : fmap A B :=
+  make (map_merge m h1 h2) _.
+Next Obligation. destruct h1. destruct h2. apply~ map_merge_finite. Qed.
+
+
 Notation "h1 \+ h2" := (union h1 h2)
    (at level 51, right associativity) : fmap_scope.
+
+Notation "h1 '\[[' m ']]' h2" := (merge m h1 h2)
+   (at level 51, right associativity, format "h1  \[[ m ]]  h2") : fmap_scope.
+
 
 Open Scope fmap_scope.
 
@@ -355,6 +383,14 @@ Proof using.
   case_eq (fmap_data h1 x); case_eq (fmap_data h2 x); auto_false*.
 Qed.
 
+Lemma indom_merge_eq : forall m h1 h2 x,
+  indom (h1 \[[m]] h2) x = (indom h1 x \/ indom h2 x).
+Proof using.
+  intros. extens. unfolds indom, merge, map_indom, map_merge. simpls.
+  case_eq (fmap_data h1 x); case_eq (fmap_data h2 x); auto_false*.
+  split=> //; by left.
+Qed.
+
 Lemma indom_union_l : forall h1 h2 x,
   indom h1 x ->
   indom (union h1 h2) x.
@@ -364,6 +400,17 @@ Lemma indom_union_r : forall h1 h2 x,
   indom h2 x ->
   indom (union h1 h2) x.
 Proof using. intros. rewrite* indom_union_eq. Qed.
+
+Lemma indom_merge_l m : forall h1 h2 x,
+  indom h1 x ->
+  indom (merge m h1 h2) x.
+Proof using. intros. rewrite* indom_merge_eq. Qed.
+
+Lemma indom_merge_r m : forall h1 h2 x,
+  indom h2 x ->
+  indom (merge m h1 h2) x.
+Proof using. intros. rewrite* indom_merge_eq. Qed.
+
 
 Lemma indom_update_eq : forall h x v y,
   indom (update h x v) y = (x = y \/ indom h y).
@@ -452,6 +499,19 @@ Proof using.
    destruct (f2 x); intuition.
 Qed.
 
+Lemma disjoint_merge_eq_r m : forall h1 h2 h3,
+  \# h1 (h2 \[[m]] h3) =
+  (\# h1 h2 /\ \# h1 h3).
+Proof using.
+  intros [f1 F1] [f2 F2] [f3 F3].
+  unfolds disjoint, merge. simpls.
+  unfolds map_disjoint, map_merge. extens. iff M [M1 M2].
+  split; intros x; specializes M x;
+   destruct (f1 x), (f2 x), (f3 x); intuition; tryfalse.
+  intros x. specializes M1 x. specializes M2 x.
+   destruct (f2 x); intuition; by [].
+Qed.
+
 Lemma disjoint_union_eq_l : forall h1 h2 h3,
   \# (h2 \+ h3) h1 =
   (\# h1 h2 /\ \# h1 h3).
@@ -459,6 +519,15 @@ Proof using.
   intros. rewrite disjoint_comm.
   apply disjoint_union_eq_r.
 Qed.
+
+Lemma disjoint_merge_eq_l m : forall h1 h2 h3,
+  \# (h2 \[[m]] h3) h1 =
+  (\# h1 h2 /\ \# h1 h3).
+Proof using.
+  intros. rewrite disjoint_comm.
+  apply disjoint_merge_eq_r.
+Qed.
+
 
 Lemma disjoint_single_single : forall (x1 x2:A) (v1 v2:B),
   x1 <> x2 ->
@@ -532,12 +601,28 @@ Proof using.
   apply~ make_eq.
 Qed.
 
+Lemma merge_empty_l m : forall h,
+  empty \[[m]] h = h.
+Proof using.
+  intros [f F]. unfold merge, map_merge, empty. simpl.
+  apply~ make_eq.
+Qed.
+
+
+Lemma merge_empty_r m : forall h,
+  h \[[m]] empty = h.
+Proof using.
+  intros [f F]. unfold merge, map_merge, empty. simpl.
+  apply make_eq. intros x. destruct~ (f x).
+Qed.
+
 Lemma union_empty_r : forall h,
   h \+ empty = h.
 Proof using.
   intros [f F]. unfold union, map_union, empty. simpl.
   apply make_eq. intros x. destruct~ (f x).
 Qed.
+
 
 Lemma union_eq_empty_inv_l : forall h1 h2,
   h1 \+ h2 = empty ->
@@ -578,12 +663,31 @@ Proof using.
   cases (f1 l); cases (f2 l); auto. fequals. applys* H.
 Qed.
 
+Lemma merge_comm m : forall h1 h2,
+  (forall a b, m a b = m b a) ->
+  h1 \[[m]] h2 = h2 \[[m]] h1.
+Proof using.
+  intros [f1 F1] [f2 F2] H. simpls. apply make_eq. simpl.
+  intros l. unfolds map_merge. simpls.
+  cases (f1 l); cases (f2 l); auto. fequals.
+Qed.
+
 Lemma union_assoc : forall h1 h2 h3,
   (h1 \+ h2) \+ h3 = h1 \+ (h2 \+ h3).
 Proof using.
   intros [f1 F1] [f2 F2] [f3 F3]. unfolds union. simpls.
   apply make_eq. intros x. unfold map_union. destruct~ (f1 x).
 Qed.
+
+Lemma merge_assoc m : forall h1 h2 h3,
+  (forall a b c, m a (m b c) = m (m a b) c) ->
+  (h1 \[[m]] h2) \[[m]] h3 = h1 \[[m]] (h2 \[[m]] h3).
+Proof using.
+  intros [f1 F1] [f2 F2] [f3 F3]. unfolds merge. simpls=> E.
+  apply make_eq. intros x. unfold map_merge. 
+  destruct (f3 x), (f2 x), (f1 x); autos*; fequals.
+Qed.
+
 
 Lemma union_eq_inv_of_disjoint : forall h2 h1 h1',
   \# h1 h2 ->

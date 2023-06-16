@@ -121,6 +121,21 @@ with trm : Type :=
   | trm_let : var -> trm -> trm -> trm
   | trm_if : trm -> trm -> trm -> trm.
 
+Definition add_val : val -> val -> val := 
+  fun v1 v2 => 
+    match v1, v2 with 
+    | val_int v1, val_int v2 => val_int (v1 + v2)
+    | _, _ => val_unit
+    end.
+
+Lemma add_val_comm : comm add_val.
+Proof. move=> v1 v2; destruct v1, v2=> //=; fequals; math. Qed.
+
+Lemma add_val_assoc : assoc add_val.
+Proof. move=> v1 v2 v3; destruct v1, v2, v3=> //=; fequals; math. Qed.
+
+Hint Resolve add_val_comm add_val_assoc : core.
+
 (** A state consists of a finite map from location to values. Records and
     arrays are represented as sets of consecutive cells, preceeded by a
     header field describing the length of the block. *)
@@ -527,6 +542,11 @@ Definition hstar (H1 H2 : hhprop) : hhprop :=
                               /\ Fmap.disjoint h1 h2
                               /\ h = Fmap.union h1 h2.
 
+Definition hmerge op (H1 H2 : hhprop) : hhprop :=
+  fun h => exists h1 h2, H1 h1
+                              /\ H2 h2
+                              /\ h = Fmap.merge op h1 h2.
+
 Definition hexists A (J:A->hhprop) : hhprop :=
   fun h => exists x, J x h.
 
@@ -584,7 +604,10 @@ Notation "p '~⟨' l ',' x '⟩~>' v" := (hsingle p (Lab l%nat x) v) (at level 3
 Notation "p '~(' d ')~>' v" := (hsingle p d%arr v) (at level 32, format "p  ~( d )~>  v") : hprop_scope.
 
 Notation "H1 '\*' H2" := (hstar H1 H2)
-  (at level 41, right associativity) : hprop_scope.
+  (at level 42, right associativity) : hprop_scope.
+
+Notation "H1 '\(' m ')' H2" := (hmerge m H1 H2)
+  (at level 41, right associativity, format "H1  \( m )  H2") : hprop_scope.
 
 Notation "'\exists' x1 .. xn , H" :=
   (hexists (fun x1 => .. (hexists (fun xn => H)) ..))
@@ -616,8 +639,8 @@ Definition hwand (H1 H2 : hhprop) : hhprop :=
 Definition qwand A (Q1 Q2:A->hhprop) : hhprop :=
   \forall x, hwand (Q1 x) (Q2 x).
 
-Definition hstar_fset {A} (fs : fset A) (f : A -> hhprop) : hhprop :=
-  fset_fold \[] (fun a H => f a \* H) fs.
+Definition hbig_fset {A} hop (fs : fset A) (f : A -> hhprop) : hhprop :=
+  fset_fold \[] (fun a H => hop (f a) H) fs.
 
 Notation "\[ P ]" := (hpure P)
   (at level 0, format "\[ P ]") : hprop_scope.
@@ -634,11 +657,26 @@ Notation "Q1 \--* Q2" := (qwand Q1 Q2)
   (at level 43) : hprop_scope.
 
 Reserved Notation "'\*_' ( i <- r ) F"
-  (at level 41, F at level 41, i, r at level 50,
+  (at level 43, F at level 43, i, r at level 50,
            format "'[' \*_ ( i  <-  r ) '/  '  F ']'").
 
+Reserved Notation "'\(' m ')_' ( i <- r ) F"
+  (at level 43, F at level 43, i, r at level 50,
+           format "'[' \( m )_ ( i  <-  r ) '/  '  F ']'").
+
+Reserved Notation "'\(+)_' ( i <- r ) F"
+  (at level 43, F at level 43, i, r at level 50,
+           format "'[' \(+)_ ( i  <-  r ) '/  '  F ']'").
+
 Notation "'\*_' ( i <- r ) F" :=
-  (hstar_fset r (fun i => F)) : nat_scope.
+  (hbig_fset hstar r (fun i => F)) : nat_scope.
+
+Notation "'\(' m ')_' ( i <- r ) F" :=
+  (hbig_fset (hmerge m) r (fun i => F)) : nat_scope.
+
+(* Notation "'\(' m ')_' ( i <- r ) F" :=
+  (hbig_fset m r (fun i => F)) : nat_scope. *)
+
 
 (* ================================================================= *)
 (** ** Basic Properties of Separation Logic Operators *)
@@ -723,6 +761,13 @@ Lemma hstar_intro : forall H1 H2 h1 h2,
   (H1 \* H2) (Fmap.union h1 h2).
 Proof using. intros. exists~ h1 h2. Qed.
 
+Lemma hmerge_intro m : forall H1 H2 h1 h2,
+  H1 h1 ->
+  H2 h2 ->
+  (* Fmap.disjoint h1 h2 -> *)
+  (H1 \(m) H2) (Fmap.merge m h1 h2).
+Proof using. intros. exists~ h1 h2. Qed.
+
 Lemma hstar_inv : forall H1 H2 h,
   (H1 \* H2) h ->
   exists h1 h2, H1 h1 /\ H2 h2 /\ Fmap.disjoint h1 h2 /\ h = Fmap.union h1 h2.
@@ -736,6 +781,16 @@ Proof using.
   exists* h2 h1.
 Qed.
 
+Lemma hmerge_comm m : forall H1 H2,
+  comm m ->
+  H1 \(m) H2 = H2 \(m) H1.
+Proof using.
+  move=> ++ ?.
+  applys hprop_op_comm. unfold hhprop, hmerge. intros H1 H2.
+  intros h (h1 & h2 & M1 & M2 & U). rewrite~ Fmap.merge_comm in U.
+  exists* h2 h1.
+Qed.
+
 Lemma hstar_assoc : forall H1 H2 H3,
   (H1 \* H2) \* H3 = H1 \* (H2 \* H3).
 Proof using.
@@ -744,6 +799,19 @@ Proof using.
     exists h1 (h2 \+ h3). splits~. { applys* hstar_intro. } }
   { intros (h1&h'&M1&(h2&h3&M3&M4&D'&U')&D''&U). subst h'.
     exists (h1 \+ h2) h3. splits~. { applys* hstar_intro. } }
+Qed.
+
+Lemma hmerge_assoc m : forall H1 H2 H3,
+  assoc m ->
+  (H1 \(m) H2) \(m) H3 = H1 \(m) (H2 \(m) H3).
+Proof using.
+  intros H1 H2 H3 ?. applys himpl_antisym; intros h.
+  { intros (h'&h3&(h1&h2&M3&M4&U')&M2&U). subst h'.
+    exists h1 (h2 \[[m]] h3). splits~. { applys* hmerge_intro. }
+    subst; apply/Fmap.merge_assoc. autos*. }
+  { intros (h1&h'&M1&(h2&h3&M3&M4&U')&U). subst h'.
+    exists (h1 \[[m]] h2) h3. splits~. { applys* hmerge_intro. }
+    subst; apply/eq_sym/Fmap.merge_assoc. autos*. }
 Qed.
 
 Lemma hstar_hempty_l : forall H,
@@ -755,10 +823,33 @@ Proof using.
   { intros M. exists (Fmap.empty:hheap D) h. splits~. { applys hempty_intro. } }
 Qed.
 
+Hint Resolve hstar_hempty_l : core.
+
+Lemma hmerge_hempty_l m : forall H,
+  \[] \(m) H = H.
+Proof using.
+  intros. applys himpl_antisym; intros h.
+  { intros (h1&h2&M1&M2&U). forwards E: hempty_inv M1. subst.
+    rewrite~ Fmap.merge_empty_l. }
+  { intros M. exists (Fmap.empty:hheap D) h. splits~. { applys hempty_intro. }
+    rewrite* merge_empty_l. }
+Qed.
+
+
 Lemma hstar_hempty_r : forall H,
   H \* \[] = H.
 Proof using.
   applys neutral_r_of_comm_neutral_l. applys~ hstar_comm. applys~ hstar_hempty_l.
+Qed.
+
+Lemma hmerge_hempty_r m : forall H,
+  H \(m) \[] = H.
+Proof using.
+  intros. applys himpl_antisym; intros h.
+  { intros (h1&h2&M1&M2&U). forwards E: hempty_inv M2. subst.
+    rewrite~ Fmap.merge_empty_r. }
+  { intros M. exists h (Fmap.empty:hheap D). splits~. { applys hempty_intro. }
+    rewrite* merge_empty_r. }
 Qed.
 
 Lemma hstar_hexists : forall A (J:A->hhprop) H,
@@ -1234,20 +1325,26 @@ Export SepSimplArgs.
 (* ----------------------------------------------------------------- *)
 (** *** Properties of [hlocal] *)
 
-Lemma hstar_fset_empty {A} (f : A -> hhprop) :
-  hstar_fset empty f = \[].
+Lemma hbig_fset_empty {A} hop (f : A -> hhprop) :
+  hbig_fset hop empty f = \[].
 Proof.
-  by rewrite /hstar_fset fset_foldE.
+  by rewrite /hbig_fset fset_foldE.
 Qed.
 
-Lemma hstar_fset_update {A} fs x (f : A -> hhprop) :
+Check hstar_assoc.
+
+Lemma hbig_fset_update {A} hop fs x (f : A -> hhprop) :
   ~ Fmap.indom fs x ->
-  hstar_fset (update fs x tt) f = f x \* hstar_fset fs f.
+  (forall h1 h2, hop h1 h2 = hop h2 h1) ->
+  (forall h1 h2 h3, hop (hop h1 h2) h3 = hop h1 (hop h2 h3)) ->
+  hbig_fset hop (update fs x tt) f = hop (f x) (hbig_fset hop fs f).
 Proof.
-  move=> ?.
-  rewrite /hstar_fset fset_foldE //.
-  move=> *; by rewrite hstar_comm_assoc.
+  move=> ? C AS.
+  rewrite /hbig_fset fset_foldE //.
+  move=> *. rewrite -?AS; fequals.
 Qed.
+
+Hint Resolve hstar_assoc hstar_comm : core.
 
 Lemma hsubst_hstar_fset f g (H : D -> hhprop) fs :
   cancel f g ->
@@ -1256,41 +1353,48 @@ Lemma hsubst_hstar_fset f g (H : D -> hhprop) fs :
 Proof.
   move=> c1 c2.
   elim/fset_ind: fs.
-  { by rewrite ?hstar_fset_empty (hsubst_hempty c1 c2). }
+  { by rewrite ?hbig_fset_empty (hsubst_hempty c1 c2). }
   move=> fs x IH ?.
-  by rewrite ?hstar_fset_update // (hsubst_hstar _ _ c1 c2) IH.
+  by rewrite ?hbig_fset_update // (hsubst_hstar _ _ c1 c2) IH.
 Qed.
 
-Lemma hstar_fset_union {A} (fs1 fs2 : fset A) (f : A -> hhprop) :
+Lemma hbig_fset_union {A} hop (fs1 fs2 : fset A) (f : A -> hhprop) :
+  comm hop ->
+  assoc hop ->
+  (forall h, hop \[] h = h) ->
   disjoint fs1 fs2 ->
-  hstar_fset (fs1 \u fs2) f = hstar_fset fs1 f \* hstar_fset fs2 f.
+  hbig_fset hop (fs1 \u fs2) f = hop (hbig_fset hop fs1 f) (hbig_fset hop fs2 f).
 Proof.
-  elim/fset_ind: fs1.
-  { rewrite hstar_fset_empty union_empty_l; xsimpl. }
+  move=> ?? hop0; elim/fset_ind: fs1.
+  { rewrite hbig_fset_empty union_empty_l hop0 //. }
   move=> > IH ? /[! @disjoint_update]-[??].
-  rewrite -update_union_not_r' ?hstar_fset_update // ?indom_union_eq; autos*.
+  rewrite -update_union_not_r' ?hbig_fset_update // ?indom_union_eq; autos*.
   rewrite IH //; xsimpl.
 Qed.
 
-Lemma hstar_fset_eq {A} (fs : fset A) (f1 f2 : A -> hhprop) :
+Lemma hbig_fset_eq {A} hop (fs : fset A) (f1 f2 : A -> hhprop) :
   (forall d, indom fs d -> f1 d = f2 d) ->
-  hstar_fset fs f1 = hstar_fset fs f2.
+  hbig_fset hop fs f1 = hbig_fset hop fs f2.
 Proof. move=> E; by apply/fold_fset_eq=> ?? /[!E]. Qed.
 
-Lemma hstar_fset_emptys {A} (fs : fset A) :
-  hstar_fset fs (fun _ => \[]) = \[].
+Lemma hbig_fset_emptys {A} hop (fs : fset A) :
+  comm hop ->
+  assoc hop ->
+  (forall h, hop \[] h = h) ->
+  hbig_fset hop fs (fun _ => \[]) = \[].
 Proof.
+  move=> ?? hop0.
   elim/fset_ind: fs=> [|?? E ?].
-  { exact/hstar_fset_empty. }
-  rewrite hstar_fset_update // E; xsimpl.
+  { exact/hbig_fset_empty. }
+  by rewrite hbig_fset_update // E hop0.
 Qed.
 
-Lemma hstar_fset_hstar {A} (fs : fset A) P Q: 
+Lemma hbig_fset_hstar {A} (fs : fset A) P Q: 
   \*_(d <- fs) P d \* Q d = (\*_(d <- fs) P d) \* (\*_(d <- fs) Q d).
 Proof.
   elim/fset_ind: fs=> [|?? E ?].
-  { rewrite ?hstar_fset_empty; xsimpl. }
-  rewrite ?hstar_fset_update // E; xsimpl.
+  { rewrite ?hbig_fset_empty; xsimpl. }
+  rewrite ?hbig_fset_update // E; xsimpl.
 Qed.
 
 
@@ -1298,13 +1402,13 @@ Lemma hstar_fset_pure {A} (fs : fset A) P:
   \*_(d <- fs) \[P d] = \[forall d, indom fs d -> P d].
 Proof.
   elim/fset_ind: fs=> [|??].
-  { rewrite hstar_fset_empty.
+  { rewrite hbig_fset_empty.
     apply/fun_ext_1=> ?; apply/prop_ext; split.
     { move->.
       have p: (forall a, indom (empty : fset A) a -> P a) by [].
       by exists p. }
   by case. }
-  move=> E ?; rewrite hstar_fset_update // E.
+  move=> E ?; rewrite hbig_fset_update // E.
   apply/fun_ext_1=> x; apply/prop_ext; split.
   { case=> ? [?] [][?] E1 [][?] E2 [].
     eexists.
@@ -1316,7 +1420,7 @@ Qed.
 
 Lemma hstar_fset_pure_hstar {A} (fs : fset A) P H: 
   \*_(d <- fs) \[P d] \* H d = \[forall d, indom fs d -> P d] \* \*_(d <- fs) H d.
-Proof. by rewrite hstar_fset_hstar hstar_fset_pure. Qed.
+Proof. by rewrite hbig_fset_hstar hstar_fset_pure. Qed.
 
 (* ----------------------------------------------------------------- *)
 (** *** Properties of [hlocal] *)
@@ -1358,8 +1462,8 @@ Lemma hlocal_hstar_fset (P : D -> hhprop) fs1 fs2:
     hlocal (\*_(d <- fs1) P d) fs2.
 Proof.
   elim/fset_ind: fs1.
-  { rewrite hstar_fset_empty=> *; exact/hlocal_hempty. }
-  move=> fs d IHfs ? IN. rewrite hstar_fset_update //.
+  { rewrite hbig_fset_empty=> *; exact/hlocal_hempty. }
+  move=> fs d IHfs ? IN. rewrite hbig_fset_update //.
   apply/hlocal_hstar/IHfs=> *; apply/IN; by rewrite* indom_update_eq.
 Qed.
 
@@ -1647,7 +1751,7 @@ Qed.
 Lemma proj_local {h d} : 
   local (single d tt) (proj h d).
 Proof.
-  move=> > /filter_indom[_ []]; by rewrite indom_single_eq.
+  move=> > /filter_indom[_ [] ]; by rewrite indom_single_eq.
 Qed.
 
 Lemma eval1_local (d : D) hd h h' t v fs :
@@ -1764,7 +1868,7 @@ Lemma hhoare_eq (fs : fset D) (ht1 ht2 : D -> trm) H (Q: (D -> val) -> hhprop) :
   (forall d, Fmap.indom fs d -> ht1 d = ht2 d) ->
   hhoare fs ht1 H Q -> hhoare fs ht2 H Q.
 Proof.
-  intros eq hh ? [h' [hv [ev ?]]]%hh.
+  intros eq hh ? [h' [hv [ev ?] ] ]%hh.
   exists h', hv; splits~; applys~ eval_eq.
 Qed.
 
@@ -1820,8 +1924,8 @@ Lemma hhoare_union (fs1 fs2 : fset D) ht H (Q Q': (D -> val) -> hhprop) :
     hhoare fs2 ht (Q hv) (fun hv' => Q' (hv \u_fs1 hv'))) -> 
     hhoare (fs1 \u fs2) ht H Q'.
 Proof.
-  intros disj hh1 hh2 ? [h1[ hv1 [? Qh1]]]%hh1.
-  destruct (hh2 hv1 _ Qh1) as [h2 [hv2 [ev ?]]].
+  intros disj hh1 hh2 ? [h1[ hv1 [? Qh1] ] ]%hh1.
+  destruct (hh2 hv1 _ Qh1) as [h2 [hv2 [ev ?] ] ].
   exists h2, (hv1 \u_(fs1) hv2); split~.
   applys eval_cup; eauto.
 Qed.
@@ -2188,7 +2292,7 @@ Proof.
   move=> dj lh' hh ? -[h1][h2][->][->][?]->.
   case/(_ (h \u h')): (hh (= h')).
   { by exists h, h'. }
-  move=> ? [hv][] /[swap]-[he [?]][?][->][?]-> ev.
+  move=> ? [hv][] /[swap]-[he [?] ][?][->][?]-> ev.
   case: (eval_cup2 h he hv ht dj)=> // h'' HH.
   case: (HH h')=> //.
   1,2: rewrite disjoint_comm; applys* @disj_filter. 
@@ -2206,7 +2310,7 @@ Proof.
     apply/disjoint_inv_not_indom_both/lhi; autos*. }
   case/(_ (h \u hi \u h')): (hh (= hi \u h')).
   { exists h (hi \u h'); autos*. }
-  move=> ? [hv'] [/[swap]][he'][?][?][->][?]-> ev'.
+  move=> ? [hv'] [/[swap] ][he'][?][?][->][?]-> ev'.
   case: (eval_cup2 h he' hv' ht dj)=> // h''' HH'.
   case: (HH' (hi \u h'))=> //.
   1,2: rewrite disjoint_comm; applys* @disj_filter. 
@@ -2735,8 +2839,8 @@ Proof.
     (\*_(d <- fs') Q d (hv d)).
   exists f; splits; rewrite/f.
   { exists (fun (d : D) => arbitrary : val).
-    rewrite diff0 hstar_fset_empty; xsimpl. }
-  { move=> ?; rewrite diffxx hstar_fset_empty; xsimpl. }
+    rewrite diff0 hbig_fset_empty; xsimpl. }
+  { move=> ?; rewrite diffxx hbig_fset_empty; xsimpl. }
   move=> fs' d' hv *.
   replace (fun v =>
     ((\*_(d <- fs \- update fs' d' tt) P d) \* H) \*
@@ -2748,7 +2852,7 @@ Proof.
     { apply/hlocal_hstar_fset=> x ?.
       apply/(hlocal_subset (single x tt))/l2.
       by move=> ? /[! indom_single_eq]<-. }
-    rewrite (diff_upd _ d') // hstar_fset_update.
+    rewrite (diff_upd _ d') // hbig_fset_update //.
     { replace ((P d' \* _) \* H) with 
        ((P d' \* H) \* \*_(d <- fs \- update fs' d' tt) P d) by xsimpl.
       replace (fun v => (_ \* H) \* _) with 
@@ -2760,10 +2864,10 @@ Proof.
         rewrite diff_indom.
         rewrite* indom_update_eq. }
       apply/fun_ext_1. xsimpl. }
-    rewrite diff_indom; rewrite* indom_update_eq. }
+    rewrite diff_indom; rewrite* indom_update_eq=> //. }
   apply/fun_ext_1=> v.
-  rewrite hstar_fset_update //.
-  under (@hstar_fset_eq _ fs' (fun _ => Q _ (upd _ _ _ _))).
+  rewrite hbig_fset_update //.
+  under (@hbig_fset_eq _ _ fs' (fun _ => Q _ (upd _ _ _ _))).
   { move=> ??; rewrite upd_neq; first over.
     by move=> ?; subst. }
   rewrite upd_eq; xsimpl.
@@ -2799,7 +2903,7 @@ Lemma hhoare_ref' : forall H (f : D -> val) fs,
     (fun hr => (\*_(d <- fs) \exists p, \[hr d = val_loc p] \* p ~(d)~> f d) \* H).
 Proof.
   intros.
-  replace H with ((\*_(_ <- fs) \[]) \* H) at 1; last (rewrite hstar_fset_emptys; xsimpl).
+  replace H with ((\*_(_ <- fs) \[]) \* H) at 1; last by rewrite hbig_fset_emptys //.
   apply (hhoare_hstar_fset _ (fun d v => \exists p, \[v = _] \* _))=> *; autos~.
   replace (\[] \* H) with H by xsimpl.
   exact/hoare_ref.
@@ -2865,7 +2969,7 @@ Lemma hhoare_unop : forall (v : D -> val) H (op : D -> prim) (v1 : D -> val) fs,
 Proof using.
   intros.
   apply (hhoare_val_eq (fun _ => _)).
-  replace H with ((\*_(_ <- fs) \[]) \* H) at 1; last (rewrite hstar_fset_emptys; xsimpl).
+  replace H with ((\*_(_ <- fs) \[]) \* H) at 1; last (rewrite hbig_fset_emptys //).
   apply/hhoare_conseq=> [||?]; [|eauto|]; first last.
   { rewrite -hstar_fset_pure=> ?. exact. }
   apply (hhoare_hstar_fset _ (fun d v => \[v = _])); autos~.
@@ -2881,7 +2985,7 @@ Lemma hhoare_binop :  forall (v : D -> val) H (op : D -> prim) (v1 v2 : D -> val
 Proof using.
   intros.
   apply (hhoare_val_eq (fun _ => _)).
-  replace H with ((\*_(_ <- fs) \[]) \* H) at 1; last (rewrite hstar_fset_emptys; xsimpl).
+  replace H with ((\*_(_ <- fs) \[]) \* H) at 1; last (rewrite hbig_fset_emptys //).
   apply/hhoare_conseq=> [||?]; [|eauto|]; first last.
   { rewrite -hstar_fset_pure=> ?. exact. }
   apply (hhoare_hstar_fset _ (fun d v => \[v = _])); autos~.
@@ -4335,7 +4439,7 @@ Tactic Notation "xapp_nosubst" constr(E) :=
     involved [Hint Extern] tricks in CFML 2.0. *)
 
 Tactic Notation "xapp_apply_spec" :=
-  first [ first [solve [ eauto with lhtriple ]| solve [ eauto with htriple ]]
+  first [ first [solve [ eauto with lhtriple ]| solve [ eauto with htriple ] ]
         | match goal with H: _ |- _ => eapply H end ].
 
 (** [xapp_nosubst_for_records] is place holder for implementing [xapp] on
@@ -5295,11 +5399,11 @@ Admitted.
 
 Hint Resolve eqtype.eqxx : lhtriple.
 
-Lemma wp_for_aux i fs fs' ht (H : int -> int -> int -> (D -> val) -> hhprop) Z N C fsi hv0 k vr:
+Lemma wp_for_aux i fs fs' ht (H : int -> (D -> val) -> hhprop) Z N C fsi hv0 vr:
   (Z <= i <= N) ->
   (* (forall x y z hv1 hv2, x <= y <= z -> H x y hv1 \* H y z hv2 ==> \exists hv, H x z hv) -> *)
   (* (forall k Z i hv, exists k', forall j, H k' i j hv = H k Z j hv) -> *)
-  (forall i j k hv1 hv2, (forall x, indom (Union (interval i j) fsi) x -> hv1 x = hv2 x) -> H k i j hv1 = H k i j hv2) ->
+  (forall j hv1 hv2, (forall x, indom (Union (interval Z j) fsi) x -> hv1 x = hv2 x) -> H j hv1 = H j hv2) ->
   (forall i j, i <> j -> disjoint (fsi i) (fsi j)) ->
   fs = Union (interval i N) fsi ->
   (forall t, subst "for" t C = C) ->
@@ -5310,16 +5414,16 @@ Lemma wp_for_aux i fs fs' ht (H : int -> int -> int -> (D -> val) -> hhprop) Z N
   var_eq vr "cond" = false ->
   disjoint fs' fs ->
   (forall x, indom fs' x -> ht x = For i N (trm_fun vr C)) ->
-  (forall j k hv, Z <= j < N -> H k Z j hv ==> 
+  (forall j hv, Z <= j < N -> H j hv ==> 
     wp
       (fs' \u fsi j) 
       ((fun=> subst vr j C) \u_fs' ht) 
-      (fun hr => H k Z (j + 1) (hv \u_(Union (interval Z j) fsi) hr))) ->
-  H k Z i hv0 ==> 
+      (fun hr => H (j + 1) (hv \u_(Union (interval Z j) fsi) hr))) ->
+  H i hv0 ==> 
     wp
       (fs' \u fs)
       ht 
-      (fun hr => H k Z N (hv0 \u_(Union (interval Z i) fsi) hr)).
+      (fun hr => H N (hv0 \u_(Union (interval Z i) fsi) hr)).
 Proof. 
   move=> + hP Dj -> sfor scnt scond vcnt vfor vcond  + +.
   move: ht hv0.
@@ -5355,7 +5459,7 @@ Proof.
       { apply/wp_conseq=> ?; rewrite (wp_ht_eq _ ht'). xsimpl*.
         by move=> ? IND; rewrite /ht' uni_nin // => /(disjoint_inv_not_indom_both dj). }
         by move=> ??; rewrite /ht' uni_in. }
-    rewrite (wp_union (fun hr2 => H k Z N (_ \u_ _ hr2))) //.
+    rewrite (wp_union (fun hr2 => H N (_ \u_ _ hr2))) //.
     rewrite // intervalU; last math. 
     rewrite // Union_upd // -union_assoc.
     rewrite union_comm_of_disjoint -?union_assoc; first rewrite union_comm_of_disjoint.
@@ -5375,7 +5479,7 @@ Proof.
     { move: dj; rewrite disjoint_Union disjoint_comm; apply.
       rewrite indom_interval; math. }
     have: (Z <= i < N) by math.
-    move: (H0 i k hv0)=> /[apply]/wp_equiv S; xapp S.
+    move: (H0 i hv0)=> /[apply]/wp_equiv S; xapp S.
     move=> hr.
     apply: himpl_trans; first last.
     { apply: wp_conseq=> ?; rewrite uniA=> ?; exact. }
@@ -5401,15 +5505,13 @@ Proof.
     by move=> ??; rewrite uni_in. 
 Qed.
 
-Lemma wp_for fs fs' ht (H : int -> int -> int -> (D -> val) -> hhprop) Z N (C : trm) fsi hv0 k (P : hhprop) Q vr :
+Lemma wp_for fs fs' ht 
+  (H : int -> (D -> val) -> hhprop) Z N (C : trm) fsi hv0 (P : hhprop) Q vr :
 (* (forall x y z hv1 hv2, x <= y <= z -> H x y hv1 \* H y z hv2 ==> \exists hv, H x z hv) -> *)
-  (forall k i hv, exists k', 
-    forall j hv', Z <= i <= j -> (forall x, indom (Union (interval Z i) fsi) x -> hv x = hv' x) -> 
-      H k' i j hv' = H k Z j hv') ->
-  (forall j k hv, Z <= j < N -> H k j j hv ==> wp (fs' \u fsi j) ((fun=> subst vr j C) \u_fs' ht) (H k j (j + 1))) ->
-  (forall i j k hv1 hv2, (forall x, indom (Union (interval i j) fsi) x -> hv1 x = hv2 x) -> H k i j hv1 = H k i j hv2) ->
-  (P ==> H k Z Z hv0) -> 
-  (H k Z N ===> Q) ->
+  (forall j hv, Z <= j < N -> H j hv ==> wp (fs' \u fsi j) ((fun=> subst vr j C) \u_fs' ht) (fun hr => H (j + 1) (hr \u_(fsi j) hv))) ->
+  (forall j hv1 hv2, (forall x, indom (Union (interval Z j) fsi) x -> hv1 x = hv2 x) -> H j hv1 = H j hv2) ->
+  (P ==> H Z hv0) -> 
+  (H N ===> Q) ->
   (forall i j, i <> j -> disjoint (fsi i) (fsi j)) ->
   (Z <= N) ->
   fs = Union (interval Z N) fsi ->
@@ -5423,24 +5525,125 @@ Lemma wp_for fs fs' ht (H : int -> int -> int -> (D -> val) -> hhprop) Z N (C : 
   (forall x, indom fs' x -> ht x = For Z N (trm_fun vr C)) ->
   P ==> wp (fs' \u fs) ht Q.
 Proof.
-  move=> hp Hwp Heq HP HQ Dj *.
+  move=> Hwp Heq HP HQ Dj *.
   apply: himpl_trans; first exact/HP.
   apply: himpl_trans; first last.
   { apply: wp_conseq; exact/HQ. }
   apply: himpl_trans.
   { apply/(@wp_for_aux Z); eauto; first math.
-    clear -hp Hwp Heq Dj=> i k hv lP.
-    case: (hp k i hv)=> k' /[dup]HE<- //; last math.
-    move=> ? // /Hwp-/(_ lP). apply/wp_conseq=> hr.
-    rewrite -(HE _ (hv \u_ (Union (interval Z i) fsi) hr)).
-    { erewrite Heq; eauto=> ? IND; rewrite uni_nin //.
-      move: IND; rewrite ?indom_Union.
-      do ? setoid_rewrite indom_interval.
-      case=> ? [?] /[swap]-[?][?].
+    clear -Hwp Heq Dj=> i hv lP.
+    move=> ? // /Hwp -/(_ lP). apply/wp_conseq=> hr.
+    erewrite Heq; eauto=> ?.
+    rewrite intervalUr ?Union_upd // ?indom_union_eq; last math.
+    have ?: disjoint (Union (interval Z i) fsi) (fsi i).
+    { apply/disjoint_of_not_indom_both=> ?; rewrite indom_Union.
+      case=> ?; rewrite indom_interval=> -[?].
       apply/disjoint_inv_not_indom_both/Dj; math. }
-    { math. }
-    by move=> ??; rewrite uni_in. }
+    case=> IND. 
+    { rewrite uni_in // uni_nin //.
+      apply/disjoint_inv_not_indom_both; rewrite 1?disjoint_comm; eauto. }
+    rewrite uni_nin ?uni_in //.
+    apply/disjoint_inv_not_indom_both; eauto. }
   apply/wp_conseq=> ?; rewrite intervalgt ?Union0 ?uni0 //; by math.
+Qed.
+
+Hint Resolve hmerge_comm hmerge_assoc : core.
+
+Lemma wp_for_hbig_op fs fs' ht 
+  Inv
+  (R R' : D -> hhprop)
+  m (H : int -> hhprop) (H' : int -> (D -> val) -> hhprop) 
+  Z N (C : trm) fsi (P : hhprop) Q vr :
+  (forall l Q, Z <= l < N -> 
+    Inv l \* 
+    (\*_(d <- fsi l) R d) \* 
+    Q \(m) H l ==> 
+      wp (fs' \u fsi l) 
+         ((fun=> subst vr l C) \u_fs' ht) 
+         (fun hr => 
+            Inv (l + 1) \* 
+            (\*_(d <- fsi l) R' d) \* 
+            Q \(m) H' l hr)) ->
+  (forall (hv hv' : D -> val) m,
+    (forall i, indom (fsi m) i -> hv(i) = hv'(i)) ->
+    H' m hv = H' m hv') ->
+  comm m -> assoc m ->
+  (P ==>  
+    Inv Z \* 
+    (\*_(d <- Union (interval Z N) fsi) R d) \*
+    \(m)_(i <- interval Z N) H i) -> 
+  (forall hv,
+    Inv N \* 
+    (\*_(d <- Union (interval Z N) fsi) R' d) \* 
+    (\(m)_(i <- interval Z N) H' i hv) ==> Q hv) ->
+  (forall i j, i <> j -> disjoint (fsi i) (fsi j)) ->
+  (Z <= N) ->
+  fs = Union (interval Z N) fsi ->
+  (forall t, subst "for" t C = C) ->
+  (forall t, subst "cnt" t C = C) ->
+  (forall t, subst "cond" t C = C) ->
+  var_eq vr "cnt" = false ->
+  var_eq vr "for" = false ->
+  var_eq vr "cond" = false ->
+  disjoint fs' fs ->
+  (forall x, indom fs' x -> ht x = For Z N (trm_fun vr C)) ->
+  P ==> wp (fs' \u fs) ht Q.
+Proof.
+  move=> Hwp Heq CM AS HP HQ Dj *.
+  apply: himpl_trans; first exact/HP.
+  apply: himpl_trans; first last.
+  { apply: wp_conseq; exact/HQ. }
+  apply/(wp_for
+      (fun q hv => 
+        Inv q \* 
+        (\*_(d <- Union (interval Z q) fsi) R' d) \*
+        (\*_(d <- Union (interval q N) fsi) R d) \* 
+        (\(m)_(i <- interval Z q) H' i hv) \(m) (\(m)_(i <- interval q N) H i)) (fun=> 0)); eauto.
+  { clear -Hwp Dj CM AS Heq.
+    move=> l hv ?. 
+    set (Q := (\(m)_(i <- interval Z l) H' i hv) \(m) (\(m)_(i <- interval (l + 1) N) H i)).
+    move: (Hwp l Q)=> IH.
+    rewrite {1}intervalUr ?Union_upd //; last math.
+    have Dj': disjoint (fsi l) (Union (interval Z l) fsi).
+    { rewrite disjoint_Union=> ? /[! indom_interval] ?.
+      apply/Dj; math. }
+    rewrite hbig_fset_union // (@intervalU l N); last math.
+    rewrite Union_upd // hbig_fset_union //; first last.
+    { rewrite disjoint_Union=> ? /[! indom_interval] ?.
+      apply/Dj; math. }
+    apply/xapp_lemma'; [|rewrite <-wp_equiv; apply/IH; math|].
+    { reflexivity. }
+    unfold protect.
+    rew_heap.
+    xsimpl*.
+    suff<-: Q \(m) H l = 
+      (\(m)_(i0 <- interval Z l) H' i0 hv) \(m) 
+      (\(m)_(i0 <- update (interval (l + 1) N) l tt) H i0).
+    { xsimpl=> hr. rewrite /Q.
+      rewrite hmerge_assoc // [_ \(m) H' _ _]hmerge_comm //.
+      rewrite -hmerge_assoc // => h.
+      apply: applys_eq_init; apply/(congr1 (@^~ h)).
+      fequal. rewrite intervalUr ?hbig_fset_update //; eauto; last math.
+      { rewrite hmerge_comm; eauto. fequal.
+        { apply/hbig_fset_eq=> ? +; rewrite indom_interval=> ?. 
+          apply/Heq=> ? ind; rewrite uni_nin //.
+          move: ind=> /[swap]; apply/disjoint_inv_not_indom_both/Dj; math. }
+        apply/Heq=> *; by rewrite uni_in. }
+      rewrite indom_interval le_zarith lt_zarith. lia. }
+      rewrite /Q hmerge_assoc // [_ \(m) H _]hmerge_comm //.
+      rewrite hbig_fset_update ?indom_interval; eauto.
+      rewrite le_zarith lt_zarith; lia. }
+  { move=> q hv hv' hvE.
+    suff->:
+      (\(m)_(i0 <- interval Z q) H' i0 hv') = 
+      (\(m)_(i0 <- interval Z q) H' i0 hv) by [].
+    apply/hbig_fset_eq=> ??; apply/Heq=> *; apply/eq_sym/hvE.
+    rewrite indom_Union; eexists; autos*. }
+  { rewrite [_ Z Z]intervalgt; last math.
+    rewrite Union0 ?hbig_fset_empty hmerge_hempty_l; xsimpl. }
+  { move=> ?.
+    rewrite [_ N N]intervalgt; last math.
+    rewrite Union0 ?hbig_fset_empty hmerge_hempty_r. xsimpl. }
 Qed.
 
 End For_loop.
@@ -6008,29 +6211,33 @@ Hint Rewrite @disjoint_single disjoint_interval disjoint_single_interval
   disjoint_interval_single @disjoint_eq_label @disjoint_label : disjointE.
 Hint Rewrite indom_interval indom_single_eq : indomE.
 
-Lemma xfor_big_op_lemma H (R R' : D.type -> hhprop) op p s fsi1 (*fsi2*) vr
-  Z N  (*op1 : int -> int -> int*) (i : nat) j (*k*) (C1 : D.type -> trm) (*C2 : D.type -> trm*) (C : trm)
+Lemma xfor_lemma 
+  Inv 
+  (R R' : D.type -> hhprop)
+  m (H : int -> hhprop) (H' : int -> (D -> val) -> hhprop)
+  s fsi1 vr
+  Z N (i : nat) j (C1 : D.type -> trm) (C : trm)
   Pre Post: 
-  (forall (l : int) (x : int), 
+  (forall (l : int) Q, 
     Z <= l <= N ->
-    {{ H l \* 
+    {{ Inv l \* 
        (\*_(d <- ⟨j, fsi1 l⟩) R d) \* 
-       p ~⟨i, s⟩~> x }}
+       Q \(m) H l }}
       [{
         {i| _  in single s tt  => subst vr l C};
         {j| ld in fsi1 l       => C1 ld}
-        (* [k| ld in fsi2 l       => C2 ld] *)
       }]
     {{ v, 
-        H (l + 1) \* 
+        Inv (l + 1) \* 
         (\*_(d <- ⟨j, fsi1 l⟩) R' d) \* 
-        p ~⟨i, s⟩~> (x + (op v l)) }}) ->
+        Q \(m) H' l v }}) ->
   (forall i0 j0 : int, i0 <> j0 -> disjoint (fsi1 i0) (fsi1 j0)) ->
   (forall (hv hv' : D -> val) m,
     (forall i, indom (fsi1 m) i -> hv[j](i) = hv'[j](i)) ->
-    op hv m = op hv' m) ->
-  (i <> j) ->
-  (Z <= N)%Z ->
+    H' m hv = H' m hv') ->
+  comm m -> assoc m ->
+  i <> j ->
+  Z <= N%Z ->
   (forall t : val, subst "for" t C = C) -> 
   (forall t : val, subst "cnt" t C = C) ->
   (forall t : val, subst "cond" t C = C) ->
@@ -6038,13 +6245,13 @@ Lemma xfor_big_op_lemma H (R R' : D.type -> hhprop) op p s fsi1 (*fsi2*) vr
   var_eq vr "for" = false ->
   var_eq vr "cond" = false ->
   (Pre ==> 
-    H Z \* 
+    Inv Z \* 
     (\*_(d <- Union (interval Z N) fsi1) R d) \*
-    p ~⟨i, s⟩~> 0) ->
+    \(m)_(i <- interval Z N) H i) ->
   (forall hv, 
-    H N \* 
+    Inv N \* 
     (\*_(d <- Union (interval Z N) fsi1) R' d) \* 
-    p ~⟨i, s⟩~> (Σ_(i <- interval Z N) (op hv i)) ==>
+    (\(m)_(i <- interval Z N) H' i hv) ==>
     Post hv) -> 
   {{ Pre }}
     [{
@@ -6054,7 +6261,7 @@ Lemma xfor_big_op_lemma H (R R' : D.type -> hhprop) op p s fsi1 (*fsi2*) vr
     }]
   {{ v, Post v }}.
 Proof.
-  move=> IH Dj opP iNj ?? ??? ??? PostH.
+  move=> IH Dj opP CM AS iNj ?? ??? ??? PostH.
   apply:himpl_trans; first eauto.
   rewrite /ntriple /nwp ?fset_of_cons /=.
   apply: himpl_trans; first last.
@@ -6062,49 +6269,55 @@ Proof.
   rewrite ?Union_label fset_of_nil union_empty_r.
   apply/(
     wp_for _ ⟨i, single s tt⟩
-      (fun x (r : int) q hv => 
-        H q \* 
+      (fun q hv => 
+        Inv q \* 
         (\*_(d <- Union (interval Z q) fsi1) R' d) \*
         (\*_(d <- Union (interval q N) fsi1) R d) \* 
-        p ~⟨i, s⟩~> (x + Σ_(l <- interval r q) op hv l))
+        (\(m)_(i <- interval Z q) H' i hv) \(m) (\(m)_(i <- interval q N) H i))
       Z N C
       (fun t : int => ⟨j, fsi1 t⟩)
-      (fun=> 0) 0)=> //; try eassumption.
-  { move=> k r hv.
-    exists (k + Σ_(l <- interval Z r) op hv l)=> t hv' lP hvE.
-    suff->: 
-      k + Σ_(l <- interval Z r) op hv l +
-      Σ_(l <- interval r t) op hv' l = 
-      k + Σ_(l <- interval Z t) op hv' l by xsimpl.
-    rewrite (SumPart _ lP).
-    suff->: 
-      Σ_(l <- interval Z r) op hv' l = 
-      Σ_(l <- interval Z r) op hv l by math.
-    apply/SumEq=> *. 
-    apply/eq_sym/opP=> *; apply/hvE.
-    rewrite indom_Union; eexists; rewrite indom_label_eq; eauto. }
-  { clear -IH Dj iNj.
-    move=>l x hv ?; move: (IH l x).
-    rewrite /ntriple /nwp ?fset_of_cons /= ?fset_of_nil SumxSx.
-    rewrite union_empty_r [interval l l]intervalgt; last math.
-    rewrite Sum0 Z.add_0_r intervalUr; try math.
-    rewrite Union_upd // hstar_fset_union; first last.
+      (fun=> 0))=> //; try eassumption.
+  { clear -IH Dj iNj CM AS opP.
+    move=> l hv ?. 
+    set (Q := (\(m)_(i <- interval Z l) H' i hv) \(m) (\(m)_(i <- interval (l + 1) N) H i)).
+    move: (IH l Q).
+    rewrite /ntriple /nwp ?fset_of_cons /= ?fset_of_nil.
+    rewrite union_empty_r => {}IH.
+    rewrite {1}intervalUr ?Union_upd //; last math.
+    have Dj': disjoint (fsi1 l) (Union (interval Z l) fsi1).
     { rewrite disjoint_Union=> ? /[! indom_interval] ?.
       apply/Dj; math. }
-    rewrite (@intervalU l N); last math.
-    rewrite Union_upd // hstar_fset_union; first last.
+    rewrite hbig_fset_union // (@intervalU l N); last math.
+    rewrite Union_upd // hbig_fset_union //; first last.
     { rewrite disjoint_Union=> ? /[! indom_interval] ?.
       apply/Dj; math. }
-    move=> Hwp.
     erewrite wp_ht_eq.
-    { apply: xapp_lemma'; [|rewrite <-wp_equiv; apply/Hwp; math|].
+    { apply/xapp_lemma'; [|rewrite <-wp_equiv; apply/IH; math|].
       { reflexivity. }
       unfold protect.
       rew_heap.
       xsimpl*.
-      move: (hstar_fset (fsi1 _) _)=> HR.
+      move: (hbig_fset _ (fsi1 _) _)=> HR.
       rewrite -hstar_assoc [_ \* HR]hstar_comm hstar_assoc.
-      xsimpl. }
+      xsimpl.
+      suff<-: Q \(m) H l = 
+        (\(m)_(i0 <- interval Z l) H' i0 hv) \(m) 
+        (\(m)_(i0 <- update (interval (l + 1) N) l tt) H i0).
+      { xsimpl=> hr. rewrite /Q.
+        rewrite hmerge_assoc // [_ \(m) H' _ _]hmerge_comm //.
+        rewrite -hmerge_assoc // => h.
+        apply: applys_eq_init; apply/(congr1 (@^~ h)).
+        fequal. rewrite intervalUr ?hbig_fset_update //; eauto; last math.
+        { rewrite hmerge_comm; eauto. fequal.
+          { apply/hbig_fset_eq=> ? +; rewrite indom_interval=> ?. 
+            apply/opP=> ? ind; rewrite uni_nin //.
+            rewrite indom_label_eq=> -[_]; move: ind=> /[swap].
+            apply/disjoint_inv_not_indom_both/Dj; math. }
+          apply/opP=> *; by rewrite uni_in // indom_label_eq. }
+        rewrite indom_interval le_zarith lt_zarith. lia. }
+      rewrite /Q hmerge_assoc // [_ \(m) H _]hmerge_comm //.
+      rewrite hbig_fset_update ?indom_interval; eauto.
+      rewrite le_zarith lt_zarith; lia. }
     case=> l' ?; rewrite indom_union_eq ?indom_label_eq=> -[][??]; subst.
     { rewrite uni_in ?indom_label_eq //= /htrm_of.
       case: classicT=> //; autos*. }
@@ -6113,22 +6326,83 @@ Proof.
     move=> [_]?[]; split=> //.
     rewrite indom_Union; setoid_rewrite indom_interval; do ? (eexists; eauto).
     all: math. }
-  { move=> q r k hv hv' hvE.
+  { move=> q hv hv' hvE.
     suff->:
-      Σ_(l <- interval q r) op hv l = 
-      Σ_(l <- interval q r) op hv' l by xsimpl.
-    apply/SumEq=> *; apply/opP=> *; apply/hvE.
+      (\(m)_(i0 <- interval Z q) H' i0 hv') = 
+      (\(m)_(i0 <- interval Z q) H' i0 hv) by [].
+    apply/hbig_fset_eq=> ??; apply/opP=> *; apply/eq_sym/hvE.
     rewrite indom_Union; eexists; rewrite indom_label_eq; autos*. }
   { rewrite [_ Z Z]intervalgt; last math.
-    rewrite Union0 hstar_fset_empty Sum0. xsimpl. }
+    rewrite Union0 ?hbig_fset_empty hmerge_hempty_l; xsimpl. }
   { move=> ?.
     rewrite [_ N N]intervalgt; last math.
-    rewrite Union0 hstar_fset_empty. xsimpl. }
+    rewrite Union0 ?hbig_fset_empty hmerge_hempty_r. xsimpl. }
   { by move=> * /[! @disjoint_eq_label]; apply/Dj. }
   { rewrite disjoint_Union=> ??; rewrite disjoint_label.
     by left=> ?; subst.  }
   by case=> l d; rewrite indom_label_eq /= /htrm_of; case: classicT.
 Qed.
+
+Lemma xfor_lemma2
+  Inv 
+  (R1 R2 R1' R2' : D.type -> hhprop)
+  m (H : int -> hhprop) (H' : int -> (D -> val) -> hhprop)
+  s fsi1 fsi2 vr
+  Z N (i j k : nat) (C1 C2 : D.type -> trm) (C : trm)
+  Pre Post: 
+  (forall (l : int) Q, 
+    Z <= l <= N ->
+    {{ Inv l \* 
+       (\*_(d <- ⟨j, fsi1 l⟩) R1 d) \* 
+       (\*_(d <- ⟨j, fsi2 l⟩) R2 d) \* 
+       Q \(m) H l }}
+      [{
+        {i| _  in single s tt  => subst vr l C};
+        {j| ld in fsi1 l       => C1 ld};
+        {j| ld in fsi2 l       => C2 ld}
+      }]
+    {{ v, 
+        Inv (l + 1) \* 
+        (\*_(d <- ⟨j, fsi1 l⟩) R1' d) \*
+        (\*_(d <- ⟨j, fsi2 l⟩) R2' d) \* 
+        Q \(m) H' l v }}) ->
+  (forall i0 j0 : int, i0 <> j0 -> disjoint (fsi1 i0) (fsi1 j0)) ->
+  (forall i0 j0 : int, i0 <> j0 -> disjoint (fsi2 i0) (fsi2 j0)) ->
+  (forall (hv hv' : D -> val) m,
+    (forall i, indom (fsi1 m) i -> hv[j](i) = hv'[j](i)) ->
+    H' m hv = H' m hv') ->
+  comm m -> assoc m ->
+  i <> j ->
+  j <> k ->
+  i <> k ->
+  Z <= N%Z ->
+  (forall t : val, subst "for" t C = C) -> 
+  (forall t : val, subst "cnt" t C = C) ->
+  (forall t : val, subst "cond" t C = C) ->
+  var_eq vr "cnt" = false ->
+  var_eq vr "for" = false ->
+  var_eq vr "cond" = false ->
+  (Pre ==> 
+    Inv Z \* 
+    (\*_(d <- Union (interval Z N) fsi1) R1 d) \*
+    (\*_(d <- Union (interval Z N) fsi2) R2 d) \*
+    \(m)_(i <- interval Z N) H i) ->
+  (forall hv, 
+    Inv N \* 
+    (\*_(d <- Union (interval Z N) fsi1) R1' d) \* 
+    (\*_(d <- Union (interval Z N) fsi2) R2' d) \* 
+    (\(m)_(i <- interval Z N) H' i hv) ==>
+    Post hv) -> 
+  {{ Pre }}
+    [{
+      {i| _  in single s tt => For Z N (trm_fun vr C)};
+      {j| ld in Union (interval Z N) fsi1 => C1 ld};
+      {j| ld in Union (interval Z N) fsi2 => C2 ld}
+      (* [k| ld in Union (interval Z N) fsi2 => C2 ld] *)
+    }]
+  {{ v, Post v }}.
+Proof.
+Admitted.
 
 Lemma foo H1 H2 H3 H4 : H1 = H2 -> H3 = H4 -> H1 \* H3 = H2 \* H4.
 by move=> ->->.
@@ -6164,10 +6438,10 @@ Ltac xsubst f g :=
     | xsubst_rew c2 c1
     | move=> ?; xsubst_rew c2 c1
     | clear c1 c2
-  ]]]; rewrite /labf_of /comp /=.
+  ] ] ]; rewrite /labf_of /comp /=.
 
 Ltac xfor I R R' :=
-  apply/(xfor_big_op_lemma I R R')=> //=; 
+  apply/(xfor_lemma I R R')=> //=; 
   [ | | | | try by xsimpl*]; simpl;
   [ 
   | intros; autorewrite with disjointE; try math
@@ -6388,7 +6662,7 @@ Definition pow_sum : trm :=
 
 Ltac myfold := rewrite -/pow_aux-/(For_aux _ _)-/(For _ _ _).
 
-Theorem optimize_pow_sum (x : int) (q : loc) :
+(* Theorem optimize_pow_sum (x : int) (q : loc) :
   {{ q ~⟨1, 0⟩~> 0 }}
   [{
     [1| ld in {::0} => pow_sum q x];
@@ -6435,7 +6709,7 @@ Proof with myfold.
   xwp; xapp.
   xwp; xval.
   xsimpl; math.
-Qed.
+Qed. *)
 
 (* From mathcomp Require Import zify.
 
