@@ -1652,24 +1652,24 @@ Admitted.
 Lemma indom_interval x y z : indom (interval x y) z = (x <= z < y).
 Admitted.
 
-Lemma Union_upd {T D} (x : T) (fs : fset T) (fsi : T -> fset D) : 
+Lemma Union_upd {T A B} (x : T) (fs : fset T) (fsi : T -> fmap A B) : 
   (forall i j, i <> j -> disjoint (fsi i) (fsi j)) ->
   Union (update fs x tt) fsi = fsi x \+ Union fs fsi.
 Admitted.
 
-Lemma Union0 {T D} (fsi : T -> fset D) : Union empty fsi = empty.
+Lemma Union0 {T A B} (fsi : T -> fmap A B) : Union empty fsi = empty.
 Admitted.
 
-Lemma Union_union {T D} (fs : fset T) (fsi1 fsi2 : T -> fset D) :
+Lemma Union_union {T A B} (fs : fset T) (fsi1 fsi2 : T -> fmap A B) :
   Union fs fsi1 \+ Union fs fsi2 = Union fs (fun t => fsi1 t \+ fsi2 t).
 Admitted.
 
-Lemma disjoint_Union {T D} (fs : fset T) (fsi : T -> fset D) fs' :
+Lemma disjoint_Union {T A B} (fs : fset T) (fsi : T -> fmap A B) fs' :
   ((disjoint (Union fs fsi) fs' = forall i, indom fs i -> disjoint (fsi i) fs') * 
   (disjoint fs' (Union fs fsi) = forall i, indom fs i -> disjoint (fsi i) fs'))%type.
 Admitted.
   
-Lemma indom_Union {T S} (fs : fset T) (fsi : T -> fset S) x : 
+Lemma indom_Union {T A B} (fs : fset T) (fsi : T -> fmap A B) x : 
   indom (Union fs fsi) x = exists f, indom fs f /\ indom (fsi f) x.
 Admitted.
 
