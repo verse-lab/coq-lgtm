@@ -7,23 +7,32 @@ Set Implicit Arguments.
 
 Section LabeledType.
 
-From mathcomp Require Import seq ssrbool ssrnat eqtype ssreflect ssrfun.
+From mathcomp Require Import seq ssrbool ssrnat ssreflect ssrfun choice.
 
 Section Gen.
 
 Context (T : Type) (def : T).
 
-Definition labType := nat.
+Definition labType := (int * int)%type.
 
 Record labeled := Lab {
   lab  :  labType; 
   el   :> T;
 }.
 
+Definition lab_eqb (l1 l2 : labType) : bool :=
+  Z.eqb l1.1 l2.1 && Z.eqb l1.2 l2.2.
+
+Lemma eqbxx l : lab_eqb l l.
+Proof. by case: l=> ??; rewrite /lab_eqb Z.eqb_refl Z.eqb_refl. Qed.
+
+Infix "==" := lab_eqb (at level 10, no associativity).
+Infix "!=" := (fun x y => ~~ lab_eqb x y) (at level 10, no associativity).
+
 Definition labSeq := seq labeled.
 
 Definition lookup (s : labSeq) (l : labType) : labeled := 
-  nth (Lab 0%nat def) s (find [pred lt | lab lt == l] s).
+  nth (Lab (0,0)%Z def) s (find [pred lt | lab lt == l] s).
 
 Definition remove (s : labSeq) (l : labType) := 
   [seq lt <- s | lab lt != l].
@@ -39,15 +48,20 @@ Admitted.
 
 End Gen.
 
+Infix "==" := lab_eqb (at level 20, no associativity).
+Infix "!=" := (fun x y => ~~ lab_eqb x y) (at level 10, no associativity).
+
 Context (S : Type) (T : Type) (def : T).
 
 Definition lab_union (fss : labSeq (fset T)) : fset (labeled T).
 Proof using. Admitted.
 Definition label (lfs : labeled (fset T)) : fset (labeled T). 
 Proof using. Admitted.
+
+(* Search  *)
+
 Definition lab_funs (f : labSeq (S -> T)) : labeled S -> T :=
-  fun ls => 
-    el (nth (Lab 0%nat (fun=> def)) f (lab ls)) (el ls).
+  fun ls => el (nth (Lab (0, 0)%Z (fun=>def)) f (find (fun x => lab x == lab ls) f)) (el ls).
 
 Definition lab_fun (f : labeled (S -> T)) : labeled S -> T :=
   fun ls => el f (el ls).
@@ -62,8 +76,9 @@ Definition lab_fun_upd (f g : labeled S -> T) l : labeled S -> T :=
 Lemma lab_fun_upd_neq f g l (l' : labType) x : 
   l' <> l -> lab_fun_upd f g l (Lab l' x) = g (Lab l' x).
 Proof.
-  by rewrite/lab_fun_upd; move/(negPP eqP)/negbTE->.
-Qed.
+  (* by rewrite/lab_fun_upd; move/(negPP eqP)/negbTE->.
+Qed. *)
+Admitted.
 
 Definition app_lab (f : labeled S -> T) : labType -> S -> T := 
   fun l s => f (Lab l s).
@@ -94,7 +109,7 @@ Lemma labf_ofK {T S} (f : T -> S) g :
   cancel (labf_of f) (labf_of g) -> 
   cancel f g.
 Proof.
-  move=> c x; move: (c (Lab 0%nat x)).
+  move=> c x; move: (c (Lab (0,0)%Z x)).
   rewrite /labf_of /=; by case.
 Qed.
 
