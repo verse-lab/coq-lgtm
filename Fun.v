@@ -39,12 +39,17 @@ Proof.
   apply: functional_extensionality=>z.
   have T: isTrue (x = z) -> x = z by apply istrue_isTrue_forw.
   rewrite -!if_isTrue.
-  case:ifP=>H1; case:ifP=> H2; first by move:H2=>/T->.
-  Focus 2. (* I don't think this one is true *)
-Admitted.
-
-
-Admitted.
+  case:ifP=>H1; case:ifP=> H2; rewrite indom_union_eq isTrue_or /or in H1; 
+                           first by move:H2=>/T->.
+  - case: ifP=>//H3; case: ifP H1=>[|_]; last by case:ifP H3=>// /istrue_isTrue_forw.  
+    move/istrue_isTrue_forw; rewrite indom_single_eq=>?; subst z. 
+    by rewrite isTrue_eq_false_eq in H2. 
+  - case: ifP H1; rewrite indom_single_eq=>//.
+    + by move:H2=> /istrue_isTrue_forw->; rewrite isTrue_eq_false_eq.
+  case: ifP=>// /istrue_isTrue_forw H3.
+  case: ifP H1=>//; rewrite isTrue_eq_false_eq indom_single_eq=> H1.
+  by case: ifP=>//; rewrite isTrue_eq_false_eq.
+Qed.
 
 Lemma uni_nin A B (f g : A -> B) x fs : 
   ~ indom fs x ->
