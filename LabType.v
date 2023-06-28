@@ -65,7 +65,7 @@ Definition has_lab (s : labSeq) (l : labType) :=
 Lemma hasnt_lab s l : 
   ~ has_lab s l -> 
     s = remove s l.
-Proof.
+Proof using.
   elim: s=>//h t Hi/=.
   move/negP; rewrite negb_or=>/andP; case=>H1 H2.
   case: ifP=>[_|/negbFE]; first by congr (_ :: _); apply: Hi; apply/negP.
@@ -100,9 +100,8 @@ Definition lab_fun_upd (f g : labeled S -> T) l : labeled S -> T :=
 Lemma lab_fun_upd_neq f g l (l' : labType) x : 
   l' <> l -> lab_fun_upd f g l (Lab l' x) = g (Lab l' x).
 Proof.
-  (* by rewrite/lab_fun_upd; move/(negPP eqP)/negbTE->.
-Qed. *)
-Admitted.
+  by rewrite/lab_fun_upd=>/=; case: ifP=>//; move/eqP->. 
+Qed.
 
 Definition app_lab (f : labeled S -> T) : labType -> S -> T := 
   fun l s => f (Lab l s).
