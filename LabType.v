@@ -26,6 +26,21 @@ Definition lab_eqb (l1 l2 : labType) : bool :=
 Lemma eqbxx l : lab_eqb l l.
 Proof. by case: l=> ??; rewrite /lab_eqb Z.eqb_refl Z.eqb_refl. Qed.
 
+Lemma eqbxx' l : lab_eqb l l = true.
+Proof. by case: l=> ??; rewrite /lab_eqb Z.eqb_refl Z.eqb_refl. Qed.
+
+Lemma lab_neqd l l' : is_true (negb (lab_eqb l' l)) -> l <> l'.
+Proof. by move=> /[swap]->; rewrite eqbxx'. Qed.
+
+Lemma lab_eqbP l l' : lab_eqb l l' -> l = l'.
+Proof. 
+  rewrite /lab_eqb istrue_and_eq -?bool_eq_true_eq ?Z.eqb_eq=> -[].
+  by case: l  l'=> ?? []??/=->->. 
+Qed.
+
+Lemma lab_eqb_sym l l' :  lab_eqb l l' = lab_eqb l' l.
+Proof. by rewrite /lab_eqb Z.eqb_sym [l.2 =? _]Z.eqb_sym. Qed.
+
 Infix "==" := lab_eqb (at level 10, no associativity).
 Infix "!=" := (fun x y => ~~ lab_eqb x y) (at level 10, no associativity).
 
@@ -57,8 +72,6 @@ Infix "!=" := (fun x y => ~~ lab_eqb x y) (at level 10, no associativity).
 
 Context (S : Type) (T : Type) (def : T).
 
-Definition lab_union (fss : labSeq (fset T)) : fset (labeled T).
-Proof using. Admitted.
 Definition label (lfs : labeled (fset T)) : fset (labeled T). 
 Proof using. Admitted.
 
