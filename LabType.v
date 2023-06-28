@@ -1,7 +1,7 @@
 From SLF Require Export LibCore.
 From SLF Require Export LibSepFmap.
 
-From mathcomp Require Import ssreflect ssrfun.
+From mathcomp Require Import ssreflect ssrfun .
 
 Set Implicit Arguments.
 
@@ -62,8 +62,12 @@ Definition has_lab (s : labSeq) (l : labType) :=
 Lemma hasnt_lab s l : 
   ~ has_lab s l -> 
     s = remove s l.
-Proof using.
-Admitted.
+Proof.
+  elim: s=>//h t Hi/=.
+  move/negP; rewrite negb_or=>/andP; case=>H1 H2.
+  case: ifP=>[_|/negbFE]; first by congr (_ :: _); apply: Hi; apply/negP.
+  by move=> H3; move: H3 H1=>/lab_eqbP->/negP; case; apply: eqbxx.
+Qed.
 
 End Gen.
 
