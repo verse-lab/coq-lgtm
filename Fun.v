@@ -71,10 +71,12 @@ Lemma upd_upd A B (f : A -> B) x y z w :
   x <> z -> 
   upd (upd f x y) z w = upd (upd f z w) x y.
 Proof.
-Admitted.
+  move=>H; rewrite /upd; apply:fun_ext_1=>v.
+  case: classicT; case: classicT=>//.
+  by move=><-?; subst z.
+Qed.
 
 (* Definition fcomp A B C (f : A -> B) (g : C -> A) := fun x => f (g (x)). *)
-
 
 Lemma upd_uni_update A B (f g : A -> B) (x : A) (y : B) fs : 
   ~ indom fs x ->
