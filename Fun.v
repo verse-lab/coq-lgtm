@@ -94,4 +94,7 @@ Qed.
 
 Lemma updE A B (f : A -> B) x :
   f = upd f x (f x).
-Admitted.
+Proof.
+  rewrite /upd; apply:fun_ext_1=>z.
+  by case: classicT=>//->.
+Qed.
