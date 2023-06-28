@@ -3,8 +3,6 @@ From SLF Require Export LibSepFmap.
 
 From mathcomp Require Import ssreflect ssrfun ssrbool.
 
-Require Import Coq.Logic.FunctionalExtensionality.
-
 Definition upd {A B : Type} (f : A -> B) x y :=
   fun z => If x = z then y else f z.
 
@@ -29,14 +27,14 @@ Proof. by move=>H; apply: If_l. Qed.
 
 Lemma uni0 A B (f g : A -> B) : 
   uni empty f g = g.
-Proof. by apply: functional_extensionality=>x; apply: If_r. Qed.
+Proof. by apply:fun_ext_1=>x; apply: If_r. Qed.
 
 Lemma uni_upd A B (f g : A -> B) x fs :
   ~ indom fs x ->
   uni (update fs x tt) f g = upd (uni fs f g) x (f x).
 Proof.
   move=>H; rewrite /update /upd/uni.
-  apply: functional_extensionality=>z.
+  apply: fun_ext_1=>z.
   have T: isTrue (x = z) -> x = z by apply istrue_isTrue_forw.
   rewrite -!if_isTrue.
   case:ifP=>H1; case:ifP=> H2; rewrite indom_union_eq isTrue_or /or in H1; 
@@ -55,7 +53,9 @@ Lemma uni_nin A B (f g : A -> B) x fs :
   ~ indom fs x ->
   uni fs f g x = g x.
 Proof.
-Admitted.
+  move=>H; rewrite /uni -!if_isTrue.
+  by case: ifP=>//; move/istrue_isTrue_forw. 
+Qed.
 
 Lemma uniA A B (f1 f2 g : A -> B) fs1 fs2 : 
   uni fs1 f1 (uni fs2 f2 g) = 
