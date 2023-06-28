@@ -79,8 +79,9 @@ Infix "!=" := (fun x y => ~~ lab_eqb x y) (at level 10, no associativity).
 
 Context (S : Type) (T : Type) (def : T).
 
-Definition label (lfs : labeled (fset T)) : fset (labeled T). 
-Proof using. Admitted.
+Definition label (lfs : labeled (fset T)) : fset (labeled T) := 
+  let l := lab lfs in 
+    Union (el lfs) (fun i => single (Lab l i) tt).
 
 (* Search  *)
 
