@@ -35,8 +35,12 @@ Lemma uni_upd A B (f g : A -> B) x fs :
   ~ indom fs x ->
   uni (update fs x tt) f g = upd (uni fs f g) x (f x).
 Proof.
-  (* move=> ?; extens=> d. *)
-Admitted.
+  move=>H; rewrite /update /upd/uni.
+  apply: functional_extensionality=>z.
+  have T: isTrue (x = z) -> x = z by apply istrue_isTrue_forw.
+  rewrite -!if_isTrue.
+  case:ifP=>H1; case:ifP=> H2; first by move:H2=>/T->.
+  Focus 2. (* I don't think this one is true *)
 
 Lemma uni_nin A B (f g : A -> B) x fs : 
   ~ indom fs x ->
