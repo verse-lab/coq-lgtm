@@ -1976,7 +1976,55 @@ Proof.
 Qed.
 
 
-
+Lemma eval1_det h1 h2 ht d hv h2' hv' : 
+  eval1 d h1 ht h2 hv ->
+  eval1 d h1 ht h2' hv' ->
+    h2 = h2' /\ hv = hv'.
+Proof.
+  move=> ev; elim: ev h2' hv'.
+  all: intros; 
+    match goal with 
+    | H : eval1 _ _ _ _ _ |- _ => try by inversion H
+    end.
+  { inversion H6; subst. all: try by case: H=> /=.
+    { case: (H1 _ _ H10)=> ??; subst.
+      case: (H3 _ _ H12)=> ??; subst.
+      by case: (H5 _ _ H15)=> ??; subst. }
+    { inversion H0; subst; simpl in *; autos*.
+      all: try by inversion H12.
+      by inversion H12; inversion H13; subst. }
+    inversion H0; subst; simpl in *; autos*=> //.
+    inversion H13. }
+  all: try by (inversion H2; subst=> //; simpl in *; autos*;
+    case: H6=> *; subst; exact/H1).
+  { inversion H3; subst; apply/H2; case: (H0 _ _ H7)=>-> //. }
+  { inversion H3; subst; apply/H2; case: (H0 _ _ H10)=>->-> //. }
+  { by inversion H1; subst; apply/H0. }
+  { inversion H0; subst; simpl in *; autos*.
+    all: try by inversion H; subst=> //.
+    inversion H; inversion H6; subst; split=> //; by case: H5=>->. }
+  { inversion H0; subst; simpl in *; autos*.
+    all: try by inversion H; subst=> //.
+    { inversion H4; subst; simpl in *; autos*.
+      all: try by inversion H.
+      inversion H; inversion H10; subst=> //. }
+    inversion H; inversion H7; subst=> //; split=> //.
+    all: try by case: H6 H8=> -> [->] //.
+    all: try by case: H9 H10=> -> [->] //.
+    case: H9 H10 H1 H6=>-> [->] <-/eq_nat_of_eq_int-> //. }
+  { inversion H1; subst=> //; simpl in *; autos*.
+    { by inversion H7. }
+    have-> //: (p = p0). 
+    exact/eq_nat_of_eq_int/Z.le_antisymm/H3/H0/H. }
+  { inversion H1; subst=> //; simpl in *; autos*.
+    by inversion H7. }
+  { inversion H0; subst=> //; simpl in *; autos*.
+    { inversion H4; subst=> //; simpl in *; autos*.
+      by inversion H10. }
+    by inversion H7. }
+  inversion H0; subst=> //; simpl in *; autos*.
+  by inversion H6.
+Qed.
 
 Lemma eval_valid_subst h h' (f : D -> D) fs hv ht :
   valid_subst h (fun x : loc * D => (x.1, f x.2)) -> 
@@ -1985,9 +2033,39 @@ Lemma eval_valid_subst h h' (f : D -> D) fs hv ht :
     valid_subst h' (fun x : loc * D => (x.1, f x.2)) /\
     (forall x y, f x = f y -> hv x = hv y).
 Proof.
-  (* move=> v fP [IN OUT] [l d][l' d']/= [<-] /[dup]fE/fP[]. *)
-  (* move/IN=> /[swap]/IN. *)
-Admitted.
+  move=> v fP [IN OUT]. 
+  have v': valid_subst h' (fun x : loc * D => (x.1, f x.2)).
+  { case=> ? d [l d'] [->]/[dup].
+    case: (prop_inv (d = d'))=> [->|]//.
+    move/fP/[apply]=> -[] /IN/= ev1 /IN /= ev2 fE.
+    set (g x := If x = d' then d else If x = d then d' else x).
+    have c: cancel g g.
+    { move=> x; rewrite /g; do ? case: classicT=> //.
+      by move<-. }
+    have EQ: proj h d' = fsubst (proj h d) (fun '(x, d) => (x, g d)).
+    { apply/fmap_extens=> -[l' e].
+      rewrite -{2}[e]c (fsubst_valid_eq (l', g e))=> [|[]??[]??[]->/(can_inj c)->]//.
+      rewrite /g; case: classicT=> [->|]/=; rewrite /map_filter.
+      { rewrite (v (l', d) (l', d')); autos*.
+        by do ? case: classicT. }
+      do ? case: classicT=> //; try by (do ? case: (fmap_data _ _ )).
+      by move=>->. }
+    move: (eval1_fsubst (fun d => ht (f d)) (f := g) (g := g) (h := (proj h d)) (h' := (proj h' d'))).
+    move/(_ (hv d') d c c); rewrite -EQ fE.
+    have->: g d = d' by (rewrite /g; do ? case: classicT=> //).
+    rewrite fE in ev1.
+    move/(_ ev2)/eval1_det/(_ ev1)=> [] /(congr1 ((@fmap_data _ _)^~  (l, g d'))).
+    rewrite (fsubst_valid_eq (l, d')).
+    { have->: g d' = d by (rewrite /g; do ? case: classicT=> //).
+      rewrite /proj /= /map_filter; do ? case: (fmap_data _ _)=> // >.
+      all: do ? case: classicT=> //. }
+    by case=> ??[??]/= [->]/(congr1 g)/[! c]->. }
+  split=> // d1 d2/[dup].
+  case: (prop_inv (d1 = d2))=> [->|]// /fP/[apply]-[].
+  move/IN=> ev1 /IN/(eval1_eq d1 h h')/[swap]/[dup]/=fE <- ev2.
+  suff: ((proj h' d1) = (proj h' d1)) /\ (hv d1 = hv d2) by case.
+  apply/(eval1_det ev1 (ev2 _ _))=> ?; [apply/v|apply/v']=>/=; fequals.
+Qed.
 
 Lemma indom_fsubst {A B : Type} (fs : fset A) (f : A -> B) x : 
   indom (fsubst fs f) x = exists y, f y = x /\ indom fs y.
@@ -2404,56 +2482,6 @@ Proof.
   rewrite ?union_assoc; fequals; apply union_comm_of_disjoint.
   apply/disjoint_of_not_indom_both=> -[??] /lh'1/[swap]/lh2/[swap].
   exact/disjoint_inv_not_indom_both.
-Qed.
-
-Lemma eval1_det h1 h2 ht d hv h2' hv' : 
-  eval1 d h1 ht h2 hv ->
-  eval1 d h1 ht h2' hv' ->
-    h2 = h2' /\ hv = hv'.
-Proof.
-  move=> ev; elim: ev h2' hv'.
-  all: intros; 
-    match goal with 
-    | H : eval1 _ _ _ _ _ |- _ => try by inversion H
-    end.
-  { inversion H6; subst. all: try by case: H=> /=.
-    { case: (H1 _ _ H10)=> ??; subst.
-      case: (H3 _ _ H12)=> ??; subst.
-      by case: (H5 _ _ H15)=> ??; subst. }
-    { inversion H0; subst; simpl in *; autos*.
-      all: try by inversion H12.
-      by inversion H12; inversion H13; subst. }
-    inversion H0; subst; simpl in *; autos*=> //.
-    inversion H13. }
-  all: try by (inversion H2; subst=> //; simpl in *; autos*;
-    case: H6=> *; subst; exact/H1).
-  { inversion H3; subst; apply/H2; case: (H0 _ _ H7)=>-> //. }
-  { inversion H3; subst; apply/H2; case: (H0 _ _ H10)=>->-> //. }
-  { by inversion H1; subst; apply/H0. }
-  { inversion H0; subst; simpl in *; autos*.
-    all: try by inversion H; subst=> //.
-    inversion H; inversion H6; subst; split=> //; by case: H5=>->. }
-  { inversion H0; subst; simpl in *; autos*.
-    all: try by inversion H; subst=> //.
-    { inversion H4; subst; simpl in *; autos*.
-      all: try by inversion H.
-      inversion H; inversion H10; subst=> //. }
-    inversion H; inversion H7; subst=> //; split=> //.
-    all: try by case: H6 H8=> -> [->] //.
-    all: try by case: H9 H10=> -> [->] //.
-    case: H9 H10 H1 H6=>-> [->] <-/eq_nat_of_eq_int-> //. }
-  { inversion H1; subst=> //; simpl in *; autos*.
-    { by inversion H7. }
-    have-> //: (p = p0). 
-    exact/eq_nat_of_eq_int/Z.le_antisymm/H3/H0/H. }
-  { inversion H1; subst=> //; simpl in *; autos*.
-    by inversion H7. }
-  { inversion H0; subst=> //; simpl in *; autos*.
-    { inversion H4; subst=> //; simpl in *; autos*.
-      by inversion H10. }
-    by inversion H7. }
-  inversion H0; subst=> //; simpl in *; autos*.
-  by inversion H6.
 Qed.
 
 Lemma eval_det h1 h2 ht (fs : fset D) hv h2' hv' : 
@@ -3209,12 +3237,34 @@ Proof.
   exact/hoare_ref.
 Qed.
 
+Lemma hstar_fset_hexists {A B} `{Inhab B} (fs : fset A) (Q : B -> A -> hhprop) : 
+  (\*_(d <- fs) \exists a, Q a d) = 
+  \exists (a : A -> B), \*_(d <- fs) (Q (a d) d).
+Proof.
+  elim/fset_ind: fs.
+  { xsimpl (fun _ : A=> arbitrary : B)=> [|?]; by rewrite ?hbig_fset_empty. }
+  move=> fs x IHfs ?; rewrite hbig_fset_update // IHfs; xpull.
+  { move=> b f; xsimpl (upd f x b).
+    rewrite hbig_fset_update // upd_eq; xsimpl.
+    erewrite hbig_fset_eq; first by xsimpl*.
+    move=> ??; extens=> ?.
+    rewrite upd_neq //; move=> ?; by subst. }
+  by move=> f; xsimpl (f x) f; rewrite hbig_fset_update.
+Qed.
+
+
 Lemma hhoare_ref : forall H (f : D -> val) fs,
   hhoare fs (fun d => val_ref (f d))
     H
     (fun hr => (\exists (p : D -> loc), \[hr = val_loc \o p] \* \*_(d <- fs) p d ~(d)~> f d) \* H).
 Proof.
-Admitted.
+  move=> H f fs.
+  apply/hhoare_hv/hhoare_conseq; first exact/hhoare_ref'; eauto.
+  move=> hr; rewrite hstar_fset_hexists. xpull=> p.
+  rewrite hstar_fset_pure_hstar.
+  xsimpl (fun x : D => val_loc (p x))=> ?.
+  extens=> ?; rewrite /uni; case: classicT; autos*.
+Qed.
 
 
 Lemma hhoare_get : forall H (v : D -> val) (p : D -> loc) fs,
@@ -4750,10 +4800,10 @@ Lemma is_val_val hv : is_val (fun d => trm_val (hv d)).
 Proof. exists __; eauto. Qed.
 
 Definition is_fun (t : D -> trm) :=
-  exists x t, t = fun d => trm_fun (x d) (t d).
+  exists x t', t = fun d => trm_fun (x d) (t' d).
 
 Definition is_fix (t : D -> trm) :=
-  exists f x t, t = fun d => trm_fix (f d) (x d) (t d).
+  exists f x t', t = fun d => trm_fix (f d) (x d) (t' d).
 
 Definition is_if (t : D -> trm) :=
   exists t0 t1 t2, t = fun d => trm_if (t0 d) (t1 d) (t2 d).
@@ -4843,7 +4893,7 @@ Definition wpgen (t : D -> trm) : formula :=
     else wp fs t
   ).
 
-Lemma wpgenE :
+Lemma wpgenE `{Inhab D} :
   (forall hv      , wpgen (fun d => trm_val (hv d))        
     = mkstruct (wpgen_val hv))                                                                               *
   (forall x t1    , wpgen (fun d => trm_fun (x d) (t1 d))  
@@ -4859,7 +4909,20 @@ Lemma wpgenE :
   (forall t0 t1 t2, wpgen (fun d => trm_if (t0 d) (t1 d) (t2 d))
     = mkstruct (wpgen_if t0 (wp fs t1) (wp fs t2))).
 Proof.
-Admitted.
+  (do ? split=> * ); rewrite /wpgen.
+  { case: classicT=> // -[]; eexists; autos*. }
+  { do ? (case: classicT; [(do ? case)=> > /(congr1 (@^~ arbitrary))//|]).
+    case: classicT=> // -[]. do ? eexists; autos*. } 
+  { do 4? (case: classicT; [(do ? case=> >)=> > /(congr1 (@^~ arbitrary))//|]).
+    case: classicT=> // -[]. do ? eexists; autos*. } 
+  { do 5? (case: classicT; [(do ? case=> >)=> > /(congr1 (@^~ arbitrary))//|]).
+    case: classicT=> // -[]. do ? eexists; autos*. } 
+  { do 6? (case: classicT; [(do ? case=> >)=> > /(congr1 (@^~ arbitrary))//|auto]). } 
+  { do 2? (case: classicT; [(do ? case=> >)=> > /(congr1 (@^~ arbitrary))//|]).
+    case: classicT=> // -[]. do ? eexists; autos*. } 
+  do 3? (case: classicT; [(do ? case=> >)=> > /(congr1 (@^~ arbitrary))//|]).
+  case: classicT=> // -[]. do ? eexists; autos*. 
+Qed.
 
 (* Definition wpgen (t:trm) : formula :=
   mkstruct match t with
@@ -4970,7 +5033,26 @@ Qed.
 Lemma wpgen_sound : forall t,
   formula_sound t (wpgen t).
 Proof using.
-Admitted.
+  move=> t; rewrite /wpgen.
+  case: classicT=> [[?->]|?]; first exact/mkstruct_sound/wpgen_val_sound.
+  case: classicT=> [[?][?]->|?]. 
+  { rewrite /get_var /get_fun.
+    apply/mkstruct_sound/wpgen_fun_sound=> ?.
+    exact/wp_sound. }
+  case: classicT=> [[?][?][?]->|?]. 
+  { rewrite /get_var /get_fun /get_f.
+    apply/mkstruct_sound/wpgen_fix_sound=> *; exact/wp_sound. }
+  case: classicT=> [[?][?][?]->|?]. 
+  { rewrite /get_then /get_else /get_cond.
+    apply/mkstruct_sound/wpgen_if_sound=> *; exact/wp_sound. }
+  case: classicT=> [[?][?]->|?].
+  { rewrite /get_seq1 /get_seq2.
+    apply/mkstruct_sound/wpgen_seq_sound=> *; exact/wp_sound. }
+  case: classicT=> [[?][?][?]->|?].
+  { rewrite /get_letvar /get_var /get_fun.
+    apply/mkstruct_sound/wpgen_let_sound=> *; exact/wp_sound. }
+  exact/mkstruct_sound/wp_sound.
+Qed.
 
 Lemma himpl_wpgen_wp : forall t Q,
   wpgen t Q ==> wp fs t Q.
