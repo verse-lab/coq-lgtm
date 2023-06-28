@@ -61,10 +61,12 @@ Lemma uniA A B (f1 f2 g : A -> B) fs1 fs2 :
   uni fs1 f1 (uni fs2 f2 g) = 
   uni (fs1 \+ fs2) (uni fs1 f1 f2) g.
 Proof.
-  rewrite /uni; apply/fun_ext_1=> ?.
-  do ? case: classicT=> //.
-Admitted.
-
+  rewrite /uni; apply/fun_ext_1=> x.
+  do ? case: classicT=>//; rewrite indom_union_eq=>H1; last by case: H1.  
+  - by move=>?; case:H1; left. 
+  - by move=>? ?; case: H1; right.   
+Qed.  
+   
 Lemma upd_upd A B (f : A -> B) x y z w : 
   x <> z -> 
   upd (upd f x y) z w = upd (upd f z w) x y.
