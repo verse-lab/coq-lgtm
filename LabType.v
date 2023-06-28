@@ -31,8 +31,12 @@ Infix "!=" := (fun x y => ~~ lab_eqb x y) (at level 10, no associativity).
 
 Definition labSeq := seq labeled.
 
-Definition lookup (s : labSeq) (l : labType) : labeled := 
-  nth (Lab (0,0)%Z def) s (find [pred lt | lab lt == l] s).
+Fixpoint lookup (s : labSeq) (l : labType) : labeled := 
+  if s is (Lab l' x) :: s then 
+    if l == l' then 
+      (Lab l' x)
+    else lookup s l
+  else Lab l def.
 
 Definition remove (s : labSeq) (l : labType) := 
   [seq lt <- s | lab lt != l].
