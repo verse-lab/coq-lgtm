@@ -1,21 +1,21 @@
 From SLF Require Export LibCore.
 From SLF Require Export LibSepFmap.
 
-From mathcomp Require Import ssreflect ssrfun.
+From mathcomp Require Import ssreflect ssrfun ssrbool.
+
+Require Import Coq.Logic.FunctionalExtensionality.
 
 Definition upd {A B : Type} (f : A -> B) x y :=
   fun z => If x = z then y else f z.
 
 Lemma upd_eq A B (f : A -> B) x y : 
   upd f x y x = y.
-Proof.
-Admitted.
+Proof. by apply: If_l. Qed.
 
 Lemma upd_neq A B (f : A -> B) x y z : 
   z <> x ->
   upd f x y z = f z.
-Proof.
-Admitted.
+Proof. by move=>H; apply: If_r=>g'; subst z. Qed.
 
 Definition uni {A B : Type} (fs : fset A) (f : A -> B) (g : A -> B) :=
   fun z => If indom fs z then f z else g z.
@@ -25,18 +25,25 @@ Notation "f '\u_' fs " := (uni fs f) (at level 10, left associativity).
 Lemma uni_in A B {f g : A -> B} {x fs} : 
   indom fs x ->
   uni fs f g x = f x.
-Proof.
-Admitted.
+Proof. by move=>H; apply: If_l. Qed.
 
 Lemma uni0 A B (f g : A -> B) : 
   uni empty f g = g.
-Proof.
-Admitted.
+Proof. by apply: functional_extensionality=>x; apply: If_r. Qed.
 
 Lemma uni_upd A B (f g : A -> B) x fs :
   ~ indom fs x ->
   uni (update fs x tt) f g = upd (uni fs f g) x (f x).
 Proof.
+  move=>H; rewrite /update /upd/uni.
+  apply: functional_extensionality=>z.
+  have T: isTrue (x = z) -> x = z by apply istrue_isTrue_forw.
+  rewrite -!if_isTrue.
+  case:ifP=>H1; case:ifP=> H2; first by move:H2=>/T->.
+  Focus 2. (* I don't think this one is true *)
+Admitted.
+
+
 Admitted.
 
 Lemma uni_nin A B (f g : A -> B) x fs : 
