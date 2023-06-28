@@ -38,6 +38,9 @@ Proof.
   by case: l  l'=> ?? []??/=->->. 
 Qed.
 
+Lemma eqP l l' : reflect (l = l') (lab_eqb l l').
+Proof. by apply/(iffP idP)=> [/lab_eqbP|->/[! eqbxx'] ]. Qed.
+
 Lemma lab_eqb_sym l l' :  lab_eqb l l' = lab_eqb l' l.
 Proof. by rewrite /lab_eqb Z.eqb_sym [l.2 =? _]Z.eqb_sym. Qed.
 
