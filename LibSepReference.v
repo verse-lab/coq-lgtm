@@ -6613,6 +6613,20 @@ Qed.
 
 Hint Resolve hmerge_comm hmerge_assoc : core.
 
+Lemma interval_union y x z : 
+  x <= y -> 
+  y <= z -> interval x y \u interval y z = interval x z.
+Proof.
+  move=> +?.
+  induction_wf IH: (upto y) x.
+  move=> ?.
+  case: (prop_inv (x = y))=> [->|?].
+  { rewrite intervalgt; rew_fmap=> //; math. }
+  rewrite intervalU -?update_union_not_r' ?IH -?intervalU //; by math.
+Qed.
+
+Arguments interval_union : clear implicits.
+
 Lemma wp_for_hbig_op fs fs' ht fs''
   Inv
   (R R' : D -> hhprop)
@@ -6756,6 +6770,7 @@ Lemma wp_while_hbig_op fs fs' ht m fs''
             Inv false N \* 
             (\*_(i <- interval j N) R' i) \*
             H \(m) \(m)_(i <- interval j N) Hi i hv)) ->
+  (forall i j, i <> j -> disjoint (fsi i) (fsi j)) ->
   (forall (hv hv' : D -> val) m,
     (forall i, indom (fsi m) i -> hv(i) = hv'(i)) ->
     Hi m hv = Hi m hv') ->
@@ -6782,7 +6797,7 @@ Lemma wp_while_hbig_op fs fs' ht m fs''
   P ==> wp (fs' \u fs) ht Q.
 Proof with autos*.
   simpl.
-  move=> Hl1 Hl2 HwpC HwpF HwpT Heq CM AS HP HQ *.
+  move=> Hl1 Hl2 HwpC HwpF HwpT Dj Heq CM AS HP HQ *.
   apply: himpl_trans; first exact/HP.
   apply: himpl_trans; first last.
   { apply: wp_conseq; exact/HQ. }
@@ -6810,7 +6825,7 @@ Proof with autos*.
   { clear -HwpF CM AS Heq Hl1 Hl2.
     move=> b l hv.
     xchange HwpF=> -[->]?; rewrite [interval N N]intervalgt ?hbig_fset_empty; [xsimpl*|math]. }
-  { clear -HwpT CM AS Heq Hl1 Hl2.
+  { clear -HwpT CM AS Heq Hl1 Hl2 Dj.
     move=> b l hv T' L. 
     set (Q := (H0 \(m) \(m)_(i <- interval Z l) Hi i hv)).
     move: (HwpT b l T' Q L)=> IH.
@@ -6818,72 +6833,75 @@ Proof with autos*.
     move=> IH'.
     apply/xapp_lemma'; [|rewrite <-wp_equiv; apply/IH; try math|]=> //.
     { rewrite /Q; apply/hlocal_hmerge=> //; exact/hlocal_hmerge_fset. }
-    { move=> j' n hv' {}L.
+    { move=> j' n hv' L'.
       have->: Q \(m) (\(m)_(i <- interval l j') Hi i hv') = 
         H0 \(m) (\(m)_(i <- interval Z j') Hi i (hv \u_(Union (interval Z l) fsi) hv')).
-      { admit. }
-      (* have ->: 
-      (fun hr => 
-      Inv false N \*
-      (\*_(i <- interval Z N) R' i) \*
-      (H0 \(m) (\(m)_(i <- interval Z j') Hi i ((hv \u_ (Union (interval Z l) fsi)) hv'))) \(m) 
-      (\(m)_(i <- interval j' N) Hi i hr)) =
-      fun hr => 
-      Inv false N \*
-      (\*_(i <- interval Z N) R' i) \*
-      Q \(m)
-      \(m)_(i <- interval Z N) Hi i ((hv' \u_ (Union (interval Z j') fsi)) hr). *)
-      { admit. }
-      (* move: (IH' j' n hv' L). *)
-      (* apply/xapp_lemma'; [|rewrite <-wp_equiv; apply/IH'; try math|]=> //. *)
-      (* unfold protect.  *)
-      (* rew_heap. xsimpl. *)
-      
-      (* xsimpl.  *)
-      }
-    (* rewrite {1}intervalUr ?Union_upd //; last math.
-    have Dj': disjoint (fsi l) (Union (interval Z l) fsi).
-    { rewrite disjoint_Union=> ? /[! indom_interval] ?.
-      apply/Dj; math. }
-    rewrite hbig_fset_union // (@intervalU l N); last math.
-    rewrite Union_upd // hbig_fset_union //; first last.
-    { rewrite disjoint_Union=> ? /[! indom_interval] ?.
-      apply/Dj; math. }
-    apply/xapp_lemma'; [|rewrite <-wp_equiv; apply/IH; try math|].
-    { reflexivity. }
-    { rewrite /Q; apply/hlocal_hmerge; exact/hlocal_hmerge_fset. }
-    unfold protect.
-    rew_heap.
-    xsimpl*.
-    suff<-: Q \(m) H l = 
-      (\(m)_(i0 <- interval Z l) H' i0 hv) \(m) 
-      (\(m)_(i0 <- update (interval (l + 1) N) l tt) H i0).
-    { xsimpl=> hr. rewrite /Q.
-      rewrite hmerge_assoc // [_ \(m) H' _ _]hmerge_comm //.
-      rewrite -hmerge_assoc // => h.
-      apply: applys_eq_init; apply/(congr1 (@^~ h)).
-      fequal. rewrite intervalUr ?hbig_fset_update //; eauto; last math.
-      { rewrite hmerge_comm; eauto. fequal.
-        { apply/hbig_fset_eq=> ? +; rewrite indom_interval=> ?. 
-          apply/Heq=> ? ind; rewrite uni_nin //.
-          move: ind=> /[swap]; apply/disjoint_inv_not_indom_both/Dj; math. }
-        apply/Heq=> *; by rewrite uni_in. }
-      rewrite indom_interval le_zarith lt_zarith. lia. }
-      rewrite /Q hmerge_assoc // [_ \(m) H _]hmerge_comm //.
-      rewrite hbig_fset_update ?indom_interval; eauto.
-      rewrite le_zarith lt_zarith; lia. }
-  { move=> q hv hv' hvE.
+      { rewrite /Q hmerge_assoc //. fequals; apply/eq_sym.
+        rewrite -(interval_union l) ?hbig_fset_union; try math; first last.
+        { apply/disjoint_of_not_indom_both=> ?.
+          rewrite ?indom_interval; math. }
+        { exact/hmerge_hempty_l. }
+        { by move=> >; rewrite hmerge_assoc. }
+        { by move=> >; apply/hmerge_comm. }
+      fequal; apply/hbig_fset_eq=> ? ind; apply/Heq=> ? ind'.
+      { rewrite uni_in ?indom_Union //; eexists... }
+      rewrite uni_nin // indom_Union=>-[]j [] /[!@indom_interval] ?.
+      move: ind'; apply/disjoint_inv_not_indom_both/Dj=> ?; subst.
+      rewrite indom_interval in ind; math. }
+      move: (IH' j' n (hv \u_(Union (interval Z l) fsi) hv') L')=> {}IH'.
+      apply/xapp_lemma'; [|rewrite <-wp_equiv; apply/IH'; try math|]=> //.
+      unfold protect.
+      rew_heap. xsimpl=> hr.
+      rewrite hmerge_assoc // -(interval_union j'); try math.
+      rewrite hbig_fset_union; first last.
+      { apply/disjoint_of_not_indom_both=> ?.
+        rewrite ?indom_interval; math. }
+      { exact/hmerge_hempty_l. }
+      { by move=> >; rewrite hmerge_assoc. }
+      { by move=> >; apply/hmerge_comm. }
+      under hbig_fset_eq.
+      { move=> d ?. under Heq.
+        { move=> ??. rewrite uni_in ?over //.
+          rewrite indom_Union; by exists d. }
+        over. }
+      move=> ?; apply:applys_eq_init.
+      do 2? fequal. apply/hbig_fset_eq=> d ind.
+      apply/Heq=> ? ind' /[! @uni_nin] //.
+      rewrite indom_interval in ind.
+      rewrite indom_Union=> -[]? [] /[! indom_interval]?.
+      apply/(disjoint_inv_not_indom_both _ ind')/Dj=> ?; subst; math. }
+    unfold protect. xsimpl=> ?.
+    rewrite -(interval_union l Z N) 1?hbig_fset_union; try math; first last.
+    { apply/disjoint_of_not_indom_both=> ?.
+      rewrite ?indom_interval; math. }
+    { eauto. }
+    { by move=> >; eauto. }
+    { by move=> >; eauto. }
+    xsimpl; rewrite /Q hmerge_assoc // => ?.
+    apply:applys_eq_init; fequals.
+    rewrite hbig_fset_union; first last.
+    { apply/disjoint_of_not_indom_both=> ?.
+      rewrite ?indom_interval; math. }
+    { exact/hmerge_hempty_l. }
+    { by move=> >; rewrite hmerge_assoc. }
+    { by move=> >; apply/hmerge_comm. }
+    fequal; apply/hbig_fset_eq=> ? ind; apply/Heq=> ? ind'.
+    { rewrite uni_in ?indom_Union //; eexists... }
+    rewrite uni_nin // indom_Union=>-[]j [] /[!@indom_interval] ?.
+    move: ind'; apply/disjoint_inv_not_indom_both/Dj=> ?; subst.
+    rewrite indom_interval in ind; math. }
+  { move=> q ? hv hv' hvE.
     suff->:
-      (\(m)_(i0 <- interval Z q) H' i0 hv') = 
-      (\(m)_(i0 <- interval Z q) H' i0 hv) by [].
+      (\(m)_(i0 <- interval Z q) Hi i0 hv') = 
+      (\(m)_(i0 <- interval Z q) Hi i0 hv) by [].
     apply/hbig_fset_eq=> ??; apply/Heq=> *; apply/eq_sym/hvE.
     rewrite indom_Union; eexists; autos*. }
   { rewrite [_ Z Z]intervalgt; last math.
-    rewrite Union0 ?hbig_fset_empty hmerge_hempty_l; xsimpl. }
-  { move=> ?.
-    rewrite [_ N N]intervalgt; last math.
-    rewrite Union0 ?hbig_fset_empty hmerge_hempty_r. xsimpl. } *)
-Admitted.
+    rewrite ?hbig_fset_empty hmerge_hempty_r; xsimpl. }
+  move=> ?.
+  rewrite [_ N N]intervalgt; last math.
+  rewrite ?hbig_fset_empty. xsimpl.
+Qed.
 
 Lemma hbig_fset_Union {A : Type} (fs : fset A) fsi (H : A -> hhprop) : 
   (forall i j, i <> j -> disjoint (fsi i) (fsi j)) ->
