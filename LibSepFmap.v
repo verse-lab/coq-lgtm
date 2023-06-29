@@ -1293,12 +1293,26 @@ Qed.
 
 End FmapFresh.
 
+From Coq Require Import Permutation.
+
+Ltac eqsolve := solve [ intuition congruence | intuition discriminate ].
+
 Lemma remove_union_not_r  [A B : Type] [h1 h2 : fmap A B] [x : A] :
   ~ indom h2 x -> 
   remove h1 x \+ h2 = remove (h1 \+ h2) x.
-Proof.
-Admitted.
+Proof using.
+  intros H. apply fmap_extens. intros y. 
+  simpl. unfold map_union, map_remove. 
+  case_if; auto_false. subst y. 
+  unfolds indom, map_indom.
+  case_eq (fmap_data h2 x); auto_false.
+  (* ! *)
+  eqsolve.
+Qed.
 
+(* fmap_fold seems not to be used. *)
+
+(*
 Lemma fmap_fold A B : forall P : Type,
   P -> 
   (A -> B -> P -> P) -> fmap A B -> P.
@@ -1317,64 +1331,470 @@ Lemma fmap_foldE' A B (P : Type) (p : P) (f : A -> B -> P -> P) :
    (forall x (y : B) y' y (p : P), f x y (f x y' p) = f x y p) ->
     forall fm x y, fmap_fold p f (update fm x y) = f x y (fmap_fold p f fm)).
 Admitted.
+*)
 
 (* Lemma fmap_foldE' A B (P : Type) (p : P) (f : A -> B -> P -> P) :
   (fmap_fold p f empty = p) *
   ( forall fm x y, fmap_fold p f (update fm x y) = f x y (fmap_fold p f fm)).
 Admitted. *)
 
+(* Going completely first-order to save time *)
 
-Lemma fset_fold A : forall P : Type,
-  P -> 
-  (A -> P -> P) -> fset A -> P.
+Section Aux. 
+
+Fixpoint get_only_some [A : Type] (l : list (option A)) : list A :=
+  match l with
+  | x :: l' => match x with Some y => y :: (get_only_some l') | None => (get_only_some l') end
+  | nil => nil
+  end.
+
+Lemma map_fst_combine [A B : Type] (l1 : list A) (l2 : list B) :
+  length l1 = length l2 ->
+  LibList.map fst (combine l1 l2) = l1.
 Proof.
+  revert l2.
+  induction l1 as [ | x l1 IH ]; intros.
+  { destruct l2; [ | inversion H ]. auto. }
+  { destruct l2; [ inversion H | ]. 
+    rewrite -> combine_cons, -> map_cons.
+    simpl. f_equal. apply IH. 
+    rewrite -> ! length_cons in H. inversion H; auto.
+  }
+Qed.
+
+Lemma mem_map_inv [A B : Type] (f : A -> B) (l : list A) y :
+  mem y (LibList.map f l) -> exists x, mem x l /\ y = f x.
+Proof.
+  intros H. induction l as [ | x l IH ].
+  { inversion H. }
+  { rewrite -> map_cons in H. apply mem_cons_inv in H.
+    destruct H as [ -> | H ].
+    { exists x. split; auto. }
+    { apply IH in H. destruct H as (x0 & H). exists x0. split. 1: constructor; auto. all: intuition. }
+  }
+Qed.
+
+(* should do so from the beginning! *)
+
+Fact length_List_length [A : Type] (l : list A) : length l = List.length l.
+Proof. induction l; auto. rewrite -> length_cons. simpl. auto. Qed.
+
+Fact mem_In [A : Type] (x : A) (l : list A) : mem x l <-> List.In x l.
+Proof.
+  induction l as [ | y l IH ].
+  { split; intros H; inversion H. }
+  { simpl. split; intros H.
+    { apply mem_cons_inv in H. intuition. }
+    { apply mem_cons. intuition. }
+  }
+Qed.
+
+Fact noduplicates_NoDup [A : Type] (l : list A) : noduplicates l <-> List.NoDup l.
+Proof.
+  induction l as [ | x l IH ].
+  { split; intros; constructor. }
+  { split; intros H; inversion H; subst.
+    { rewrite -> mem_In in H2. constructor; intuition. }
+    { rewrite <- mem_In in H2. constructor; intuition. }
+  }
+Qed.
+
+Lemma noduplicates_Permutation [A : Type] (l l' : list A) : noduplicates l -> noduplicates l' ->
+  (forall x:A, mem x l <-> mem x l') -> Permutation l l'.
+Proof.
+  rewrite -> ! noduplicates_NoDup. 
+  setoid_rewrite -> mem_In.
+  apply NoDup_Permutation.
+Qed.
+
+Lemma fold_right_Permutation [A B : Type] (f : A -> B -> B) (b : B) (l l' : list A)
+  (Hcomm : forall a b p, f a (f b p) = f b (f a p))
+  (Hperm : Permutation l l') : fold_right f b l = fold_right f b l'.
+Proof.
+  induction Hperm.
+  { auto. }
+  { rewrite -> ! fold_right_cons, -> IHHperm. reflexivity. }
+  { rewrite -> ! fold_right_cons. rewrite -> Hcomm. reflexivity. }
+  { eqsolve. }
+Qed.
+
+End Aux. 
+
+Section Supp.
+
+Definition is_map_supp [A B : Type] (h : map A B) (l : list (A * B)) :=
+  noduplicates (LibList.map fst l) /\
+  (forall x : A, h x <> None -> mem x (LibList.map fst l)) /\
+  (forall pa, mem pa l -> h (fst pa) = Some (snd pa)).
+
+Fact is_map_supp_dom [A B : Type] (h : map A B) (l : list (A * B)) :
+  is_map_supp h l ->
+  (forall x : A, h x <> None <-> mem x (LibList.map fst l)).
+Proof.
+  intros.
+  hnf in H. destruct H as (Hnodup & Ha & Hb).
+  split. 1: intuition.
+  intros HH. apply mem_map_inv in HH.
+  destruct HH as (pa & HH & ->).
+  apply Hb in HH. eqsolve.
+Qed.
+
+Lemma fmap_exact_dom_pre [A B : Type] (h : map A B) : 
+  map_finite h ->
+  sigT (fun l => is_map_supp h l).
+Proof.
+  intros H.
+  unfolds map_finite.
+  apply indefinite_description in H.
+  destruct H as (l & H).
+  remember (remove_duplicates (LibList.filter (fun x => h x <> None) l)) as la.
+  assert (Hf : Forall (fun x => h x <> None) la).
+  { rewrite -> Forall_eq_forall_mem.
+    intros x Hmem. subst la. 
+    rewrite -> mem_remove_duplicates in Hmem.
+    apply mem_filter_inv in Hmem. intuition.
+  }
+  remember (get_only_some (LibList.map h la)) as lb.
+  assert (Hl : length la = length lb).
+  { subst lb. clear -Hf.
+    induction la as [ | a la IH ]; auto.
+    apply Forall_cons_inv in Hf. specializes IH Hf.
+    rewrite -> map_cons. simpl.
+    destruct (h a); try eqsolve.
+    rewrite -> ! length_cons.
+    simpl. f_equal. auto.
+  }
+  exists (combine la lb).
+  split. 2: split.
+  { rewrite -> map_fst_combine; auto.
+    subst. apply noduplicates_remove_duplicates.
+  }
+  { intros. 
+    rewrite -> map_fst_combine; auto.
+    subst. rewrite -> mem_remove_duplicates. apply mem_filter; auto.
+  }
+  { subst lb.
+    clear Heqla.
+    induction la as [ | a la IH ]; intros.
+    { inversion H0. }
+    { rewrite -> map_cons in Hl, H0.
+      apply Forall_cons_inv in Hf. 
+      simpl in Hl, H0. destruct (h a) as [ a' | ] eqn:E; try eqsolve.
+      rewrite -> ! length_cons in Hl.
+      apply Nat.succ_inj in Hl.
+      specializes IH Hf Hl.
+      rewrite -> combine_cons in H0.
+      apply mem_cons_inv in H0.
+      destruct H0 as [ H0 | H0 ].
+      { subst pa. simpl. auto. }
+      { apply IH. auto. }
+    }
+  }
+Qed.
+
+Definition fmap_exact_dom [A B : Type] (h : fmap A B) :=
+  @fmap_exact_dom_pre A B (fmap_data h) (fmap_finite h).
+
+Fact supp_empty (A B : Type) : is_map_supp (@empty A B) nil.
+Proof.
+  hnf. split. 2: split.
+  { constructor. }
+  { intros. simpl in H. eqsolve. }
+  { intros. inversion H. }
+Qed.
+
+Lemma supp_update [A B : Type] (h : fmap A B) (x : A) (y : B) (Hnotin : ~ indom h x) l :
+  is_map_supp h l -> is_map_supp (update h x y) ((x, y) :: l).
+Proof.
+  intros.
+  pose proof H as Hb'. apply is_map_supp_dom with (x:=x) in Hb'.
+  hnf in H |- *.
+  destruct H as (Hnodup & Ha & Hb).
+  rewrite -> map_cons. cbn delta [fst] beta iota.
+  split. 2: split.
+  { constructor. 2: auto.
+    rewrite <- Hb'. intuition.
+  }
+  { intros x0 H0.
+    simpl in H0. unfolds map_union.
+    case_if.
+    { subst. constructor. }
+    { apply Ha in H0. constructor. auto. }
+  }
+  { intros pa H.
+    apply mem_cons_inv in H.
+    simpl. unfolds map_union.
+    destruct H as [ -> | H ].
+    { simpl. case_if. reflexivity. }
+    { specializes Hb H. case_if.
+      { subst. eqsolve. }
+      { auto. }
+    }
+  }
+Qed.
+
+Lemma supp_remove [A B : Type] (h : fmap A B) (x : A) (y : B) l :
+  is_map_supp h ((x, y) :: l) -> is_map_supp (remove h x) l.
+Proof.
+  intros.
+  pose proof H as Hb'. apply is_map_supp_dom with (x:=x) in Hb'.
+  hnf in H |- *.
+  destruct H as (Hnodup & Ha & Hb).
+  rewrite -> map_cons in *. simpls.
+  split. 2: split.
+  { inversion Hnodup. auto. }
+  { intros x0 H0.
+    unfolds map_remove. 
+    case_if.
+    apply Ha in H0. inversion H0; eqsolve.
+  }
+  { intros pa H.
+    unfolds map_remove. 
+    case_if.
+    { inversion Hnodup; subst.
+      apply mem_map with (f:=fst) in H. auto_false.
+    }
+    { apply Hb. constructor. auto. }
+  }
+Qed.
+
+(*
+Lemma fmap_iso_1 [A B : Type] (h1 h2 : fmap A B) (l : list (A * B)) :
+  is_map_supp h1 l -> 
+  is_map_supp h2 l -> 
+  h1 = h2.
+Proof.
+  intros H1 H2.
+  apply fmap_extens. intros y.
+  hnf in H1, H2.
+  destruct H1 as (Hnodup & H1a & H1b), H2 as (_ & H2a & H2b).
+  
+  (* destruct (fmap_data h1 y) as [ t1 | ] eqn:E1, (fmap_data h2 y) as [ t2 | ] eqn:E2; auto. *)
 Admitted.
+*)
+Lemma fmap_iso_2 [A B : Type] (h : fmap A B) (l1 l2 : list (A * B)) :
+  is_map_supp h l1 -> 
+  (forall pa, mem pa l1 <-> mem pa l2) ->
+  noduplicates (LibList.map fst l2) ->
+  is_map_supp h l2.
+Proof.
+  intros H HH.
+  hnf in H |- *.
+  destruct H as (Hnodup & Ha & Hb).
+  split. 2: split.
+  { auto. }
+  { intros x H0.
+    specializes Ha H0.
+    apply mem_map_inv in Ha.
+    destruct Ha as (pa & Ha).
+    destruct (fmap_data h x) as [ y | ] eqn:E; try eqsolve.
+    destruct Ha as (Ha & Efst).
+    rewrite -> HH in Ha. 
+    eapply mem_map'. 2: instantiate (1:=pa); auto. 
+    auto.
+  }
+  { intros. apply Hb. apply HH. auto. }
+Qed.
+
+Lemma fmap_iso_3_onedir [A B : Type] (h : fmap A B) (l1 l2 : list (A * B)) :
+  is_map_supp h l1 -> 
+  is_map_supp h l2 ->
+  (forall pa, mem pa l1 -> mem pa l2).
+Proof.
+  intros H1 H2.
+  hnf in H1, H2.
+  destruct H1 as (Hnodup1 & H1a & H1b), H2 as (Hnodup2 & H2a & H2b).
+  intros (x, y) H.
+  specializes H1b H.
+  simpl in H1b. assert (H1b': fmap_data h x <> None) by eqsolve.
+  specializes H2a H1b'.
+  apply mem_map_inv in H2a.
+  destruct H2a as ((x', y') & H' & ->).
+  simpls.
+  specializes H2b H'.
+  simpls. eqsolve.
+Qed.
+
+Corollary fmap_iso_3 [A B : Type] (h : fmap A B) (l1 l2 : list (A * B)) :
+  is_map_supp h l1 -> 
+  is_map_supp h l2 ->
+  (forall pa, mem pa l1 <-> mem pa l2).
+Proof.
+  intros. split.
+  { apply fmap_iso_3_onedir with (h:=h); intuition. }
+  { apply fmap_iso_3_onedir with (h:=h); intuition. }
+Qed.
+
+Corollary fmap_iso_3_fst [A B : Type] (h : fmap A B) (l1 l2 : list (A * B)) :
+  is_map_supp h l1 -> 
+  is_map_supp h l2 ->
+  (forall x, mem x (LibList.map fst l1) <-> mem x (LibList.map fst l2)).
+Proof.
+  intros. pose proof (@fmap_iso_3 _ _ h _ _ H H0).
+  split; intros HH.
+  { apply mem_map_inv in HH. 
+    destruct HH as ((x', y') & H' & ->). simpl.
+    rewrite -> H1 in H'.
+    eapply mem_map'; eauto.
+  }
+  { apply mem_map_inv in HH. 
+    destruct HH as ((x', y') & H' & ->). simpl.
+    rewrite <- H1 in H'.
+    eapply mem_map'; eauto.
+  }
+Qed.
+
+Corollary fmap_exact_dom_empty (A B : Type) : projT1 (fmap_exact_dom (@empty A B)) = nil.
+Proof.
+  destruct (fmap_exact_dom (@empty A B)) as (l & H).
+  simpl.
+  pose proof (supp_empty A B) as H'.
+  pose proof (@fmap_iso_3 A B (@empty A B) l (@nil (A * B)) H H').
+  destruct l as [ | pa l ]; auto.
+  assert (mem pa (pa :: l)) as HH by constructor. rewrite -> H0 in HH. inversion HH.
+Qed.
+
+End Supp.
+
+Definition fset_fold [A P : Type] (p : P) (f : A -> P -> P) (h : fset A) : P :=
+  (fold_right f p (LibList.map fst (projT1 (fmap_exact_dom h)))).
 
 Lemma fset_foldE A (P : Type) (p : P) (f : A -> P -> P) :
   (fset_fold p f empty = p) *
   ((forall (a b : A) (p : P), f a (f b p) = f b (f a p)) ->
     forall fs x, ~ indom fs x -> fset_fold p f (update fs x tt) = f x (fset_fold p f fs)).
-Admitted.
+Proof.
+  unfolds fset_fold.
+  split.
+  { rewrite -> fmap_exact_dom_empty. auto. }
+  { intros Hcomm. intros.
+    destruct (fmap_exact_dom fs) as (l & H0), (fmap_exact_dom (update fs x tt)) as (l' & H1').
+    simpl.
+    pose proof (@supp_update A unit fs x tt H _ H0) as H1.
+    pose proof (@fmap_iso_3_fst A unit _ _ _ H1 H1') as H2.
+    pose proof (@noduplicates_Permutation _ _ _ (proj1 H1') (proj1 H1)) as H3.
+    rewrite -> fold_right_Permutation with (l:=(LibList.map fst l')) (l':=x :: (LibList.map fst l)).
+    2: auto.
+    { rewrite -> fold_right_cons. auto. }
+    { change x with (fst (x, tt)). rewrite <- map_cons. apply H3. intros. rewrite -> H2. reflexivity. }
+  }
+Qed.
 
 Lemma disjoint_update {A B} x y (fm1 fm2 : fmap A B) : 
   disjoint (update fm1 x y) fm2 = (~ indom fm2 x /\ disjoint fm1 fm2).
 Proof.
-Admitted.
+  extens. iff M.
+  { hnf in M. split.
+    { specializes M x. simpl in M. unfolds map_union. case_if. 
+      destruct M; try eqsolve.
+    }
+    { hnf. intros x0. specializes M x0. simpl in M. unfolds map_union. case_if; eqsolve. }
+  }
+  { destruct M.
+    hnf. intros x0. specializes H0 x0. destruct H0; try eqsolve.
+    simpl. unfolds map_union. case_if; try eqsolve.
+    subst. right. 
+    destruct (fmap_data fm2 x0) eqn:E; try eqsolve.
+    destruct (classicT (fmap_data fm2 x0 <> None)); try eqsolve. 
+  }
+Qed.
 
+Lemma remove_update_self [A B : Type] (h : fmap A B) (x : A) (y : B) :
+  fmap_data h x = Some y -> h = update (remove h x) x y.
+Proof.
+  intros. apply fmap_extens. intros x0.
+  simpl. unfolds map_remove, map_union.
+  case_if; subst; auto. case_if. auto.
+Qed.
+
+(* several different ways can achieve this. may revise if possible *)
 Lemma fmap_ind A B : forall P : fmap A B -> Prop,
   P empty -> 
   (forall fs x y, P fs -> ~ indom fs x -> P (update fs x y)) -> forall fs, P fs.
 Proof.
-Admitted.
+  intros.
+  pose (Q:=fun n => forall h, length (projT1 (fmap_exact_dom h)) = n -> P h).
+  enough (forall n, Q n).
+  { specializes H1 (length (projT1 (fmap_exact_dom fs))).
+    hnf in H1. apply H1. reflexivity. 
+  }
+  { intros n. induction n.
+    { hnf. intros.
+      apply length_zero_inv in H1. 
+      assert (forall x, fmap_data h x = None) as Hempty.
+      { intros x. destruct (fmap_data h x) as [ y | ] eqn:E; auto.
+        destruct (fmap_exact_dom h) as (l & HH). simpl in H1. subst l.
+        hnf in HH. destruct HH as (_ & HH & _).
+        assert (fmap_data h x <> None) as Hq by eqsolve.
+        specializes HH Hq. inversion HH.
+      }
+      assert (h = empty) as ->.
+      { apply fmap_extens. simpl. auto. }
+      auto.
+    }
+    { hnf. intros.
+      destruct (fmap_exact_dom h) as (l & HH). simpl in H1. 
+      destruct l as [ | (x, y) l ]. 1: inversion H1.
+      rewrite -> length_cons in H1. apply Nat.succ_inj in H1.
+      assert (fmap_data h x = Some y) as E.
+      { destruct HH as (_ & _ & HH). specializes HH mem_here. eqsolve. }
+      pose proof (@remove_update_self _ _ _ _ _ E) as Eh.
+      rewrite -> Eh.
+      apply H0. 2: rewrite -> indom_remove_eq; eqsolve.
+      apply supp_remove in HH.
+      apply IHn.
 
+      destruct (fmap_exact_dom (remove h x)) as (l' & HH'). simpl.
+      rewrite <- length_map with (f:=fst) in H1 |- *.
+      rewrite -> length_List_length in H1 |- *.
+      pose proof (@fmap_iso_3_fst _ _ _ _ _ HH' HH) as H2.
+      pose proof (@noduplicates_Permutation _ _ _ (proj1 HH') (proj1 HH) H2) as H3.
+      apply Permutation_length in H3.
+      eqsolve.
+    }
+  }
+Qed.
 
 Lemma fset_ind A : forall P : fset A -> Prop,
   P empty -> 
   (forall fs x, P fs -> ~ indom fs x -> P (update fs x tt)) -> forall fs, P fs.
-Proof.
-Admitted.
+Proof. intros. apply fmap_ind; auto. intros fs0 x [ ]. revert fs0 x. auto. Qed.
 
 Lemma fold_fset_eq {A P : Type} (fs : fset A) (f1 f2 : A -> P -> P) (p : P):
   (forall d, indom fs d -> f1 d = f2 d) ->
   fset_fold p f1 fs = fset_fold p f2 fs.
-Admitted.
+Proof.
+  intros.
+  unfold fset_fold.
+  destruct (fmap_exact_dom fs) as (l & HH). simpl.
+  assert (Forall (fun a => f1 a = f2 a) (LibList.map fst l)) as H0.
+  { rewrite -> Forall_eq_forall_mem. intros.
+    specializes H x. unfolds indom, map_indom.
+    apply mem_map_inv in H0. destruct H0 as ((x0, []) & H0 & ->). simpls.
+    destruct HH as (_ & _ & HH). specializes HH H0. apply H. simpls. eqsolve.
+  }
+  clear -H0.
+  induction l; auto.
+  rewrite -> map_cons in H0 |- *. 
+  apply Forall_cons_inv in H0.
+  rewrite -> ! fold_right_cons. eqsolve.
+Qed.
 
 Lemma update_empty {A B : Type} {x : A} {y : B} :
   single x y = update empty x y.
-Admitted.
+Proof. apply fmap_extens. intros. simpl. unfold map_union. case_if; eqsolve. Qed.
 
 Lemma update_update {A B : Type} {x z : A} {y w : B} (fm : fmap A B) :
   x <> z ->
     update (update fm x y) z w = 
     update (update fm z w) x y.
-Proof.
-Admitted.
+Proof. intros. apply fmap_extens. intros. simpl. unfold map_union. 
+  case_if; try eqsolve. case_if; try eqsolve. Qed.
 
 Lemma update_updatexx {A B : Type} {x : A} {y w : B} (fm : fmap A B) :
     update (update fm x y) x w = 
     update fm x w.
-Proof.
-Admitted.
+Proof. apply fmap_extens. intros. simpl. unfold map_union. case_if; eqsolve. Qed.
 
 Search sig.
 
@@ -1387,7 +1807,15 @@ Definition map_fsubst {A B C : Type} (fm : map A B) (f : A -> C) : map C B :=
 
 Program Definition fsubst {A B C : Type} (fm : fmap A B) (f : A -> C) : fmap C B := 
   make (map_fsubst fm f) _.
-Next Obligation. Admitted.
+Next Obligation.
+  pose proof (fmap_finite fm) as (l & H).
+  exists (LibList.map f l).
+  intros.
+  unfold map_fsubst in H0.
+  destruct (classicT (exists a : A, f a = x /\ map_indom fm a)) as [ N | N ]; try eqsolve.
+  destruct N as (a & <- & Hdom).
+  unfolds map_indom. specializes H Hdom. apply mem_map. auto.
+Qed.
 
 (* Definition valid_subst {A B C : Type} (fm : fmap A B) (f : A -> C) : Prop :=
   forall x1 x2, 
@@ -1427,17 +1855,6 @@ Qed.
 
 
 
-Lemma valid_subst_update {A B C : Type} (fm : fmap A B) (f : A -> C) x y : 
-  valid_subst (update fm x y) f -> valid_subst fm f.
-Proof.
-Admitted.
-
-Lemma valid_subst_filter {A B C : Type} (fm : fmap A B) (f : A -> C) Q : 
-  valid_subst fm f -> valid_subst (filter Q fm) f.
-Proof.
-Admitted.
-
-
 (* Lemma fsubst_read {A B C : Type} `{Inhab B} (fm : fmap A B) (f : C -> A) x :
 read (fsubst fm f) x = read fm (f x).
 Admitted.
@@ -1448,13 +1865,69 @@ Admitted. *)
 
 Lemma fsubst_empty {A B C : Type} (f : A -> C) : 
   fsubst empty f = empty :> fmap C B.
-Proof. Admitted.
+Proof. 
+  apply fmap_extens. intros. simpl. unfold map_fsubst.
+  destruct (classicT (exists a : A, f a = x /\ map_indom _ a)) as [ N | N ]; try eqsolve.
+  destruct (indefinite_description N). reflexivity.
+Qed.
 
+
+Lemma fmapU_in1 {A B : Type} (fm1 fm2 : fmap A B) x : 
+  indom fm1 x -> fmap_data (fm1 \+ fm2) x = fmap_data fm1 x.
+Proof.
+  rewrite /indom/map_indom/= /map_union.
+  by case: (fmap_data _ _).
+Qed.
+
+Lemma fmapU_nin2 {A B : Type} (fm1 fm2 : fmap A B) x : 
+  ~ indom fm2 x -> fmap_data (fm1 \+ fm2) x = fmap_data fm1 x.
+Proof.
+  move/not_not_inv=> E; rewrite /= /map_union E.
+  by case: (fmap_data _ _).
+Qed.
+
+Lemma fmapU_nin1 {A B : Type} (fm1 fm2 : fmap A B) x : 
+  ~ indom fm1 x -> fmap_data (fm1 \+ fm2) x = fmap_data fm2 x.
+Proof.
+  by move/not_not_inv=> E; rewrite /= /map_union E.
+Qed.
+
+Lemma fmapNone {A B : Type} (fm : fmap A B) x :
+  ~indom fm x ->
+  fmap_data fm x = None.
+Proof. by move/not_not_inv. Qed.
+
+Lemma fsubst_valid_indom  {A B C : Type} (f : A -> C) (fm : fmap A B) (x : C) :
+    indom (fsubst fm f) x = 
+    exists y, f y = x /\ indom fm y.
+Proof.
+  rewrite /fsubst /indom /= {1}/map_indom /map_fsubst.
+  case: classicT=> pf.
+  { case: (indefinite_description _); clear pf.
+    move=> y [<-]?; extens; split=> //; eexists; eauto. }
+  by extens.
+Qed.
 
 Lemma fsubst_update_valid {A B C : Type} (f : A -> C) (fm : fmap A B) x y: 
-  valid_subst fm f ->
+  injective f ->
   fsubst (update fm x y) f = update (fsubst fm f) (f x) y.
-Proof. Admitted.
+Proof.
+  move=> inj.
+  have?: forall h : fmap A B, valid_subst h f by move=> > /inj->.
+  apply/fmap_extens=> z.
+  case: (prop_inv (f x = z))=> [<-|?].
+  { rewrite fsubst_valid_eq // /update ?fmapU_in1 ?indom_single_eq //=.
+    by do ? case:classicT. }
+  rewrite {2}/update fmapU_nin1 ?indom_single_eq //.
+  case: (prop_inv (indom (fsubst (update fm x y) f) z))=> [|/[dup]?].
+  { rewrite fsubst_valid_indom=> -[]w []?.
+    rewrite indom_update_eq=> -[?|]; subst=> // ?.
+    by rewrite ?fsubst_valid_eq // /update fmapU_nin1 // indom_single_eq=> /(congr1 f). }
+  rewrite fsubst_valid_indom=> ind'.
+  rewrite ?fmapNone // fsubst_valid_indom=> -[w][?]?; subst; apply:ind'. 
+  exists w; split=> //; rewrite indom_update_eq; eauto.
+Qed.
+
 Lemma fsubst_update {A B C : Type} (f : A -> C) (g : C -> A) (fm : fmap A B) x y: 
   cancel f g ->
   fsubst (update fm x y) f = update (fsubst fm f) (f x) y.
@@ -1488,58 +1961,114 @@ Proof.
   rewrite ?indom_update_eq=> -[/(can_inj c2)|/IH]; by autos*. *)
 Qed.
 
+Lemma fsubst_iso {A B C : Type} (f : A -> C) g (fm : fmap A B) x : 
+  cancel f g -> 
+  cancel g f ->
+  fmap_data (fsubst fm f) (f x) = fmap_data fm x.
+Proof.
+  intros. simpl. unfold map_fsubst.
+  destruct classicT as [ N | N ].
+  { destruct (indefinite_description _) as (x0 & (E' & HH)).
+    apply f_equal with (f:=g) in E'. rewrite -> ! H in E'. eqsolve.
+  }
+  { destruct (fmap_data fm x) eqn:E; auto.
+    assert (map_indom fm x) by eqsolve. false N. eauto.
+  }
+Qed.
+
 Lemma fsubst_indom {A B C : Type} (f : A -> C) g (fm : fmap A B) x :
   cancel f g -> 
   cancel g f ->
   indom (fsubst fm f) (f x) = indom fm x.
 Proof.
-Admitted.
+  intros.
+  unfolds indom, map_indom. rewrite -> (@fsubst_iso _ _ _ f g); auto.
+Qed.
 
 Lemma fsubst_read {A B C : Type} `{Inhab B} (f : A -> C) g (fm : fmap A B) x :
   cancel f g -> 
   cancel g f ->
   read (fsubst fm f) (f x) = read fm x.
 Proof.
-Admitted.
+  intros.
+  unfolds read. rewrite -> (@fsubst_iso _ _ _ f g); auto.
+Qed.
 
 Lemma fsubst_remove {A B C : Type} (f : A -> C) g (fm : fmap A B) x : 
   cancel f g -> 
   cancel g f ->
   remove (fsubst fm f) (f x) = fsubst (remove fm x) f.
 Proof.
-Admitted.
+  intros. apply fmap_extens. intros. 
+  simpl. unfolds remove, map_remove. 
+  cbn delta -[fsubst] beta iota. 
+  case_if.
+  { subst. unfold map_fsubst.
+    destruct classicT as [ N | N ]; auto.
+    destruct (indefinite_description _) as (x0 & (E' & HH)).
+    apply f_equal with (f:=g) in E'. rewrite -> ! H in E'. subst. case_if. auto.
+  }
+  { unfold map_fsubst.
+    destruct classicT as [ N | N ]; auto.
+    all: destruct classicT as [ N2 | N2 ]; auto.
+    { destruct (indefinite_description _) as (x' & (E' & HH)).
+      destruct (indefinite_description _) as (x'' & (E'' & HH')).
+      unfold map_indom in HH'. case_if.
+      rewrite <- E'' in E'. 
+      apply f_equal with (f:=g) in E'. rewrite -> ! H in E'. subst. auto.
+    }
+    { false N2. destruct N as (a & <- & N).
+      exists a. split; auto.
+      unfold map_indom. case_if. auto.
+    }
+    { false N. destruct N2 as (a & <- & N2).
+      exists a. split; auto.
+      unfolds map_indom. case_if. auto.
+    }
+  }
+Qed.
 
-Lemma filter_eq {A B : Type} (fs1 fs2 : fmap A B) (P : A -> B -> Prop) `{Inhab B} : 
-  (forall y x, P y x -> read fs1 y = read fs2 y) -> 
-  filter P fs1 = filter P fs2.
-Proof.
-Admitted.
-
-Lemma filter_in {A B : Type} (fs : fmap A B) (P : A -> B -> Prop) `{Inhab B} x y : 
-  P y x ->
+Lemma filter_in {A B : Type} (fs : fmap A B) (P : A -> B -> Prop) `{Inhab B} y: 
+  P y (read fs y)->
   read (filter P fs) y = read fs y.
 Proof.
-Admitted.
+  unfolds read, filter, map_filter. simpl.
+  by case: fmap_data=> // ??; case: classicT.
+Qed.
 
 Lemma filter_indom {A B : Type} (fs : fmap A B) (P : A -> B -> Prop) y `{Inhab B} : 
-  indom (filter P fs) y <-> (indom fs y /\ exists x, P y x).
+  indom (filter P fs) y <-> (indom fs y /\ P y (read fs y)).
 Proof.
-Admitted.
+  unfolds indom, map_indom, filter, map_filter, read.
+  simpl. destruct (fmap_data fs y) eqn:E. 2: eqsolve.
+  case_if. 1: intuition eauto.
+  by split=> // -[]_/C.
+Qed.
 
 Lemma read_arb {A B : Type} (fs : fmap A B) x  `{Inhab B}: 
   ~ indom fs x -> read fs x = arbitrary.
-Proof.
-Admitted.
+Proof. 
+  intros. unfolds read. destruct (fmap_data fs x) eqn:E; auto. 
+  false. apply H0. eqsolve.
+Qed.
 
 Lemma disj_filter {A B : Type} (fs1 fs2 : fmap A B) (P : A -> B -> Prop) : 
   disjoint fs1 fs2 -> disjoint fs1 (filter P fs2).
-Admitted.
+Proof.
+  intros. hnf in H |- *. intros x. specializes H x. destruct H; auto.
+  right. unfolds filter, map_filter. simpl. rewrite -> H. auto. 
+Qed.
 
 Lemma filter_union {A B : Type} (fs1 fs2 : fmap A B) (P : A -> B -> Prop) :
   disjoint fs1 fs2 ->
   filter P (fs1 \+ fs2) = filter P fs1 \+ filter P fs2.
 Proof.
-Admitted.
+  intros. apply fmap_extens. intros x.
+  simpl. unfolds map_filter, map_union.
+  destruct (fmap_data fs1 x) eqn:E1, (fmap_data fs2 x) eqn:E2; try eqsolve.
+  { hnf in H. specializes H x. eqsolve. }
+  { case_if; eqsolve. }
+Qed.
 
 Lemma filter_union' {A B : Type} (fs1 fs2 : fmap A B) (P : A -> B -> Prop) :
   (forall x y y', P x y <-> P x y') -> 
@@ -1557,7 +2086,10 @@ Lemma filter_filter  {A B : Type} (fm : fmap A B) (P Q : A -> B -> Prop) :
   filter P (filter Q fm) = 
   filter (fun x y => P x y /\ Q x y) fm.
 Proof.
-Admitted.
+  apply fmap_extens. intros. simpl. unfolds map_filter. 
+  destruct (fmap_data fm x) eqn:E; try eqsolve.
+  repeat case_if; eqsolve.
+Qed.
 
 Definition diff {A B} (fs1 fs2 : fmap A B) : fmap A B := 
   filter (fun x _ => ~indom fs2 x) fs1.
@@ -1573,28 +2105,71 @@ Proof.
   (do 2? case: classicT)=> ??; subst*; by case: (fmap_data _ _).
 Qed.
 
-Lemma diff0 {A B} (fs : fmap A B) : fs \- empty = fs.  Admitted.
-Lemma diffxx {A B} (fs : fmap A B) : fs \- fs = empty.  Admitted.
+Lemma diff0 {A B} (fs : fmap A B) : fs \- empty = fs.
+Proof.
+  apply fmap_extens. intros. simpl. unfolds map_filter. 
+  unfolds indom, map_indom. simpl. 
+  case_if; try eqsolve. destruct (fmap_data fs x); eqsolve.
+Qed.
+Lemma diffxx {A B} (fs : fmap A B) : fs \- fs = empty.
+Proof.
+  apply fmap_extens. intros. simpl. unfolds map_filter. 
+  destruct (fmap_data fs x) eqn:E; try eqsolve.
+  unfolds indom, map_indom. case_if; eqsolve. 
+Qed.
 
 Lemma diff_indom {A B} (fs1 fs2 : fmap A B) x:
   indom (fs1 \- fs2) x = (indom fs1 x /\ ~ indom fs2 x).
-Admitted.
+Proof.
+  extens. unfolds indom, map_indom. simpl. unfolds map_filter.
+  unfolds indom, map_indom. 
+  destruct (fmap_data fs1 x) eqn:E1, (fmap_data fs2 x) eqn:E2; try eqsolve.
+  all: case_if; try eqsolve.
+Qed.
+
+Lemma filter_update {A B : Type} (fs : fmap A B) x y (P : A -> B -> Prop) :
+  (forall (x : A) (y y' : B), P x y <-> P x y') ->
+  filter P (update fs x y) = If P x y then update (filter P fs) x y else filter P fs.
+Proof.
+  intros. apply fmap_extens. intros x0. 
+  case_if. 
+  all: simpl; unfolds map_filter, map_union.
+  { case_if; try subst; auto. case_if. auto. }
+  { case_if; try subst; auto. case_if. 
+    destruct (fmap_data fs x0) eqn:E; auto.
+    specializes H x0 y b. rewrite -> H in C. case_if. auto.
+  }
+Qed.
 
 Lemma diff_upd {A} d (fs1 fs2 : fmap A unit) : 
   indom fs1 d ->
+  ~ indom fs1 d ->
   fs1 \- fs2 = update (fs1 \- update fs2 d tt) d tt.
-Admitted.
+Proof.
+  intros.
+  apply fmap_extens. intros. simpl. unfolds map_filter, map_union.
+  unfolds indom, map_indom. simpl. unfolds map_union.
+  destruct (fmap_data fs1 x) eqn:E1; (repeat (case_if; try subst)); try eqsolve.
+Qed.
+
 
 Lemma diff_disj {A B} (fm1 fm2 : fmap A B) : 
   disjoint (fm1 \- fm2) fm2.
 Proof.
-Admitted.
+  hnf. intros. simpl. unfolds map_filter. 
+  unfolds indom, map_indom.
+  destruct (fmap_data fm1 x) eqn:E1; (repeat (case_if; try subst)); try eqsolve.
+Qed.
 
 Lemma union_diff {A B} (fm1 fm2 : fmap A B) `{Inhab B} : 
   disjoint fm1 fm2 ->
   (fm1 \+ fm2) \- fm2 = fm1.
 Proof.
-Admitted.
+  intros. apply fmap_extens. intros. simpl. unfolds map_filter, map_union.
+  unfolds indom, map_indom.
+  destruct (fmap_data fm1 x) eqn:E1, (fmap_data fm2 x) eqn:E2; (repeat (case_if; try subst)); try eqsolve.
+  specializes H0 x; eqsolve.
+Qed.
 
 
 Arguments diff_upd : clear implicits.
@@ -1602,42 +2177,32 @@ Arguments diff_upd : clear implicits.
 
 Lemma filter_union_compl {A B : Type} (fs : fmap A B) (P : A -> B -> Prop) : 
   filter P fs \+ filter (fun x y => ~ (P x y)) fs = fs.
-Admitted.
+Proof.
+  apply fmap_extens. intros. simpl. unfolds map_filter, map_union.
+  destruct (fmap_data fs x) eqn:E; (repeat (case_if; try subst)); try eqsolve.
+Qed.
 
 Lemma indom_update {A B : Type} {fm : fmap A B} {x y} :
   indom (update fm x y) x.
-Admitted.
+Proof. 
+  unfolds indom, map_indom. simpl. unfolds map_filter, map_union. case_if. eqsolve. 
+Qed.
 
 Lemma update_neq {A B : Type} {fm : fmap A B} {x y z} `{Inhab B} :
   z <> x -> 
   read (update fm x y) z = read fm z.
-Admitted.
+Proof.
+  intros. unfolds read. simpl. unfolds map_filter, map_union. case_if. reflexivity. 
+Qed.
 
 Lemma update_eq {A B : Type} {fm : fmap A B} {x y} `{Inhab B} :
   read (update fm x y) x = y.
-Admitted.
-
-(* Lemma indom_single {A B D : Type} {x : A} {y : B} (fm : fmap A D) `{Inhab D} :
-  indom fm = indom (single x y) -> 
-  fm = single x (read fm x).
-Admitted. *)
-
-Lemma fmapE'  {A B : Type} (fm1 fm2 : fmap A B) `{Inhab B} : 
-  (fm1 = fm2) <-> (forall x, read fm1 x = read fm2 x).
 Proof.
-Admitted.
+  intros. unfolds read. simpl. unfolds map_filter, map_union. case_if. reflexivity. 
+Qed.
 
-Lemma fmapE  {A B : Type} (fm1 fm2 : fmap A B) `{Inhab B} : 
-  (fm1 = fm2) = (forall x, indom (fm1 \+ fm2) x -> read fm1 x = read fm2 x).
-Proof.
-Admitted.
-
-Lemma fmap0E A B (fm : fmap A B) `{Inhab B} : 
-  (fm = empty) = (forall x, indom fm x -> read fm x = arbitrary).
-Proof.
-Admitted.
-
-Definition Union {T D S : Type} (l : fset T) (fs : T -> fmap D S) : fmap D S. Admitted.
+Definition Union {T D S : Type} (l : fset T) (fs : T -> fmap D S) : fmap D S :=
+  fset_fold (@empty D S) (fun (t : T) (h : fmap D S) => h \+ (fs t)) l.
 Definition interval (x y : int) : fset int. Admitted.
 
 Lemma intervalU x y : x < y -> interval x y = update (interval (x + 1) y) x tt.
@@ -1658,10 +2223,25 @@ Lemma Union_upd {T A B} (x : T) (fs : fset T) (fsi : T -> fmap A B) :
 Admitted.
 
 Lemma Union0 {T A B} (fsi : T -> fmap A B) : Union empty fsi = empty.
-Admitted.
+Proof. 
+  unfold Union. unfolds fset_fold. rewrite -> fmap_exact_dom_empty, -> fold_right_nil. auto.
+Qed.
 
 Lemma Union_union {T A B} (fs : fset T) (fsi1 fsi2 : T -> fmap A B) :
   Union fs fsi1 \+ Union fs fsi2 = Union fs (fun t => fsi1 t \+ fsi2 t).
+Proof.
+  unfold Union. unfolds fset_fold. 
+  destruct (fmap_exact_dom fs) as (l & HH). simpl.
+  destruct HH as (HH & _ & _).
+  remember (LibList.map fst l) as lf. clear Heqlf.
+  induction lf as [ | x lf IH ]. 
+  { rewrite -> ! fold_right_nil. rewrite -> union_empty_l. auto. }
+  { inversion HH; subst. specializes IH H2.
+    rewrite -> ! fold_right_cons. 
+    admit.
+    (* ... *)
+    (* need disjoint to swap *)
+  }
 Admitted.
 
 Lemma disjoint_Union {T A B} (fs : fset T) (fsi : T -> fmap A B) fs' :
@@ -1688,18 +2268,22 @@ Qed.
 
 Lemma fsubst_union_valid {A B C : Type}  `{Inhab B} (fm1 fm2 : fmap A B) (f : A -> C) :
   valid_subst fm1 f ->
+  valid_subst fm2 f ->
   valid_subst (fm1 \+ fm2) f ->
     fsubst (fm1 \+ fm2) f = 
     fsubst fm1 f \+ fsubst fm2 f.
 Proof.
-  elim/fmap_ind: fm1 fm2.
-  { by move=> *; rewrite fsubst_empty ?union_empty_l. }
-  move=> fm1 x y IHfm1 ? fm2 ?; rewrite -update_union_not_r'=> ?.
-  have?: valid_subst fm1 f.
-  { apply/valid_subst_update; eauto. }
-  have?: valid_subst (fm1 \+ fm2) f.
-  { apply/valid_subst_update; eauto. }
-  by rewrite ?fsubst_update_valid // IHfm1 // update_union_not_r'.
+  move=> v1 v2 v3.
+  apply/fmap_extens=> c.
+  case: (prop_inv (indom (fsubst (fm1 \+ fm2) f) c))=>[|/[dup]?]; rewrite fsubst_valid_indom.
+  { case=> y [<-]?; rewrite fsubst_valid_eq //.
+    case: (prop_inv (indom fm1 y))=> ?.
+    { rewrite ?fmapU_in1 // ?fsubst_valid_eq //.
+      rewrite fsubst_valid_indom; by exists y. }
+    rewrite ?fmapU_nin1 // ?fsubst_valid_eq // fsubst_valid_indom.
+    case=> z []/v1; rewrite /indom /map_indom=> -> //. }
+  move=> N; rewrite ?fmapNone // indom_union_eq ?fsubst_valid_indom=> -[].
+  all: case=> z []??; case: N; exists z; split=> //; rewrite indom_union_eq; by (left+right). 
 Qed.
 
 
@@ -1727,15 +2311,11 @@ Proof.
   by rewrite -update_union_not_r' ?(fsubst_update _ _ _ c1) IH update_union_not_r'.
 Qed.
 
-Lemma filter_update {A B : Type} (fs : fmap A B) x y (P : A -> B -> Prop) :
-  (forall (x : A) (y y' : B), P x y <-> P x y') ->
-  filter P (update fs x y) = If P x y then update (filter P fs) x y else filter P fs.
-Admitted.
-
 Lemma filter_empty {A B : Type} (P : A -> B -> Prop) : 
   filter P empty = empty.
-Proof.
-Admitted.
+Proof. 
+  apply fmap_extens. intros x0. simpl; unfolds map_filter, map_union. auto. 
+Qed.
 
 Lemma filter_fsubst {A B C} (fm : fmap A B) (f : A -> C) g (P : C -> Prop) : 
   cancel f g ->
@@ -1750,20 +2330,6 @@ Proof.
   rewrite (fsubst_update _ _ _ c1) ?filter_update //.
   case: classicT=> //.
   by rewrite IH (fsubst_update _ _ _ c1).
-Qed.
-
-Lemma filter_fsubst_valid {A B C} (fm : fmap A B) (f : A -> C) (P : C -> Prop) : 
-  valid_subst fm f ->
-  filter (fun x _=> P x) (fsubst fm f) = 
-  fsubst (filter (fun x _=> P (f x)) fm) f.
-Proof.
-  elim/fmap_ind: fm.
-  { by rewrite ?(fsubst_empty, filter_empty). }
-  move=> fm ?? IH ??.
-  have ?: valid_subst fm f by (apply/valid_subst_update; eauto).
-  rewrite fsubst_update_valid ?filter_update // IH //. 
-  case: classicT; rewrite ?fsubst_update_valid //.
-  exact/valid_subst_filter.
 Qed.
 
 Lemma fsubst_eq {A B C} (fm : fmap A B) (f : A -> C) (P : A -> Prop): 
