@@ -2203,30 +2203,88 @@ Qed.
 
 Definition Union {T D S : Type} (l : fset T) (fs : T -> fmap D S) : fmap D S :=
   fset_fold (@empty D S) (fun (t : T) (h : fmap D S) => h \+ (fs t)) l.
-Definition interval (x y : int) : fset int. Admitted.
-
-Lemma intervalU x y : x < y -> interval x y = update (interval (x + 1) y) x tt.
-Admitted.
-
-Lemma intervalUr x y : x <= y -> interval x (y + 1) = update (interval x y) y tt.
-Admitted.
-
-Lemma intervalgt x y : x <= y -> interval y x = empty.
-Admitted.
+Fixpoint interval_aux (base : int) (n : nat) : fset int :=
+  match n with
+  | O => empty
+  | S n' => update (interval_aux base n') ((Z.of_nat n') + base) tt
+  end.
+Definition interval (x y : int) : fset int := 
+  interval_aux x (Z.to_nat (y - x)).
 
 Lemma indom_interval x y z : indom (interval x y) z = (x <= z < y).
-Admitted.
+Proof.
+  remember (Z.to_nat (y - x)) as n.
+  unfolds interval.
+  rewrite <- Heqn.
+  revert x y z Heqn.
+  induction n as [ | n IH ]; intros.
+  { simpl. unfolds indom, map_indom. simpl.
+    extens. iff H; try eqsolve. math.
+  }
+  { simpl. rewrite -> indom_update_eq.
+    assert (n = Z.to_nat ((y - 1) - x)) by math.
+    assert (Z.of_nat n + x = y - 1) as -> by math.
+    specializes IH z H.
+    rewrite -> IH. extens. 
+    transitivity (x <= z <= y - 1); try math.
+    iff HH.
+    { destruct HH as [ HH | HH ]; try math. }
+    { destruct (Z.eq_dec z (y - 1)); try subst; try math.
+      { left. reflexivity. }
+      { right. math. }
+    }
+  }
+Qed.
 
-Lemma Union_upd {T A B} (x : T) (fs : fset T) (fsi : T -> fmap A B) : 
-  (forall i j, i <> j -> disjoint (fsi i) (fsi j)) ->
-  Union (update fs x tt) fsi = fsi x \+ Union fs fsi.
-Admitted.
+Lemma intervalgt x y : x <= y -> interval y x = empty.
+Proof.
+  intros. apply fmap_extens. intros z. simpl. 
+  destruct (fmap_data (interval y x) z) eqn:E; auto.
+  pose proof (indom_interval y x z) as HH.
+  assert (indom (interval y x) z) as H0.
+  { unfolds indom, map_indom. eqsolve. }
+  rewrite -> HH in H0. math.
+Qed.
+
+Lemma intervalUr x y : x <= y -> interval x (y + 1) = update (interval x y) y tt.
+Proof.
+  intros. unfolds interval.
+  replace (Z.to_nat (y + 1 - x)) with (S (Z.to_nat (y - x))) by math.
+  simpl. f_equal. math.
+Qed.
+
+Lemma intervalU x y : x < y -> interval x y = update (interval (x + 1) y) x tt.
+Proof.
+  remember (Z.to_nat (y - x - 1)) as n.
+  revert x y Heqn.
+  induction n as [ | n IH ]; intros.
+  { assert (y = x + 1) as -> by math.
+    unfolds interval.
+    replace (x + 1 - x) with 1 by math.
+    replace (x + 1 - (x + 1)) with 0 by math.
+    simpl. reflexivity.
+  }
+  { assert (y = n + x + 1 + 1) as -> by math.
+    unfolds interval.
+    replace (Z.to_nat (n + x + 1 + 1 - x)) with (S (S n)) by math.
+    replace (Z.to_nat (n + x + 1 + 1 - (x + 1))) with (S n) by math.
+    cbn delta [interval_aux] beta iota.
+    specialize (IH x (n + x + 1)).
+    replace (Z.to_nat (n + x + 1 - x)) with (S n) in IH by math.
+    cbn delta [interval_aux] beta iota in IH.
+    rewrite -> IH; try math.
+    replace (Z.to_nat (n + x + 1 - (x + 1))) with n by math.
+    replace (Z.of_nat n + (x + 1)) with (Z.of_nat (S n) + x) by math.
+    apply update_update.
+    math.
+  }
+Qed.
 
 Lemma Union0 {T A B} (fsi : T -> fmap A B) : Union empty fsi = empty.
 Proof. 
   unfold Union. unfolds fset_fold. rewrite -> fmap_exact_dom_empty, -> fold_right_nil. auto.
 Qed.
-
+(*
 Lemma Union_union {T A B} (fs : fset T) (fsi1 fsi2 : T -> fmap A B) :
   Union fs fsi1 \+ Union fs fsi2 = Union fs (fun t => fsi1 t \+ fsi2 t).
 Proof.
@@ -2243,15 +2301,90 @@ Proof.
     (* need disjoint to swap *)
   }
 Admitted.
+*)
+Lemma indom_Union {T A B} (fs : fset T) (fsi : T -> fmap A B) x : 
+  indom (Union fs fsi) x = exists f, indom fs f /\ indom (fsi f) x.
+Proof.
+  (* should do induction on list *)
+  unfold Union, fset_fold. 
+  destruct (fmap_exact_dom fs) as (l & H). simpl.
+  extens. transitivity (exists f, mem f (LibList.map fst l) /\ indom (fsi f) x).
+  2:{
+    pose proof (is_map_supp_dom H) as HH.
+    setoid_rewrite <- HH. reflexivity.
+  }
+  clear H.
+  induction l as [ | y l IH ].
+  { rewrite -> fold_right_nil, map_nil.
+    setoid_rewrite -> mem_In. simpl.
+    unfolds indom, map_indom. simpl. intuition. firstorder.
+  }
+  { rewrite -> map_cons, -> fold_right_cons, -> indom_union_eq.
+    destruct y as (y, []). simpl.
+    setoid_rewrite -> mem_In. simpl. setoid_rewrite <- mem_In.
+    rewrite -> IH.
+    iff HH.
+    { destruct HH as [ HH | HH ].
+      { destruct HH as (? & ? & ?).
+        eexists. split. 1: right; eauto. auto. 
+      }
+      { exists y. intuition. }
+    }
+    { destruct HH as (? & [ <- | ] & ?).
+      { right. auto. }
+      { left. eauto. }
+    }
+  }
+Qed.
 
 Lemma disjoint_Union {T A B} (fs : fset T) (fsi : T -> fmap A B) fs' :
   ((disjoint (Union fs fsi) fs' = forall i, indom fs i -> disjoint (fsi i) fs') * 
   (disjoint fs' (Union fs fsi) = forall i, indom fs i -> disjoint (fsi i) fs'))%type.
-Admitted.
-  
-Lemma indom_Union {T A B} (fs : fset T) (fsi : T -> fmap A B) x : 
-  indom (Union fs fsi) x = exists f, indom fs f /\ indom (fsi f) x.
-Admitted.
+Proof.
+  rewrite -> disjoint_comm. refine ((fun a => (a, a)) _).
+  extens. 
+  rewrite -> disjoint_eq. 
+  setoid_rewrite -> disjoint_eq.
+  setoid_rewrite -> indom_Union.
+  firstorder.
+Qed.
+
+Lemma Union_upd_pre {T A B} (x : T) (fs : fset T) (fsi : T -> fmap A B) : 
+  (forall i j, i <> j -> disjoint (fsi i) (fsi j)) ->
+  ~ indom fs x ->
+  Union (update fs x tt) fsi = fsi x \+ Union fs fsi.
+Proof.
+  intros.
+  unfold Union.
+  rewrite -> (snd (@fset_foldE _ _ _ _)).
+  { rewrite -> union_comm_of_disjoint; auto.
+    fold (Union fs fsi).
+    rewrite -> (fst (@disjoint_Union _ _ _ _ _ _)).
+    intros. apply H. unfolds indom, map_indom. eqsolve. 
+  }
+  { intros. destruct (classicT (a = b)) as [ -> | Hneq ]; auto.
+    rewrite -> union_assoc, -> union_comm_of_disjoint with (h1:=fsi b).
+    2: apply H; auto.
+    rewrite <- union_assoc. auto.
+  }
+  { eqsolve. }
+Qed.
+
+Lemma Union_upd {T A B} (x : T) (fs : fset T) (fsi : T -> fmap A B) : 
+  (forall i j, i <> j -> disjoint (fsi i) (fsi j)) ->
+  Union (update fs x tt) fsi = fsi x \+ Union fs fsi.
+Proof.
+  intros.
+  destruct (fmap_data fs x) eqn:E.
+  { destruct u.
+    pose proof (@remove_update_self _ _ _ _ _ E) as Eh. 
+    rewrite -> Eh, -> update_updatexx.
+    rewrite -> ! Union_upd_pre; auto.
+    2:{ rewrite -> indom_remove_eq. eqsolve. }
+    rewrite <- union_assoc, -> union_self. reflexivity.
+  }
+  { apply Union_upd_pre; auto. }
+Qed.
 
 Lemma update_union_not_r' [A B : Type] `{Inhab B} (h1 : fmap A B) [h2 : fmap A B] [x : A] (v : B) :
   update (h1 \+ h2) x v = update h1 x v \+ h2.
