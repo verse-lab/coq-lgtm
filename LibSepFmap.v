@@ -2127,18 +2127,31 @@ Proof.
   all: case_if; try eqsolve.
 Qed.
 
+Lemma filter_update {A B : Type} (fs : fmap A B) x y (P : A -> B -> Prop) :
+  (forall (x : A) (y y' : B), P x y <-> P x y') ->
+  filter P (update fs x y) = If P x y then update (filter P fs) x y else filter P fs.
+Proof.
+  intros. apply fmap_extens. intros x0. 
+  case_if. 
+  all: simpl; unfolds map_filter, map_union.
+  { case_if; try subst; auto. case_if. auto. }
+  { case_if; try subst; auto. case_if. 
+    destruct (fmap_data fs x0) eqn:E; auto.
+    specializes H x0 y b. rewrite -> H in C. case_if. auto.
+  }
+Qed.
+
 Lemma diff_upd {A} d (fs1 fs2 : fmap A unit) : 
   indom fs1 d ->
+  ~ indom fs1 d ->
   fs1 \- fs2 = update (fs1 \- update fs2 d tt) d tt.
 Proof.
-  intros. apply fmap_extens. intros. simpl. unfolds map_filter, map_union.
+  intros.
+  apply fmap_extens. intros. simpl. unfolds map_filter, map_union.
   unfolds indom, map_indom. simpl. unfolds map_union.
   destruct (fmap_data fs1 x) eqn:E1; (repeat (case_if; try subst)); try eqsolve.
-  { destruct u. auto. }
-  { admit. }
-  (* ... *)
-  (* need to require ~ indom fs2 d ? *)
-Admitted.
+Qed.
+
 
 Lemma diff_disj {A B} (fm1 fm2 : fmap A B) : 
   disjoint (fm1 \- fm2) fm2.
@@ -2187,35 +2200,6 @@ Lemma update_eq {A B : Type} {fm : fmap A B} {x y} `{Inhab B} :
 Proof.
   intros. unfolds read. simpl. unfolds map_filter, map_union. case_if. reflexivity. 
 Qed.
-
-(* Lemma indom_single {A B D : Type} {x : A} {y : B} (fm : fmap A D) `{Inhab D} :
-  indom fm = indom (single x y) -> 
-  fm = single x (read fm x).
-Admitted. *)
-
-Lemma fmapE'  {A B : Type} (fm1 fm2 : fmap A B) `{Inhab B} : 
-  (fm1 = fm2) <-> (forall x, read fm1 x = read fm2 x).
-Proof.
-  split; intros HH. 1: subst; auto.
-  apply fmap_extens. intros x. specializes HH x. unfolds read.
-  destruct (fmap_data fm1 x) eqn:E1, (fmap_data fm2 x) eqn:E2; try eqsolve.
-  (* ... *)
-  (* need to guarantee arbitrary is the only outsider? *)
-Admitted.
-
-Lemma fmapE  {A B : Type} (fm1 fm2 : fmap A B) `{Inhab B} : 
-  (fm1 = fm2) = (forall x, indom (fm1 \+ fm2) x -> read fm1 x = read fm2 x).
-Proof.
-  (* ... *)
-  (* same reason as above *)
-Admitted.
-
-Lemma fmap0E A B (fm : fmap A B) `{Inhab B} : 
-  (fm = empty) = (forall x, indom fm x -> read fm x = arbitrary).
-Proof.
-  (* ... *)
-  (* same reason as above *)
-Admitted.
 
 Definition Union {T D S : Type} (l : fset T) (fs : T -> fmap D S) : fmap D S :=
   fset_fold (@empty D S) (fun (t : T) (h : fmap D S) => h \+ (fs t)) l.
@@ -2325,20 +2309,6 @@ Proof.
   { by rewrite fsubst_empty ?union_empty_l. }
   move=> fm ?? IH ?.
   by rewrite -update_union_not_r' ?(fsubst_update _ _ _ c1) IH update_union_not_r'.
-Qed.
-
-Lemma filter_update {A B : Type} (fs : fmap A B) x y (P : A -> B -> Prop) :
-  (forall (x : A) (y y' : B), P x y <-> P x y') ->
-  filter P (update fs x y) = If P x y then update (filter P fs) x y else filter P fs.
-Proof.
-  intros. apply fmap_extens. intros x0. 
-  case_if. 
-  all: simpl; unfolds map_filter, map_union.
-  { case_if; try subst; auto. case_if. auto. }
-  { case_if; try subst; auto. case_if. 
-    destruct (fmap_data fs x0) eqn:E; auto.
-    specializes H x0 y b. rewrite -> H in C. case_if. auto.
-  }
 Qed.
 
 Lemma filter_empty {A B : Type} (P : A -> B -> Prop) : 

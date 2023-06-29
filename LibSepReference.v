@@ -1749,8 +1749,9 @@ Lemma proj_empty fs h d :
   local fs h -> 
   proj h d = empty.
 Proof.
-  move=> ? lc; rewrite fmap0E=> -[]?? ind; apply/read_arb.
-  by rewrite /proj filter_indom=> -[/lc]/[swap]- ->.
+  move=> ? lc; apply/fmap_extens=> -[? d'].
+  rewrite /empty {2}/fmap_data fmapNone // /proj filter_indom.
+  by case=> /lc/[swap]->.
 Qed.
 
 
@@ -1801,10 +1802,10 @@ Qed.
 Lemma hheap_eq_proj h1 h2 :
   (forall d, proj h1 d = proj h2 d) -> h1 = h2.
 Proof.
-  move=> e; apply/fmapE'=> -[l d].
-  rewrite -(filter_in h1 ((fun '(_, c) => fun=> c = d)) 0) //.
-  rewrite -(filter_in h2 ((fun '(_, c) => fun=> c = d)) 0) //.
-  move: (l, d); exact/fmapE'/e.
+  move=> e; apply/fmap_extens=> -[l d].
+  move/(congr1 ((@fmap_data _ _)^~ (l, d))): (e d).
+  rewrite /= /map_filter; case_if.
+  by do ? case: fmap_data.
 Qed.
 
 Lemma proj_proj h d : 
