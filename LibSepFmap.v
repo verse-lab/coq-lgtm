@@ -1872,10 +1872,62 @@ Proof.
 Qed.
 
 
+Lemma fmapU_in1 {A B : Type} (fm1 fm2 : fmap A B) x : 
+  indom fm1 x -> fmap_data (fm1 \+ fm2) x = fmap_data fm1 x.
+Proof.
+  rewrite /indom/map_indom/= /map_union.
+  by case: (fmap_data _ _).
+Qed.
+
+Lemma fmapU_nin2 {A B : Type} (fm1 fm2 : fmap A B) x : 
+  ~ indom fm2 x -> fmap_data (fm1 \+ fm2) x = fmap_data fm1 x.
+Proof.
+  move/not_not_inv=> E; rewrite /= /map_union E.
+  by case: (fmap_data _ _).
+Qed.
+
+Lemma fmapU_nin1 {A B : Type} (fm1 fm2 : fmap A B) x : 
+  ~ indom fm1 x -> fmap_data (fm1 \+ fm2) x = fmap_data fm2 x.
+Proof.
+  by move/not_not_inv=> E; rewrite /= /map_union E.
+Qed.
+
+Lemma fmapNone {A B : Type} (fm : fmap A B) x :
+  ~indom fm x ->
+  fmap_data fm x = None.
+Proof. by move/not_not_inv. Qed.
+
+Lemma fsubst_valid_indom  {A B C : Type} (f : A -> C) (fm : fmap A B) (x : C) :
+    indom (fsubst fm f) x = 
+    exists y, f y = x /\ indom fm y.
+Proof.
+  rewrite /fsubst /indom /= {1}/map_indom /map_fsubst.
+  case: classicT=> pf.
+  { case: (indefinite_description _); clear pf.
+    move=> y [<-]?; extens; split=> //; eexists; eauto. }
+  by extens.
+Qed.
+
 Lemma fsubst_update_valid {A B C : Type} (f : A -> C) (fm : fmap A B) x y: 
-  valid_subst fm f ->
+  injective f ->
   fsubst (update fm x y) f = update (fsubst fm f) (f x) y.
-Proof. (* ... *) Admitted.
+Proof.
+  move=> inj.
+  have?: forall h : fmap A B, valid_subst h f by move=> > /inj->.
+  apply/fmap_extens=> z.
+  case: (prop_inv (f x = z))=> [<-|?].
+  { rewrite fsubst_valid_eq // /update ?fmapU_in1 ?indom_single_eq //=.
+    by do ? case:classicT. }
+  rewrite {2}/update fmapU_nin1 ?indom_single_eq //.
+  case: (prop_inv (indom (fsubst (update fm x y) f) z))=> [|/[dup]?].
+  { rewrite fsubst_valid_indom=> -[]w []?.
+    rewrite indom_update_eq=> -[?|]; subst=> // ?.
+    by rewrite ?fsubst_valid_eq // /update fmapU_nin1 // indom_single_eq=> /(congr1 f). }
+  rewrite fsubst_valid_indom=> ind'.
+  rewrite ?fmapNone // fsubst_valid_indom=> -[w][?]?; subst; apply:ind'. 
+  exists w; split=> //; rewrite indom_update_eq; eauto.
+Qed.
+
 Lemma fsubst_update {A B C : Type} (f : A -> C) (g : C -> A) (fm : fmap A B) x y: 
   cancel f g ->
   fsubst (update fm x y) f = update (fsubst fm f) (f x) y.
@@ -1976,30 +2028,22 @@ Proof.
   }
 Qed.
 
-Lemma filter_eq {A B : Type} (fs1 fs2 : fmap A B) (P : A -> B -> Prop) `{Inhab B} : 
-  (forall y x, P y x -> read fs1 y = read fs2 y) -> 
-  filter P fs1 = filter P fs2.
-Proof.
-  (* ... *)
-  (* not used *)
-Admitted.
-
-Lemma filter_in {A B : Type} (fs : fmap A B) (P : A -> B -> Prop) `{Inhab B} x y : 
-  P y x ->
+Lemma filter_in {A B : Type} (fs : fmap A B) (P : A -> B -> Prop) `{Inhab B} y: 
+  P y (read fs y)->
   read (filter P fs) y = read fs y.
 Proof.
-  intros. unfolds read, filter, map_filter. simpl.
-  (* ... *)
-Admitted.
+  unfolds read, filter, map_filter. simpl.
+  by case: fmap_data=> // ??; case: classicT.
+Qed.
 
 Lemma filter_indom {A B : Type} (fs : fmap A B) (P : A -> B -> Prop) y `{Inhab B} : 
-  indom (filter P fs) y <-> (indom fs y /\ exists x, P y x).
+  indom (filter P fs) y <-> (indom fs y /\ P y (read fs y)).
 Proof.
-  unfolds indom, map_indom, filter, map_filter.
+  unfolds indom, map_indom, filter, map_filter, read.
   simpl. destruct (fmap_data fs y) eqn:E. 2: eqsolve.
   case_if. 1: intuition eauto.
-  (* ... *)
-Admitted.
+  by split=> // -[]_/C.
+Qed.
 
 Lemma read_arb {A B : Type} (fs : fmap A B) x  `{Inhab B}: 
   ~ indom fs x -> read fs x = arbitrary.
@@ -2237,42 +2281,6 @@ Proof.
     by rewrite update_neq. }
   rewrite ?read_union_r // indom_union_eq indom_single_eq; autos*.
 Qed.
-
-Lemma fsubst_valid_indom  {A B C : Type} (f : A -> C) (fm : fmap A B) (x : C) :
-    indom (fsubst fm f) x = 
-    exists y, f y = x /\ indom fm y.
-Proof.
-  rewrite /fsubst /indom /= {1}/map_indom /map_fsubst.
-  case: classicT=> pf.
-  { case: (indefinite_description _); clear pf.
-    move=> y [<-]?; extens; split=> //; eexists; eauto. }
-  by extens.
-Qed.
-
-Lemma fmapU_in1 {A B : Type} (fm1 fm2 : fmap A B) x : 
-  indom fm1 x -> fmap_data (fm1 \+ fm2) x = fmap_data fm1 x.
-Proof.
-  rewrite /indom/map_indom/= /map_union.
-  by case: (fmap_data _ _).
-Qed.
-
-Lemma fmapU_nin2 {A B : Type} (fm1 fm2 : fmap A B) x : 
-  ~ indom fm2 x -> fmap_data (fm1 \+ fm2) x = fmap_data fm1 x.
-Proof.
-  move/not_not_inv=> E; rewrite /= /map_union E.
-  by case: (fmap_data _ _).
-Qed.
-
-Lemma fmapU_nin1 {A B : Type} (fm1 fm2 : fmap A B) x : 
-  ~ indom fm1 x -> fmap_data (fm1 \+ fm2) x = fmap_data fm2 x.
-Proof.
-  by move/not_not_inv=> E; rewrite /= /map_union E.
-Qed.
-
-Lemma fmapNone {A B : Type} (fm : fmap A B) x :
-  ~indom fm x ->
-  fmap_data fm x = None.
-Proof. by move/not_not_inv. Qed.
 
 Lemma fsubst_union_valid {A B C : Type}  `{Inhab B} (fm1 fm2 : fmap A B) (f : A -> C) :
   valid_subst fm1 f ->
