@@ -1964,17 +1964,6 @@ Definition valid_subst' {A B C : Type} (fm : fmap A B) (f : A -> C) : Prop :=
     f x1 = f x2 -> 
     fmap_data fm x1 = fmap_data fm x2.
 
-Lemma fsubst_valid_indom  {A B C : Type} (f : A -> C) (fm : fmap A B) (x : C) :
-    indom (fsubst fm f) x = 
-    exists y, f y = x /\ indom fm y.
-Proof.
-  rewrite /fsubst /indom /= {1}/map_indom /map_fsubst.
-  case: classicT=> pf.
-  { case: (indefinite_description _); clear pf.
-    move=> y [<-]?; extens; split=> //; eexists; eauto. }
-  by extens.
-Qed.
-
 
 Lemma eval1_det h1 h2 ht d hv h2' hv' : 
   eval1 d h1 ht h2 hv ->
@@ -2074,11 +2063,6 @@ Proof.
   case: classicT=> [pf|]; last by extens.
   case: (indefinite_description _)=> ? [<-]?; extens; by split*.
 Qed.
-
-Lemma fmapNone {A B : Type} (fm : fmap A B) x :
-  ~indom fm x ->
-  fmap_data fm x = None.
-Proof. by move/not_not_inv. Qed.
 
 Lemma hhoare_hsub (fs : fset D) ht H Q f g : 
   (forall x, indom (fsubst fs f) x -> f (g x) = x) ->
@@ -3924,26 +3908,6 @@ Proof.
   move=> v1 v2 x1 x2 /[dup]/v1/[swap]/v2.
   rewrite /union/map_union /= => ->->.
   by case: (fmap_data _ _).
-Qed.
-
-Lemma fmapU_in1 {A B : Type} (fm1 fm2 : fmap A B) x : 
-  indom fm1 x -> fmap_data (fm1 \u fm2) x = fmap_data fm1 x.
-Proof.
-  rewrite /indom/map_indom/= /map_union.
-  by case: (fmap_data _ _).
-Qed.
-
-Lemma fmapU_nin2 {A B : Type} (fm1 fm2 : fmap A B) x : 
-  ~ indom fm2 x -> fmap_data (fm1 \u fm2) x = fmap_data fm1 x.
-Proof.
-  move/not_not_inv=> E; rewrite /= /map_union E.
-  by case: (fmap_data _ _).
-Qed.
-
-Lemma fmapU_nin1 {A B : Type} (fm1 fm2 : fmap A B) x : 
-  ~ indom fm1 x -> fmap_data (fm1 \u fm2) x = fmap_data fm2 x.
-Proof.
-  by move/not_not_inv=> E; rewrite /= /map_union E.
 Qed.
 
 Lemma Union_fmap_indomE {A B T : Type} t (fmi : T -> fmap A B) (fs : fset T) x : 
@@ -6286,10 +6250,11 @@ Proof.
   by rewrite ?Union_upd_fset label_union IHfs.
 Qed.
 
+Context `{HD : Inhab D}.
 
 Hint Resolve eqbxx : lhtriple.
 
-Lemma wp_for_aux i fs fs' ht (H : int -> (D -> val) -> hhprop) Z N C fsi hv0 vr:
+Lemma wp_for_aux  i fs fs' ht (H : int -> (D -> val) -> hhprop) Z N C fsi hv0 vr:
   (Z <= i <= N) ->
   (* (forall x y z hv1 hv2, x <= y <= z -> H x y hv1 \* H y z hv2 ==> \exists hv, H x z hv) -> *)
   (* (forall k Z i hv, exists k', forall j, H k' i j hv = H k Z j hv) -> *)

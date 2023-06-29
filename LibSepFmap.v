@@ -1855,17 +1855,6 @@ Qed.
 
 
 
-Lemma valid_subst_update {A B C : Type} (fm : fmap A B) (f : A -> C) x y : 
-  valid_subst (update fm x y) f -> valid_subst fm f.
-Proof.
-Admitted.
-
-Lemma valid_subst_filter {A B C : Type} (fm : fmap A B) (f : A -> C) Q : 
-  valid_subst fm f -> valid_subst (filter Q fm) f.
-Proof.
-Admitted.
-
-
 (* Lemma fsubst_read {A B C : Type} `{Inhab B} (fm : fmap A B) (f : C -> A) x :
 read (fsubst fm f) x = read fm (f x).
 Admitted.
@@ -2203,20 +2192,60 @@ Proof.
   rewrite ?read_union_r // indom_union_eq indom_single_eq; autos*.
 Qed.
 
+Lemma fsubst_valid_indom  {A B C : Type} (f : A -> C) (fm : fmap A B) (x : C) :
+    indom (fsubst fm f) x = 
+    exists y, f y = x /\ indom fm y.
+Proof.
+  rewrite /fsubst /indom /= {1}/map_indom /map_fsubst.
+  case: classicT=> pf.
+  { case: (indefinite_description _); clear pf.
+    move=> y [<-]?; extens; split=> //; eexists; eauto. }
+  by extens.
+Qed.
+
+Lemma fmapU_in1 {A B : Type} (fm1 fm2 : fmap A B) x : 
+  indom fm1 x -> fmap_data (fm1 \+ fm2) x = fmap_data fm1 x.
+Proof.
+  rewrite /indom/map_indom/= /map_union.
+  by case: (fmap_data _ _).
+Qed.
+
+Lemma fmapU_nin2 {A B : Type} (fm1 fm2 : fmap A B) x : 
+  ~ indom fm2 x -> fmap_data (fm1 \+ fm2) x = fmap_data fm1 x.
+Proof.
+  move/not_not_inv=> E; rewrite /= /map_union E.
+  by case: (fmap_data _ _).
+Qed.
+
+Lemma fmapU_nin1 {A B : Type} (fm1 fm2 : fmap A B) x : 
+  ~ indom fm1 x -> fmap_data (fm1 \+ fm2) x = fmap_data fm2 x.
+Proof.
+  by move/not_not_inv=> E; rewrite /= /map_union E.
+Qed.
+
+Lemma fmapNone {A B : Type} (fm : fmap A B) x :
+  ~indom fm x ->
+  fmap_data fm x = None.
+Proof. by move/not_not_inv. Qed.
+
 Lemma fsubst_union_valid {A B C : Type}  `{Inhab B} (fm1 fm2 : fmap A B) (f : A -> C) :
   valid_subst fm1 f ->
+  valid_subst fm2 f ->
   valid_subst (fm1 \+ fm2) f ->
     fsubst (fm1 \+ fm2) f = 
     fsubst fm1 f \+ fsubst fm2 f.
 Proof.
-  elim/fmap_ind: fm1 fm2.
-  { by move=> *; rewrite fsubst_empty ?union_empty_l. }
-  move=> fm1 x y IHfm1 ? fm2 ?; rewrite -update_union_not_r'=> ?.
-  have?: valid_subst fm1 f.
-  { apply/valid_subst_update; eauto. }
-  have?: valid_subst (fm1 \+ fm2) f.
-  { apply/valid_subst_update; eauto. }
-  by rewrite ?fsubst_update_valid // IHfm1 // update_union_not_r'.
+  move=> v1 v2 v3.
+  apply/fmap_extens=> c.
+  case: (prop_inv (indom (fsubst (fm1 \+ fm2) f) c))=>[|/[dup]?]; rewrite fsubst_valid_indom.
+  { case=> y [<-]?; rewrite fsubst_valid_eq //.
+    case: (prop_inv (indom fm1 y))=> ?.
+    { rewrite ?fmapU_in1 // ?fsubst_valid_eq //.
+      rewrite fsubst_valid_indom; by exists y. }
+    rewrite ?fmapU_nin1 // ?fsubst_valid_eq // fsubst_valid_indom.
+    case=> z []/v1; rewrite /indom /map_indom=> -> //. }
+  move=> N; rewrite ?fmapNone // indom_union_eq ?fsubst_valid_indom=> -[].
+  all: case=> z []??; case: N; exists z; split=> //; rewrite indom_union_eq; by (left+right). 
 Qed.
 
 
@@ -2277,20 +2306,6 @@ Proof.
   rewrite (fsubst_update _ _ _ c1) ?filter_update //.
   case: classicT=> //.
   by rewrite IH (fsubst_update _ _ _ c1).
-Qed.
-
-Lemma filter_fsubst_valid {A B C} (fm : fmap A B) (f : A -> C) (P : C -> Prop) : 
-  valid_subst fm f ->
-  filter (fun x _=> P x) (fsubst fm f) = 
-  fsubst (filter (fun x _=> P (f x)) fm) f.
-Proof.
-  elim/fmap_ind: fm.
-  { by rewrite ?(fsubst_empty, filter_empty). }
-  move=> fm ?? IH ??.
-  have ?: valid_subst fm f by (apply/valid_subst_update; eauto).
-  rewrite fsubst_update_valid ?filter_update // IH //. 
-  case: classicT; rewrite ?fsubst_update_valid //.
-  exact/valid_subst_filter.
 Qed.
 
 Lemma fsubst_eq {A B C} (fm : fmap A B) (f : A -> C) (P : A -> Prop): 
