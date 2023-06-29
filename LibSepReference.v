@@ -1,11 +1,11 @@
 (** * LibSepReference: Appendix - The Full Construction *)
 
 (** This file provides a pretty-much end-to-end construction of
-    a weakest-precondition style characteristic formula generator
-    (the function named [wpgen] in [WPgen]), for a core
-    programming language with programs assumed to be in A-normal form.
+a weakest-precondition style characteristic formula generator
+(the function named [wpgen] in [WPgen]), for a core
+programming language with programs assumed to be in A-normal form.
 
-    This file is included by the chapters from the course. *)
+This file is included by the chapters from the course. *)
 
 Set Implicit Arguments.
 From SLF Require Export LibCore.
@@ -309,7 +309,7 @@ Inductive eval1 : hheap D -> trm -> hheap D -> val -> Prop :=
       evalbinop op v1 v2 v ->
       eval1 m (op v1 v2) m v
   | eval1_ref : forall s v p,
-     (forall p',  ~ Fmap.indom s (p', d) -> (p <= p')%Z) ->
+      (forall p',  ~ Fmap.indom s (p', d) -> (p <= p')%Z) ->
       ~ Fmap.indom s (p, d) ->
       eval1 s (val_ref v) (Fmap.update s (p, d) v) (val_loc p)
   | eval1_get : forall s p v,
@@ -640,12 +640,12 @@ Notation "H1 '\(' m ')' H2" := (hmerge m H1 H2)
 Notation "'\exists' x1 .. xn , H" :=
   (hexists (fun x1 => .. (hexists (fun xn => H)) ..))
   (at level 39, x1 binder, H at level 50, right associativity,
-   format "'[' '\exists' '/ '  x1  ..  xn , '/ '  H ']'") : hprop_scope.
+    format "'[' '\exists' '/ '  x1  ..  xn , '/ '  H ']'") : hprop_scope.
 
 Notation "'\forall' x1 .. xn , H" :=
   (hforall (fun x1 => .. (hforall (fun xn => H)) ..))
   (at level 39, x1 binder, H at level 50, right associativity,
-   format "'[' '\forall' '/ '  x1  ..  xn , '/ '  H ']'") : hprop_scope.
+    format "'[' '\forall' '/ '  x1  ..  xn , '/ '  H ']'") : hprop_scope.
 
 Notation "'\{' x |-> f '}' H" := (hsubst H (fun x => f)) 
   (at level 39, x binder, H at level 50, right associativity,
@@ -686,15 +686,15 @@ Notation "Q1 \--* Q2" := (qwand Q1 Q2)
 
 Reserved Notation "'\*_' ( i <- r ) F"
   (at level 43, F at level 43, i, r at level 50,
-           format "'[' \*_ ( i  <-  r ) '/  '  F ']'").
+            format "'[' \*_ ( i  <-  r ) '/  '  F ']'").
 
 Reserved Notation "'\(' m ')_' ( i <- r ) F"
   (at level 43, F at level 43, i, r at level 50,
-           format "'[' \( m )_ ( i  <-  r ) '/  '  F ']'").
+            format "'[' \( m )_ ( i  <-  r ) '/  '  F ']'").
 
 Reserved Notation "'\(+)_' ( i <- r ) F"
   (at level 43, F at level 43, i, r at level 50,
-           format "'[' \(+)_ ( i  <-  r ) '/  '  F ']'").
+            format "'[' \(+)_ ( i  <-  r ) '/  '  F ']'").
 
 Notation "'\*_' ( i <- r ) F" :=
   (hbig_fset hstar r (fun i => F)) : nat_scope.
@@ -745,9 +745,9 @@ Lemma himpl_trans : forall H2 H1 H3,
 Proof using. introv M1 M2. unfolds* himpl. Qed.
 
 Lemma himpl_trans_r : forall H2 H1 H3,
-   H2 ==> H3 ->
-   H1 ==> H2 ->
-   H1 ==> H3.
+    H2 ==> H3 ->
+    H1 ==> H2 ->
+    H1 ==> H3.
 Proof using. introv M1 M2. applys* himpl_trans M2 M1. Qed.
 
 Lemma himpl_antisym : forall H1 H2,
@@ -802,7 +802,7 @@ Lemma hstar_inv : forall H1 H2 h,
 Proof using. introv M. applys M. Qed.
 
 Lemma hstar_comm : forall H1 H2,
-   H1 \* H2 = H2 \* H1.
+    H1 \* H2 = H2 \* H1.
 Proof using.
   applys hprop_op_comm. unfold hhprop, hstar. intros H1 H2.
   intros h (h1 & h2 & M1 & M2 & D' & U). rewrite~ Fmap.union_comm_of_disjoint in U.
@@ -2345,8 +2345,8 @@ Proof.
     by eexists; eauto).
   all: have ?: ~ indom h (p, d) by (move/H2 || move/H1).
   1-2: exists (update h1 (p, d) v); 
-       rewrite update_union_not_r //; split=>//; 
-       exact/disjoint_update_not_r.
+        rewrite update_union_not_r //; split=>//; 
+        exact/disjoint_update_not_r.
   exists (Fmap.remove h1 (p, d)).
   rewrite remove_union_not_r //; split=>//.
   exact/disjoint_remove_l.
@@ -3197,7 +3197,7 @@ Proof.
       by move=> ? /[! indom_single_eq]<-. }
     rewrite (diff_upd _ d') // hbig_fset_update //.
     { replace ((P d' \* _) \* H) with 
-       ((P d' \* H) \* \*_(d <- fs \- update fs' d' tt) P d) by xsimpl.
+        ((P d' \* H) \* \*_(d <- fs \- update fs' d' tt) P d) by xsimpl.
       replace (fun v => (_ \* H) \* _) with 
         (fun v => (Q d' v \* H) \* \*_(d <- fs \- update fs' d' tt) P d).
       { apply/hoare_frame; auto.
@@ -3768,10 +3768,10 @@ Lemma wp_equiv : forall t H Q,
 Proof using.
   unfold wp, htriple. iff M.
   { intros H'. applys hhoare_conseq. 2:{ applys himpl_frame_l M. }
-     { clear M. rewrite hstar_hexists. applys hhoare_hexists. intros H''.
-       rewrite (hstar_comm H''). rewrite hstar_assoc.
-       applys hhoare_hpure. intros N. applys N. }
-     { auto. } }
+      { clear M. rewrite hstar_hexists. applys hhoare_hexists. intros H''.
+        rewrite (hstar_comm H''). rewrite hstar_assoc.
+        applys hhoare_hpure. intros N. applys N. }
+      { auto. } }
   { xsimpl H. apply M. }
 Qed.
 
@@ -4180,8 +4180,8 @@ h', f[h'] = h /\ P h'
   --> [ = h ] C [ f[Q] ]
   --> { = h } C { f[Q] }
 2) ~ [ = f[h'] ] C [ True ] 
-   -> { = f[h'] } C { Q }
-   -> { = h } C { Q }
+    -> { = f[h'] } C { Q }
+    -> { = h } C { Q }
 
 *)
 
@@ -4455,10 +4455,10 @@ Notation "'funloc' p '=>' H" :=
 (** * WP Generator *)
 
 (** This section defines a "weakest-precondition style characteristic
-     formula generator". This technology adapts the technique of
-     "characteristic formulae" (originally developed in CFML 1.0)
-     to produce weakest preconditions. (The formulae, their manipulation,
-     and their correctness proofs are simpler in wp-style.)
+      formula generator". This technology adapts the technique of
+      "characteristic formulae" (originally developed in CFML 1.0)
+      to produce weakest preconditions. (The formulae, their manipulation,
+      and their correctness proofs are simpler in wp-style.)
 
     The goal of the section is to define a function [wpgen t], recursively
     over the structure of [t], such that [wpgen t Q] entails [wp t Q].
@@ -4489,8 +4489,8 @@ Fixpoint lookup (x:var) (E:ctx) : option val :=
   match E with
   | nil => None
   | (y,v)::E1 => if var_eq x y
-                   then Some v
-                   else lookup x E1
+                    then Some v
+                    else lookup x E1
   end.
 
 (** [rem x E] denotes the removal of bindings on [x] from [E]. *)
@@ -4521,9 +4521,9 @@ Section CtxOps.
 
 Lemma lookup_app : forall E1 E2 x,
   lookup x (E1 ++ E2) = match lookup x E1 with
-                         | None => lookup x E2
-                         | Some v => Some v
-                         end.
+                          | None => lookup x E2
+                          | Some v => Some v
+                          end.
 Proof using.
   introv. induction E1 as [|(y,w) E1']; rew_list; simpl; intros.
   { auto. } { case_var~. }
@@ -4586,24 +4586,24 @@ End CtxOps. *)
 Fixpoint isubst (E:ctx) (t:trm) : trm :=
   match t with
   | trm_val v =>
-       v
+        v
   | trm_var x =>
-       match lookup x E with
-       | None => t
-       | Some v => v
-       end
+        match lookup x E with
+        | None => t
+        | Some v => v
+        end
   | trm_fun x t1 =>
-       trm_fun x (isubst (rem x E) t1)
+        trm_fun x (isubst (rem x E) t1)
   | trm_fix f x t1 =>
-       trm_fix f x (isubst (rem x (rem f E)) t1)
+        trm_fix f x (isubst (rem x (rem f E)) t1)
   | trm_if t0 t1 t2 =>
-       trm_if (isubst E t0) (isubst E t1) (isubst E t2)
+        trm_if (isubst E t0) (isubst E t1) (isubst E t2)
   | trm_seq t1 t2 =>
-       trm_seq (isubst E t1) (isubst E t2)
+        trm_seq (isubst E t1) (isubst E t2)
   | trm_let x t1 t2 =>
-       trm_let x (isubst E t1) (isubst (rem x E) t2)
+        trm_let x (isubst E t1) (isubst (rem x E) t2)
   | trm_app t1 t2 =>
-       trm_app (isubst E t1) (isubst E t2)
+        trm_app (isubst E t1) (isubst E t2)
   end.
 
 (* ----------------------------------------------------------------- *)
@@ -4903,7 +4903,7 @@ Definition get_letvar (t : D -> trm) :=
 
 Definition wpgen (t : D -> trm) : formula :=
   mkstruct (
-         If is_val t then wpgen_val (get_val t)
+          If is_val t then wpgen_val (get_val t)
     else If is_fun t then wpgen_fun (fun hv => wp fs (fun d => subst (get_var t d) (hv d) (get_fun t d)))
     else If is_fix t then wpgen_fix (fun hvf hv => wp fs (fun d => subst (get_var t d) (hv d) (subst (get_f t d) (hvf d) (get_fun t d))))
     else If is_if  t then wpgen_if  (get_cond t) (wp fs (fun d => get_then t d)) (wp fs (fun d => get_else t d))
@@ -5166,9 +5166,9 @@ Qed.
 
 Lemma xfun_nospec_lemma : forall H Q Fof,
   (forall (hvf : D -> val),
-     (forall (hvx : D -> val)  H' Q', (H' ==> Fof hvx Q') -> 
+      (forall (hvx : D -> val)  H' Q', (H' ==> Fof hvx Q') -> 
         htriple fs (fun d => trm_app (hvf d) (hvx d)) H' Q') ->
-     (H ==> Q hvf)) ->
+      (H ==> Q hvf)) ->
   H ==> wpgen_fun Fof Q.
 Proof using.
   introv M. unfold wpgen_fun. xsimpl. intros vf N. applys M.
@@ -5235,8 +5235,8 @@ End WPgen.
 Hint Resolve htriple_get htriple_set htriple_ref htriple_free : htriple.
 
 Hint Resolve htriple_add htriple_div htriple_neg htriple_opp htriple_eq
-   htriple_neq htriple_sub htriple_mul htriple_mod htriple_le htriple_lt
-   htriple_ge htriple_gt htriple_ptr_add htriple_ptr_add_nat : htriple.
+    htriple_neq htriple_sub htriple_mul htriple_mod htriple_le htriple_lt
+    htriple_ge htriple_gt htriple_ptr_add htriple_ptr_add_nat : htriple.
 
 (** [xstruct] removes the leading [mkstruct]. *)
 
@@ -5322,7 +5322,7 @@ Tactic Notation "xapp_apply_spec" :=
     records. It is implemented further on. *)
 
 Ltac xapp_nosubst_for_records tt :=
- fail.
+  fail.
 
 (** [xapp] first calls [xhtriple] if the goal is [htriple t H Q] instead
     of [H ==> wp t Q]. *)
@@ -5375,11 +5375,11 @@ Tactic Notation "xvars" :=
 Ltac xwp_simpl :=
   xvars;
   cbn beta delta [
-     var_eq subst
-     string_dec string_rec string_rect
-     sumbool_rec sumbool_rect
-     Ascii.ascii_dec Ascii.ascii_rec Ascii.ascii_rect
-     Bool.bool_dec bool_rec bool_rect ] iota zeta;
+      var_eq subst
+      string_dec string_rec string_rect
+      sumbool_rec sumbool_rect
+      Ascii.ascii_dec Ascii.ascii_rec Ascii.ascii_rect
+      Bool.bool_dec bool_rec bool_rect ] iota zeta;
   simpl; rewrite ?wpgenE; try (unfold subst; simpl).
 
 Tactic Notation "xwp" :=
@@ -5399,12 +5399,12 @@ Declare Scope wp_scope.
 Notation "'PRE' H 'CODE' F 'POST' Q" :=
   (H ==> (mkstruct F) Q)
   (at level 8, H at level 0, F, Q at level 0,
-   format "'[v' 'PRE'  H  '/' 'CODE'  F '/' 'POST'  Q ']'") : wp_scope.
+    format "'[v' 'PRE'  H  '/' 'CODE'  F '/' 'POST'  Q ']'") : wp_scope.
 
 Notation "` F" :=
   (mkstruct F)
   (at level 10,
-   format "` F") : wp_scope.
+    format "` F") : wp_scope.
 
 (** Custom grammar for the display of characteristic formulae. *)
 
@@ -5417,23 +5417,23 @@ Notation "<[ e ]>" :=
 Notation "` F" :=
   (mkstruct F)
   (in custom wp at level 10,
-   format "` F") : wp_scope.
+    format "` F") : wp_scope.
 
 Notation "( x )" :=
   x
   (in custom wp,
-   x at level 99) : wp_scope.
+    x at level 99) : wp_scope.
 
 Notation "{ x }" :=
   x
   (in custom wp at level 0,
-   x constr,
-   only parsing) : wp_scope.
+    x constr,
+    only parsing) : wp_scope.
 
 Notation "x" :=
   x
   (in custom wp at level 0,
-   x constr at level 0) : wp_scope.
+    x constr at level 0) : wp_scope.
 
 Notation "'Fail'" :=
   ((wpgen_fail))
@@ -5446,11 +5446,11 @@ Notation "'Val' v" :=
 Notation "'Let' x ':=' F1 'in' F2" :=
   ((wpgen_let F1 (fun x => F2)))
   (in custom wp at level 69,
-   x name, (* NOTE: For compilation with Coq 8.12, replace "name" with "ident",
-               here and in the next 3 occurrences in the rest of the section. *)
-   F1 custom wp at level 99,
-   F2 custom wp at level 99,
-   right associativity,
+    x name, (* NOTE: For compilation with Coq 8.12, replace "name" with "ident",
+                here and in the next 3 occurrences in the rest of the section. *)
+    F1 custom wp at level 99,
+    F2 custom wp at level 99,
+    right associativity,
   format "'[v' '[' 'Let'  x  ':='  F1  'in' ']' '/' '[' F2 ']' ']'") : wp_scope.
 
 Notation "'WP' [ d 'in' fs  '=>' t ] '{' v ',' Q '}'" := 
@@ -5460,10 +5460,10 @@ Notation "'WP' [ d 'in' fs  '=>' t ] '{' v ',' Q '}'" :=
 Notation "'Seq' F1 ; F2" :=
   ((wpgen_seq F1 F2))
   (in custom wp at level 68,
-   F1 custom wp at level 99,
-   F2 custom wp at level 99,
-   right associativity,
-   format "'[v' 'Seq'  '[' F1 ']'  ; '/' '[' F2 ']' ']'") : wp_scope.
+    F1 custom wp at level 99,
+    F2 custom wp at level 99,
+    right associativity,
+    format "'[v' 'Seq'  '[' F1 ']'  ; '/' '[' F2 ']' ']'") : wp_scope.
 
 Notation "'App' '[' d 'in' fs ']' f v1" :=
   ((wp fs (fun d => trm_app (f d) (v1 d))))
@@ -5476,26 +5476,26 @@ Notation "'App' '[' d 'in' fs ']' f v1 v2" :=
 Notation "'If_' v 'Then' F1 'Else' F2" :=
   ((wpgen_if v F1 F2))
   (in custom wp at level 69,
-   F1 custom wp at level 99,
-   F2 custom wp at level 99,
-   left associativity,
-   format "'[v' '[' 'If_'  v  'Then'  ']' '/' '['   F1 ']' '/' 'Else' '/' '['   F2 ']' ']'") : wp_scope.
+    F1 custom wp at level 99,
+    F2 custom wp at level 99,
+    left associativity,
+    format "'[v' '[' 'If_'  v  'Then'  ']' '/' '['   F1 ']' '/' 'Else' '/' '['   F2 ']' ']'") : wp_scope.
 
 Notation "'Fun' x '=>' F1" :=
   ((wpgen_fun (fun x => F1)))
   (in custom wp at level 69,
-   x name,
-   F1 custom wp at level 99,
-   right associativity,
+    x name,
+    F1 custom wp at level 99,
+    right associativity,
   format "'[v' '[' 'Fun'  x  '=>'  F1  ']' ']'") : wp_scope.
 
 Notation "'Fix' f x '=>' F1" :=
   ((wpgen_fix (fun f x => F1)))
   (in custom wp at level 69,
-   f name, x name,
-   F1 custom wp at level 99,
-   right associativity,
-   format "'[v' '[' 'Fix'  f  x  '=>'  F1  ']' ']'") : wp_scope.
+    f name, x name,
+    F1 custom wp at level 99,
+    right associativity,
+    format "'[v' '[' 'Fix'  f  x  '=>'  F1  ']' ']'") : wp_scope.
 
 (* ================================================================= *)
 (** ** Notation for Concrete Terms *)
@@ -5524,73 +5524,73 @@ Notation "{ x }" :=
 
 Notation "x" := x
   (in custom trm at level 0,
-   x constr at level 0) : trm_scope.
+    x constr at level 0) : trm_scope.
 
 Notation "t1 t2" := (trm_app t1 t2)
   (in custom trm at level 30,
-   left associativity,
-   only parsing) : trm_scope.
+    left associativity,
+    only parsing) : trm_scope.
 
 Notation "'if' t0 'then' t1 'else' t2" :=
   (trm_if t0 t1 t2)
   (in custom trm at level 69,
-   t0 custom trm at level 99,
-   t1 custom trm at level 99,
-   t2 custom trm at level 99,
-   left associativity,
-   format "'[v' '[' 'if'  t0  'then'  ']' '/' '['   t1 ']' '/' 'else' '/' '['   t2 ']' ']'") : trm_scope.
+    t0 custom trm at level 99,
+    t1 custom trm at level 99,
+    t2 custom trm at level 99,
+    left associativity,
+    format "'[v' '[' 'if'  t0  'then'  ']' '/' '['   t1 ']' '/' 'else' '/' '['   t2 ']' ']'") : trm_scope.
 
 Notation "'if' t0 'then' t1 'end'" :=
   (trm_if t0 t1 (trm_val val_unit))
   (in custom trm at level 69,
-   t0 custom trm at level 99, (* at level 0 ? *)
-   t1 custom trm at level 99,
-   left associativity,
-   format "'[v' '[' 'if'  t0  'then'  ']' '/' '['   t1 ']' '/' 'end' ']'") : trm_scope.
+    t0 custom trm at level 99, (* at level 0 ? *)
+    t1 custom trm at level 99,
+    left associativity,
+    format "'[v' '[' 'if'  t0  'then'  ']' '/' '['   t1 ']' '/' 'end' ']'") : trm_scope.
 
 Notation "t1 ';' t2" :=
   (trm_seq t1 t2)
   (in custom trm at level 68,
-   t2 custom trm at level 99,
-   right associativity,
-   format "'[v' '[' t1 ']' ';' '/' '[' t2 ']' ']'") : trm_scope.
+    t2 custom trm at level 99,
+    right associativity,
+    format "'[v' '[' t1 ']' ';' '/' '[' t2 ']' ']'") : trm_scope.
 
 Notation "'let' x '=' t1 'in' t2" :=
   (trm_let x t1 t2)
   (in custom trm at level 69,
-   x at level 0,
-   t1 custom trm at level 99,
-   t2 custom trm at level 99,
-   right associativity,
-   format "'[v' '[' 'let'  x  '='  t1  'in' ']' '/' '[' t2 ']' ']'") : trm_scope.
+    x at level 0,
+    t1 custom trm at level 99,
+    t2 custom trm at level 99,
+    right associativity,
+    format "'[v' '[' 'let'  x  '='  t1  'in' ']' '/' '[' t2 ']' ']'") : trm_scope.
 
 Notation "'fix' f x1 '=>' t" :=
   (val_fix f x1 t)
   (in custom trm at level 69,
-   f, x1 at level 0,
-   t custom trm at level 99,
-   format "'fix'  f  x1  '=>'  t") : val_scope.
+    f, x1 at level 0,
+    t custom trm at level 99,
+    format "'fix'  f  x1  '=>'  t") : val_scope.
 
 Notation "'fix_' f x1 '=>' t" :=
   (trm_fix f x1 t)
   (in custom trm at level 69,
-   f, x1 at level 0,
-   t custom trm at level 99,
-   format "'fix_'  f  x1  '=>'  t") : trm_scope.
+    f, x1 at level 0,
+    t custom trm at level 99,
+    format "'fix_'  f  x1  '=>'  t") : trm_scope.
 
 Notation "'fun' x1 '=>' t" :=
   (val_fun x1 t)
   (in custom trm at level 69,
-   x1 at level 0,
-   t custom trm at level 99,
-   format "'fun'  x1  '=>'  t") : val_scope.
+    x1 at level 0,
+    t custom trm at level 99,
+    format "'fun'  x1  '=>'  t") : val_scope.
 
 Notation "'fun_' x1 '=>' t" :=
   (trm_fun x1 t)
   (in custom trm at level 69,
-   x1 at level 0,
-   t custom trm at level 99,
-   format "'fun_'  x1  '=>'  t") : trm_scope.
+    x1 at level 0,
+    t custom trm at level 99,
+    format "'fun_'  x1  '=>'  t") : trm_scope.
 
 Notation "()" :=
   (trm_val val_unit)
@@ -5617,7 +5617,7 @@ Notation "'not'" :=
 Notation "! t" :=
   (val_get t)
   (in custom trm at level 67,
-   t custom trm at level 99) : trm_scope.
+    t custom trm at level 99) : trm_scope.
 
 Notation "t1 := t2" :=
   (val_set t1 t2)
@@ -5630,7 +5630,7 @@ Notation "t1 + t2" :=
 Notation "'- t" :=
   (val_opp t)
   (in custom trm at level 57,
-   t custom trm at level 99) : trm_scope.
+    t custom trm at level 99) : trm_scope.
 
 Notation "t1 - t2" :=
   (val_sub t1 t2)
@@ -5712,48 +5712,48 @@ End ProgramSyntax.
 Notation "'fun' x1 x2 '=>' t" :=
   (val_fun x1 (trm_fun x2 t))
   (in custom trm at level 69,
-   x1, x2 at level 0,
-   format "'fun'  x1  x2  '=>'  t") : val_scope.
+    x1, x2 at level 0,
+    format "'fun'  x1  x2  '=>'  t") : val_scope.
 
 Notation "'fix' f x1 x2 '=>' t" :=
   (val_fix f x1 (trm_fun x2 t))
   (in custom trm at level 69,
-   f, x1, x2 at level 0,
-   format "'fix'  f  x1  x2  '=>'  t") : val_scope.
+    f, x1, x2 at level 0,
+    format "'fix'  f  x1  x2  '=>'  t") : val_scope.
 
 Notation "'fun_' x1 x2 '=>' t" :=
   (trm_fun x1 (trm_fun x2 t))
   (in custom trm at level 69,
-   x1, x2 at level 0,
-   format "'fun_'  x1  x2  '=>'  t") : trm_scope.
+    x1, x2 at level 0,
+    format "'fun_'  x1  x2  '=>'  t") : trm_scope.
 
 Notation "'fix_' f x1 x2 '=>' t" :=
   (trm_fix f x1 (trm_fun x2 t))
   (in custom trm at level 69,
-   f, x1, x2 at level 0,
-   format "'fix_'  f  x1  x2  '=>'  t") : trm_scope.
+    f, x1, x2 at level 0,
+    format "'fix_'  f  x1  x2  '=>'  t") : trm_scope.
 
 Notation "'fun' x1 x2 x3 '=>' t" :=
   (val_fun x1 (trm_fun x2 (trm_fun x3 t)))
   (in custom trm at level 69,
-   x1, x2, x3 at level 0,
-   format "'fun'  x1  x2  x3  '=>'  t") : val_scope.
+    x1, x2, x3 at level 0,
+    format "'fun'  x1  x2  x3  '=>'  t") : val_scope.
 
 Notation "'fix' f x1 x2 x3 '=>' t" :=
   (val_fix f x1 (trm_fun x2 (trm_fun x3 t)))
   (in custom trm at level 69,
-   f, x1, x2, x3 at level 0,
-   format "'fix'  f  x1  x2  x3  '=>'  t") : val_scope.
+    f, x1, x2, x3 at level 0,
+    format "'fix'  f  x1  x2  x3  '=>'  t") : val_scope.
 
 Notation "'fun_' x1 x2 x3 '=>' t" :=
   (trm_fun x1 (trm_fun x2 (trm_fun x3 t)))
   (in custom trm at level 69,
-   x1, x2, x3 at level 0, format "'fun_'  x1  x2  x3  '=>'  t") : trm_scope.
+    x1, x2, x3 at level 0, format "'fun_'  x1  x2  x3  '=>'  t") : trm_scope.
 
 Notation "'fix_' f x1 x2 x3 '=>' t" :=
   (trm_fix f x1 (trm_fun x2 (trm_fun x3 t)))
   (in custom trm at level 69,
-   f, x1, x2, x3 at level 0, format "'fix_'  f  x1  x2  x3  '=>'  t") : trm_scope.
+    f, x1, x2, x3 at level 0, format "'fix_'  f  x1  x2  x3  '=>'  t") : trm_scope.
 
 (* ----------------------------------------------------------------- *)
 (** *** Evaluation Rules for Applications to 2 or 3 Arguments. *)
@@ -5776,7 +5776,7 @@ Qed. *)
   (forall d, x1 d <> x2 d /\ f d <> x2 d) ->
   eval_like fs (fun d => subst (f d) (v0 d) (subst (x1 d) (v1 d) (subst (x2 d) (v2 d) (t1 d)))) (fun d => (v0 d) (v1 d) (v2 d)).
 Proof using.
- *)
+  *)
 
 (* Lemma eval_like_app_fun3 : forall v0 v1 v2 v3 x1 x2 x3 t1,
   v0 = val_fun x1 (trm_fun x2 (trm_fun x3 t1)) ->
@@ -5889,7 +5889,7 @@ Proof using.
 Lemma xwp_lemma_fix3 : forall f v0 v1 v2 v3 x1 x2 x3 t H Q fs,
   (v0 = fun d => val_fix (f d) (x1 d) (trm_fun (x2 d) (trm_fun (x3 d) (t d)))) ->
   (forall d,
-         var_eq (x1 d) (x2 d) = false 
+          var_eq (x1 d) (x2 d) = false 
       /\ var_eq (f  d) (x2 d) = false 
       /\ var_eq (f  d) (x3 d) = false
       /\ var_eq (x1 d) (x3 d) = false 
@@ -5902,7 +5902,7 @@ Proof using.
 Lemma xwp_lemma_wp_fix3 : forall f v0 v1 v2 v3 x1 x2 x3 t H Q fs,
   (v0 = fun d => val_fix (f d) (x1 d) (trm_fun (x2 d) (trm_fun (x3 d) (t d)))) ->
   (forall d,
-         var_eq (x1 d) (x2 d) = false 
+          var_eq (x1 d) (x2 d) = false 
       /\ var_eq (f  d) (x2 d) = false 
       /\ var_eq (f  d) (x3 d) = false
       /\ var_eq (x1 d) (x3 d) = false 
@@ -5910,7 +5910,7 @@ Lemma xwp_lemma_wp_fix3 : forall f v0 v1 v2 v3 x1 x2 x3 t H Q fs,
   H ==> wpgen fs (fun d => subst  (f d) (v0 d)  (subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (subst (x3 d) (v3 d) (t d))))) Q ->
   H ==> wp fs (fun d => (v0 d) (v1 d) (v2 d) (v3 d)) Q.
 Proof using.
- *)
+  *)
 
 
 Tactic Notation "xwp" :=
@@ -6049,8 +6049,8 @@ Fixpoint hfields_lookup (k:field) (kvs:hrecord_fields) : option val :=
   match kvs with
   | nil => None
   | (ki,vi)::kvs' => if Nat.eq_dec k ki
-                       then Some vi
-                       else hfields_lookup k kvs'
+                        then Some vi
+                        else hfields_lookup k kvs'
   end.
 
 (** Specification of [val_get_field] in terms of [hrecord]. *)
@@ -6072,8 +6072,8 @@ Parameter val_set_field : field -> val.
 Notation "t1 '`.' k ':=' t2" :=
   (val_set_field k t1 t2)
   (in custom trm at level 56,
-   k at level 0, format "t1 '`.' k  ':='  t2")
-   : trm_scope.
+    k at level 0, format "t1 '`.' k  ':='  t2")
+    : trm_scope.
 
 (** Generator of specifications for [val_set_field]. *)
 
@@ -6082,8 +6082,8 @@ Fixpoint hfields_update (k:field) (v:val) (kvs:hrecord_fields)
   match kvs with
   | nil => None
   | (ki,vi)::kvs' => if Nat.eq_dec k ki
-                   then Some ((k,v)::kvs')
-                   else match hfields_update k v kvs' with
+                    then Some ((k,v)::kvs')
+                    else match hfields_update k v kvs' with
                         | None => None
                         | Some LR => Some ((ki,vi)::LR)
                         end
@@ -6123,8 +6123,8 @@ Parameter val_new_hrecord_2 : forall (k1:field) (k2:field), val.
 Notation "`{ k1 := v1 ; k2 := v2 }" :=
   (val_new_hrecord_2 k1 k2 v1 v2)
   (in custom trm at level 65,
-   k1, k2 at level 0,
-   v1, v2 at level 65) : trm_scope.
+    k1, k2 at level 0,
+    v1, v2 at level 65) : trm_scope.
 
 Open Scope trm_scope.
 
@@ -6146,8 +6146,8 @@ Parameter val_new_hrecord_3 : forall (k1:field) (k2:field) (k3:field), val.
 Notation "`{ k1 := v1 ; k2 := v2 ; k3 := v3 }" :=
   (val_new_hrecord_3 k1 k2 k3 v1 v2 v3)
   (in custom trm at level 65,
-   k1, k2, k3 at level 0,
-   v1, v2, v3 at level 65) : trm_scope.
+    k1, k2, k3 at level 0,
+    v1, v2, v3 at level 65) : trm_scope.
 
 Parameter htriple_new_hrecord_3 : forall k1 k2 k3 v1 v2 v3,
   k1 = 0%nat ->
@@ -6186,16 +6186,16 @@ Hint Resolve htriple_dealloc_hrecord : htriple.
 
 Parameter xapp_get_field_lemma : forall H k p Q,
   H ==> \exists kvs, (hrecord kvs p) \*
-     match hfields_lookup k kvs with
-     | None => \[False]
-     | Some v => ((fun r => \[r = v] \* hrecord kvs p) \--* protect Q) end ->
+      match hfields_lookup k kvs with
+      | None => \[False]
+      | Some v => ((fun r => \[r = v] \* hrecord kvs p) \--* protect Q) end ->
   H ==> wp (val_get_field k p) Q.
 
 Parameter xapp_set_field_lemma : forall H k p v Q,
   H ==> \exists kvs, (hrecord kvs p) \*
-     match hfields_update k v kvs with
-     | None => \[False]
-     | Some kvs' => ((fun _ => hrecord kvs' p) \--* protect Q) end ->
+      match hfields_update k v kvs with
+      | None => \[False]
+      | Some kvs' => ((fun _ => hrecord kvs' p) \--* protect Q) end ->
   H ==> wp (val_set_field k p v) Q.
 
 Ltac xapp_nosubst_for_records tt ::=
@@ -6249,7 +6249,7 @@ Definition While_aux (cond : trm) (body : trm) : trm :=
   trm_fix "while" "tt"
     <{ let "cond" = cond in 
       if "cond" then 
-         body;
+          body;
         "while" "tt"
       else 0 }>.
 
@@ -6272,8 +6272,8 @@ Definition While (cond : trm) (body : trm) : trm :=
 Notation "'for' i <- '[' Z ',' N ']' '{' t '}'"  :=
   (For Z N <{ fun_ i => t }>)
   (in custom trm at level 69,
-   Z, N, i at level 0,
-   format "'[' for  i  <-  [ Z ','  N ] ']'  '{' '/   ' '[' t  '}' ']'") : trm_scope.
+    Z, N, i at level 0,
+    format "'[' for  i  <-  [ Z ','  N ] ']'  '{' '/   ' '[' t  '}' ']'") : trm_scope.
 
 
 Open Scope Z_scope.
@@ -6614,20 +6614,6 @@ Qed.
 
 Hint Resolve hmerge_comm hmerge_assoc : core.
 
-Lemma interval_union y x z : 
-  x <= y -> 
-  y <= z -> interval x y \u interval y z = interval x z.
-Proof.
-  move=> +?.
-  induction_wf IH: (upto y) x.
-  move=> ?.
-  case: (prop_inv (x = y))=> [->|?].
-  { rewrite intervalgt; rew_fmap=> //; math. }
-  rewrite intervalU -?update_union_not_r' ?IH -?intervalU //; by math.
-Qed.
-
-Arguments interval_union : clear implicits.
-
 Lemma wp_for_hbig_op fs fs' ht fs''
   Inv
   (R R' : D -> hhprop)
@@ -6641,8 +6627,8 @@ Lemma wp_for_hbig_op fs fs' ht fs''
     (\*_(d <- fsi l) R d) \* 
     Q \(m) H l ==> 
       wp (fs' \u fsi l) 
-         ((fun=> subst vr l C) \u_fs' ht) 
-         (fun hr => 
+          ((fun=> subst vr l C) \u_fs' ht) 
+          (fun hr => 
             Inv (l + 1) \* 
             (\*_(d <- fsi l) R' d) \* 
             Q \(m) H' l hr)) ->
@@ -6680,7 +6666,7 @@ Proof.
         Inv q \* 
         (\*_(d <- Union (interval Z q) fsi) R' d) \*
         (\*_(d <- Union (interval q N) fsi) R d) \* 
-        (\(m)_(i <- interval Z q) H' i hv) \(m) (\(m)_(i <- interval q N) H i)) (fun=> 0)); eauto.
+        (\(m)_(i <- interval Z q) H' i hv) \(m) (\(m)_(i <- interval q N) H i)) _ (fun=> 0)); eauto.
   { clear -Hwp Dj CM AS Heq Hl1 Hl2.
     move=> l hv ?. 
     set (Q := (\(m)_(i <- interval Z l) H' i hv) \(m) (\(m)_(i <- interval (l + 1) N) H i)).
@@ -6727,7 +6713,7 @@ Proof.
   { move=> ?.
     rewrite [_ N N]intervalgt; last math.
     rewrite Union0 ?hbig_fset_empty hmerge_hempty_r. xsimpl. }
-Qed. *)
+Qed.
 
 Lemma interval_union y x z : 
   x <= y -> 
@@ -6743,7 +6729,7 @@ Qed.
 
 Arguments interval_union : clear implicits.
 
-(* Lemma wp_while_hbig_op fs fs' ht m fs''
+Lemma wp_while_hbig_op fs fs' ht m fs''
   (Inv : bool -> int -> hhprop) 
   Z N T C fsi HC s b0 (P : hhprop) Q 
   H0 (Hi : int -> (D -> val) -> hhprop)
@@ -6776,7 +6762,7 @@ Arguments interval_union : clear implicits.
           (fun hr =>
             Inv false N \*
             (\*_(i <- interval Z N) R' i) \*
-            H \(m) \(m)_(i <- interval j N) Hi i hv))->
+            Q hv \(m) \(m)_(i <- interval j' N) Hi i hr)) ->
       HC true b j \* H ==> 
         wp
           (fs' \u Union (interval j N) fsi) 
@@ -6785,6 +6771,7 @@ Arguments interval_union : clear implicits.
             Inv false N \* 
             (\*_(i <- interval j N) R' i) \*
             H \(m) \(m)_(i <- interval j N) Hi i hv)) ->
+  (forall i j, i <> j -> disjoint (fsi i) (fsi j)) ->
   (forall (hv hv' : D -> val) m,
     (forall i, indom (fsi m) i -> hv(i) = hv'(i)) ->
     Hi m hv = Hi m hv') ->
@@ -6811,11 +6798,7 @@ Arguments interval_union : clear implicits.
   P ==> wp (fs' \u fs) ht Q.
 Proof with autos*.
   simpl.
-<<<<<<< HEAD
   move=> Hl1 Hl2 HwpC HwpF HwpT Dj Heq CM AS HP HQ *.
-=======
-  move=> Hl1 Hl2 HwpC HwpF HwpT Heq CM AS HP HQ *.
->>>>>>> fixing_admits
   apply: himpl_trans; first exact/HP.
   apply: himpl_trans; first last.
   { apply: wp_conseq; exact/HQ. }
@@ -6826,6 +6809,7 @@ Proof with autos*.
         (\*_(d <- interval Z q) R' d) \*
         (\*_(d <- interval q N) R d) \* 
         (H0 \(m) \(m)_(i <- interval Z q) Hi i hv))
+      _
       (fun b b' j hv => 
         HC b b' j \* 
         (\*_(d <- interval Z j) R' d) \*
@@ -6843,11 +6827,7 @@ Proof with autos*.
   { clear -HwpF CM AS Heq Hl1 Hl2.
     move=> b l hv.
     xchange HwpF=> -[->]?; rewrite [interval N N]intervalgt ?hbig_fset_empty; [xsimpl*|math]. }
-<<<<<<< HEAD
   { clear -HwpT CM AS Heq Hl1 Hl2 Dj.
-=======
-  { clear -HwpT CM AS Heq Hl1 Hl2.
->>>>>>> fixing_admits
     move=> b l hv T' L. 
     set (Q := (H0 \(m) \(m)_(i <- interval Z l) Hi i hv)).
     move: (HwpT b l T' Q L)=> IH.
@@ -6858,7 +6838,6 @@ Proof with autos*.
     { move=> j' n hv' L'.
       have->: Q \(m) (\(m)_(i <- interval l j') Hi i hv') = 
         H0 \(m) (\(m)_(i <- interval Z j') Hi i (hv \u_(Union (interval Z l) fsi) hv')).
-<<<<<<< HEAD
       { rewrite /Q hmerge_assoc //. fequals; apply/eq_sym.
         rewrite -(interval_union l) ?hbig_fset_union; try math; first last.
         { apply/disjoint_of_not_indom_both=> ?.
@@ -6875,14 +6854,6 @@ Proof with autos*.
       apply/xapp_lemma'; [|rewrite <-wp_equiv; apply/IH'; try math|]=> //.
       unfold protect.
       rew_heap. xsimpl=> hr.
-=======
-      { admit. }
-      (* move: (IH' j' n (hv \u_(Union (interval Z l) fsi) hv') L')=> {}IH'. *)
-      apply/xapp_lemma'; [|rewrite <-wp_equiv; apply/IH'; try math|]=> //.
-      unfold protect.
-      rew_heap. xsimpl=> hr.
-      Search interval.
->>>>>>> fixing_admits
       rewrite hmerge_assoc // -(interval_union j'); try math.
       rewrite hbig_fset_union; first last.
       { apply/disjoint_of_not_indom_both=> ?.
@@ -6896,7 +6867,6 @@ Proof with autos*.
           rewrite indom_Union; by exists d. }
         over. }
       move=> ?; apply:applys_eq_init.
-<<<<<<< HEAD
       do 2? fequal. apply/hbig_fset_eq=> d ind.
       apply/Heq=> ? ind' /[! @uni_nin] //.
       rewrite indom_interval in ind.
@@ -6934,57 +6904,6 @@ Proof with autos*.
   rewrite [_ N N]intervalgt; last math.
   rewrite ?hbig_fset_empty. xsimpl.
 Qed.
-=======
-      do 2? fequal. apply/hbig_fset_eq=> d ?.
-      apply/Heq=> ?? /[! @uni_nin] //.
-      rewrite 
-      
-      (* xsimpl.  *)
-      }
-    (* rewrite {1}intervalUr ?Union_upd //; last math.
-    have Dj': disjoint (fsi l) (Union (interval Z l) fsi).
-    { rewrite disjoint_Union=> ? /[! indom_interval] ?.
-      apply/Dj; math. }
-    rewrite hbig_fset_union // (@intervalU l N); last math.
-    rewrite Union_upd // hbig_fset_union //; first last.
-    { rewrite disjoint_Union=> ? /[! indom_interval] ?.
-      apply/Dj; math. }
-    apply/xapp_lemma'; [|rewrite <-wp_equiv; apply/IH; try math|].
-    { reflexivity. }
-    { rewrite /Q; apply/hlocal_hmerge; exact/hlocal_hmerge_fset. }
-    unfold protect.
-    rew_heap.
-    xsimpl*.
-    suff<-: Q \(m) H l = 
-      (\(m)_(i0 <- interval Z l) H' i0 hv) \(m) 
-      (\(m)_(i0 <- update (interval (l + 1) N) l tt) H i0).
-    { xsimpl=> hr. rewrite /Q.
-      rewrite hmerge_assoc // [_ \(m) H' _ _]hmerge_comm //.
-      rewrite -hmerge_assoc // => h.
-      apply: applys_eq_init; apply/(congr1 (@^~ h)).
-      fequal. rewrite intervalUr ?hbig_fset_update //; eauto; last math.
-      { rewrite hmerge_comm; eauto. fequal.
-        { apply/hbig_fset_eq=> ? +; rewrite indom_interval=> ?. 
-          apply/Heq=> ? ind; rewrite uni_nin //.
-          move: ind=> /[swap]; apply/disjoint_inv_not_indom_both/Dj; math. }
-        apply/Heq=> *; by rewrite uni_in. }
-      rewrite indom_interval le_zarith lt_zarith. lia. }
-      rewrite /Q hmerge_assoc // [_ \(m) H _]hmerge_comm //.
-      rewrite hbig_fset_update ?indom_interval; eauto.
-      rewrite le_zarith lt_zarith; lia. }
-  { move=> q hv hv' hvE.
-    suff->:
-      (\(m)_(i0 <- interval Z q) H' i0 hv') = 
-      (\(m)_(i0 <- interval Z q) H' i0 hv) by [].
-    apply/hbig_fset_eq=> ??; apply/Heq=> *; apply/eq_sym/hvE.
-    rewrite indom_Union; eexists; autos*. }
-  { rewrite [_ Z Z]intervalgt; last math.
-    rewrite Union0 ?hbig_fset_empty hmerge_hempty_l; xsimpl. }
-  { move=> ?.
-    rewrite [_ N N]intervalgt; last math.
-    rewrite Union0 ?hbig_fset_empty hmerge_hempty_r. xsimpl. } *)
-Admitted. *)
->>>>>>> fixing_admits
 
 Lemma hbig_fset_Union {A : Type} (fs : fset A) fsi (H : A -> hhprop) : 
   (forall i j, i <> j -> disjoint (fsi i) (fsi j)) ->
@@ -7098,7 +7017,7 @@ Proof.
     by case=> ? [_]; rewrite filter_indom=> -[]. }
   rewrite fs'E hbig_fset_Union; first last.
   { move=> *; apply/disjoint_of_not_indom_both=> ?.
-    by rewrite ?filter_indom=> -[_]->[_]. }
+    by rewrite ?filter_indom=> -[?]->[_] ?. }
   rewrite (hsub_hstar_fset_squash _ _ (fun i => filter (fun y : D => fun=> f y = i) fs')).
   { exact/hbig_fset_eq. }
   { move=> ??; apply/hlocal_hstar_fset=> ?.
@@ -7827,7 +7746,7 @@ Proof.
   by rewrite (hsub_hstar_fstar_can _ _ (C2 _)).
 Qed.
 
-(* Lemma wp_for_hbig_op_na_bis :
+Lemma wp_for_hbig_op_na_bis :
   (forall t, subst "for" t C = C) ->
   (forall t, subst "cnt" t C = C) ->
   (forall t, subst "cond" t C = C) ->
@@ -7906,7 +7825,7 @@ Proof.
   rewrite -(fsubst_indom _ _ (C1 l) (C2 l)) C2 fsubst_fs'_fi.
   move: ind; apply/disjoint_inv_not_indom_both/fsDfsi'.
   by rewrite indom_interval; math.
-Qed. *)
+Qed. 
 
 End WP_for.
 
@@ -8347,7 +8266,7 @@ Lemma htriple_ref_lab : forall (f : val) fs l,
     \[]
     (fun hr => (\exists (p : D.type -> loc), \[hr = fun d => val_loc (p d)] \* \*_(d <- ⟨l, fs⟩) p (eld d) ~(d)~> f)).
 Proof.
- *)
+  *)
 
 Lemma lhtriple_get : forall v (p : loc) fs,
   htriple fs (fun d => val_get p)
@@ -8476,7 +8395,7 @@ Arguments lab_fun_upd /.
 (* Context (bigop : forall {A}, (int -> int -> int) -> fset A -> (A -> int) -> int).
 Reserved Notation "'\big[' f ']' ( i <- r ) F"
   (at level 41, F at level 41, i, r at level 50,
-           format "'[' \big[ f ] ( i  <-  r ) '/  '  F ']'").
+            format "'[' \big[ f ] ( i  <-  r ) '/  '  F ']'").
 
 Notation "'\big[' f ']' ( i <- r ) F" :=
   (bigop f r (fun i => F)) : nat_scope.
@@ -8495,13 +8414,13 @@ Lemma Union_singleE (x y : int) :
   Union (interval x y) (fun x => single x tt) = 
   interval x y.
 Proof.
- *)
+  *)
 
 
 (* Definition Sum : fset int -> (int -> int) -> int.
 Reserved Notation "'Σ_' ( i <- r ) F"
   (at level 41, F at level 41, i, r at level 50,
-           format "'[' Σ_ ( i  <-  r ) '/  '  F ']'").
+            format "'[' Σ_ ( i  <-  r ) '/  '  F ']'").
 
 Notation "'Σ_' ( i <- r ) F" :=
   (Sum r (fun i => F)) : nat_scope.
@@ -8544,7 +8463,7 @@ Proof.
 Lemma disjoint_label {T} (l l' : labType) (fs1 fs2 : fset T) : 
   disjoint (label (Lab l fs1)) (label (Lab l' fs2)) = ((l <> l') \/ disjoint fs1 fs2).
 Proof.
- *)
+  *)
 
 
 (* Hint Rewrite @disjoint_single disjoint_interval disjoint_single_interval 
@@ -8583,8 +8502,8 @@ Lemma xfor_lemma
   (forall (l : int) Q, 
     (0 <= l <= N)%Z ->
     {{ Inv l \* 
-       (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R d) \* 
-       Q \(m) H l }}
+        (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R d) \* 
+        Q \(m) H l }}
       [{
         {i| _  in single s tt  => subst vr l C};
         {j| ld in fsi1 l       => C1 ld}
@@ -8627,7 +8546,7 @@ Lemma xfor_lemma
   {{ v, Post v }}.
 Proof.
   move=> IH lI lH lH' lR lR' opP CM AS iNj N0 ? ??? ?? PreH PostH.
-  rewrite /ntriple /nwp ?fset_of_cons /= fset_of_nil union_empty_r.
+  rewrite /ntriple /nwp ?fset_of_cons /= union_empty_r.
   set (f := (fun '(Lab (p, q) x) => Lab 
     (If p = j then 
       If  0 <= q < N /\ indom (fsi1 q) x then (j,0)%Z else (p, 2 * (q + N) + 1)
@@ -8652,7 +8571,7 @@ Proof.
       (fs' := ⟨(i, 0), single s tt⟩)
       (fsi := fun d => ⟨(j,0%Z), fsi1 d⟩)
       (f := f)
-      (fsi' := fsi')
+      (* (fsi' := fsi') *)
   ); try eassumption.
   { rewrite -Union_label; xsimpl*. }
   { by rewrite -Union_label. }
@@ -8713,10 +8632,10 @@ Proof.
     rewrite indom_interval=> ?.
     rewrite /fsi'/ g; case: classicT=> [->|].
     {  case: classicT.
-       { case=> -> ?; rewrite indom_label_eq=> -[][]??.
-         rewrite indom_fsubst; exists (Lab (j, k) x); split.
-         { rewrite /f; case: classicT=> // _.
-           case: classicT=> // -[] //. }
+        { case=> -> ?; rewrite indom_label_eq=> -[][]??.
+          rewrite indom_fsubst; exists (Lab (j, k) x); split.
+          { rewrite /f; case: classicT=> // _.
+            case: classicT=> // -[] //. }
           rewrite indom_union_eq indom_Union; right.
           exists k; by rewrite indom_label_eq. }
         move=> _; rewrite indom_label_eq=> -[][]. math. }
@@ -8782,8 +8701,8 @@ Lemma xfor_lemma'
   (forall (l : int) Q, 
     Z <= l <= N ->
     {{ Inv l \* 
-       (\*_(d <- ⟨j, fsi1 l⟩) R d) \* 
-       Q \(m) H l }}
+        (\*_(d <- ⟨j, fsi1 l⟩) R d) \* 
+        Q \(m) H l }}
       [{
         {i| _  in single s tt  => subst vr l C};
         {j| ld in fsi1 l       => C1 ld}
@@ -8856,9 +8775,9 @@ Lemma xfor_lemma2
   (forall (l : int) Q, 
     Z <= l <= N ->
     {{ Inv l \* 
-       (\*_(d <- ⟨j, fsi1 l⟩) R1 d) \* 
-       (\*_(d <- ⟨j, fsi2 l⟩) R2 d) \* 
-       Q \(m) H l }}
+        (\*_(d <- ⟨j, fsi1 l⟩) R1 d) \* 
+        (\*_(d <- ⟨j, fsi2 l⟩) R2 d) \* 
+        Q \(m) H l }}
       [{
         {i| _  in single s tt  => subst vr l C};
         {j| ld in fsi1 l       => C1 ld};
@@ -8910,7 +8829,7 @@ Proof.
       Inv 
       (fun d => If lab d = j then R1  d else R2  d)
       (fun d => If lab d = j then R1' d else R2' d)
-       H H' (fsi := fun d => ⟨j, fsi1 d⟩ \u ⟨k, fsi2 d⟩ )); 
+        H H' (fsi := fun d => ⟨j, fsi1 d⟩ \u ⟨k, fsi2 d⟩ )); 
   try eassumption.
   { move=> l Q ?; move: (IH l Q).
     rewrite /ntriple /nwp ?fset_of_cons /= ?fset_of_nil.
@@ -9029,7 +8948,7 @@ Import Vars.
 
 Reserved Notation "'Σ_' ( i <- r ) F"
   (at level 41, F at level 41, i, r at level 50,
-           format "'[' Σ_ ( i  <-  r ) '/  '  F ']'").
+            format "'[' Σ_ ( i  <-  r ) '/  '  F ']'").
 
 Notation "'Σ_' ( i <- r ) F" :=
   (sum r (fun i => F)) : nat_scope.
@@ -9058,7 +8977,7 @@ Coercion to_int : val >-> Z.
 
 Definition pow_aux : trm :=
   <{ fix f n d p =>
-     let b = (n <= 0) in
+      let b = (n <= 0) in
       if b then 
         let x = ! p in x
       else 
@@ -9152,13 +9071,13 @@ Notation "'[0,i]'" := (interval 0 i).
 Notation "'for' i <- '[' Z ',' N ']' '{' t '}'"  :=
   (For Z N <{ fun_ i => t }>)
   (in custom trm at level 69,
-   Z, N, i at level 0,
-   format "'[' '[' for  i  <-  [ Z ','  N ] ']'  '{' '/   ' '[' t  '}' ']' ']'") : trm_scope.
+    Z, N, i at level 0,
+    format "'[' '[' for  i  <-  [ Z ','  N ] ']'  '{' '/   ' '[' t  '}' ']' ']'") : trm_scope.
 
 
 Reserved Notation "'Σ_' ( i <- r ) F"
   (at level 41, F at level 41, i, r at level 50,
-           format "'[' Σ_ ( i  <-  r ) '/  '  F ']'").
+            format "'[' Σ_ ( i  <-  r ) '/  '  F ']'").
 
 Notation "'Σ_' ( i <- r ) F" :=
   (Sum r (fun i => F)) : nat_scope.
@@ -9186,10 +9105,10 @@ Coercion to_int : val >-> Z.
 
 Definition pow_aux : trm :=
   <{ fix f n x r =>
-     let b = (n <= 0) in
-     if b then 
+      let b = (n <= 0) in
+      if b then 
       let a = ! r in a
-     else 
+      else 
       let a = ! r   in
       let y = a * x in
       r := y;
@@ -9226,9 +9145,9 @@ Proof with myfold.
   xin 1: xwp; xapp=> p...
   rewrite -{2}Union_singleE.
   set (I i := 
-     \exists (a : int), 
-       p ~⟨1,0⟩~> a \* 
-       \[forall (r : loc) (y : int),
+      \exists (a : int), 
+        p ~⟨1,0⟩~> a \* 
+        \[forall (r : loc) (y : int),
             htriple 
               ⟨2, {::i}⟩ 
               (fun=> pow_aux i x r) 
@@ -9340,20 +9259,20 @@ End Pow1.
 
 OCaml:
 
-   let incr p =
-       let n = !p in
-       let m = n + 1 in
-       p := m
+    let incr p =
+        let n = !p in
+        let m = n + 1 in
+        p := m
 
 The notation ['p] stands for [("x":var)]. It is defined in [LibSepVar.v]. *)
 
 Definition incr : D -> val := fun d => 
   let s := length d in
   <{ fun 'p =>
-     let 'n = ! 'p in
-     let 'm = 'n + s in
-     'p := 'm;
-     'p := 'm }>.
+      let 'n = ! 'p in
+      let 'm = 'n + s in
+      'p := 'm;
+      'p := 'm }>.
 
 (** Here is the Separation Logic htriple specifying increment.
     And the proof follows. Note that the script contains explicit
@@ -9392,9 +9311,9 @@ Module Export Def_incr. Import Vars.
 
 Definition incr' : val :=
   <{ fun p =>
-       let n = ! p in
-       let m = n + 1 in
-       p := m }>.
+        let n = ! p in
+        let m = n + 1 in
+        p := m }>.
 
 End Def_incr.
 
@@ -9411,17 +9330,17 @@ Qed.
 
 Definition decr : val :=
   <{ fun 'p =>
-       let 'n = ! 'p in
-       let 'm = 'n - 1 in
-       'p := 'm }>.
+        let 'n = ! 'p in
+        let 'm = 'n - 1 in
+        'p := 'm }>.
 
 Module Export Def_decr. Import Vars.
 
 Definition decr : val :=
   <{ fun p =>
-       let n = !p in
-       let m = n - 1 in
-       p := m }>.
+        let n = !p in
+        let m = n - 1 in
+        p := m }>.
 
 End Def_decr.
 
@@ -9444,11 +9363,11 @@ Module Export Def_mysucc. Import Vars.
 
 Definition mysucc : val :=
   <{ fun n =>
-       let r = ref n in
-       incr r;
-       let x = !r in
-       free r;
-       x }>.
+        let r = ref n in
+        incr r;
+        let x = !r in
+        free r;
+        x }>.
 
 End Def_mysucc.
 
@@ -9468,7 +9387,7 @@ Qed.
 
 OCaml:
 
-   let myrec r n1 n2 =
+    let myrec r n1 n2 =
       r.myfield := r.myfield + n1 + n2
 *)
 
@@ -9478,10 +9397,10 @@ Module Export Def_myrec. Import Vars.
 
 Definition myrec : val :=
   <{ fun p n1 n2 =>
-       let n = (p`.myfield) in
-       let m1 = n + n1 in
-       let m2 = m1 + n2 in
-       p`.myfield := m2 }>.
+        let n = (p`.myfield) in
+        let m1 = n + n1 in
+        let m2 = m1 + n2 in
+        p`.myfield := m2 }>.
 
 Lemma htriple_myrec : forall (p:loc) (n n1 n2:int),
   htriple (fun d => myrec p n1 n2)
@@ -9502,9 +9421,9 @@ Module Export Def_myfun. Import Vars.
 
 Definition myfun : val :=
   <{ fun p =>
-       let f = (fun_ u => incr p) in
-       f();
-       f() }>.
+        let f = (fun_ u => incr p) in
+        f();
+        f() }>.
 
 End Def_myfun.
 

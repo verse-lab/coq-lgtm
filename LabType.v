@@ -112,22 +112,34 @@ End LabeledType.
 Lemma label_single {T} (t : T) l : 
   label (Lab l (single t tt)) = single (Lab l t) tt.
 Proof using.
-Admitted.
+  unfolds label. simpl. rewrite -> update_empty, -> Union_upd, -> Union0.
+  { by rewrite -> union_empty_r. }
+  { intros. hnf. simpl. intros. repeat case_if; eqsolve. }
+Qed.
 
 Lemma label_empty {T} l : 
   label (Lab l empty) = empty :> fset (labeled T).
 Proof using.
-Admitted.
+  unfolds label. simpl. by rewrite -> Union0.
+Qed.
 
 Lemma label_update {T : Type} (fs : fset T) t l : 
   label (Lab l (update fs t tt)) = update (label (Lab l fs)) (Lab l t) tt.
 Proof using.
-Admitted.
+  unfolds label. simpl. rewrite -> Union_upd.
+  { reflexivity. }
+  { intros. hnf. simpl. intros. repeat case_if; eqsolve. }
+Qed.
 
 Lemma indom_label_eq {T} l (fs : fset T) l' x :
   indom (label (Lab l fs)) (Lab l' x) = (l = l' /\ indom fs x).
 Proof.
-Admitted.
+  unfolds label. simpl. rewrite -> indom_Union.
+  unfolds indom, map_indom. simpl.
+  extens. iff H.
+  { destruct H as (f & H & HH). case_if. eqsolve. }
+  { exists x. destruct H as (<- & H). case_if. eqsolve. }
+Qed.
 
 Lemma labf_ofK {T S} (f : T -> S) g : 
   cancel (labf_of f) (labf_of g) -> 
