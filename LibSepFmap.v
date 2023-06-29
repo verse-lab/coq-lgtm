@@ -1875,7 +1875,7 @@ Qed.
 Lemma fsubst_update_valid {A B C : Type} (f : A -> C) (fm : fmap A B) x y: 
   valid_subst fm f ->
   fsubst (update fm x y) f = update (fsubst fm f) (f x) y.
-Proof. Admitted.
+Proof. (* ... *) Admitted.
 Lemma fsubst_update {A B C : Type} (f : A -> C) (g : C -> A) (fm : fmap A B) x y: 
   cancel f g ->
   fsubst (update fm x y) f = update (fsubst fm f) (f x) y.
@@ -1909,26 +1909,72 @@ Proof.
   rewrite ?indom_update_eq=> -[/(can_inj c2)|/IH]; by autos*. *)
 Qed.
 
+Lemma fsubst_iso {A B C : Type} (f : A -> C) g (fm : fmap A B) x : 
+  cancel f g -> 
+  cancel g f ->
+  fmap_data (fsubst fm f) (f x) = fmap_data fm x.
+Proof.
+  intros. simpl. unfold map_fsubst.
+  destruct classicT as [ N | N ].
+  { destruct (indefinite_description _) as (x0 & (E' & HH)).
+    apply f_equal with (f:=g) in E'. rewrite -> ! H in E'. eqsolve.
+  }
+  { destruct (fmap_data fm x) eqn:E; auto.
+    assert (map_indom fm x) by eqsolve. false N. eauto.
+  }
+Qed.
+
 Lemma fsubst_indom {A B C : Type} (f : A -> C) g (fm : fmap A B) x :
   cancel f g -> 
   cancel g f ->
   indom (fsubst fm f) (f x) = indom fm x.
 Proof.
-Admitted.
+  intros.
+  unfolds indom, map_indom. rewrite -> (@fsubst_iso _ _ _ f g); auto.
+Qed.
 
 Lemma fsubst_read {A B C : Type} `{Inhab B} (f : A -> C) g (fm : fmap A B) x :
   cancel f g -> 
   cancel g f ->
   read (fsubst fm f) (f x) = read fm x.
 Proof.
-Admitted.
+  intros.
+  unfolds read. rewrite -> (@fsubst_iso _ _ _ f g); auto.
+Qed.
 
 Lemma fsubst_remove {A B C : Type} (f : A -> C) g (fm : fmap A B) x : 
   cancel f g -> 
   cancel g f ->
   remove (fsubst fm f) (f x) = fsubst (remove fm x) f.
 Proof.
-Admitted.
+  intros. apply fmap_extens. intros. 
+  simpl. unfolds remove, map_remove. 
+  cbn delta -[fsubst] beta iota. 
+  case_if.
+  { subst. unfold map_fsubst.
+    destruct classicT as [ N | N ]; auto.
+    destruct (indefinite_description _) as (x0 & (E' & HH)).
+    apply f_equal with (f:=g) in E'. rewrite -> ! H in E'. subst. case_if. auto.
+  }
+  { unfold map_fsubst.
+    destruct classicT as [ N | N ]; auto.
+    all: destruct classicT as [ N2 | N2 ]; auto.
+    { destruct (indefinite_description _) as (x' & (E' & HH)).
+      destruct (indefinite_description _) as (x'' & (E'' & HH')).
+      unfold map_indom in HH'. case_if.
+      rewrite <- E'' in E'. 
+      apply f_equal with (f:=g) in E'. rewrite -> ! H in E'. subst. auto.
+    }
+    { false N2. destruct N as (a & <- & N).
+      exists a. split; auto.
+      unfold map_indom. case_if. auto.
+    }
+    { false N. destruct N2 as (a & <- & N2).
+      exists a. split; auto.
+      unfolds map_indom. case_if. auto.
+    }
+  }
+Qed.
 
 Lemma filter_eq {A B : Type} (fs1 fs2 : fmap A B) (P : A -> B -> Prop) `{Inhab B} : 
   (forall y x, P y x -> read fs1 y = read fs2 y) -> 
