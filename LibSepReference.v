@@ -15,6 +15,8 @@ From SLF Require Import Fun LabType.
 
 From mathcomp Require Import ssreflect ssrfun.
 
+Declare Custom Entry wp.
+
 Module Fmap := LibSepFmap. (* Short name for Fmap module. *)
 
 (* ################################################################# *)
@@ -176,7 +178,7 @@ Implicit Types w r vf vx : val.
 
 (** The types of values and heap values are inhabited. *)
 
-Check @arbitrary.
+(* Check @arbitrary. *)
 
 Global Instance Inhab_val : Inhab val.
 Proof using. apply (Inhab_of_val val_unit). Defined.
@@ -664,6 +666,10 @@ Definition htop : hhprop :=
 Definition hwand (H1 H2 : hhprop) : hhprop :=
   \exists H0, H0 \* hpure ((H1 \* H0) ==> H2).
 
+Definition hlollipop op (H1 H2 : hhprop) : hhprop :=
+  \exists H0, H0 \* hpure ((H1 \(op) H0) ==> H2).
+
+
 Definition qwand A (Q1 Q2:A->hhprop) : hhprop :=
   \forall x, hwand (Q1 x) (Q2 x).
 
@@ -680,6 +686,10 @@ Notation "Q \*+ H" := (fun x => hstar (Q x) H)
 
 Notation "H1 \-* H2" := (hwand H1 H2)
   (at level 43, right associativity) : hprop_scope.
+
+Notation "H1 '\-(' m ')' H2" := (hlollipop H1 H2 m)
+  (at level 43, right associativity, format "H1  \-( m )  H2") : hprop_scope.
+
 
 Notation "Q1 \--* Q2" := (qwand Q1 Q2)
   (at level 43) : hprop_scope.
@@ -1359,7 +1369,7 @@ Proof.
   by rewrite /hbig_fset fset_foldE.
 Qed.
 
-Check hstar_assoc.
+(* Check hstar_assoc. *)
 
 Lemma hbig_fset_update {A} hop fs x (f : A -> hhprop) :
   ~ Fmap.indom fs x ->
@@ -5408,8 +5418,6 @@ Notation "` F" :=
 
 (** Custom grammar for the display of characteristic formulae. *)
 
-Declare Custom Entry wp.
-
 Notation "<[ e ]>" :=
   e
   (at level 0, e custom wp at level 99) : wp_scope.
@@ -6275,6 +6283,13 @@ Notation "'for' i <- '[' Z ',' N ']' '{' t '}'"  :=
     Z, N, i at level 0,
     format "'[' for  i  <-  [ Z ','  N ] ']'  '{' '/   ' '[' t  '}' ']'") : trm_scope.
 
+Definition incr (p : loc) (t : trm)  :=
+  <{ let "_t_" = t in 
+     let "_p_" = ! p in
+     let "_v_" = "_p_" + "_t_" in
+     p := "_v_";
+     "_t_" }>.
+
 
 Open Scope Z_scope.
 
@@ -6320,6 +6335,44 @@ Qed.
 Hint Resolve eqbxx : lhtriple.
 
 Context `{HD : Inhab D}.
+
+(*Lemma hmerge_hstar_hsingle H x y z m : 
+  exists Q Q',
+    H \(m) x ~(y)~> z = Q \* \exists w, x ~(y)~> Q' w.
+Proof.
+  exists (fun h => exists h', H h' ); xpull.
+  { move=> h -[h1][h2][?][]/hsingle_inv->->.
+  Search hwand hstar.
+    exists () }
+Qed. *)
+
+(* Lemma eval_incr p (v : int) h d : 
+    fmap_data h (p, d) <> None ->
+    eval1 d h (incr p v) (merge add_val h (single (p, d) (val_int v))) v.
+Proof with simpl; try by econstructor;eauto.
+  move=> ?.
+  rewrite /incr.
+  apply/(eval1_let "_t_" _ (s2 := h) (v1 := v))...
+  apply/(eval1_let _ _ (s2 := h) (v1 := read h (p, d)))...
+  apply/(eval1_let _ _ (s2 := h) (v1 := add_val (read h (p, d)) v))...
+  { apply/eval1_binop. Print evalbinop. }
+Qed. *)
+
+
+
+(* Lemma wp_incr (p : D -> loc) Q Q' ht fs m (H : D -> hhprop) : 
+  htriple fs ht (Q \* \*_(s <- fs) H s) (Q' \*+ \*_(s <- fs) H s) ->
+  (forall s, exists x H', H s = H' \(m) (p s) ~(s)~> x) ->
+  htriple fs (fun d => incr (p d) (ht d)) 
+    (Q \* \*_(s <- fs) H s) 
+    (fun hv => Q' hv \* \*_(s <- fs) H s \(m) p s ~(s)~> hv s).
+Proof.
+  move=> htr  HE.
+  rewrite -wp_equiv /incr.
+  xwp; xapp=> hv.
+
+Qed. *)
+
 
 Lemma wp_for_aux  i fs fs' ht (H : int -> (D -> val) -> hhprop) Z N C fsi hv0 vr:
   (Z <= i <= N) ->
@@ -8184,7 +8237,7 @@ Proof.
   rewrite /nwp (fset_htrm_lookup_remove l fs_hts) -wp_union -/fs_ht; first last.
   { exact/fset_htrm_label_remove_disj. }
   under (wp_ht_eq (htrm_of fs_hts))=> ? IN.
-  { rewrite (lookup_eq _ IN); over. }
+  { rewrite (lookup_eq _ _ IN); over. }
   rewrite -/fs_ht -/ht.
   apply/wp_conseq=> hv.
   under (wp_ht_eq (htrm_of fs_hts))=> ? IN.
@@ -8243,7 +8296,7 @@ Proof.
   rewrite /uni; case: classicT=> [/indom_label->|].
   { by rewrite /lab_fun_upd eqbxx. }
   case: classicT=> // /indom_remove *. 
-  rewrite lab_fun_upd_neq //. exact/0.
+  rewrite lab_fun_upd_neq //.
 Qed.
 
 
@@ -8491,7 +8544,7 @@ Qed.
 Definition set2 y : D -> D :=
   fun '(Lab (p, q) x) => Lab (p, y) x.
 
-Lemma xfor_lemma 
+Lemma xfor_lemma `{ID : Inhab D}
   Inv 
   (R R' : D.type -> hhprop)
   m (H : int -> hhprop) (H' : int -> (D -> val) -> hhprop)
@@ -8567,9 +8620,9 @@ Proof.
     apply/opP=> x ? /=; case: classicT=> // _.
     by case: classicT=> // -[]; split=> //; rewrite -indom_interval. }
   apply/(
-    wp_for_hbig_op_na_bis Inv R R' H (fun i hv => H' i (hv \o set2 i)) Post fi gi g
+    wp_for_hbig_op_na_bis Inv R R' H (fun i hv => H' i (hv \o set2 i))  
+      (fun d => ⟨(j,0%Z), fsi1 d⟩) Post fsi' fi gi g
       (fs' := ⟨(i, 0), single s tt⟩)
-      (fsi := fun d => ⟨(j,0%Z), fsi1 d⟩)
       (f := f)
       (* (fsi' := fsi') *)
   ); try eassumption.
@@ -8691,7 +8744,7 @@ Proof.
     all: math.
 Qed.
 
-Lemma xfor_lemma'
+(* Lemma xfor_lemma'
   Inv 
   (R R' : D.type -> hhprop)
   m (H : int -> hhprop) (H' : int -> (D -> val) -> hhprop)
@@ -8922,7 +8975,7 @@ Ltac xfor I R R' :=
   ]; try xnsimpl.
 
 Opaque label.
-Opaque nwp.
+Opaque nwp. *)
 
 End nReasoning.
 
@@ -8932,7 +8985,7 @@ Hint Resolve eqbxx : lhtriple.
 (** * Demo Programs *)
 
 
-Module DemoPrograms.
+(* Module DemoPrograms.
 
 Module Pow.
 
@@ -9447,4 +9500,4 @@ End pow.
 End Pow1.
 End DemoPrograms.
 
-(* 2023-03-25 11:36 *)
+2023-03-25 11:36 *)
