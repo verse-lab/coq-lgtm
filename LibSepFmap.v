@@ -1198,6 +1198,28 @@ Global Opaque conseq.
 
 Hint Rewrite conseq_nil conseq_cons : rew_listx.
 
+Fixpoint hconseq [D:Type] (B:Type) (vs:list B) (l:nat) (d:D) : fmap (nat * D) B :=
+  match vs with
+  | nil => empty
+  | v::vs' => (single (l, d) v) \+ (hconseq vs' (S l) d)
+  end.
+
+Lemma hconseq_nil : forall [D:Type] B (l:nat) (d : D),
+  hconseq (@nil B) l d = empty.
+Proof using. auto. Qed.
+
+Lemma hconseq_cons : forall [D:Type] B (l:nat) (v:B) (vs:list B) (d : D),
+  hconseq (v::vs) l d = (single (l, d) v) \+ (hconseq vs (S l) d).
+Proof using. auto. Qed.
+
+Lemma hconseq_cons' : forall [D:Type] B (l:nat) (v:B) (vs:list B) (d : D),
+  hconseq (v::vs) l d = (single (l, d) v) \+ (hconseq vs (l+1) d).
+Proof using. intros. math_rewrite (l+1 = S l)%nat. applys hconseq_cons. Qed.
+
+Global Opaque hconseq.
+
+Hint Rewrite hconseq_nil hconseq_cons : rew_listx.
+
 (* ================================================================= *)
 (** ** Existence of Fresh Locations *)
 
@@ -1284,6 +1306,17 @@ Proof using.
   { rewrite~ conseq_nil. }
   { rew_list in N. rewrite conseq_cons. rew_disjoint. split.
     { applys disjoint_single_single. destruct N; math. }
+    { applys IHL. destruct N. { left. math. } { right. math. } } }
+Qed.
+
+Lemma disjoint_single_hconseq : forall [D:Type] B l l' L (v:B) (d:D),
+  (l < l')%nat \/ (l >= l'+length L)%nat ->
+  \# (single (l, d) v) (hconseq L l' d).
+Proof using.
+  introv N. gen l'. induction L as [|L']; intros.
+  { rewrite~ hconseq_nil. }
+  { rew_list in N. rewrite hconseq_cons. rew_disjoint. split.
+    { applys disjoint_single_single. enough (l <> l') by intuition congruence. destruct N; math. }
     { applys IHL. destruct N. { left. math. } { right. math. } } }
 Qed.
 
