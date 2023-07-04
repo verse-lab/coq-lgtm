@@ -154,6 +154,9 @@ Definition hheap D : Type := state D.
 Definition proj D (h : hheap D) d := 
   Fmap.filter (fun '(_, c) _ => c = d) h.
 
+Definition proj_complement D (h : hheap D) d := 
+  Fmap.filter (fun '(_, c) _ => c <> d) h.
+
 (* ================================================================= *)
 (** ** Coq Tweaks *)
 
@@ -2399,16 +2402,82 @@ Proof.
   by case: (_ x)=> [?[]//|?]; case: (_ x).
 Qed.
 
+Lemma union_eq_inv_of_locals_pre : forall h2 h2' h1 h1' (fs fs' : fset D),
+  local fs h1 ->
+  local fs h2 ->
+  local fs' h1' ->
+  local fs' h2' ->
+  disjoint fs fs' ->
+  h1 \u h1' = h2 \u h2' ->
+  forall x v, fmap_data h1 x = Some v -> fmap_data h2 x = Some v.
+Proof using.
+  introv. intros Hl1 Hl2 Hl1' Hl2' Hdj HH. intros (l, d) v H.
+  assert (fmap_data (h1 \u h1') (l, d) = Some v) as H'.
+  { simpl. unfolds map_union. now rewrite -> H. }
+  rewrite -> HH in H'. simpl in H'. unfolds map_union.
+  destruct (fmap_data h2 (l, d)) as [ v' | ]; auto.
+  unfolds local, disjoint, map_disjoint.
+  assert (indom fs d) as Hc by (apply Hl1 with (x:=l); eqsolve).
+  assert (indom fs' d) as Hc' by (apply Hl2' with (x:=l); eqsolve).
+  specializes Hdj d. eqsolve.
+Qed.
+
 Lemma union_eq_inv_of_locals : forall h2 h2' h1 h1' (fs fs' : fset D),
   local fs h1 ->
   local fs h2 ->
   local fs' h1' ->
   local fs' h2' ->
+  disjoint fs fs' ->
   h1 \u h1' = h2 \u h2' ->
   h1 = h2.
 Proof using.
-Admitted.
+  introv. intros Hl1 Hl2 Hl1' Hl2' Hdj HH.
+  apply fmap_extens. intros x.
+  destruct (fmap_data h1 x) as [ v | ] eqn:E.
+  { assert (fmap_data h2 x = Some v) by (apply union_eq_inv_of_locals_pre 
+      with (fs:=fs) (fs':=fs') (h1:=h1) (h2:=h2) (h1':=h1') (h2':=h2'); auto).
+    eqsolve.
+  }
+  { destruct (fmap_data h2 x) as [ v | ] eqn:E'; auto.
+    assert (fmap_data h1 x = Some v) by (apply union_eq_inv_of_locals_pre 
+      with (fs:=fs) (fs':=fs') (h1:=h2) (h2:=h1) (h1':=h2') (h2':=h1'); auto).
+    eqsolve.
+  }
+Qed.
 
+Fact local_single p d v : local (single d tt) (single (p, d) v).
+Proof. unfolds local, indom, map_indom. simpl. intros. repeat case_if; subst; eqsolve. Qed.
+
+Fact local_disjoint_disjoint (fs fs' : fset D) h1 h2 :
+  local fs h1 -> local fs' h2 -> disjoint fs fs' -> disjoint h1 h2.
+Proof.
+  intros. unfolds local, indom, map_indom, disjoint, map_disjoint.
+  intros (l, d). destruct (fmap_data h1 (l, d)) eqn:E1, (fmap_data h2 (l, d)) eqn:E2; auto.
+  specialize (H l d). specialize (H0 l d). specialize (H1 d). eqsolve.
+Qed.
+
+Fact local_single_disjoint d fs h1 h2 :
+  local fs h1 -> local (single d tt) h2 -> ~ indom fs d -> disjoint h1 h2.
+Proof. 
+  intros. apply local_disjoint_disjoint with (fs:=fs) (fs':=single d tt); try assumption.
+  rewrite -> disjoint_comm. by apply disjoint_single_of_not_indom.
+Qed.
+
+Lemma union_eq_inv_of_locals' : forall h2 h2' h1 h1' (fs fs' : fset D),
+  local fs h1 ->
+  local fs h2 ->
+  local fs' h1' ->
+  local fs' h2' ->
+  disjoint fs fs' ->
+  h1 \u h1' = h2 \u h2' ->
+  h1' = h2'.
+Proof.
+  introv. intros ? ? ? ? ?. 
+  rewrite -> union_comm_of_disjoint with (h1:=h1), -> union_comm_of_disjoint with (h1:=h2).
+  2-3: apply local_disjoint_disjoint with (fs:=fs) (fs':=fs'); assumption.
+  rewrite -> disjoint_comm in H3.
+  revert H1 H2 H H0 H3. apply union_eq_inv_of_locals.
+Qed.
 
 Lemma eval1_frame2 h1 h2 h fs ht d hv: 
   eval1 d (h1 \u h) ht (h2 \u h) hv -> 
@@ -2448,9 +2517,116 @@ Proof.
   exact/disjoint_remove_l.
 Qed. 
 
+Lemma eval1_frame2_cancel h1 h2 h h' fs ht d hv: 
+  eval1 d (h1 \u h) ht (h2 \u h') hv -> 
+  local fs h ->
+  local fs h' ->
+  local (single d tt) h1 ->
+  local (single d tt) h2 ->
+  ~indom fs d ->
+  disjoint h1 h ->
+  disjoint h2 h' ->
+  h = h'.
+Proof.
+  intros HH Hl Hl' Hl1 Hl2 Hnd Hdj1 Hdj2.
+  rewrite -> union_comm_of_disjoint with (h1:=h1) in HH; auto.
+  rewrite -> union_comm_of_disjoint with (h1:=h2) in HH; auto.
+  remember (h \u h1) as h1' eqn:Eh1'. remember (h' \u h2) as h2' eqn:Eh2'.
+  revert h1 h2 Eh1' Eh2' Hl1 Hl2 Hdj1 Hdj2.
+  revert h h' Hl Hl'.
+  assert (disjoint fs (single d tt)) as Hdj.
+  { hnf. intros. unfolds indom, map_indom. simpl. case_if; subst; try eqsolve. destruct (fmap_data fs _); eqsolve. }
+  induction HH; intros; subst.
+  (* 0 *)
+  all: try (apply union_eq_inv_of_locals with (fs:=fs) (fs':=single d tt) (h1':=h1) (h2':=h2); auto; fail).
+  (* 1 *)
+  all: try (eapply IHHH; eauto).
+  (* 3 *)
+  { rewrite -> union_comm_of_disjoint with (h1:=h) in HH1; auto.
+    rewrite -> union_comm_of_disjoint with (h1:=h') in HH3; auto.
+
+    pose proof (eval1_part Hnd HH1 Hl Hdj1) as (h2' & -> & Hdj2').
+    pose proof (eval1_local Hl1 Hl Hnd Hdj1 HH1) as (h2'' & Hl2' & Htmp).
+    apply union_eq_inv_of_disjoint in Htmp; try assumption.
+    2:{ rewrite -> disjoint_comm. apply local_single_disjoint with (fs:=fs) (d:=d); assumption. }
+    subst h2''.
+
+    pose proof (eval1_part Hnd HH2 Hl Hdj2') as (h3' & -> & Hdj3').
+    pose proof (eval1_local Hl2' Hl Hnd Hdj2' HH2) as (h3'' & Hl3' & Htmp).
+    apply union_eq_inv_of_disjoint in Htmp; try assumption.
+    2:{ rewrite -> disjoint_comm. apply local_single_disjoint with (fs:=fs) (d:=d); assumption. }
+    subst h3''.
+
+    eapply IHHH3.
+    3: rewrite -> union_comm_of_disjoint; try reflexivity; assumption.
+    3: reflexivity.
+    all: assumption.
+  }
+  (* 2 *)
+  { rewrite -> union_comm_of_disjoint with (h1:=h) in HH1; auto.
+    rewrite -> union_comm_of_disjoint with (h1:=h') in HH2; auto.
+
+    pose proof (eval1_part Hnd HH1 Hl Hdj1) as (h2' & -> & Hdj2').
+    pose proof (eval1_local Hl1 Hl Hnd Hdj1 HH1) as (h2'' & Hl2' & Htmp).
+    apply union_eq_inv_of_disjoint in Htmp; try assumption.
+    2:{ rewrite -> disjoint_comm. apply local_single_disjoint with (fs:=fs) (d:=d); assumption. }
+    subst h2''.
+
+    eapply IHHH2.
+    3: rewrite -> union_comm_of_disjoint; try reflexivity; assumption.
+    3: reflexivity.
+    all: assumption.
+  }
+  { rewrite -> union_comm_of_disjoint with (h1:=h) in HH1; auto.
+    rewrite -> union_comm_of_disjoint with (h1:=h') in HH2; auto.
+
+    pose proof (eval1_part Hnd HH1 Hl Hdj1) as (h2' & -> & Hdj2').
+    pose proof (eval1_local Hl1 Hl Hnd Hdj1 HH1) as (h2'' & Hl2' & Htmp).
+    apply union_eq_inv_of_disjoint in Htmp; try assumption.
+    2:{ rewrite -> disjoint_comm. apply local_single_disjoint with (fs:=fs) (d:=d); assumption. }
+    subst h2''.
+
+    eapply IHHH2.
+    3: rewrite -> union_comm_of_disjoint; try reflexivity; assumption.
+    3: reflexivity.
+    all: assumption.
+  }
+  (* special *)
+  { unfold Fmap.update in Eh2'. 
+    rewrite <- union_assoc, -> union_comm_of_disjoint with (h2:=h) in Eh2'.
+    2:{ rewrite -> disjoint_comm. apply local_single_disjoint with (fs:=fs) (d:=d); try assumption. apply local_single. }
+    rewrite -> union_assoc in Eh2'.
+    apply union_eq_inv_of_locals with (fs:=fs) (fs':=single d tt) (h1':=Fmap.single (p, d) v \u h1) (h2':=h2); auto.
+    rewrite -> local_union. split; try assumption. apply local_single.
+  }
+  { unfold Fmap.update in Eh2'. 
+    rewrite <- union_assoc, -> union_comm_of_disjoint with (h2:=h) in Eh2'.
+    2:{ rewrite -> disjoint_comm. apply local_single_disjoint with (fs:=fs) (d:=d); try assumption. apply local_single. }
+    rewrite -> union_assoc in Eh2'.
+    apply union_eq_inv_of_locals with (fs:=fs) (fs':=single d tt) (h1':=Fmap.single (p, d) v \u h1) (h2':=h2); auto.
+    rewrite -> local_union. split; try assumption. apply local_single.
+  }
+  { rewrite -> union_comm_of_disjoint with (h1:=h) in Eh2'; auto.
+    rewrite <- Fmap.remove_union_not_r in Eh2'.
+    2:{ unfolds local, indom, map_indom. destruct (fmap_data h (p, d)) eqn:E; try eqsolve.
+      specialize (Hl p d). eqsolve.
+    }
+    rewrite -> union_comm_of_disjoint with (h1:=h') in Eh2'.
+    2: by rewrite disjoint_comm.
+    apply union_eq_inv_of_locals' with (fs':=fs) (fs:=single d tt) (h1:=Fmap.remove h1 (p, d)) (h2:=h2); auto.
+    unfolds local, indom, map_indom, Fmap.remove, Fmap.map_remove. intros l d0. 
+    specialize (Hl1 l d0). simpls. repeat case_if; eqsolve. 
+  }
+Qed.
+
+Fact eval1_val_state_intact : forall d s1 s2 v vv, 
+  eval1 d s1 (trm_val v) s2 vv -> s1 = s2.
+Proof. intros. by inversion_clear H. Qed.
+
 Lemma eval1_frame2' h1 h2 h h' fs ht d hv: 
   eval1 d (h1 \u h) ht (h2 \u h') hv -> 
   local fs h ->
+  local fs h' ->
   local (single d tt) h1 ->
   local (single d tt) h2 ->
   ~indom fs d ->
@@ -2458,6 +2634,9 @@ Lemma eval1_frame2' h1 h2 h h' fs ht d hv:
   disjoint h2 h' ->
     eval1 d h1 ht h2 hv.
 Proof.
+  intros. pose proof H as Htmp.
+  eapply eval1_frame2_cancel with (fs:=fs) in Htmp; try assumption. subst h'.
+  revert H H0 H4 H5 H6. apply eval1_frame2.
   (* remember (h1 \u h) as h1h eqn: HE1.
   remember (h2 \u h) as h2h eqn: HE2.
   move=> ev; move: ev h1 h2 h HE1 HE2.
@@ -2486,7 +2665,7 @@ Proof.
   move/union_eq_inv_of_disjoint<-=> //.
   { applys* eval1_free. }
   exact/disjoint_remove_l. *)
-Admitted.
+Qed. 
 
 Lemma eval_frame2 h1 h2 h fs' (ht : D -> trm) (fs : fset D) hv: 
   eval fs (h1 \u h) ht (h2 \u h) hv -> 
@@ -2525,6 +2704,7 @@ Proof.
     rewrite ?proj_union=> IN.
     apply/eval1_frame2'; first exact/IN.
     { move=> ?? /filter_indom[]/lh; eauto. }
+    { move=> ?? /filter_indom[]/lh'; eauto. }
     { apply/proj_local. }
     { apply/proj_local. }
     { exact/disjoint_inv_not_indom_both/D. }
@@ -2538,7 +2718,8 @@ Proof.
   move=> ??.
   have /OUT: ~ indom (fs \u fs') d by rewrite* indom_union_eq.
   rewrite ?proj_union. 
-  apply/union_eq_inv_of_locals=> ??; rewrite filter_indom=> -[]/[swap]->; autos*.
+  intros _. by rewrite -> ! proj_empty with (fs:=fs).
+  (* apply/union_eq_inv_of_locals=> ??; rewrite filter_indom=> -[]/[swap]->; autos*. *)
 Qed.
 
 Lemma hhoare_proj (fs fs' : fset D) H H' (Q Q' : _ -> hhprop) ht : 
