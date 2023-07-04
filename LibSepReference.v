@@ -154,9 +154,6 @@ Definition hheap D : Type := state D.
 Definition proj D (h : hheap D) d := 
   Fmap.filter (fun '(_, c) _ => c = d) h.
 
-Definition proj_complement D (h : hheap D) d := 
-  Fmap.filter (fun '(_, c) _ => c <> d) h.
-
 (* ================================================================= *)
 (** ** Coq Tweaks *)
 
