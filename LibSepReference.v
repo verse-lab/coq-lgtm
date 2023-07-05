@@ -6107,16 +6107,50 @@ Notation "'fix_' f x1 x2 x3 '=>' t" :=
 
 (** [eval_like] judgment for applications to several arguments. *)
 
-(* Lemma eval_like_app_fun2 : forall v0 v1 v2 x1 x2 t1,
-  v0 = val_fun x1 (trm_fun x2 t1) ->
-  x1 <> x2 ->
-  eval_like (subst x2 v2 (subst x1 v1 t1)) (v0 v1 v2).
+Lemma eval_like_app_fun2 : forall fs (x1 x2 : D -> var) (t1 : D -> trm) (v1 v2 : D -> val),
+  (forall d, indom fs d -> x1 d <> x2 d) ->
+  eval_like fs 
+    (fun d => (subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t1 d))))
+    (fun d => (val_fun (x1 d) (trm_fun (x2 d) (t1 d))) (v1 d) (v2 d)).
 Proof using.
-  introv E N. introv R. applys* eval_app_args.
-  { applys eval_app_fun E. simpl. rewrite var_eq_spec. case_if. applys eval_fun. }
-  { applys* eval_val. }
-  { applys* eval_app_fun. }
-Qed. *)
+  introv E N. unfolds eval. destruct N as (H1 & H2). split.
+  { introv Hin. applys* eval1_app_args.
+    { applys eval1_app_fun. 1: reflexivity. applys eval1_fun. }
+    { applys* eval1_val. }
+    { applys* eval1_app_fun. case_var. 1: specializes E Hin; eqsolve. by apply H1. }
+  }
+  { auto. }
+Qed.
+
+Lemma eval_like_app_fun3 : forall fs (x1 x2 x3 : D -> var) (t1 : D -> trm) (v1 v2 v3 : D -> val),
+  (forall d, indom fs d -> x1 d <> x2 d) ->
+  (forall d, indom fs d -> x2 d <> x3 d) ->
+  (forall d, indom fs d -> x1 d <> x3 d) ->
+  eval_like fs 
+    (fun d => (subst (x3 d) (v3 d) (subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t1 d)))))
+    (fun d => (val_fun (x1 d) (trm_fun (x2 d) (trm_fun (x3 d) (t1 d)))) (v1 d) (v2 d) (v3 d)).
+Proof using.
+  introv N1 N2 N3 H. unfolds eval. destruct H as (H1 & H2). split.
+  { introv Hin. applys* eval1_app_args.
+    { applys* eval1_app_args.
+      { applys eval1_app_fun. 1: reflexivity. 
+        simpl. 
+        case_var. 1: specializes N1 Hin; eqsolve.
+        case_var. 1: specializes N3 Hin; eqsolve. 
+        applys eval1_fun.
+      }
+      { applys* eval1_val. }
+      { applys eval1_app_fun. 1: reflexivity. 
+        simpl. 
+        case_var. 1: specializes N2 Hin; eqsolve. 
+        applys eval1_fun.
+      }
+    }
+    { applys* eval1_val. }
+    { applys* eval1_app_fun. }
+  }
+  { auto. }
+Qed.
 
 (* Lemma eval_like_app_fix2 fs : forall v0 v1 v2 f x1 x2 t1,
   (v0 = fun d => val_fix (f d) (x1 d) (trm_fun (x2 d) (t1 d))) ->
@@ -6125,16 +6159,7 @@ Qed. *)
 Proof using.
   *)
 
-(* Lemma eval_like_app_fun3 : forall v0 v1 v2 v3 x1 x2 x3 t1,
-  v0 = val_fun x1 (trm_fun x2 (trm_fun x3 t1)) ->
-  (x1 <> x2  /\ x1 <> x3 /\ x2 <> x3) ->
-  eval_like (subst x3 v3 (subst x2 v2 (subst x1 v1 t1))) (v0 v1 v2 v3).
-Proof using.
-  introv E (N1&N2&N3). introv R. applys* eval_app_args.
-  { applys* eval_like_app_fun2 E. simpl. do 2 (rewrite var_eq_spec; case_if). applys eval_fun. }
-  { applys eval_val. }
-  { applys* eval_app_fun. }
-Qed.
+(* 
 
 Lemma eval_like_app_fix3 : forall v0 v1 v2 v3 f x1 x2 x3 t1,
   v0 = val_fix f x1 (trm_fun x2 (trm_fun x3 t1)) ->

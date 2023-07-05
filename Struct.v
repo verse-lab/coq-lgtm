@@ -1273,6 +1273,18 @@ Proof using.
       rewrite update_cons_pos; [|math]. rewrite hcells_cons_eq. xsimpl. } }
 Qed.
 
+Corollary hcells_focus_nochange : forall k p L,
+  k < length L ->
+  hcells L p d ==>
+       ((p+k)%nat ~(d)~> LibList.nth k L)
+    \* (((p+k)%nat ~(d)~> LibList.nth k L) \-* hcells L p d).
+Proof using.
+  intros. eapply himpl_trans. 1: apply hcells_focus with (k:=k); auto.
+  apply himpl_frame_r.
+  apply himpl_hforall_l with (x:=nth k L).
+  rewrite -> update_nth_same; auto.
+Qed.
+
 End Properties_hcell.
 
 (** The above focus lemma immediately extends to a full array described
@@ -1286,6 +1298,18 @@ Lemma harray_focus : forall (d : D) k p L,
 Proof using.
   introv E. unfolds harray. xchanges (>> hcells_focus E). intros w.
   xchange (hforall_specialize w). xsimpl. rewrite* length_update.
+Qed.
+
+Lemma harray_focus_nochange : forall (d : D) k p L,
+  k < length L ->
+  harray L p d ==>
+       ((p+1+k)%nat ~(d)~> LibList.nth k L)
+    \* (((p+1+k)%nat ~(d)~> LibList.nth k L) \-* harray L p d).
+Proof using.
+  introv E. unfolds harray. eapply himpl_trans. 1: apply harray_focus.
+  1: apply E.
+  apply himpl_frame_r. xchange (hforall_specialize (LibList.nth k L)).
+  rewrite -> update_nth_same; auto.
 Qed.
 
 (* ================================================================= *)
@@ -1452,22 +1476,73 @@ Definition val_array_get : val :=
        let 'n = val_ptr_add 'p 'j in
        val_get 'n }>.
 
+Fact hbig_fset_himpl : forall fs (H H' : D -> hhprop),
+  (forall d, indom fs d -> H d ==> H' d) ->
+  (\*_(d <- fs) H d) ==> (\*_(d <- fs) H' d).
+Proof.
+  intros fs. pattern fs. apply fset_ind; clear fs.
+  { introv N. hnf. introv HH. by rewrite -> hbig_fset_empty in *. }
+  { introv IH Hni N. hnf. introv HH.
+    rewrite -> hbig_fset_update in HH |- *; auto.
+    apply hstar_inv in HH.
+    destruct HH as (h1 & h2 & Hh1 & HH & Hdj & ->).
+    apply hstar_intro; auto.
+    { apply N; auto. unfolds indom, map_indom. simpl. unfolds update, map_union. by case_if. }
+    { eapply IH. 2: apply HH. intros. apply N. 
+      unfolds indom, map_indom. simpl. unfolds update, map_union. by case_if. 
+    }
+  }
+Qed.
+
 Lemma htriple_array_get : forall fs (p : D -> loc) (i : D -> int) (v : D -> val) (L : D -> list val),
   (forall d, indom fs d -> 0 <= (i d) < length (L d)) ->
   (forall d, indom fs d -> LibList.nth (abs (i d)) (L d) = v d) ->
   htriple fs (fun d => val_array_get (p d) (i d))
     (\*_(d <- fs) (harray (L d) (p d) d))
-    (fun hr => \[hr = v] \* (\*_(d <- fs) (harray (L d) (p d) d))).
+    (fun hr => \[forall d, indom fs d -> hr d = v d] \* (\*_(d <- fs) (harray (L d) (p d) d))).
 Proof using.
-  (* introv N E. unfold htriple, hhoare. intros.   *)
-  (* xwp. xapp. xapp htriple_ptr_add. { math. }
-  xchange (@harray_focus (abs i) p L).
-  { rew_listx. applys* abs_lt_inbound. }
-  sets w: (LibList.nth (abs i) L). rewrite succ_int_plus_abs; [|math].
-  xapp triple_get. xchange (hforall_specialize w). subst w.
-  rewrite update_nth_same. rewrite <- E. xsimpl*.
-  { rew_listx. applys* abs_lt_inbound. } *)
-Admitted.
+  introv N E. eapply htriple_eval_like.
+  1:{ apply eval_like_app_fun2. intros. eqsolve. }
+  simpl.
+  eapply htriple_let. 
+  1:{ replace (\*_(d <- fs) harray (L d) (p d) d) with 
+    (\[] \* \*_(d <- fs) harray (L d) (p d) d) by xsimpl. 
+    eapply htriple_frame. apply htriple_add.
+  }
+  simpl. intros. apply htriple_hpure. intros ->.
+  eapply htriple_let. 
+  1:{ replace (\*_(d <- fs) harray (L d) (p d) d) with 
+    (\[] \* \*_(d <- fs) harray (L d) (p d) d) by xsimpl. 
+    eapply htriple_frame. apply htriple_ptr_add. 
+    intros. specializes N H. math.
+  }
+  simpl. intros. apply htriple_hpure. intros ->.
+  eapply htriple_conseq. 3: apply qimpl_refl. 
+  2:{ apply hbig_fset_himpl.
+    intros. apply harray_focus_nochange with (k:=abs (i d)).
+    specializes N H. math.
+  }
+  simpl. erewrite -> hbig_fset_hstar.
+  eapply htriple_conseq. 2: apply himpl_refl.
+  1:{ apply htriple_frame.
+    eapply htriple_conseq. 3: apply qimpl_refl.
+    2:{ apply hbig_fset_himpl. intros. 
+      replace (p d + 1 + abs (i d))%nat with (abs (p d + (i d + 1))).
+      2:{ specializes N H. math. }
+      apply himpl_refl.
+    } 
+    apply htriple_get.
+  }
+  simpl. hnf. xsimpl. 
+  1:{ intros. by rewrite <- E, -> H. }
+  intros ? ->.
+  rewrite <- hbig_fset_hstar. 
+  apply hbig_fset_himpl.
+  intros. 
+  replace (p d + 1 + abs (i d))%nat with (abs (p d + (i d + 1))).
+  2:{ specializes N H. math. } 
+  xsimpl.
+Qed.
 
 (** The set operation on an array, written [val_array_set p i v],
     is encoded as [val_set (p+i+1) v]. *)
@@ -1477,19 +1552,58 @@ Definition val_array_set : val :=
        let 'j = 'i + 1 in
        let 'n = val_ptr_add 'p 'j in
        val_set 'n 'v }>.
-(*
-Lemma triple_array_set : forall p i v L,
-  0 <= i < length L ->
-  triple (val_array_set p i v)
-    (harray L p)
-    (fun _ => harray (LibList.update (abs i) v L) p).
+
+Lemma htriple_array_set : forall fs (p : D -> loc) (i : D -> int) (v : D -> val) (L : D -> list val),
+  (forall d, indom fs d -> 0 <= (i d) < length (L d)) ->
+  (forall d, indom fs d -> LibList.nth (abs (i d)) (L d) = v d) ->
+  htriple fs (fun d => val_array_set (p d) (i d) (v d))
+    (\*_(d <- fs) (harray (L d) (p d) d))
+    (* (fun hr => \[hr = fun _ => val_unit] \* (\*_(d <- fs) (harray (LibList.update (abs (i d)) (v d) (L d)) (p d) d))). *)
+    (fun=>(\*_(d <- fs) (harray (LibList.update (abs (i d)) (v d) (L d)) (p d) d))).
 Proof using.
-  introv R. xwp. xpull. xapp. xapp triple_ptr_add. { math. }
-  xchange (@harray_focus (abs i) p L). { applys* abs_lt_inbound. }
-  rewrite succ_int_plus_abs; [|math].
-  xapp triple_set. auto. xchange (hforall_specialize v).
+  introv N E. eapply htriple_eval_like.
+  1:{ apply eval_like_app_fun3. all: intros; eqsolve. }
+  simpl.
+  eapply htriple_let. 
+  1:{ replace (\*_(d <- fs) harray (L d) (p d) d) with 
+    (\[] \* \*_(d <- fs) harray (L d) (p d) d) by xsimpl. 
+    eapply htriple_frame. apply htriple_add.
+  }
+  simpl. intros. apply htriple_hpure. intros ->.
+  eapply htriple_let. 
+  1:{ replace (\*_(d <- fs) harray (L d) (p d) d) with 
+    (\[] \* \*_(d <- fs) harray (L d) (p d) d) by xsimpl. 
+    eapply htriple_frame. apply htriple_ptr_add. 
+    intros. specializes N H. math.
+  }
+  simpl. intros. apply htriple_hpure. intros ->.
+  eapply htriple_conseq. 3: apply qimpl_refl. 
+  2:{ apply hbig_fset_himpl.
+    intros. apply harray_focus with (k:=abs (i d)).
+    specializes N H. math.
+  }
+  simpl. erewrite -> hbig_fset_hstar.
+  eapply htriple_conseq. 2: apply himpl_refl.
+  1:{ apply htriple_frame.
+    eapply htriple_conseq. 3: apply qimpl_refl.
+    2:{ apply hbig_fset_himpl. intros. 
+      replace (p d + 1 + abs (i d))%nat with (abs (p d + (i d + 1))).
+      2:{ specializes N H. math. }
+      apply himpl_refl.
+    } 
+    apply htriple_set.
+  }
+  simpl. hnf. xsimpl. 
+  (* 1:{ intros. by rewrite <- E, -> H. }
+  intros ? ->. *)
+  rewrite <- hbig_fset_hstar. 
+  apply hbig_fset_himpl.
+  intros. 
+  replace (p d + 1 + abs (i d))%nat with (abs (p d + (i d + 1))).
+  2:{ specializes N H. math. }
+  xchange (hforall_specialize (v d)).
 Qed.
-*)
+
 End ArrayAccessDef.
 
 (* ================================================================= *)
