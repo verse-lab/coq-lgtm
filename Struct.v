@@ -8,7 +8,7 @@ Hint Rewrite conseq_cons' : rew_listx.
 
 Module WithArray (Dom : Domain).
 
-Module Export RS := Reasoning(Dom).
+Module Export NS := nReasoning(Dom).
 
 Implicit Types P : Prop.
 Implicit Types H : hhprop.
@@ -856,7 +856,7 @@ End ListDealloc.
     operations [val_alloc] and [val_dealloc], which operates on
     blocks of cells. *)
 
-Module Realization.
+Module Export Realization.
 
 (* ================================================================= *)
 (** ** Refined Source Language *)

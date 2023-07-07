@@ -6151,7 +6151,31 @@ Proof using.
   }
   { auto. }
 Qed.
+(*
+Definition is_binop (v : val) : bool := 
+  match v with
+  | val_eq | val_neq | val_add | val_sub | val_mul | val_div | val_mod | val_le | val_lt | val_ge | val_gt | val_ptr_add => true
+  | _ => false
+  end.
 
+Lemma eval_like_apptolet2 : forall fs (x1 x2 : D -> var) (v : val) (t1 t2 : D -> trm),
+  (forall d, indom fs d -> x1 d <> x2 d) ->
+  eval_like fs 
+    (fun d => trm_let (x1 d) (t1 d) 
+        (trm_let (x2 d) (t2 d) (trm_app (trm_app v (x1 d)) (x2 d))))
+    (fun d => (trm_app (trm_app v (t1 d)) (t2 d))).
+Proof using.
+  introv E N. unfolds eval. destruct N as (H1 & H2). split.
+  { introv Hin. 
+    eval1 
+    applys eval1_binop.
+    { applys eval1_app_fun. 1: reflexivity. applys eval1_fun. }
+    { applys* eval1_val. }
+    { applys* eval1_app_fun. case_var. 1: specializes E Hin; eqsolve. by apply H1. }
+  }
+  { auto. }
+Qed.
+*)
 (* Lemma eval_like_app_fix2 fs : forall v0 v1 v2 f x1 x2 t1,
   (v0 = fun d => val_fix (f d) (x1 d) (trm_fun (x2 d) (t1 d))) ->
   (forall d, x1 d <> x2 d /\ f d <> x2 d) ->
@@ -6868,18 +6892,18 @@ Lemma wp_while_aux i fs fs' ht (H : bool -> int -> (D -> val) -> hhprop) Z N T C
         (fun=> C) 
         (fun hc => \exists c : bool, \[hc s = c] \* HC c b x hv)) -> 
   (forall b x hv, HC false b x hv ==> \[(x = N)%Z /\ b = false] \* H false x hv) ->
-  (forall b j hv T', Z <= j < N ->
+  (forall b j hv, Z <= j < N ->
     (forall j' b' hv, 
       j < j' < N -> 
       H b' j' hv ==>
         wp 
           (fs' \u Union (interval j' N) fsi)
-          (upd ht s T') 
+          (upd ht s (While C T)) 
           (fun hr => H false N (hv \u_(Union (interval Z j') fsi) hr))) ->
     HC true b j hv ==> 
       wp
         (fs' \u Union (interval j N) fsi) 
-        (upd ht s (trm_seq T T')) 
+        (upd ht s (trm_seq T (While C T))) 
         (fun hr => H false N (hv \u_(Union (interval Z j) fsi) hr))) ->
   H b0 i hv0 ==> 
     wp
@@ -6991,18 +7015,18 @@ Lemma wp_while fs fs' ht (Inv : bool -> int -> (D -> val) -> hhprop) Z N T C fsi
         (fun=> C) 
         (fun hc => \exists c : bool, \[hc s = c] \* HC c b x hv)) -> 
   (forall b x hv, HC false b x hv ==> \[(x = N)%Z /\ b = false] \* Inv false x hv) ->
-  (forall b j hv T', Z <= j < N ->
+  (forall b j hv, Z <= j < N ->
     (forall j' b' hv, 
       j < j' < N -> 
       Inv b' j' hv ==>
         wp 
           (fs' \u Union (interval j' N) fsi)
-          (upd ht s T') 
+          (upd ht s (While C T)) 
           (fun hr => Inv false N (hv \u_(Union (interval Z j') fsi) hr))) ->
       HC true b j hv ==> 
         wp
           (fs' \u Union (interval j N) fsi) 
-          (upd ht s (trm_seq T T')) 
+          (upd ht s (trm_seq T (While C T))) 
           (fun hr => Inv false N (hv \u_(Union (interval Z j) fsi) hr))) ->
   (forall j b hv1 hv2, (forall x, indom (Union (interval Z j) fsi) x -> hv1 x = hv2 x) -> Inv b j hv1 = Inv b j hv2) ->
   P ==> Inv b0 Z hv0 ->
@@ -7164,7 +7188,7 @@ Lemma wp_while_hbig_op fs fs' ht m fs''
         (fun=> C) 
         (fun hc => \exists c : bool, \[hc s = c] \* HC c b x \* H)) -> 
   (forall b x, HC false b x ==> \[(x = N)%Z /\ b = false] \* Inv false x) ->
-  (forall b j T' H, Z <= j < N ->
+  (forall b j H, Z <= j < N ->
     hlocal H fs'' ->
     (forall j' b' hv, 
       let Q hv := H \(m) \(m)_(i <- interval j j') Hi i hv in
@@ -7175,7 +7199,7 @@ Lemma wp_while_hbig_op fs fs' ht m fs''
       Q hv ==>
         wp 
           (fs' \u Union (interval j' N) fsi)
-          (upd ht s T') 
+          (upd ht s (While C T)) 
           (fun hr =>
             Inv false N \*
             (\*_(i <- interval Z N) R' i) \*
@@ -7183,7 +7207,7 @@ Lemma wp_while_hbig_op fs fs' ht m fs''
       HC true b j \* H ==> 
         wp
           (fs' \u Union (interval j N) fsi) 
-          (upd ht s (trm_seq T T')) 
+          (upd ht s (trm_seq T (While C T))) 
           (fun hv => 
             Inv false N \* 
             (\*_(i <- interval j N) R' i) \*
@@ -7245,9 +7269,9 @@ Proof with autos*.
     move=> b l hv.
     xchange HwpF=> -[->]?; rewrite [interval N N]intervalgt ?hbig_fset_empty; [xsimpl*|math]. }
   { clear -HwpT CM AS Heq Hl1 Hl2 Dj.
-    move=> b l hv T' L. 
+    move=> b l hv L. 
     set (Q := (H0 \(m) \(m)_(i <- interval Z l) Hi i hv)).
-    move: (HwpT b l T' Q L)=> IH.
+    move: (HwpT b l Q L)=> IH.
     rewrite ?[interval N N]intervalgt ?hbig_fset_empty; last math.
     move=> IH'.
     apply/xapp_lemma'; [|rewrite <-wp_equiv; apply/IH; try math|]=> //.
@@ -8406,6 +8430,10 @@ End HD.
 
 Module NR := Reasoning(HD).
 Export NR.
+(*
+Check eq_refl : D = labeled D.type.
+Check eq_refl : HD.type = labeled D.type.
+*)
 
 Record fset_htrm := FH {
   fs_of : fset D.type;
@@ -8628,7 +8656,7 @@ Lemma xunfocus_lemma (Q : (HD.type -> val) (*-> (HD.type -> val)*) -> hhprop) fs
   (Q' : (HD.type -> val) -> (HD.type -> val) -> hhprop)
   (l : labType) :
   ~ has_lab fs_hts l ->
-  (forall l, ht = (fun d => ht' (Lab l d))) ->
+  (ht = (fun d => ht' (Lab l d))) ->
   (forall hr hr', Q' hr hr' = Q (hr \u_⟨l, fs⟩ hr')) ->
   (* adequate (fun hr => Q hr hr) (⟨l, fs⟩ \u fset_of fs_hts) -> *)
   ntriple H ((Lab l (FH fs ht)) :: fs_hts) (fun hr => Q hr) ->
@@ -8640,10 +8668,14 @@ Proof.
   rewrite -wp_union /=; first last.
   {  exact/fset_htrm_label_remove_disj. }
   under wp_ht_eq=> -[l' d] IN.
-  { move: (htE l')=> /(congr1 (@^~ d)) {}htE.
+  { unfold label in IN. rewrite -> indom_Union in IN. 
+    setoid_rewrite -> indom_single_eq in IN.
+    simpl in IN.
+    destruct IN as (? & ? & IN). injection IN as <-. subst.
+    (* move: (htE l)=> /(congr1 (@^~ d)) {}htE. *)
     rewrite (@lookup_eq l) rE ?lookup_cons // ?lookup_cons_ht ?lookup_cons_fs //=. 
-    { rewrite htE. over. }
-    move: IN; rewrite indom_label_eq /=; autos*. }
+    { rewrite rE. over. }
+    unfold label. rewrite -> indom_Union. eauto. } 
   move=> /= h Hwp; simpl; apply/wp_conseq; eauto=> hr /=; simpl.
   (* xpull=> hv' {Hwp}h Hwp; exists hv'. *)
   (* move: h Hwp. *)
@@ -8653,6 +8685,18 @@ Proof.
   eapply wp_conseq; last exact/Hwp.
   by move=> ??; rewrite QE.
 Qed.
+
+(* Lemma xunfocus_lemma (Q : (HD.type -> val) (*-> (HD.type -> val)*) -> hhprop) fs_hts 
+  (ht : D.type -> trm) (fs : fset D.type) H (ht' : HD.type -> _)
+  (Q' : (HD.type -> val) -> (HD.type -> val) -> hhprop)
+  (l : labType) :
+  ~ has_lab fs_hts l ->
+  (forall l, ht = (fun d => ht' (Lab l d))) ->
+  (forall hr hr', Q' hr hr' = Q (hr \u_⟨l, fs⟩ hr')) ->
+  (* adequate (fun hr => Q hr hr) (⟨l, fs⟩ \u fset_of fs_hts) -> *)
+  ntriple H ((Lab l (FH fs ht)) :: fs_hts) (fun hr => Q hr) ->
+  H ==> wp ⟨l, fs⟩ ht' (fun hr => nwp fs_hts (fun hr' => Q' hr hr')).
+Proof. move=> ? ?. by eapply xunfocus_lemma_restricted. Qed. *)
 
 Lemma nwp0 Q : 
   nwp nil (fun=> Q) = Q.
@@ -8929,7 +8973,7 @@ Lemma xfor_lemma `{ID : Inhab D}
   (i j : Z)
   Pre Post: 
   (forall (l : int) Q, 
-    (0 <= l <= N)%Z ->
+    (0 <= l < N)%Z ->
     {{ Inv l \* 
         (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R d) \* 
         Q \(m) H l }}
