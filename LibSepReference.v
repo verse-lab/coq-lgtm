@@ -4748,7 +4748,115 @@ Proof.
   move/hhoare_union2: (hh)=> /(_ H dj) ?.
   apply/hhoare_conseq; [eauto|xsimpl|].
   xsimpl*.
-Qed. 
+Qed.
+
+Lemma htriple_union_test1 : forall H Q Q' t fs1 fs2,
+  disjoint fs1 fs2 ->
+  htriple fs1 t H Q' ->
+  Q' ===> (fun hr1 => wp fs2 t (fun hr2 => Q (hr1 \u_(fs1) hr2))) ->
+  htriple (fs1 \u fs2) t H Q.
+Proof.
+  intros.
+  apply wp_equiv. rewrite <- wp_union; try assumption.
+  apply wp_equiv.
+  eapply htriple_conseq. 1: apply H1. all: auto.
+Qed.
+
+Lemma htriple_union_test2 : forall H Q Q' t fs1 fs2,
+  disjoint fs1 fs2 ->
+  htriple fs1 t H Q' ->
+  (forall hv, 
+    htriple fs2 t (Q' hv) (fun hr2 => Q (hv \u_(fs1) hr2))) ->
+  htriple (fs1 \u fs2) t H Q.
+Proof.
+  intros.
+  apply wp_equiv. rewrite <- wp_union; try assumption.
+  apply wp_equiv.
+  eapply htriple_conseq. 1: apply H1. 1: auto.
+  hnf. intros. apply wp_equiv. apply H2. 
+Qed.
+
+Lemma htriple_union (fs fs' : fset D) H H' (Q Q' : _ -> hhprop) ht 
+  (Hdj : disjoint fs fs')
+  (Hcong : forall hv1 hv2, (forall d, indom fs d -> hv1 d = hv2 d) -> 
+    Q hv1 ==> Q hv2)
+  (Hcong' : forall hv1 hv2, (forall d, indom fs' d -> hv1 d = hv2 d) -> 
+    Q' hv1 ==> Q' hv2)
+  (Htp : htriple fs ht H Q)
+  (Htp' : htriple fs' ht H' Q') :
+  htriple (fs \u fs') ht (H \* H') (fun hv => Q hv \* Q' hv).
+Proof.
+  eapply htriple_conseq. 1: eapply htriple_union_test2. 1: auto.
+  1:{ eapply htriple_frame with (H':=H') in Htp. apply Htp. }
+  2: auto.
+  2: hnf; intros; apply himpl_refl.
+  { intros. apply wp_equiv. apply wp_equiv.
+    eapply htriple_conseq_frame. 
+    2: rewrite -> hstar_comm; apply himpl_refl.
+    1: apply Htp'.
+    (* simple proof *)
+    hnf. intros hv2. 
+    rewrite -> hstar_comm. 
+    eapply himpl_hstar_trans_l. 2: apply himpl_frame_r.
+    { unfold uni. apply Hcong.
+      intros. case_if; eqsolve.
+    }
+    { unfold uni. apply Hcong'.
+      intros. case_if; try eqsolve.
+      false. eapply disjoint_inv_not_indom_both; eauto.
+    }
+  }
+Qed.
+
+Fact hbig_fset_himpl : forall fs (H H' : D -> hhprop),
+  (forall d, indom fs d -> H d ==> H' d) ->
+  (\*_(d <- fs) H d) ==> (\*_(d <- fs) H' d).
+Proof.
+  intros fs. pattern fs. apply fset_ind; clear fs.
+  { introv N. hnf. introv HH. by rewrite -> hbig_fset_empty in *. }
+  { introv IH Hni N. hnf. introv HH.
+    rewrite -> hbig_fset_update in HH |- *; auto.
+    apply hstar_inv in HH.
+    destruct HH as (h1 & h2 & Hh1 & HH & Hdj & ->).
+    apply hstar_intro; auto.
+    { apply N; auto. unfolds indom, map_indom. simpl. unfolds update, map_union. by case_if. }
+    { eapply IH. 2: apply HH. intros. apply N. 
+      unfolds indom, map_indom. simpl. unfolds update, map_union. by case_if. 
+    }
+  }
+Qed.
+
+Lemma htriple_union_pointwise (fs : fset D) (H : D -> hhprop) (Q : D -> (D -> val) -> hhprop) ht 
+  (Hcong : forall d hv1 hv2, hv1 d = hv2 d -> Q d hv1 ==> Q d hv2) :
+  forall (Htp : forall d, indom fs d -> htriple (single d tt) ht (H d) (Q d)),
+  htriple fs ht (\*_(d <- fs) H d) (fun hv => \*_(d <- fs) (Q d hv)).
+Proof.
+  pattern fs. apply fset_ind; clear fs; intros.
+  { rewrite -> hbig_fset_empty.
+    unfold htriple. intros. 
+    eapply hhoare_conseq. 1: rewrite -> hhoare0.
+    2: xsimpl. 1: xsimpl.
+    hnf. intros. xsimpl. by rewrite -> hbig_fset_empty.
+  }
+  { eapply htriple_conseq.
+    1:{ eapply htriple_union.
+      1: by apply disjoint_single_of_not_indom.
+      3: apply Htp.
+      3: apply indom_update.
+      3: apply H0.
+      3: intros; apply Htp.
+      3: rewrite -> indom_update_eq; by right.
+      { intros. specialize (H2 _ (indom_single _ _)).
+        by apply Hcong.
+      }
+      { intros. simpl.
+        apply hbig_fset_himpl. intros. by apply Hcong, H2.
+      }
+    }
+    { rewrite -> hbig_fset_update; auto. }
+    { hnf. intros hv. rewrite -> hbig_fset_update; auto. }
+  }
+Qed.
 
 Lemma wp_union2 Q t fs1 fs2 : 
   disjoint fs1 fs2 ->

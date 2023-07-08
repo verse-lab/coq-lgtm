@@ -1476,24 +1476,6 @@ Definition val_array_get : val :=
        let 'n = val_ptr_add 'p 'j in
        val_get 'n }>.
 
-Fact hbig_fset_himpl : forall fs (H H' : D -> hhprop),
-  (forall d, indom fs d -> H d ==> H' d) ->
-  (\*_(d <- fs) H d) ==> (\*_(d <- fs) H' d).
-Proof.
-  intros fs. pattern fs. apply fset_ind; clear fs.
-  { introv N. hnf. introv HH. by rewrite -> hbig_fset_empty in *. }
-  { introv IH Hni N. hnf. introv HH.
-    rewrite -> hbig_fset_update in HH |- *; auto.
-    apply hstar_inv in HH.
-    destruct HH as (h1 & h2 & Hh1 & HH & Hdj & ->).
-    apply hstar_intro; auto.
-    { apply N; auto. unfolds indom, map_indom. simpl. unfolds update, map_union. by case_if. }
-    { eapply IH. 2: apply HH. intros. apply N. 
-      unfolds indom, map_indom. simpl. unfolds update, map_union. by case_if. 
-    }
-  }
-Qed.
-
 Lemma htriple_array_get : forall fs (p : D -> loc) (i : D -> int) (v : D -> val) (L : D -> list val),
   (forall d, indom fs d -> 0 <= (i d) < length (L d)) ->
   (forall d, indom fs d -> LibList.nth (abs (i d)) (L d) = v d) ->

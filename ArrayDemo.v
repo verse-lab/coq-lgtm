@@ -1006,20 +1006,93 @@ Proof using.
   apply Hdj.
 Qed.
 
-Lemma ntriple_sequ2 (fs fs' : fset D) H Q' Q ht ht1 ht2 htpre ht'
-  (Hdj : disjoint fs fs')
-  (Hhtpre : forall d, indom fs d -> htpre d = ht1 d)
-  (Hhtpre' : forall d, indom fs' d -> htpre d = ht' d)
-  (Htppre : htriple (fs \u fs') htpre H Q') (* hv ? *)
-  (Hht : forall d, indom fs d -> ht d = trm_seq (ht1 d) (ht2 d))
-  (Hht' : forall d, indom fs' d -> ht d = ht' d)
-  (Htp2 : forall hv, htriple fs ht2 (Q' hv) Q)
-  (Hcong : forall hv1 hv2, (forall d, indom fs d -> hv1 d = hv2 d) -> 
-    Q hv1 ==> Q hv2) :
-  htriple (fs \u fs') ht H Q.
+Lemma ntriple_sequ2 (fs fs' : fset _) H Q' Q
+  (ht' ht1 ht2 : _ -> trm) (i j : int) (Hij : i <> j)
+  (Htppre : 
+    ntriple H
+      (Lab (pair i 0) (FH fs ht1) :: 
+       Lab (pair j 0) (FH fs' ht') :: nil)
+    Q')
+  (Htp2 : forall hv, 
+    htriple (label (Lab (pair i 0) fs)) (fun d => ht2 (eld d)) 
+      (Q' hv) Q)
+  (Hcong : forall hv1 hv2, 
+    (forall d, indom (label (Lab (pair i 0) fs)) d -> hv1 d = hv2 d) -> 
+    Q hv1 ==> Q hv2)
+  :
+  ntriple H
+    (Lab (pair i 0) (FH fs (fun d => trm_seq (ht1 d) (ht2 d))) :: 
+     Lab (pair j 0) (FH fs' ht') :: nil)
+    Q.
 Proof using.
+  unfold ntriple, nwp.
+  simpl fset_of. rewrite -> union_empty_r.
+  erewrite -> wp_ht_eq.
+  1: apply wp_equiv.
+  1: eapply htriple_sequ2 with 
+    (ht1:=fun d => ht1 (eld d))
+    (ht2:=fun d => ht2 (eld d))
+    (htpre:=uni (label (Lab (pair i 0) fs)) (fun d => ht1 (eld d))
+      (uni (label (Lab (pair j 0) fs')) (fun d => ht' (eld d)) (fun=> val_unit)))
+    (ht:=uni (label (Lab (pair i 0) fs)) (fun d => trm_seq (ht1 (eld d)) (ht2 (eld d)))
+      (uni (label (Lab (pair j 0) fs')) (fun d => ht' (eld d)) (fun=> val_unit)))
+    (ht':=fun d => ht' (eld d)).
+  1:{
+    apply disjoint_of_not_indom_both.
+    intros (ll, d) H1 H2. apply indom_label in H1, H2. eqsolve.
+  }
+  1:{
+    intros. unfold uni. case_if; try reflexivity. contradiction.
+  }
+  1:{
+    intros. unfold uni. case_if.
+    1:{ destruct d as (ll, d). apply indom_label in H0, C. eqsolve. }
+    case_if; try contradiction. reflexivity.
+  }
+  2:{
+    intros. unfold uni. case_if; try reflexivity. contradiction.
+  }
+  2:{
+    intros. unfold uni. case_if.
+    1:{ destruct d as (ll, d). apply indom_label in H0, C. eqsolve. }
+    case_if; try contradiction. reflexivity.
+  }
+  3: apply Hcong.
+  3:{
+    intros. destruct d as (ll, d).
+    rewrite -> indom_union_eq, -> ! indom_label_eq in H0.
+    destruct H0 as [ (<- & Hin) | (<- & Hin) ].
+    { unfold htrm_of, uni. simpl. case_if; try eqsolve.
+      rewrite -> ! indom_label_eq.
+      case_if; eqsolve.
+    }
+    { unfold htrm_of, uni. simpl. case_if; try eqsolve.
+      rewrite -> ! indom_label_eq.
+      repeat case_if; try eqsolve.
+    }
+  }
+  2: apply Htp2.
+  unfold ntriple, nwp in Htppre.
+  simpl fset_of in Htppre. rewrite -> union_empty_r in Htppre.
+  apply wp_equiv.
+  erewrite -> wp_ht_eq in Htppre.
+  1: apply Htppre.
 
-(* ? *)
+  (* repeat? *)
+  intros. destruct d as (ll, d).
+  rewrite -> indom_union_eq, -> ! indom_label_eq in H0.
+  destruct H0 as [ (<- & Hin) | (<- & Hin) ].
+  { unfold htrm_of, uni. simpl. case_if; try eqsolve.
+    rewrite -> ! indom_label_eq.
+    case_if; eqsolve.
+  }
+  { unfold htrm_of, uni. simpl. case_if; try eqsolve.
+    rewrite -> ! indom_label_eq.
+    repeat case_if; try eqsolve.
+  }
+Qed.
+
+(* revise? *)
 (*
   rewrite <- wp_union in Htppre. 2: apply Hdj.
 
@@ -1154,7 +1227,7 @@ Goal forall (px_ind px_val : loc),
         (label (Lab (pair 2 0) (interval 0 N)))] \* \Top).
 Proof.
   intros.
-  unfold rlsum_func, rli_func.
+  unfold rlsum_func.
   (* simplify 1 first *)
   apply (xfocus_lemma (pair 1 0)); simpl; try apply xnwp0_lemma.
   rewrite -> union_empty_r.
@@ -1220,6 +1293,34 @@ Proof.
     apply himpl_refl.
   }
   clear ps Heqps0.
+  apply wp_equiv.
+  xunfocus.
+
+  (* SeqU2 *)
+  eapply ntriple_sequ2.
+  1: math.
+  1: rewrite <- interval_segmentation at 2.
+  1: apply rlsum_rli_align_step.
+  2:{ intros. xsimpl. rewrite -> H. 
+    2: rewrite -> indom_label_eq; split; auto.
+    admit.
+    (* intros ->. f_equal. extens. intros.
+    admit. *)
+  }
+  intros.
+  simpl. eapply htriple_conseq_frame with (H2:=\Top).
+  1: apply htriple_get.
+  1: apply himpl_frame_l.
+  1: xsimpl.
+  1: match goal with |- himpl (hsingle _ _ ?vv) _ => instantiate (1:=fun=> vv) end.
+  1: apply himpl_refl.
+  hnf. intros.
+  xsimpl. intros ->.
+
+  (* ? *)
+  admit.
+Admitted.
+
 
   
 
