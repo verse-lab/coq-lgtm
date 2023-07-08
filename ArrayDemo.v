@@ -1205,3 +1205,5 @@ Proof.
   intros. extens. intros. case_if; try reflexivity.
   destruct d as (ll, d). apply indom_label in H, C4. eqsolve.
 Qed.
+
+End Demo.
