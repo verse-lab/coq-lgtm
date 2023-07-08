@@ -709,6 +709,97 @@ Proof.
     }
   }
 Qed.
+(*
+Lemma htriple_hmerge_frame fs ht P Q p d (v diff : int) : 
+  (forall (v diff : int), 
+    htriple fs ht (hsingle p d v) 
+      (fun=> hstar (hsingle p d (v + diff)) (hpure P))) ->
+  htriple fs ht 
+    (hmerge val_int_add Q (hsingle p d v))
+    (fun=> hstar (hmerge val_int_add Q (hsingle p d (v + diff))) (hpure P)).
+Proof.
+  intros H.
+  unfold htriple in H |- *. intros H'.
+  unfold hhoare in H |- *. intros h Hh.
+  unfold hmerge in Hh. apply hstar_inv in Hh.
+  destruct Hh as (hm & hh' & (hq & hs & Hq & Hs & Em) & Hh' & Hdj & E).
+  apply hsingle_inv in Hs.
+  subst h hs. 
+
+  destruct (fmap_data hm (p, d)) eqn:E.
+  2:{ 
+    subst hm. unfold Fmap.merge, Fmap.map_merge in E. simpl in E.
+    case_if.
+    by destruct (fmap_data hq (p, d)) eqn:E'.
+  }
+  assert (exists delta, v0 = val_int (v + delta)).
+  {
+    subst hm. unfold Fmap.merge, Fmap.map_merge in E. simpl in E.
+    case_if.
+    destruct (fmap_data hq (p, d)) eqn:E'.
+    { destruct (match v1 with val_int _ => true | _ => false end) eqn:E2.
+      { destruct v1; try eqsolve.
+        unfold val_int_add in E. injection E as <-.
+        exists z. math.
+      }
+      { destruct v1; try eqsolve.
+        all: unfold val_int_add in E; injection E as <-.
+        all: exists 0; math.
+      }
+    }
+    injection E as <-.
+    exists 0; math.
+  }
+  destruct H0 as (delta & ->).
+  
+  specialize (H (v + delta) diff H'
+    (Fmap.union (Fmap.single (p, d) (val_int (v + delta))) hh')).
+  match type of H with ?a -> _ => assert a as Hhead end.
+  { apply hstar_intro; try assumption.
+    1: apply hsingle_intro.
+    apply disjoint_of_not_indom_both.
+    intros. 
+    assert (indom hm x) as Htmp.
+    { subst hm. rewrite -> indom_merge_eq. right.
+      by rewrite -> indom_single_eq in H0 |- *.
+    }
+    revert Htmp H1. by apply disjoint_inv_not_indom_both.
+  }
+  specialize (H Hhead). clear Hhead.
+
+  destruct H as (h'' & hv & H & Hh'').
+  pose proof (@Fmap.remove_update_self _ _ _ _ _ E) as Hself.
+  rewrite -> update_eq_union_single in Hself.
+Abort.
+*)
+
+(*
+Lemma hmerge_split Q p d :
+  let Q' := fun h => 
+  forall v : int, hmerge val_int_add Q (hsingle p d v) ==>
+    hexists (fun diff : int =>
+      hstar Q' (hsingle p d (val_int_add v (val_int diff)))).
+Proof.
+
+Lemma hmerge_split Q p d :
+  forall v : int, hmerge val_int_add Q (hsingle p d v) ==>
+    hexists (fun Q' => hexists (fun diff : int =>
+      hstar Q' (hsingle p d (val_int_add v (val_int diff))))).
+Proof.
+  intros.
+  hnf. intros h Hh.
+  unfold hmerge in Hh. destruct Hh as (h1 & h2 & H1 & H2 & E).
+  apply hsingle_inv in H2.
+  (* now ask *)
+  destruct (fmap_data h1 (p, d)) eqn:E1.
+  { destruct (match v0 with val_int _ => true | _ => false end) eqn:E2.
+    { destruct v0; try eqsolve.
+
+      
+
+  hexists_intro
+  
+*)  
 
 Lemma rlsum_rli_align_step : forall (px_ind px_val : loc) (ps0 : loc),
   ntriple 
@@ -854,11 +945,200 @@ Proof.
     }
     subst ff. simpl.
 
-
     admit.
   }
 Admitted.
 
+Lemma htriple_sequ2 (fs fs' : fset D) H Q' Q ht ht1 ht2 htpre ht'
+  (Hdj : disjoint fs fs')
+  (Hhtpre : forall d, indom fs d -> htpre d = ht1 d)
+  (Hhtpre' : forall d, indom fs' d -> htpre d = ht' d)
+  (Htppre : htriple (fs \u fs') htpre H Q') (* hv? *)
+  (Hht : forall d, indom fs d -> ht d = trm_seq (ht1 d) (ht2 d))
+  (Hht' : forall d, indom fs' d -> ht d = ht' d)
+  (Htp2 : forall hv, htriple fs ht2 (Q' hv) Q) (* too strong? *)
+  (Hcong : forall hv1 hv2, (forall d, indom fs d -> hv1 d = hv2 d) -> 
+    Q hv1 ==> Q hv2) :
+  htriple (fs \u fs') ht H Q.
+Proof using.
+  apply wp_equiv.
+  rewrite -> union_comm_of_disjoint. 2: apply Hdj.
+  rewrite <- wp_union. 2: rewrite -> disjoint_comm; apply Hdj.
+  rewrite -> wp_ht_eq with (ht2:=ht').
+  2: apply Hht'.
+  rewrite -> wp_ht_eq with (ht2:=htpre).
+  2: introv HH; rewrite -> Hhtpre'; try reflexivity; try apply HH.
+  apply wp_equiv.
+
+  eapply htriple_conseq.
+  3:{ 
+    hnf. intros v. 
+    eapply himpl_trans.
+    1: apply wp_seq.
+    rewrite -> wp_ht_eq with (ht1:=ht) (ht2:=fun d => trm_seq (ht1 d) (ht2 d)).
+    2: apply Hht.
+    apply himpl_refl.
+  }
+  1:{ 
+    apply wp_equiv.
+    eapply wp_conseq. hnf. intros.
+    match goal with |- himpl _ (wp ?fs _ ?ff) => 
+      eapply himpl_trans with (H2:=wp fs htpre ff) end.
+    1: apply himpl_refl.
+    rewrite -> wp_ht_eq with (ht1:=ht1) (ht2:=htpre).
+    2: introv HH; rewrite -> Hhtpre; try reflexivity; try apply HH.
+    apply himpl_refl.
+  }
+  apply wp_equiv in Htppre.
+  rewrite -> union_comm_of_disjoint in Htppre. 2: apply Hdj.
+  rewrite <- wp_union in Htppre. 2: rewrite -> disjoint_comm; apply Hdj.
+  eapply himpl_trans.
+  1: apply Htppre.
+  apply wp_conseq.
+  hnf. intros. apply wp_conseq.
+  hnf. intros. apply wp_equiv. 
+  eapply htriple_conseq.
+  1: apply Htp2.
+  1: xsimpl.
+  hnf. intros. apply Hcong.
+  intros. unfold uni. case_if; try reflexivity.
+  exfalso. revert H0 C. apply disjoint_inv_not_indom_both. 
+  apply Hdj.
+Qed.
+
+Lemma ntriple_sequ2 (fs fs' : fset D) H Q' Q ht ht1 ht2 htpre ht'
+  (Hdj : disjoint fs fs')
+  (Hhtpre : forall d, indom fs d -> htpre d = ht1 d)
+  (Hhtpre' : forall d, indom fs' d -> htpre d = ht' d)
+  (Htppre : htriple (fs \u fs') htpre H Q') (* hv ? *)
+  (Hht : forall d, indom fs d -> ht d = trm_seq (ht1 d) (ht2 d))
+  (Hht' : forall d, indom fs' d -> ht d = ht' d)
+  (Htp2 : forall hv, htriple fs ht2 (Q' hv) Q)
+  (Hcong : forall hv1 hv2, (forall d, indom fs d -> hv1 d = hv2 d) -> 
+    Q hv1 ==> Q hv2) :
+  htriple (fs \u fs') ht H Q.
+Proof using.
+
+(* ? *)
+(*
+  rewrite <- wp_union in Htppre. 2: apply Hdj.
+
+
+  pose proof (wp_union (fun hr2 =>
+    wp fs ht2 (fun hr3 : D -> val => Q ((hr2 \u_ fs') hr3))) htpre Hdj) as Htmp.
+  simpl in Htmp.
+  Unset Printing Notations.
+  
+
+  rewrite -> disjoint_comm in Hdj.
+
+  rewrite -> wp_union.
+    
+    eapply himpl_trans with .
+      
+    pose proof (wp_union (fun=> Q') htpre Hdj) as Htmp.
+    simpl in Htmp.
+    rewrite -> Htmp. clear Htmp.
+    apply wp_equiv.
+    apply Htppre.
+  }
+
+    rewrite -> wp_union.
+
+
+  wp_seq
+
+  eapply htriple_conseq.
+
+
+  apply wp_equiv.
+
+  rewrite <- wp_union. 2: apply Hdj.
+  rewrite -> wp_ht_eq with (ht2:=fun d => trm_seq (ht1 d) (ht2 d)).
+  2: apply Hht.
+
+  apply wp_equiv.
+  (* eapply htriple_seq with (H1:=wp fs' htpre (fun=> Q')). *)
+  eapply htriple_seq.
+   (* with (H1:=Q'). *)
+  1:{
+    eapply htriple_conseq.
+    1: apply wp_equiv.
+    1: rewrite -> wp_ht_eq with (ht1:=ht1) (ht2:=htpre).
+    2: introv HH; rewrite -> Hhtpre; try reflexivity; try apply HH.
+
+    evar (q : hhprop).
+    
+    
+    eapply htriple_conseq with (Q':=(fun hr1 => wp fs' htpre (fun=> Q'))).
+    1:{
+      apply wp_equiv.
+      rewrite -> wp_ht_eq with (ht1:=ht1) (ht2:=htpre).
+      2: introv HH; rewrite -> Hhtpre; try reflexivity; try apply HH.
+      pose proof (wp_union (fun=> Q') htpre Hdj) as Htmp.
+      simpl in Htmp.
+      rewrite -> Htmp. clear Htmp.
+      apply wp_equiv.
+      apply Htppre.
+    }
+    1: apply himpl_refl.
+    hnf. intros. apply wp_conseq.
+    hnf. intros. apply himpl_refl.
+    (* apply Hcong. 
+    intros. unfold uni. case_if; try reflexivity.
+    exfalso. revert H0 C. apply disjoint_inv_not_indom_both. rewrite -> disjoint_comm. apply Hdj. *)
+  }
+  eapply htriple_conseq.
+
+  1: apply Htp2.
+  1:{ wp himpl
+
+
+
+
+
+  apply wp_equiv.
+  eapply htriple_seq with (H1:=wp fs' htpre (fun=> Q')).
+  1:{ 
+    eapply htriple_conseq with (Q':=(fun hr1 =>
+      wp fs' htpre (fun hr2 => Q' ((hr1 \u_ fs) hr2)))).
+    1:{
+      apply wp_equiv.
+      rewrite -> wp_ht_eq with (ht1:=ht1) (ht2:=htpre).
+      2: introv HH; rewrite -> Hhtpre; try reflexivity; try apply HH.
+      rewrite -> wp_union.
+      2: apply Hdj.
+      apply wp_equiv.
+      apply Htppre.
+    }
+    1: apply himpl_refl.
+    hnf. intros. apply wp_conseq.
+    hnf. intros. apply Hcong. 
+    intros. unfold uni. case_if; try reflexivity.
+    exfalso. revert H0 C. apply disjoint_inv_not_indom_both. rewrite -> disjoint_comm. apply Hdj.
+  }
+  eapply htriple_conseq.
+  1: apply Htp2 with (hv:=fun=> val_unit).
+
+
+
+
+
+    
+
+  1: htriple_proj
+
+  xwp. xseq.
+
+  apply wp_equiv.
+  eapply htriple_conseq.
+  1: apply 
+
+
+
+  2: auto.
+  apply wp_equiv.
+*)
 Goal forall (px_ind px_val : loc),
   ntriple 
     ((\*_(d <- ⟨pair 1 0, single 0 tt⟩) 
@@ -869,9 +1149,9 @@ Goal forall (px_ind px_val : loc),
       (Lab (pair 2 0) (FH (interval 0 N) (fun i => (rli_func i px_ind px_val)))) :: 
       nil)
     (fun hv => \[hv (Lab (pair 1 0) 0) = 
-      fset_fold 0 (fun d acc => acc + 
-        (match hv (Lab (pair 2 0) d) with val_int n => n | _=> 0 end)) 
-      (interval 0 N)] \* \Top).
+      fset_fold (val_int 0) 
+        (fun d acc => val_int_add acc (hv d))
+        (label (Lab (pair 2 0) (interval 0 N)))] \* \Top).
 Proof.
   intros.
   unfold rlsum_func, rli_func.
@@ -940,7 +1220,69 @@ Proof.
     apply himpl_refl.
   }
   clear ps Heqps0.
-  apply wp_equiv. xunfocus.
+
+  
+
+  eapply htriple_seq.
+  1:{
+
+  
+  
+  
+  with (H1:=(nwp
+  (cons
+     {|
+       lab := pair 2 0;
+       el :=
+         {|
+           fs_of := interval 0 N;
+           ht_of :=
+             fun i : IntDom.type =>
+             val_fun "x_ind"
+               (trm_fun "x_val"
+                  (trm_let "j" (val_ref 0)
+                     (trm_seq
+                        (While
+                           (val_lt
+                              (val_array_get "x_ind"
+                                 (val_get (val_add "j" 1))) i)
+                           (val_set "j" (val_add (val_get "j") 1)))
+                        (val_array_get "x_val" "j")))) px_ind px_val
+         |}
+     |} nil)
+  (fun hr' : forall _ : D, val =>
+   hstar (hstar
+     (hpure
+        (eq
+           (uni (label {| lab := pair 1 0; el := single 0 tt |}) (fun _ => val_unit) hr'
+              {| lab := pair 1 0; el := 0 |})
+           (fset_fold 0
+              (fun (d : IntDom.type) (acc : Z) =>
+               Z.add acc
+                 match
+                   uni (label {| lab := pair 1 0; el := single 0 tt |}) (fun _ => val_unit)
+                     hr' {| lab := pair 2 0; el := d |}
+                 with
+                 | val_int n => n
+                 | _ => 0
+                 end) (interval 0 N)))) 
+          (ps[1](0) ~⟨(1%Z, 0%Z), 0⟩~> ((fset_fold 0
+          (fun (d : IntDom.type) (acc : Z) =>
+           Z.add acc
+             match
+               uni (label {| lab := pair 1 0; el := single 0 tt |}) (fun _ => val_unit)
+                 hr' {| lab := pair 2 0; el := d |}
+             with
+             | val_int n => n
+             | _ => 0
+             end) (interval 0 N))))   ) htop ))).
+
+  apply wp_equiv. 
+  
+
+  xunfocus.
+
+
 
   
 
