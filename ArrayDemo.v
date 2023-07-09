@@ -1272,11 +1272,33 @@ Proof.
   }
 Qed.
 
+(* why so troublesome? *)
+
+Fact fset_fold_val_int_add_is_int fs (hv : D -> val) v :
+  fset_fold (val_int 0) (fun d (acc : val) => val_int (val_int_add acc (hv d))) fs = v ->
+  exists x : int, v = val_int x.
+Proof using.
+  clear N M Lval Lind H_length_Lval H_length_Lind 
+    H_Lval_notnil H_Lind_last H_Lind_inc H_Lind_first.
+
+  revert v. pattern fs. apply fset_ind; clear fs; intros.
+  { rewrite -> ! (fst (@fset_foldE _ _ _ _)) in H. eauto. }
+  { rewrite -> ! (snd (@fset_foldE _ _ _ _)) in H1.
+    3: assumption.
+    2: intros; destruct (hv a), (hv b); unfold val_int_add; try math.
+    match type of H1 with val_int (val_int_add ?a ?b) = _ => 
+      destruct a eqn:E, b eqn:E' end.
+    all: unfold val_int_add in H1; simpl in H1; try (by exists 0).
+    all: try eauto.
+  }
+Qed.
+
 Lemma fset_fold_val_int_add_union (fs fs' : fset D) (Hdj : disjoint fs fs') 
   (hv : D -> val) :
-  fset_fold 0 (fun d acc => val_int_add acc (hv d)) (fs \u fs') =
-  val_int_add (fset_fold 0 (fun d acc => val_int_add acc (hv d)) fs)
-    (fset_fold 0 (fun d acc => val_int_add acc (hv d)) fs').
+  fset_fold (val_int 0) (fun d acc => val_int (val_int_add acc (hv d))) (fs \u fs') =
+  val_int (val_int_add 
+    (fset_fold (val_int 0) (fun d acc => val_int (val_int_add acc (hv d))) fs)
+    (fset_fold (val_int 0) (fun d acc => val_int (val_int_add acc (hv d))) fs')).
 Proof using.
   clear N M Lval Lind H_length_Lval H_length_Lind 
     H_Lval_notnil H_Lind_last H_Lind_inc H_Lind_first.
@@ -1284,8 +1306,12 @@ Proof using.
   revert fs Hdj.
   pattern fs'. apply fset_ind; clear fs'; intros.
   { rewrite -> union_empty_r.
-    rewrite -> ! (fst (@fset_foldE _ _ _ _)). 
-    unfold val_int_add. math.
+    rewrite -> ! (fst (@fset_foldE _ _ _ _)).
+    match goal with |- _ = val_int (val_int_add ?a ?b) => 
+      destruct a eqn:E; unfold val_int_add; simpl end.
+    all: pose proof E as Htmp; apply fset_fold_val_int_add_is_int in Htmp; 
+      destruct Htmp; try discriminate.
+    math.
   }
   { rewrite -> union_comm_of_disjoint. 2: apply Hdj.
     rewrite <- update_union_not_r'. 2: constructor; exists tt; apply I.
@@ -1345,20 +1371,16 @@ Proof.
     rewrite label_union.
     symmetry.
     unfold ind_seg. replace (i - 1 + 1) with i by math.
-    match goal with |- fset_fold _ ?h (?fs \u ?fs') = _ =>
-      epose proof (@fset_fold_val_int_add_union fs fs' _ hv) as Htmp end.
-    Unshelve.
-    2:{
-      apply disjoint_of_not_indom_both.
-      intros (?, ?) H H'. 
-      rewrite indom_label_eq in H.
-      rewrite indom_label_eq in H'.
-      destruct H as (<- & H), H' as (_ & H').
-      rewrite -> indom_interval in H, H'. math.
-    }
-    admit.
+    rewrite -> fset_fold_val_int_add_union; try reflexivity.
+
+    apply disjoint_of_not_indom_both.
+    intros (?, ?) H H'. 
+    rewrite indom_label_eq in H.
+    rewrite indom_label_eq in H'.
+    destruct H as (<- & H), H' as (_ & H').
+    rewrite -> indom_interval in H, H'. math.
   }
-Admitted.
+Qed.
 
 Lemma rlsum_rli_align_step : forall (px_ind px_val : loc) (ps0 : loc),
   ntriple 
