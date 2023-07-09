@@ -1634,6 +1634,42 @@ Proof.
   }
 Qed.
 
+Lemma htriple_sequ1 (fs fs' : fset D) H H' Q ht ht1 ht2 htsuf ht'
+  (Hdj : disjoint fs fs')
+  (Htp1 : htriple fs ht1 H (fun=> H'))
+  (Hhtsuf : forall d, indom fs d -> htsuf d = ht2 d)
+  (Hhtsuf' : forall d, indom fs' d -> htsuf d = ht' d)
+  (Htpsuf : htriple (fs \u fs') htsuf H' Q)
+  (Hht : forall d, indom fs d -> ht d = trm_seq (ht1 d) (ht2 d))
+  (Hht' : forall d, indom fs' d -> ht d = ht' d) :
+  htriple (fs \u fs') ht H Q.
+Proof.
+  apply wp_equiv.
+  rewrite <- wp_union; auto.
+  rewrite -> wp_ht_eq with (ht1:=ht) (ht2:=fun d => trm_seq (ht1 d) (ht2 d)).
+  xwp. xseq.
+  apply wp_equiv.
+  eapply htriple_conseq.
+  1: apply Htp1.
+  1: xsimpl.
+  1:{ 
+    xsimpl. 
+    rewrite -> wp_ht_eq with (ht1:=ht2) (ht2:=htsuf).
+    2: intros; by rewrite -> Hhtsuf.
+    eapply himpl_trans. 
+    2: apply wp_conseq with (Q1:=fun v => wp fs' htsuf 
+      (fun hr2 : D -> val => Q ((v \u_ fs) hr2))).
+    2:{ 
+      hnf. intros. 
+      rewrite -> wp_ht_eq with (ht1:=ht) (ht2:=htsuf); auto.
+      intros. rewrite -> Hht'; auto. rewrite -> Hhtsuf'; auto.
+    }
+    rewrite -> wp_union; auto.
+    by apply wp_equiv.
+  }
+  auto.
+Qed.
+
 Lemma htriple_sequ2 (fs fs' : fset D) H Q' Q ht ht1 ht2 htpre ht'
   (Hdj : disjoint fs fs')
   (Hhtpre : forall d, indom fs d -> htpre d = ht1 d)
