@@ -12,6 +12,29 @@ Module IntDom : Domain with Definition type := int.
 Definition type := int.
 End IntDom.
 
+Lemma list_from_map {A : Type} `{Inhab A} (f : int -> A) (L : nat) : 
+  exists l : list A, length l = L /\
+    forall i : int, (0 <= i < L)%Z -> nth (abs i) l = f i.
+Proof.
+  induction L as [ | L IH ].
+  { exists (@nil A). split; auto. intros. math. }
+  { destruct IH as (l & HL & HH).
+    exists (l ++ (f L :: nil)).
+    split. 1: rewrite -> length_last, -> HL; math.
+    intros.
+    destruct (Z.leb L i) eqn:E.
+    { rewrite -> Z.leb_le in E.
+      replace (abs i) with L by math.
+      rewrite -> nth_last_case. case_if. subst.
+      by replace i with (nat_to_Z (length l)) by math.
+    }
+    { rewrite -> Z.leb_gt in E.
+      rewrite -> nth_app_l. 2: math.
+      apply HH. math.
+    }
+  }
+Qed.
+
 (* Module ArrayDemo (Dom : Domain). *)
 
 Module Export AD := WithArray(IntDom).
@@ -22,7 +45,45 @@ Proof Build_Inhab (ex_intro (fun=> True) (Lab (0, 0) 0) I).
 
 Section Demo.
 
-(* another version of xfor_lemma *)
+Lemma hcells_form_transform_pre (Z L : int) (HZpos : (0 <= Z)%Z) (HLpos : (0 <= L)%Z) (px : loc) (l : D) (hv : int -> val) 
+  (Larr : list val) 
+  (Hlen : length Larr = abs L)
+  (Hcorr : forall i : int, (0 <= i < abs L)%Z -> nth (abs i) Larr = hv (i + Z)) :
+  \*_(d <- interval Z (Z + L)%Z) (px + (abs d))%nat ~(l)~> hv d = 
+  hcells Larr (px + (abs Z))%nat l.
+Proof.
+  remember (abs L) as n eqn:E.
+  revert Z L HZpos HLpos px l hv Larr Hlen E Hcorr.
+  induction n as [ | n IH ]; intros.
+  { replace L with 0 by math.
+    rewrite -> intervalgt, -> hbig_fset_empty; try math.
+    apply length_zero_inv in Hlen. by subst.
+  }
+  { rewrite -> intervalU. 2: math.
+    rewrite -> hbig_fset_update; auto.
+    2: rewrite -> indom_interval; intros ?; math.
+    destruct Larr as [ | x Larr ].
+    1: rewrite length_nil in Hlen; math.
+    simpl.
+    f_equal.
+    { specialize (Hcorr 0).
+      change (abs 0) with 0%nat in Hcorr.
+      rewrite -> nth_zero in Hcorr.
+      rewrite -> Hcorr; auto; try math.
+    }
+    { replace (Z + L) with ((Z + 1) + (L - 1)) by math.
+      erewrite -> IH with (Z:=Z+1) (L:=L-1) (Larr:=Larr); try math.
+      2: rewrite -> length_cons in Hlen; math.
+      1: f_equal; math.
+      intros.
+      specialize (Hcorr (i+1)).
+      replace (i + (Z + 1)) with (i + 1 + Z) by math.
+      rewrite <- Hcorr; try math.
+      replace (abs (i + 1)) with (S (abs i)) by math.
+      by rewrite -> nth_cons.
+    }
+  }
+Qed.
 
 Definition Sum (fs : fset int) (f : int -> int) : int :=
   fset_fold 0 (fun idx acc => acc + (f idx)) fs.
@@ -112,6 +173,7 @@ Proof using.
   }
 Qed.
 
+(* a specialized version for For loop *)
 Lemma wp_for_aux_alt i fs fs' ht (H : int -> int -> int -> (D -> val) -> hhprop) Z N C fsi hv0 k vr:
   (Z <= i <= N)%Z ->
   (* (forall x y z hv1 hv2, x <= y <= z -> H x y hv1 \* H y z hv2 ==> \exists hv, H x z hv) -> *)
@@ -397,6 +459,195 @@ Proof.
   by case=> l d; rewrite indom_label_eq /= /htrm_of; case: classicT.
 Qed.
 
+(* the original wp_for is good. *)
+Lemma xfor_specialized_lemma (Inv : int -> hhprop) (R R' : IntDom.type -> hhprop) 
+  s fsi1 vr
+  Z N (C1 : IntDom.type -> trm) (i j : int) (C : trm)
+  Pre Post
+  (p : int -> loc) : 
+  (forall (l : int),
+    Z <= l < N ->
+    {{ Inv l \* 
+       (\*_(d <- ⟨(j, 0%Z), fsi1 l⟩) R d) \*
+       (\*_(d <- (fsi1 l)) p d ~⟨(i, 0%Z), s⟩~> val_uninit) }}
+      [{
+        {i| _  in single s tt  => subst vr l C};
+        {j| ld in fsi1 l       => C1 ld}
+      }]
+    {{ hv, 
+        Inv (l + 1) \* 
+        (\*_(d <- ⟨(j, 0%Z), fsi1 l⟩) R' d) \*
+        (\*_(d <- (fsi1 l)) p d ~⟨(i, 0%Z), s⟩~> hv (Lab (j, 0%Z) d)) }}) ->
+  (forall i0 j0 : int, i0 <> j0 -> disjoint (fsi1 i0) (fsi1 j0)) ->
+  (i <> j) ->
+  (Z <= N)%Z ->
+  (forall t : val, subst "for" t C = C) -> 
+  (forall t : val, subst "cnt" t C = C) ->
+  (forall t : val, subst "cond" t C = C) ->
+  var_eq vr "cnt" = false ->
+  var_eq vr "for" = false ->
+  var_eq vr "cond" = false ->
+  (Pre ==> 
+    Inv Z \* 
+    (\*_(d <- Union (interval Z N) fsi1) R d) \*
+    (\*_(d <- Union (interval Z N) fsi1) p d ~⟨(i, 0%Z), s⟩~> val_uninit)) ->
+  (forall hv,
+    Inv N \* 
+    (\*_(d <- Union (interval Z N) fsi1) R' d) \*
+    (\*_(d <- Union (interval Z N) fsi1) p d ~⟨(i, 0%Z), s⟩~> hv (Lab (j, 0%Z) d)) ==>
+    Post hv) -> 
+  {{ Pre }}
+    [{
+      {i| _  in single s tt => For Z N (trm_fun vr C)};
+      {j| ld in Union (interval Z N) fsi1 => C1 ld}
+    }]
+  {{ hv, Post hv }}.
+Proof.
+  move=> IH Dj iNj ?? ??? ??? PostH.
+  apply:himpl_trans; first eauto.
+  rewrite /ntriple /nwp ?fset_of_cons /=.
+  apply: himpl_trans; first last.
+  { apply/wp_conseq=> ?; apply PostH. }
+  rewrite ?Union_label union_empty_r.
+  eapply wp_for with 
+    (H:=(fun q hv => 
+      Inv q \* 
+      (\*_(d <- Union (interval Z q) fsi1) R' d) \*
+      (\*_(d <- Union (interval q N) fsi1) R d) \* 
+      (\*_(d <- Union (interval Z q) fsi1) p d ~⟨(i, 0%Z), s⟩~> hv (Lab (j, 0%Z) d)) \*
+      (\*_(d <- Union (interval q N) fsi1) p d ~⟨(i, 0%Z), s⟩~> val_uninit)))
+    (hv0:=fun=> 0) => //; try eassumption.
+  { clear -IH Dj iNj.
+    move=>l hv ?. 
+    move: (IH l).
+    rewrite /ntriple /nwp ?fset_of_cons /= ?fset_of_nil.
+    rewrite union_empty_r intervalUr; try math.
+    rewrite Union_upd // hbig_fset_union; first last.
+    2-4: auto.
+    2-3: hnf; auto.
+    { rewrite disjoint_Union=> ? /[! indom_interval] ?.
+      apply/Dj; math. }
+    rewrite (@intervalU l N); last math.
+    rewrite Union_upd // hbig_fset_union; first last.
+    2-4: auto.
+    2-3: hnf; auto.
+    { rewrite disjoint_Union=> ? /[! indom_interval] ?.
+      apply/Dj; math. }
+    move=> Hwp.
+    rewrite -> hbig_fset_union.
+    2-3: hnf; auto.
+    2: auto.
+    2: { rewrite disjoint_Union=> ? /[! indom_interval] ?.
+      apply/Dj; math. }
+    erewrite wp_ht_eq with (ht2:=(htrm_of
+      (cons {| lab := pair i 0;
+         el := {| fs_of := single s tt;
+             ht_of := fun _ : IntDom.type => subst vr l C
+           |} |}
+       (cons
+          {| lab := pair j 0;
+            el := {| fs_of := fsi1 l;
+                ht_of := fun ld : IntDom.type => C1 ld
+              |} |} nil)))).
+    2:{
+      intros (ll, d) H. unfold uni, htrm_of. simpl. 
+      rewrite indom_union_eq ! indom_label_eq in H |- *.
+      rewrite indom_single_eq in H |- *. 
+      repeat case_if; try eqsolve.
+      destruct C3 as (<- & HH). false C2. split; auto.
+      rewrite indom_Union. exists l. rewrite indom_interval.
+      split; try math; auto.
+    }
+    assert (Z <= l < N) as Htmp by math. specialize (Hwp Htmp). clear Htmp.
+    apply wp_equiv in Hwp. apply wp_equiv.
+    eapply htriple_conseq_frame.
+    1: apply Hwp.
+    1: xsimpl. 1: xsimpl.
+    hnf. intros v.
+    xsimpl. xsimpl.
+    rewrite -> hbig_fset_union.
+    2-3: hnf; auto.
+    2: auto.
+    2: { rewrite disjoint_Union=> ? /[! indom_interval] ?.
+      apply/Dj; math. }
+    unfold uni.
+    apply himpl_frame_lr.
+    { apply hbig_fset_himpl.
+      intros. case_if; auto.
+      rewrite indom_label_eq in C0. eqsolve.
+    }
+    { apply hbig_fset_himpl.
+      intros. case_if; auto.
+      rewrite indom_label_eq in C0. destruct C0 as (_ & H1).
+      rewrite indom_Union in H. 
+      destruct H as (f & H & H2). rewrite -> indom_interval in H.
+      false. revert H1 H2. apply disjoint_inv_not_indom_both, Dj.
+      math.
+    }
+  }
+  { intros. xsimpl.
+    { apply hbig_fset_himpl.
+      intros. rewrite -> H; auto.
+      rewrite indom_Union in H0. rewrite indom_Union.
+      destruct H0 as (f & H0 & H2). 
+      exists f. rewrite indom_label_eq. intuition.
+    }
+    (* repeat *)
+    { apply hbig_fset_himpl.
+      intros. rewrite -> H; auto.
+      rewrite indom_Union in H0. rewrite indom_Union.
+      destruct H0 as (f & H0 & H2). 
+      exists f. rewrite indom_label_eq. intuition.
+    }
+  }
+  { rewrite [_ Z Z]intervalgt; last math.
+    rewrite Union0 ! hbig_fset_empty. xsimpl. }
+  { move=> ?.
+    rewrite [_ N N]intervalgt; last math.
+    rewrite Union0 ! hbig_fset_empty. xsimpl. }
+  { simpl.
+    intros. apply disjoint_of_not_indom_both. 
+    intros. destruct x as (?, x). 
+    rewrite indom_label_eq in H0. rewrite indom_label_eq in H1.
+    destruct H0 as (_ & H0), H1 as (_ & H1). 
+    revert H0 H1. by apply disjoint_inv_not_indom_both, Dj.
+  }
+  { rewrite disjoint_Union=> ??. 
+    apply disjoint_of_not_indom_both. 
+    intros. destruct x as (?, x).
+    simpl in H. rewrite indom_single_eq in H.  
+    injection H as <-.
+    rewrite -> indom_Union in H0.
+    destruct H0 as (? & ? & H0).
+    rewrite indom_label_eq in H0. eqsolve.
+  }
+  by case=> l d; rewrite indom_label_eq /= /htrm_of; case: classicT.
+Qed.
+
+Lemma interval_point_segmentation i j :
+  Union (interval i j) (fun i => single i tt) = interval i j.
+Proof.
+  destruct (Z.leb j i) eqn:E.
+  1:{ rewrite -> Z.leb_le in E. 
+    rewrite -> intervalgt; try math. by rewrite -> Union0.
+  }
+  rewrite -> Z.leb_gt in E.
+  remember (abs (j - i - 1)) as n eqn:E'. revert i j E E'. induction n; intros.
+  { replace j with (i + 1) by math.
+    rewrite -> ! intervalUr, -> intervalgt; try math.
+    rewrite -> Union_upd, Union0.
+    2:{ intros. by apply disjoint_single_single. }
+    by rewrite update_eq_union_single.
+  }
+  { replace j with ((j - 1) + 1) by math.
+    rewrite -> ! intervalUr. 2: math.
+    rewrite -> Union_upd.
+    2:{ intros. by apply disjoint_single_single. }
+    rewrite -> IHn; try math.
+    by rewrite update_eq_union_single.
+  }
+Qed.
+
 (* assume properties about the running-length encoding. *)
 (*
 Variables (N M : nat) (Lval : list int) (Lind : list nat).
@@ -438,6 +689,24 @@ Proof using M Lind H_Lind_inc.
     apply H_Lind_inc; math.
   }
 Qed. 
+
+Fact zero_lt_N : (0 < N)%Z.
+Proof using N M Lind H_Lind_inc H_Lind_first H_Lind_last H_Lval_notnil.
+  clear Lval H_length_Lval H_length_Lind.
+
+  (* extract? *)
+  rewrite <- H_Lind_first, <- H_Lind_last. 
+  change 0%nat with (abs 0).
+  (* enough (nth (abs 0) Lind < nth (abs M) Lind)%Z by math. *)
+  apply H_Lind_inc; math.
+Qed.
+
+Fact zero_le_N : (0 <= N)%Z.
+Proof using N M Lind H_Lind_inc H_Lind_first H_Lind_last H_Lval_notnil.
+  clear Lval H_length_Lval H_length_Lind.
+
+  pose proof zero_lt_N. math.
+Qed.
 
 Definition rlsum_loopbody (real_x_ind real_x_val real_s real_i : trm) :=
   (* need to make it a term; otherwise subst cannot penetrate *)
@@ -491,6 +760,28 @@ Definition rli_func (i : int) :=
       let "j" = ref 0 in 
       loop ; 
       (let "tmp" = ! "j" in (val_array_get "x_val" "tmp"))
+  }>.
+
+Definition rl_loopbody (real_x real_x_ind real_x_val real_i real_k : trm) :=
+  let inc := rli_whilebody real_i in
+  <{  let "tmp1" = ! real_i in
+      let "tmp2" = val_array_get real_x_val "tmp1" in
+      val_array_set real_x real_k "tmp2";
+      let "lhs" = real_k + 1 in
+      let "tmp3" = "tmp1" + 1 in
+      let "rhs" = val_array_get real_x_ind "tmp3" in
+      let "cmp" = "lhs" >= "rhs" in
+      if "cmp" then inc end }>.
+
+Definition rl_func :=
+  let loopbody := rl_loopbody "x" "x_ind" "x_val" "i" "k" in
+  let loop := For 0 N (trm_fun "k" loopbody) in
+  let al := abs N in
+  <{ fun "x_ind" "x_val" =>
+      let "x" = val_alloc al in
+      let "i" = ref 0 in 
+      loop ; 
+      "x"
   }>.
 
 Definition arr_x_ind (p : loc) (d : D) :=
@@ -1926,5 +2217,435 @@ Proof.
   intros. extens. intros. case_if; try reflexivity.
   destruct d as (ll, d). apply indom_label in H, C7. eqsolve.
 Qed.
+
+Lemma rl_loopbody_spec (d : D) (px px_ind px_val pi0 : loc) (l : int) (v0 : val)
+  (Hl : (0 <= l < N)%Z) (a : int) (Ha : (0 <= a < M)%Z)
+  (Ha' : (nth (abs a) Lind <= l < nth (abs (a + 1)) Lind)%Z) :
+  htriple (single d tt)
+    (fun=> rl_loopbody px px_ind px_val pi0 l)
+  (pi0 ~(d)~> a \* arr_x_val px_val d \* arr_x_ind px_ind d \*
+    (px + 1 + abs l)%nat ~(d)~> v0)
+  (fun=> (\exists new_a, \[if Z.eqb l (N-1) then new_a = M else 
+    (0 <= new_a < M)%Z /\ (nth (abs new_a) Lind <= l + 1 < nth (abs (new_a + 1)) Lind)%Z] \* 
+    pi0 ~(d)~> (val_int new_a)) \* 
+    arr_x_val px_val d \* arr_x_ind px_ind d \*
+    (px + 1 + abs l)%nat ~(d)~> nth (abs a) Lval).
+Proof.
+  unfold rl_loopbody.
+  apply wp_equiv. xwp. xlet.
+  apply wp_equiv.
+  eapply htriple_conseq_frame with (H1:=pi0 ~(d)~> a).
+  2: xsimpl.
+  1:{
+    rewrite <- hbig_fset_label_single' with (Q:=fun d0 => pi0 ~(d0)~> a).
+    apply htriple_get.
+  }
+  xsimpl. intros ? ->.
+  xwp. xlet.
+  apply wp_equiv.
+  eapply htriple_conseq_frame with (H1:=arr_x_val px_val d).
+  1:{
+    rewrite <- hbig_fset_label_single' with (Q:=fun d0 => arr_x_val px_val d0).
+    eapply htriple_array_get.
+    { intros. rewrite -> length_map, -> H_length_Lval. math. }
+    { intros. reflexivity. } 
+  }
+  1: xsimpl.
+  xsimpl. intros r Er.
+  xwp. xseq.
+  apply wp_equiv.
+  eapply htriple_conseq_frame with (H1:=(px + 1 + abs l)%nat ~(d)~> v0).
+  1:{
+    rewrite <- hbig_fset_label_single' with (Q:=fun d0 => (px + 1 + abs l)%nat ~(d0)~> v0).
+    eapply htriple_array_set_pre.
+    intros; math.
+  }
+  1: xsimpl.
+  xsimpl. 
+  xwp. xlet. xapp.
+  xwp. xlet. xapp.
+  xwp. xlet.
+  apply wp_equiv.
+  eapply htriple_conseq_frame with (H1:=arr_x_ind px_ind d).
+  1:{
+    rewrite <- hbig_fset_label_single' with (Q:=fun d0 => arr_x_ind px_ind d0).
+    eapply htriple_array_get.
+    { intros. rewrite -> length_map, -> H_length_Lind. math. }
+    { intros. reflexivity. } 
+  }
+  1: xsimpl.
+  xsimpl. intros r0 Er0.
+  specialize (Er _ (indom_single d _)).
+  specialize (Er0 _ (indom_single d _)).
+  rewrite -> wp_ht_eq with (ht2:=fun=> 
+  let aa := r0 d in let bb := Z.add l 1 in let cc := rli_whilebody (trm_val (val_loc pi0)) in
+    <{
+       let "cmp" = bb >= aa in
+       if "cmp" then cc end }>).
+  2:{ intros. rewrite -> indom_single_eq in H. subst. by simpl. }
+  simpl. rewrite -> Er0.
+  rewrite -> ! nth_map; try math.
+  xwp. xlet. xapp. xwp. xif; intros Hcmp.
+  { (* next phase *)
+    assert (l + 1 = nth (abs (a + 1)) Lind) by math.
+    fold (rli_whilebody (trm_val (val_loc pi0))).
+    apply wp_equiv.
+    eapply htriple_conseq_frame with (H1:=(\*_(d0 <- single d tt) pi0 ~(d0)~> a)).
+    1:{
+      rewrite hbig_fset_label_single'.
+      apply wp_equiv, rli_whilebody_spec.
+    }
+    1: xsimpl.
+    xsimpl.
+    2: rewrite ! hbig_fset_label_single'; xsimpl; rewrite -> Er, -> nth_map.
+    2: xsimpl.
+    2: math.
+
+    (* pure proof *)
+    destruct (l =? N - 1)%Z eqn:E.
+    { rewrite -> Z.eqb_eq in E.
+      subst l. replace (N-1+1) with N in H by math.
+      destruct (Z.leb M (a+1)) eqn:E'.
+      { rewrite -> Z.leb_le in E'. math. }
+      { rewrite -> Z.leb_gt in E'. 
+        assert (abs (a+1) < abs M)%nat as EE by math.
+        apply H_Lind_inc in EE; math.
+      }
+    }
+    { rewrite -> Z.eqb_neq in E.
+      assert (l < N - 1) as El by math.
+      destruct (Z.leb M (a+1)) eqn:E'.
+      { rewrite -> Z.leb_le in E'. 
+        assert (a + 1 = M) as Eap by math.
+        rewrite -> Eap, -> H_Lind_last in H. math.
+      }
+      { rewrite -> Z.leb_gt in E'.
+        split; try math.
+        split; try math.
+        rewrite -> H. apply H_Lind_inc; math.
+      }
+    }
+  }
+  {
+    xwp. xval. xsimpl.
+    2: rewrite ! hbig_fset_label_single'; xsimpl; rewrite -> Er, -> nth_map.
+    2: xsimpl.
+    2: math.
+
+    destruct (l =? N - 1)%Z eqn:E. 2: intuition math.
+    rewrite -> Z.eqb_eq in E. subst l. replace (N-1+1) with N in Hcmp by math.
+    false Hcmp. rewrite <- H_Lind_last. 
+    enough (nth (abs (a + 1)) Lind <= nth (abs M) Lind)%Z by math.
+    apply H_Lind_inc'; math.
+  }
+Qed.
+
+Lemma rl_rli_align_step : forall (px_ind px_val : loc) (pi0 px : loc),
+  ntriple 
+    (pi0 ~⟨(2%Z, 0%Z), 0⟩~> 0 \*
+      (* harray (LibList.make (abs N) val_uninit) px (⟨(2, 0), 0⟩)%arr \* *)
+      hcells (LibList.make (abs N) val_uninit) (px + 1)%nat (⟨(2, 0), 0⟩)%arr \*
+      (\*_(d <- ⟨pair 2 0, single 0 tt⟩) 
+        ((arr_x_ind px_ind d) \* (arr_x_val px_val d))) \*
+      (\*_(d <- ⟨pair 3 0, interval 0 N⟩) 
+        ((arr_x_ind px_ind d) \* (arr_x_val px_val d))))
+    ((Lab (pair 2 0) 
+        (FH (single 0 tt) (fun=> 
+          For 0 N (trm_fun "k" (rl_loopbody (val_loc px) (val_loc px_ind) (val_loc px_val) (val_loc pi0) "k"))
+          ))) :: 
+      (Lab (pair 3 0) 
+        (FH (Union (interval 0 N) (fun i => single i tt)) 
+          (fun i => (rli_func i px_ind px_val)))) :: 
+      nil)
+    (fun hv => 
+      (@hexists (list val) (fun Larr =>
+        \[length Larr = abs N] \* (\*_(d <- ⟨pair 3 0, interval 0 N⟩) 
+           \[hv d = nth (abs (eld d)) Larr]) \*
+        (* harray (LibList.map val_int Larr) px (Lab (pair 2 0) 0))) \*  *)
+        hcells Larr (px + 1)%nat (⟨(2, 0), 0⟩)%arr)) \*
+        \Top).
+Proof.
+  intros.
+  eapply xfor_specialized_lemma with
+    (* have to count for i = N *)
+    (Inv:=fun i => (@hexists int (fun a => 
+      \[if (Z.leb N i) 
+        then a = M 
+        else (0 <= a < M)%Z /\ (nth (abs a) Lind <= i < nth (abs (a + 1)) Lind)%Z] \* 
+      pi0 ~⟨(2%Z, 0%Z), 0⟩~> val_int a)) \*
+      arr_x_ind px_ind (⟨(2, 0), 0⟩)%arr \*
+      arr_x_val px_val (⟨(2, 0), 0⟩)%arr \* \Top)
+    (* need \Top to consume some memory *)
+    (R:=fun j => 
+      (arr_x_ind px_ind (Lab (3, 0) j) \* arr_x_val px_val (Lab (3, 0) j)))
+    (R':=fun j => 
+      (arr_x_ind px_ind (Lab (3, 0) j) \* arr_x_val px_val (Lab (3, 0) j)))
+    (p:=fun i => ((px + 1)%nat + abs i)%nat).
+  all: match goal with |- context[subst _ _ _ = _] => intros; auto | _ => idtac end.
+  all: match goal with |- context[var_eq ?a ?b] => intros; auto | _ => idtac end.
+  3: math.
+  3: apply zero_le_N.
+  2:{ intros. by apply disjoint_single_single. }
+  (* pre *)
+  2:{
+    xsimpl.
+    1:{
+      pose proof zero_lt_N as Htmp. rewrite <- Z.leb_gt in Htmp.
+      rewrite -> Htmp. 
+      split; try math.
+      split. 1: change (abs 0) with 0%nat; by rewrite -> H_Lind_first.
+      replace (0+1) with 1 by math. rewrite <- H_Lind_first. 
+      change 0%nat with (abs 0).
+      apply H_Lind_inc; math.
+    }
+    xsimpl.
+    rewrite -> ! interval_point_segmentation.
+    xsimpl.
+    rewrite <- hstar_hempty_r at 1.
+    apply himpl_frame_lr. 2: xsimpl.
+    rewrite -> hcells_form_transform_pre with (Z:=0) (L:=N) (Larr:=(LibList.make (abs N) val_uninit)); 
+      try math.
+    2: apply zero_le_N.
+    2: by rewrite -> length_make.
+    1: by rewrite -> Nat.add_0_r.
+    intros. apply nth_make. math.
+  }
+  (* post *)
+  2:{
+    intros. 
+    (* prepare *)
+    destruct (list_from_map (fun d => hv (Lab (3, 0) d)) (abs N)) as 
+      (Larr & Hlen & Hcorr).
+    xsimpl. instantiate (1:=Larr). 1: auto.
+    intros a H. 
+    rewrite -> Z.leb_refl in H. subst a.
+    rewrite -> ! interval_point_segmentation.
+    rewrite -> hcells_form_transform_pre with (Z:=0) (L:=N) (Larr:=Larr); 
+      try math.
+    2: apply zero_le_N.
+    2: intros; rewrite Hcorr; auto.
+    2: replace (i+0) with i by math; auto.
+    rewrite -> Nat.add_0_r.
+    xsimpl. rewrite <- hstar_hempty_l at 1.
+    apply himpl_frame_lr; xsimpl.
+    rewrite -> hstar_fset_pure. xsimpl. 
+    intros. rewrite -> indom_interval in H. rewrite -> Hcorr; auto; try math.
+  }
+  (* main *)
+  {
+    intros l (Hl1 & Hl2).
+    apply (xfocus_lemma (pair 3 0)); simpl; try apply xnwp0_lemma.
+    rewrite -> union_empty_r.
+
+    (* reusing the part above. *)
+    (* little change *)
+    rewrite -> wp_ht_eq with (ht2:=(fun=> ((rli_func l) px_ind px_val))).
+    2:{ intros. unfolds label. 
+      rewrite -> indom_Union in H. 
+      setoid_rewrite -> indom_single_eq in H.
+      simpl in H.
+      destruct H as (? & H & <-).
+      simpl. 
+      rewrite indom_single_eq. case_if; eqsolve.
+    }
+
+    (* extract *)
+    xsimpl. intros a Ha.
+    assert (l < N)%Z as Htmp by math. rewrite <- Z.leb_gt in Htmp.
+    rewrite -> Htmp in Ha. clear Htmp.
+    destruct Ha as ((Ha1 & Ha2) & (Hl1' & Hl2')).
+    
+    (* a single element here, so very easy *)
+    apply wp_equiv.
+    eapply htriple_conseq_frame.
+    1:{
+      rewrite label_single.
+      apply rli_func_spec with (a:=a); math. 
+    }
+    1: xsimpl.
+    xsimpl. intros r Er.
+
+    (* now, only a single thing is left *)
+    unfold nwp. simpl. rewrite -> union_empty_r.
+    match goal with |- himpl _ (wp _ (htrm_of (cons (Lab _ (FH _ ?ht)) _)) _) => pose (ff:=ht) end.
+    rewrite -> wp_ht_eq with (ht2:=ff).
+    2:{ 
+      intros (ll, d) HH. rewrite indom_label_eq in HH. 
+      destruct HH as (<- & HH). 
+      subst ff. unfold htrm_of. simpl. case_if; eqsolve.
+    }
+    subst ff. simpl.
+
+    (* do the body *)
+    apply wp_equiv.
+    eapply htriple_conseq_frame with (H1:=pi0 ~⟨(2%Z, 0%Z), 0⟩~> a \* 
+      arr_x_val px_val (⟨(2, 0), 0⟩)%arr \* arr_x_ind px_ind (⟨(2, 0), 0⟩)%arr \*
+      ((px + 1)%nat + abs l)%nat ~⟨(2%Z, 0%Z), 0⟩~> val_uninit).
+    2: xsimpl.
+    1:{
+      rewrite label_single.
+      apply rl_loopbody_spec; math.
+    }
+    xsimpl. 
+    {
+      intros. destruct (l =? N - 1)%Z eqn:E.
+      { rewrite -> Z.eqb_eq in E.
+        assert (N <= l + 1)%Z as Htmp by math.
+        rewrite <- Z.leb_le in Htmp. by rewrite Htmp.
+      }
+      { rewrite -> Z.eqb_neq in E.
+        assert (l + 1 < N)%Z as Htmp by math.
+        rewrite <- Z.leb_gt in Htmp. by rewrite Htmp.
+      }
+    }
+    {
+      intros. unfold uni. rewrite label_single indom_single_eq.
+      case_if. rewrite Er. xsimpl.
+    }
+  }
+Qed.
+
+Lemma rl_rli_ntriple : forall (px_ind px_val : loc),
+  ntriple 
+    ((\*_(d <- ⟨pair 2 0, single 0 tt⟩) 
+      ((arr_x_ind px_ind d) \* (arr_x_val px_val d))) \*
+      (\*_(d <- ⟨pair 3 0, interval 0 N⟩) 
+      ((arr_x_ind px_ind d) \* (arr_x_val px_val d))))
+    ((Lab (pair 2 0) (FH (single 0 tt) (fun=> (rl_func px_ind px_val)))) :: 
+      (Lab (pair 3 0) (FH (interval 0 N) (fun i => (rli_func i px_ind px_val)))) :: 
+      nil)
+    (fun hv => 
+      (@hexists loc (fun px => \[(hv (Lab (pair 2 0) 0)) = val_loc px] \*
+        (@hexists (list val) (fun Larr =>
+        \[length Larr = (abs N)] \* 
+        (\*_(d <- ⟨pair 3 0, interval 0 N⟩) \[hv d = (nth (abs (eld d)) Larr)]) \*
+        harray Larr px (Lab (pair 2 0) 0))))) \* \Top).
+Proof.
+  intros.
+  unfold rl_func.
+  (* simplify 1 first *)
+  apply (xfocus_lemma (pair 2 0)); simpl; try apply xnwp0_lemma.
+  rewrite -> union_empty_r.
+  (* little change *)
+  rewrite -> wp_ht_eq with (ht2:=(fun=> (rl_func px_ind px_val))).
+  2:{ 
+    intros (ll, d) H. rewrite indom_label_eq indom_single_eq in H.
+    destruct H as (<- & <-).
+    simpl. rewrite -> indom_single_eq. case_if; auto.
+  }
+  (* do app2 for rlsum *)
+  apply wp_equiv. eapply htriple_eval_like.
+  1: apply eval_like_app_fun2; eqsolve.
+  (* subst pushdown *)
+  cbn delta [subst] beta iota zeta.
+  case_var; try eqsolve.
+  cbn delta [subst] beta iota zeta.
+  case_var; try eqsolve.
+  rewrite -> ! For_subst; try eqsolve.
+  (* array allocation *)
+  apply wp_equiv. xwp. xlet.
+  apply wp_equiv.
+  eapply htriple_conseq_frame with (H1:=\[]).
+  1: apply htriple_alloc_nat.
+  1: xsimpl.
+  xsimpl. intros r. xsimpl. intros px Er.
+  xwp. xlet. xwp. xapp.
+  intros pi. xsimpl.
+  (* single point forget *)
+  remember (pi[2](0)) as pi0.
+  erewrite -> wp_ht_eq with (ht2:=
+    fun=> trm_seq (For 0 N (trm_fun "k" (rl_loopbody px px_ind px_val pi0 "k"))) (<{ px }>)).
+  2:{ 
+    intros (ll, d) H. rewrite indom_label_eq indom_single_eq in H.
+    destruct H as (<- & <-).
+    unfold For, For_aux, rl_loopbody, rli_whilebody. 
+    by rewrite -> Er, Heqpi0.
+  }
+  apply wp_equiv.
+  eapply htriple_conseq.
+  3: apply qimpl_refl.
+  2:{
+    apply himpl_frame_l with (H1':=pi0 ~⟨(2%Z, 0%Z), 0⟩~> 0). subst pi0.
+    apply himpl_refl.
+  }
+  clear pi Heqpi0 r Er.
+  apply wp_equiv.
+  xunfocus.
+
+  (* SeqU2 *)
+  eapply ntriple_sequ2.
+  1: math.
+  1: rewrite <- interval_point_segmentation at 2.
+  1:{
+    unfold harray.
+    apply wp_equiv. eapply htriple_conseq_frame.
+    1: apply wp_equiv, rl_rli_align_step.
+    1:{
+      rewrite -> ! hstar_assoc. xsimpl.
+      rewrite -> hstars_pick_last_3 at 1. xsimpl.
+    }
+    apply qimpl_refl.
+  }
+  1:{
+    (* delicate control ... *)
+    intros. apply wp_equiv. xwp. xval.
+    rewrite -> hstar_assoc at 1.
+    rewrite -> hstar_comm with (H1:=\Top).
+    rewrite <- hstar_assoc at 1.
+    apply himpl_frame_lr. 2: xsimpl.
+    rewrite -> hstar_hexists.
+    apply himpl_hexists_l.
+    intros Larr.
+    rewrite -> hstar_fset_pure.
+    rewrite -> hstar_assoc at 1.
+    apply himpl_hstar_hpure_l. intros Hlen.
+    rewrite -> hstar_assoc at 1.
+    apply himpl_hstar_hpure_l. intros Hcorr.
+    apply himpl_hexists_r with (x:=px).
+    apply himpl_hstar_hpure_r. 
+    1:{
+      unfold uni. rewrite label_single indom_single_eq. case_if; eqsolve.
+    }
+    apply himpl_hexists_r with (x:=Larr).
+    unfold harray. xsimpl; auto.
+    rewrite -> hstar_fset_pure.
+    xsimpl.
+    2: by rewrite -> length_make, -> Hlen.
+    intros. unfold uni. rewrite label_single indom_single_eq. 
+    case_if; try eqsolve. rewrite Hcorr; auto.
+    by rewrite indom_label_eq.
+  }
+  {
+    intros. xsimpl; auto.
+    { intros. rewrite <- H; auto.
+      rewrite indom_union_eq ! indom_label_eq indom_single_eq.
+      intuition.
+    }
+    { intros. rewrite <- hstar_hempty_r at 1.
+      apply himpl_frame_lr. 2: xsimpl.
+      apply hbig_fset_himpl. 
+      intros. xsimpl. intros HH. rewrite <- HH, -> H; auto.
+      rewrite indom_union_eq ! indom_label_eq indom_single_eq.
+      tauto.
+    }
+  }
+Qed.
+
+Theorem rlsum_rl_ntriple : forall (px_ind px_val : loc),
+  ntriple 
+    ((\*_(d <- ⟨pair 1 0, single 0 tt⟩) 
+      ((arr_x_ind px_ind d) \* (arr_x_val px_val d))) \*
+      (\*_(d <- ⟨pair 2 0, single 0 tt⟩) 
+      ((arr_x_ind px_ind d) \* (arr_x_val px_val d))))
+    ((Lab (pair 1 0) (FH (single 0 tt) (fun=> (rlsum_func px_ind px_val)))) :: 
+      (Lab (pair 2 0) (FH (single 0 tt) (fun=> (rl_func px_ind px_val)))) :: 
+      nil)
+    (fun hv => 
+      (@hexists loc (fun px => \[(hv (Lab (pair 2 0) 0)) = val_loc px] \*
+        (@hexists (list val) (fun Larr =>
+        \[length Larr = (abs N) /\
+        hv (Lab (pair 1 0) 0) = fold_right val_int_add (val_int 0) Larr] \* 
+        harray Larr px (Lab (pair 2 0) 0))))) \* \Top).
+Admitted.
 
 End Demo.

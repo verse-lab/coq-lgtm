@@ -1535,6 +1535,40 @@ Definition val_array_set : val :=
        let 'n = val_ptr_add 'p 'j in
        val_set 'n 'v }>.
 
+(* a single point operation *)
+Lemma htriple_array_set_pre : forall fs (p : D -> loc) (i : D -> int) (v v' : D -> val),
+  (forall d, indom fs d -> 0 <= i d) ->
+  htriple fs (fun d => val_array_set (p d) (i d) (v d))
+    (\*_(d <- fs) ((p d) + 1 + abs (i d))%nat ~(d)~> v' d)
+    (fun=> \*_(d <- fs) ((p d) + 1 + abs (i d))%nat ~(d)~> v d).
+Proof using.
+  introv E. eapply htriple_eval_like.
+  1:{ apply eval_like_app_fun3. all: intros; eqsolve. }
+  simpl.
+  eapply htriple_let. 
+  1:{
+    eapply htriple_conseq_frame. 1: apply htriple_add.
+    1: xsimpl. apply qimpl_refl.
+  }
+  simpl. intros. apply htriple_hpure. intros ->.
+  eapply htriple_let. 
+  1:{ 
+    eapply htriple_conseq_frame. 
+    1:{ apply htriple_ptr_add. intros. specialize (E _ H). math. }
+    1: xsimpl. apply qimpl_refl.
+  }
+  simpl. intros. apply htriple_hpure. intros ->.
+  apply wp_equiv.
+  rewrite -> wp_ht_eq with (ht2:=fun d => 
+    val_set (val_loc (p d + 1 + abs (i d))%nat) (v d)).
+  2:{ intros. f_equal. f_equal. specialize (E _ H).
+    f_equal. f_equal. math.
+  }
+  apply wp_equiv.
+  apply htriple_set.
+Qed.
+
+(* TODO rewrite this with above? *)
 Lemma htriple_array_set : forall fs (p : D -> loc) (i : D -> int) (v : D -> val) (L : D -> list val),
   (forall d, indom fs d -> 0 <= (i d) < length (L d)) ->
   (forall d, indom fs d -> LibList.nth (abs (i d)) (L d) = v d) ->

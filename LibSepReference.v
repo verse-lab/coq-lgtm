@@ -4808,11 +4808,11 @@ Proof.
   }
 Qed.
 
-Fact hbig_fset_himpl : forall fs (H H' : D -> hhprop),
-  (forall d, indom fs d -> H d ==> H' d) ->
+Fact hbig_fset_himpl : forall {A : Type} (fs : fset A) (H H' : A -> hhprop),
+  (forall (d : A), indom fs d -> H d ==> H' d) ->
   (\*_(d <- fs) H d) ==> (\*_(d <- fs) H' d).
 Proof.
-  intros fs. pattern fs. apply fset_ind; clear fs.
+  intros A fs. pattern fs. apply fset_ind; clear fs.
   { introv N. hnf. introv HH. by rewrite -> hbig_fset_empty in *. }
   { introv IH Hni N. hnf. introv HH.
     rewrite -> hbig_fset_update in HH |- *; auto.
