@@ -7718,6 +7718,27 @@ Proof.
   { rewrite fsubst_union_valid_disj'. ?IHfs //. }
 *)
 
+(* map family localization *)
+Definition fm_localize {A B C} (fs : fset A) (fmi : A -> fmap C B) := ((fmi \u_ fs) (fun=> empty)).
+
+Lemma Union_localization {A B C} (fs : fset A) (fmi : A -> fmap C B) : 
+  (forall i j, indom fs i -> indom fs j -> i <> j -> disjoint (fmi i) (fmi j)) ->
+  Union fs fmi = Union fs (fm_localize fs fmi).
+Proof.
+  intros. unfold Union, fm_localize. apply fold_fset_eq.
+  intros. extens. intros. unfold uni. case_if; eqsolve.
+Qed.
+
+Fact fm_localization {A B C} (fs : fset A) (fmi : A -> fmap C B) : 
+  (forall i j, indom fs i -> indom fs j -> i <> j -> disjoint (fmi i) (fmi j)) ->
+  forall i j, i <> j -> disjoint (fm_localize fs fmi i) (fm_localize fs fmi j).
+Proof.
+  intros. apply disjoint_of_not_indom_both.
+  intros. unfold fm_localize, uni in H1, H2. repeat case_if.
+  2-4: simpl in H1, H2; unfolds indom, map_indom; eqsolve.
+  revert H1 H2. apply disjoint_inv_not_indom_both, H; auto.
+Qed.
+
 Lemma Union_eq {A B C} (fs : fset A) (fmi1 fmi2 : A -> fmap C B) : 
   (forall i j, i <> j -> disjoint (fmi1 i) (fmi1 j)) ->
   (forall i j, i <> j -> disjoint (fmi2 i) (fmi2 j)) ->
