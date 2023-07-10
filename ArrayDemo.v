@@ -45,6 +45,63 @@ Proof Build_Inhab (ex_intro (fun=> True) (Lab (0, 0) 0) I).
 
 Section Demo.
 
+Definition val_int_add (a b : val) :=
+  (match a with val_int a' => a' | _ => 0 end) + 
+    (match b with val_int a' => a' | _ => 0 end).
+
+Fact comm_val_int_add : comm val_int_add.
+Proof using. 
+  clear.
+  hnf. intros. unfold val_int_add. destruct x, y; try math; auto.
+Qed.
+
+Fact assoc_val_int_add : assoc val_int_add.
+Proof using. 
+  clear.
+  hnf. intros. unfold val_int_add. destruct x, y, z; try math; auto.
+Qed.
+
+Lemma val_int_add_distr (a b : int) :
+  val_int (a + b) = val_int_add (val_int a) (val_int b).
+Proof eq_refl.
+
+Lemma fold_fset_summation_dedicated (N : int) (HN : (0<=N)%Z) (v : D -> val) (l : labType)
+  (Larr : list val) (Hlen : length Larr = abs N) 
+  (Hcorr : forall d, indom (interval 0 N) d -> v (Lab l d) = nth (abs d) Larr) :
+  fset_fold (val_int 0)
+      (fun (d : D) (acc : val) =>
+      val_int (val_int_add acc (v d))) ⟨l, interval 0 N⟩ =
+  fold_left (fun a b : val => val_int (val_int_add a b)) (val_int 0) Larr.
+Proof.
+  remember (abs N) as n eqn:E.
+  revert N E Larr Hlen Hcorr HN.
+  induction n as [ | n IH ]; intros.
+  { replace N with 0 in * by math.
+    rewrite label_empty.
+    rewrite -> (fst (@fset_foldE _ _ _ _)); auto.
+    apply length_zero_inv in Hlen. subst Larr. by rewrite fold_left_nil.
+  }
+  { assert (length Larr > 0%nat) as Htmp by math.
+    apply length_pos_inv_last in Htmp.
+    destruct Htmp as (x & l' & ->).
+    rewrite -> fold_left_last.
+    replace N with ((N-1)+1) by math.
+    rewrite intervalUr; try math.
+    rewrite label_update. rewrite -> (snd (@fset_foldE _ _ _ _)); auto.
+    2: intros; destruct (v a), (v b); unfold val_int_add; try math.
+    2: rewrite indom_label_eq indom_interval; intros ?; math.
+    rewrite length_last in Hlen. simpl in Hlen. inversion Hlen.
+    rewrite -> IH with (Larr:=l'); try math.
+    2:{ intros. rewrite indom_interval in H. rewrite -> Hcorr.
+      { rewrite nth_last_case. case_if; try math; auto. }
+      { rewrite indom_interval. math. }
+    }
+    rewrite Hcorr. 2: rewrite indom_interval; math.
+    rewrite nth_last_case. case_if; try math.
+    by rewrite comm_val_int_add.
+  }
+Qed. 
+
 Lemma hcells_form_transform_pre (Z L : int) (HZpos : (0 <= Z)%Z) (HLpos : (0 <= L)%Z) (px : loc) (l : D) (hv : int -> val) 
   (Larr : list val) 
   (Hlen : length Larr = abs L)
@@ -735,7 +792,9 @@ Definition rlsum_func :=
   <{ fun "x_ind" "x_val" => 
       let "s" = ref 0 in 
       loop ; 
-      ! "s"
+      let "res" = ! "s" in
+      free "s"; 
+      "res"
   }>.
 
 Definition rli_whilecond (i : int) (real_x_ind real_j : trm) :=
@@ -759,7 +818,9 @@ Definition rli_func (i : int) :=
   <{ fun "x_ind" "x_val" => 
       let "j" = ref 0 in 
       loop ; 
-      (let "tmp" = ! "j" in (val_array_get "x_val" "tmp"))
+      let "tmp" = ! "j" in 
+      free "j";
+      (val_array_get "x_val" "tmp")
   }>.
 
 Definition rl_loopbody (real_x real_x_ind real_x_val real_i real_k : trm) :=
@@ -781,6 +842,7 @@ Definition rl_func :=
       let "x" = val_alloc al in
       let "i" = ref 0 in 
       loop ; 
+      free "i"; 
       "x"
   }>.
 
@@ -802,26 +864,6 @@ Fact For_subst ZZ NN t x v :
 Proof using.
   intros. unfold For, For_aux. simpl; case_var; eqsolve.
 Qed.
-
-Definition val_int_add (a b : val) :=
-  (match a with val_int a' => a' | _ => 0 end) + 
-    (match b with val_int a' => a' | _ => 0 end).
-
-Fact comm_val_int_add : comm val_int_add.
-Proof using. 
-  clear.
-  hnf. intros. unfold val_int_add. destruct x, y; try math; auto.
-Qed.
-
-Fact assoc_val_int_add : assoc val_int_add.
-Proof using. 
-  clear.
-  hnf. intros. unfold val_int_add. destruct x, y, z; try math; auto.
-Qed.
-
-Lemma val_int_add_distr (a b : int) :
-  val_int (a + b) = val_int_add (val_int a) (val_int b).
-Proof eq_refl.
 
 (* Definition int_add_val_int (b : int) (a : val) :=
   b + (match a with val_int a' => a' | _ => 0 end). *)
@@ -1066,7 +1108,7 @@ Lemma rli_func_spec : forall (d : D) (px_ind px_val : loc) (k : int)
   htriple (single d tt) 
     (fun=> rli_func k px_ind px_val)
     (arr_x_ind px_ind d \* arr_x_val px_val d)
-    (fun hv => \[hv d = val_int (nth (abs a) Lval)] \* arr_x_ind px_ind d \* arr_x_val px_val d \* \Top).
+    (fun hv => \[hv d = val_int (nth (abs a) Lval)] \* arr_x_ind px_ind d \* arr_x_val px_val d).
 Proof.
   intros. 
   unfold rli_func.
@@ -1093,7 +1135,8 @@ Proof.
   remember (pj d) as pj0.
   erewrite -> wp_ht_eq with (ht2:=
     fun=> trm_seq (While (rli_whilecond k px_ind pj0) (rli_whilebody pj0)) 
-      (trm_let "tmp" (val_get pj0) (val_array_get px_val "tmp"))).
+      (trm_let "tmp" (val_get pj0) (trm_seq (val_free pj0)
+          (val_array_get px_val "tmp")))).
   2:{ 
     intros. unfolds While, While_aux, rli_whilecond, rli_whilebody. 
     rewrite -> indom_single_eq in H. by subst.
@@ -1160,6 +1203,7 @@ Proof.
     1: apply himpl_refl.
     xsimpl.
     intros ? ->.
+    xwp. xseq. xwp. xapp.
 
     (* restore the thing array get after seq *)
     apply wp_equiv.
@@ -1353,6 +1397,7 @@ Proof.
     1: apply himpl_refl.
     xsimpl.
     intros ? ->.
+    xwp. xseq. xwp. xapp. 
 
     (* restore the thing array get after seq *)
     apply wp_equiv.
@@ -1693,7 +1738,12 @@ Lemma rlsum_rli_align_step : forall (px_ind px_val : loc) (ps0 : loc),
       (fset_fold (val_int 0) 
         (* (fun d acc => int_add_val_int acc (hveta d)) *)
         (fun d acc => val_int_add acc (hveta d))
-        (label (Lab (pair 2 0) (interval 0 N)))) \* \Top) hv).
+        (label (Lab (pair 2 0) (interval 0 N)))) \*
+        arr_x_ind px_ind (⟨(1, 0), 0⟩)%arr \*
+          arr_x_val px_val (⟨(1, 0), 0⟩)%arr \*
+          (\*_(d <- interval 0 N)
+              arr_x_ind px_ind (⟨(2, 0), d⟩)%arr \*
+              arr_x_val px_val (⟨(2, 0), d⟩)%arr)) hv).
 Proof.
   intros.
   rewrite -> Union_localization.
@@ -1718,8 +1768,7 @@ Proof.
   }
   eapply xfor_big_op_lemma with
     (Inv:=fun=> arr_x_ind px_ind (⟨(1, 0), 0⟩)%arr \*
-      arr_x_val px_val (⟨(1, 0), 0⟩)%arr \* \Top)
-    (* need \Top to consume some memory *)
+      arr_x_val px_val (⟨(1, 0), 0⟩)%arr)
     (R:=fun j => 
       (arr_x_ind px_ind (Lab (2, 0) j) \* arr_x_val px_val (Lab (2, 0) j)))
     (R':=fun j => 
@@ -1787,11 +1836,29 @@ Proof.
   }
   (* post *)
   2:{
-    intros. xsimpl.
-    rewrite -> hstars_pick_last_4. 
-    eapply himpl_trans.
-    1: apply himpl_frame_l.
-    2: apply himpl_frame_r; xsimpl.
+    intros. rewrite <- interval_segmentation at 2. xsimpl.
+    rewrite <- Union_localization.
+    2:{
+      (* repeat *)
+      intros i j Hii Hjj H. unfold ind_seg. 
+      rewrite -> indom_interval in Hii, Hjj.
+      destruct Hii as (Hii1 & Hii2), Hjj as (Hjj1 & Hjj2).
+      apply disjoint_of_not_indom_both.
+      intros x Hi Hj. rewrite -> indom_interval in Hi, Hj.
+      destruct (Z.leb (i + 1) j) eqn:E.
+      { rewrite -> Z.leb_le in E.
+        apply H_Lind_inc' in E; try math.
+      }
+      { destruct (Z.leb (j + 1) i) eqn:E'.
+        { rewrite -> Z.leb_le in E'.
+          apply H_Lind_inc' in E'; try math.
+        }
+        rewrite -> Z.leb_gt in E, E'.
+        math.
+      }
+    }
+    xsimpl.
+
     match goal with |- himpl (hsingle _ _ ?v) (hsingle _ _ ?v') =>
       enough (v = v') end.
     1:{ rewrite -> H. apply himpl_refl. }
@@ -1844,14 +1911,14 @@ Proof.
           \[hv d = val_int (nth (abs l) Lval)]) \*
         (\*_(d <- (label (Lab (2, 0) (ind_seg l))))
           (arr_x_ind px_ind (Lab (2, 0) (eld d)) \* 
-          arr_x_val px_val (Lab (2, 0) (eld d)))) \* \Top).
+          arr_x_val px_val (Lab (2, 0) (eld d))))).
     2: xsimpl.
     1:{
       eapply htriple_conseq.
       1: apply htriple_union_pointwise with (Q:=
         fun d hv => 
             \[hv d = val_int (nth (abs l) Lval)] \*
-            arr_x_ind px_ind d \* arr_x_val px_val d \* \Top).
+            arr_x_ind px_ind d \* arr_x_val px_val d).
       3: xsimpl.
       2:{
         intros d Hin.
@@ -1909,8 +1976,7 @@ Proof.
       apply rlsum_loopbody_spec.
       math.
     }
-    xsimpl. intros r. rewrite <- hstar_hempty_r at 1.
-    eapply himpl_frame_lr. 2: xsimpl.
+    xsimpl. intros r.
     rewrite -> fold_fset_eq with (f2:=fun _ acc => acc + nth (abs l) Lval).
     2:{
       intros (ll, d) HH. 
@@ -2119,7 +2185,11 @@ Lemma rlsum_rli_ntriple : forall (px_ind px_val : loc),
     (fun hv => \[hv (Lab (pair 1 0) 0) = 
       fset_fold (val_int 0) 
         (fun d acc => val_int_add acc (hv d))
-        (label (Lab (pair 2 0) (interval 0 N)))] \* \Top).
+        (label (Lab (pair 2 0) (interval 0 N)))] \*
+      (\*_(d <- ⟨pair 1 0, single 0 tt⟩) 
+      ((arr_x_ind px_ind d) \* (arr_x_val px_val d))) \*
+     (\*_(d <- ⟨pair 2 0, interval 0 N⟩) 
+      ((arr_x_ind px_ind d) \* (arr_x_val px_val d)))).
 Proof.
   intros.
   unfold rlsum_func.
@@ -2172,7 +2242,8 @@ Proof.
   (* use only one point location of ps; then forget ps *)
   remember (ps (Lab (1, 0) 0)) as ps0.
   erewrite -> wp_ht_eq with (ht2:=
-    fun=> trm_seq (For 0 M (trm_fun "i" (rlsum_loopbody px_ind px_val ps0 "i"))) (<{ ! ps0 }>)).
+    fun=> trm_seq (For 0 M (trm_fun "i" (rlsum_loopbody px_ind px_val ps0 "i"))) 
+      (trm_let "res" (val_get ps0) (trm_seq (val_free ps0) "res"))).
   2:{ 
     intros. unfolds label, rlsum_loopbody. 
     rewrite -> indom_Union in H. 
@@ -2204,18 +2275,27 @@ Proof.
     by rewrite -> indom_union_eq; right.
   }
   intros.
-  simpl. eapply htriple_conseq_frame with (H2:=\Top).
-  1: apply htriple_get.
-  1: apply himpl_frame_l.
+  simpl. 
+  eapply htriple_conseq_frame with (Q1:=fun hv2 => \[hv2 = fun=> fset_fold (val_int 0) 
+    (fun d acc => val_int_add acc (hv d))
+    (label (Lab (pair 2 0) (interval 0 N)))]).
+  2: apply himpl_frame_r.
+  1:{
+    apply wp_equiv. xwp. xlet.
+    apply wp_equiv. rewrite label_single.
+    eapply htriple_conseq.
+    2:{ rewrite <- hbig_fset_label_single' with (Q:=fun d0 => ps0 ~(d0)~> _). xsimpl. }
+    1: apply htriple_get.
+    xsimpl. intros r ->.
+    xwp. xseq. xwp. xapp. xwp. xval. by xsimpl.
+  }
   1: xsimpl.
-  1: match goal with |- himpl (hsingle _ _ ?vv) _ => instantiate (1:=fun=> vv) end.
-  1: apply himpl_refl.
   hnf. intros.
   xsimpl. intros ->.
   unfold uni. rewrite -> indom_label_eq, indom_single_eq. case_if; try eqsolve.
   apply fold_fset_eq.
   intros. extens. intros. case_if; try reflexivity.
-  destruct d as (ll, d). apply indom_label in H, C7. eqsolve.
+  destruct d as (ll, d). apply indom_label in H, C10. eqsolve.
 Qed.
 
 Lemma rl_loopbody_spec (d : D) (px px_ind px_val pi0 : loc) (l : int) (v0 : val)
@@ -2363,7 +2443,11 @@ Lemma rl_rli_align_step : forall (px_ind px_val : loc) (pi0 px : loc),
            \[hv d = nth (abs (eld d)) Larr]) \*
         (* harray (LibList.map val_int Larr) px (Lab (pair 2 0) 0))) \*  *)
         hcells Larr (px + 1)%nat (⟨(3, 0), 0⟩)%arr)) \*
-        \Top).
+        pi0 ~⟨(3%Z, 0%Z), 0⟩~> M \*
+        (\*_(d <- ⟨pair 3 0, single 0 tt⟩) 
+          ((arr_x_ind px_ind d) \* (arr_x_val px_val d))) \*
+        (\*_(d <- ⟨pair 4 0, interval 0 N⟩) 
+          ((arr_x_ind px_ind d) \* (arr_x_val px_val d)))).
 Proof.
   intros.
   eapply xfor_specialized_lemma with
@@ -2374,8 +2458,7 @@ Proof.
         else (0 <= a < M)%Z /\ (nth (abs a) Lind <= i < nth (abs (a + 1)) Lind)%Z] \* 
       pi0 ~⟨(3%Z, 0%Z), 0⟩~> val_int a)) \*
       arr_x_ind px_ind (⟨(3, 0), 0⟩)%arr \*
-      arr_x_val px_val (⟨(3, 0), 0⟩)%arr \* \Top)
-    (* need \Top to consume some memory *)
+      arr_x_val px_val (⟨(3, 0), 0⟩)%arr)
     (R:=fun j => 
       (arr_x_ind px_ind (Lab (4, 0) j) \* arr_x_val px_val (Lab (4, 0) j)))
     (R':=fun j => 
@@ -2401,8 +2484,6 @@ Proof.
     xsimpl.
     rewrite -> ! interval_point_segmentation.
     xsimpl.
-    rewrite <- hstar_hempty_r at 1.
-    apply himpl_frame_lr. 2: xsimpl.
     rewrite -> hcells_form_transform_pre with (Z:=0) (L:=N) (Larr:=(LibList.make (abs N) val_uninit)); 
       try math.
     2: apply zero_le_N.
@@ -2426,8 +2507,7 @@ Proof.
     2: intros; rewrite Hcorr; auto.
     2: replace (i+0) with i by math; auto.
     rewrite -> Nat.add_0_r.
-    xsimpl. rewrite <- hstar_hempty_l at 1.
-    apply himpl_frame_lr; xsimpl.
+    xsimpl. 
     rewrite -> hstar_fset_pure. xsimpl. 
     intros. rewrite -> indom_interval in H. rewrite -> Hcorr; auto; try math.
   }
@@ -2519,7 +2599,11 @@ Lemma rl_rli_ntriple : forall (px_ind px_val : loc),
         (@hexists (list val) (fun Larr =>
         \[length Larr = (abs N)] \* 
         (\*_(d <- ⟨pair 4 0, interval 0 N⟩) \[hv d = (nth (abs (eld d)) Larr)]) \*
-        harray Larr px (Lab (pair 3 0) 0))))) \* \Top).
+        harray Larr px (Lab (pair 3 0) 0))))) \* 
+        (\*_(d <- ⟨pair 3 0, single 0 tt⟩) 
+          ((arr_x_ind px_ind d) \* (arr_x_val px_val d))) \*
+        (\*_(d <- ⟨pair 4 0, interval 0 N⟩) 
+          ((arr_x_ind px_ind d) \* (arr_x_val px_val d)))).
 Proof.
   intros.
   unfold rl_func.
@@ -2554,7 +2638,8 @@ Proof.
   (* single point forget *)
   remember (pi[3](0)) as pi0.
   erewrite -> wp_ht_eq with (ht2:=
-    fun=> trm_seq (For 0 N (trm_fun "k" (rl_loopbody px px_ind px_val pi0 "k"))) (<{ px }>)).
+    fun=> trm_seq (For 0 N (trm_fun "k" (rl_loopbody px px_ind px_val pi0 "k"))) 
+      (trm_seq (val_free pi0) px)).
   2:{ 
     intros (ll, d) H. rewrite indom_label_eq indom_single_eq in H.
     destruct H as (<- & <-).
@@ -2588,41 +2673,45 @@ Proof.
   }
   1:{
     (* delicate control ... *)
-    intros. apply wp_equiv. xwp. xval.
+    intros. apply wp_equiv. xwp. xseq.
+    xsimpl. intros Larr Hlen.
+    rewrite -> hstar_fset_pure. 
+    xsimpl. intros Hcorr.
+    apply wp_equiv. rewrite label_single.
+    eapply htriple_conseq_frame with (H1:=pi0 ~⟨(3%Z, 0%Z), 0⟩~> M).
+    1:{ rewrite <- hbig_fset_label_single' with (Q:=fun d0 => pi0 ~(d0)~> M).
+      apply htriple_free.
+    }
+    1: xsimpl.
+    xsimpl. xwp. xval.
+    rewrite <- hstars_pick_last_4.
     rewrite -> hstar_assoc at 1.
-    rewrite -> hstar_comm with (H1:=\Top).
-    rewrite <- hstar_assoc at 1.
+    rewrite -> hstars_pick_last_4.
     apply himpl_frame_lr. 2: xsimpl.
-    rewrite -> hstar_hexists.
-    apply himpl_hexists_l.
-    intros Larr.
-    rewrite -> hstar_fset_pure.
-    rewrite -> hstar_assoc at 1.
-    apply himpl_hstar_hpure_l. intros Hlen.
-    rewrite -> hstar_assoc at 1.
-    apply himpl_hstar_hpure_l. intros Hcorr.
     apply himpl_hexists_r with (x:=px).
     apply himpl_hstar_hpure_r. 
     1:{
-      unfold uni. rewrite label_single indom_single_eq. case_if; eqsolve.
+      unfold uni. rewrite indom_single_eq. case_if; eqsolve.
     }
     apply himpl_hexists_r with (x:=Larr).
     unfold harray. xsimpl; auto.
     rewrite -> hstar_fset_pure.
     xsimpl.
     2: by rewrite -> length_make, -> Hlen.
-    intros. unfold uni. rewrite label_single indom_single_eq. 
+    intros. unfold uni. rewrite indom_single_eq. 
     case_if; try eqsolve. rewrite Hcorr; auto.
-    by rewrite indom_label_eq.
   }
   {
-    intros. xsimpl; auto.
+    intros. apply himpl_frame_lr.
+    2: xsimpl.
+    apply himpl_hexists_l. intros pxx.
+    apply himpl_hexists_r with (x:=pxx).
+    xsimpl; auto.
     { intros. rewrite <- H; auto.
       rewrite indom_union_eq ! indom_label_eq indom_single_eq.
       intuition.
     }
-    { intros. rewrite <- hstar_hempty_r at 1.
-      apply himpl_frame_lr. 2: xsimpl.
+    { intros.
       apply hbig_fset_himpl. 
       intros. xsimpl. intros HH. rewrite <- HH, -> H; auto.
       rewrite indom_union_eq ! indom_label_eq indom_single_eq.
@@ -2651,12 +2740,21 @@ Lemma rlsum_rl_rli_ntriple_pre : forall (px_ind px_val : loc),
       (\[hv (Lab (pair 1 0) 0) = 
       fset_fold (val_int 0) 
         (fun d acc => val_int_add acc (hv d))
-        (label (Lab (pair 2 0) (interval 0 N)))] \* \Top) \*
+        (label (Lab (pair 2 0) (interval 0 N)))] \*
+        (\*_(d <- ⟨pair 1 0, single 0 tt⟩) 
+          ((arr_x_ind px_ind d) \* (arr_x_val px_val d))) \*
+        (\*_(d <- ⟨pair 2 0, interval 0 N⟩) 
+          ((arr_x_ind px_ind d) \* (arr_x_val px_val d)))
+      ) \*
       (@hexists loc (fun px => \[(hv (Lab (pair 3 0) 0)) = val_loc px] \*
         (@hexists (list val) (fun Larr =>
         \[length Larr = (abs N)] \* 
         (\*_(d <- ⟨pair 4 0, interval 0 N⟩) \[hv d = (nth (abs (eld d)) Larr)]) \*
-        harray Larr px (Lab (pair 3 0) 0))))) \* \Top).
+          harray Larr px (Lab (pair 3 0) 0))))) \* 
+        (\*_(d <- ⟨pair 3 0, single 0 tt⟩) 
+          ((arr_x_ind px_ind d) \* (arr_x_val px_val d))) \*
+        (\*_(d <- ⟨pair 4 0, interval 0 N⟩) 
+          ((arr_x_ind px_ind d) \* (arr_x_val px_val d)))).
 Proof.
   intros.
   unfold nwp. apply wp_equiv. 
@@ -2686,8 +2784,7 @@ Proof.
       tauto.
     }
     { intros. auto. }
-    { intros. rewrite <- hstar_hempty_r at 1.
-      eapply himpl_frame_lr. 2: xsimpl.
+    { intros.
       apply hbig_fset_himpl. 
       intros. xsimpl. intros HH. rewrite <- HH, -> H; auto.
       rewrite indom_union_eq ! indom_label_eq indom_single_eq.
@@ -2727,11 +2824,31 @@ Proof.
 Qed.
 
 (* simple 2 to 1 *)
-
+(*
 Fact hsub_hsingle_merge (f : D -> D) (p : loc) (d1 d2 : D) (Hn : d1 <> d2)
   (H1 : f d1 = d1) (H2 : f d2 = d1) 
   (Hdom : forall d, f d = d1 -> d = d1 \/ d = d2)
-  (v : val) :
+  (Larr : list val) :
+  hsub (harray Larr p d1 \* harray Larr p d2) f = harray Larr p d1.
+Proof.
+  extens. intros h.
+  split; intros Hh.
+  {
+    unfold hsub in Hh. destruct Hh as (h' & <- & Hvalid & Hh').
+    apply hstar_inv in Hh'.
+    destruct Hh' as (h1 & h2 & Hh1 & Hh2 & Hdj & ->).
+
+
+    apply harray_intro
+    apply hsingle_inv in Hh1, Hh2. subst h1 h2.
+    match goal with |- _ ?hf => enough (hf = (Fmap.single (p, d1) v)) as Htmp end.
+    1: rewrite Htmp; apply hsingle_intro.
+*)
+
+Fact hsub_hsingle_merge (f : D -> D) (d1 d2 : D) (Hn : d1 <> d2)
+  (H1 : f d1 = d1) (H2 : f d2 = d1) 
+  (Hdom : forall d, f d = d1 -> d = d1 \/ d = d2)
+  (p : loc) (v : val) :
   hsub (p ~(d1)~> v \* p ~(d2)~> v) f = p ~(d1)~> v.
 Proof.
   extens. intros h.
@@ -2840,11 +2957,10 @@ Proof.
   }
 Qed.
 
-(*
-Fact htop_hexists_comm {A : Type} (H : A -> hhprop) : 
-  (hexists H) \* \Top = (hexists (fun a => H a \* \Top)).
+Fact hstar_hexists_comm {A : Type} (H : A -> hhprop) H' : 
+  (hexists H) \* H' = (hexists (fun a => H a \* H')).
 Proof. xsimpl. Qed.
-*)
+
 (*
 Fact hsub_htop_comm H f : hsub (\Top \* H) f = (\Top \* hsub H f).
 Proof.
@@ -2902,6 +3018,21 @@ Proof.
   induction L.
   
 *)
+
+Fact local_union_fs_l {D} (fs1 fs2 : fset D) (Hdj : disjoint fs1 fs2) h : 
+  local fs1 h -> local (fs1 \u fs2) h.
+Proof.
+  intros. unfolds local.
+  intros. rewrite indom_union_eq. left. by eapply H; eauto.
+Qed.
+
+Fact local_union_fs_r {D} (fs1 fs2 : fset D) (Hdj : disjoint fs1 fs2) h : 
+  local fs2 h -> local (fs1 \u fs2) h.
+Proof.
+  intros. unfolds local.
+  intros. rewrite indom_union_eq. right. by eapply H; eauto.
+Qed.
+
 (* a better composition *)
 Lemma rlsum_rl_rli_ntriple : forall (px_ind px_val : loc),
   ntriple 
@@ -2919,7 +3050,7 @@ Lemma rlsum_rl_rli_ntriple : forall (px_ind px_val : loc),
       (@hexists loc (fun px => \[(hv (Lab (pair 3 0) 0)) = val_loc px] \*
         (@hexists (list val) (fun Larr =>
         \[length Larr = (abs N) /\
-        hv (Lab (pair 1 0) 0) = fold_right val_int_add (val_int 0) Larr] \* 
+        hv (Lab (pair 1 0) 0) = fold_left val_int_add (val_int 0) Larr] \* 
         (\*_(d <- ⟨pair 2 0, interval 0 N⟩) \[hv d = (nth (abs (eld d)) Larr)]) \*
         harray Larr px (Lab (pair 3 0) 0))))) \* \Top).
 Proof.
@@ -3050,8 +3181,6 @@ Proof.
       }
       { auto. }
       { 
-        rewrite <- hstar_hempty_r at 1.
-        eapply himpl_frame_lr. 2: xsimpl.
         apply hbig_fset_himpl. 
         intros. xsimpl. intros HH. rewrite <- HH.
         symmetry. apply H'. eqsolve.
@@ -3068,8 +3197,6 @@ Proof.
       }
       { auto. }
       { 
-        rewrite <- hstar_hempty_r at 1.
-        eapply himpl_frame_lr. 2: xsimpl.
         apply hbig_fset_himpl. 
         intros. xsimpl. intros HH. rewrite <- HH.
         apply H'. eqsolve.
@@ -3156,6 +3283,63 @@ Proof.
       repeat case_if; try eqsolve.
     }
 
+    (* decomposite; matching *)
+    rewrite ! hstar_fset_Lab.
+    rewrite <- hbig_fset_hstar.
+    erewrite hsub_hstar_fset_squash with (fsi:=fun d : int => 
+      single (Lab (2, 0) d) tt \u single (Lab (4, 0) d) tt).
+    3:{
+      intros (lx, dx) (ly, dy). intros.
+      rewrite -> indom_union_eq, -> ! indom_single_eq in H2, H3.
+      subst f. simpl.
+      rewrite ! indom_label_eq. 
+      (repeat case_if); destruct H2, H3; try eqsolve.
+    }
+    2:{
+      (* repeat *)
+      intros. hlocal.
+      all: unfold arr_x_ind, arr_x_val, harray; hlocal.
+      all: hnf; intros h Hh.
+      1-4: apply local_union_fs_l; try apply disjoint_single_single; try eqsolve.
+      5-8: apply local_union_fs_r; try apply disjoint_single_single; try eqsolve.
+      2,4,6,8: apply hcells_inv in Hh; subst h; apply hconseq_local.
+      all: apply hheader_inv in Hh; destruct Hh as (-> & ?); apply local_single.
+    }
+
+    apply hbig_fset_himpl.
+    intros.
+    (* get some pure thing *)
+    unfold arr_x_ind, arr_x_val, harray, hheader. 
+    simpl. rewrite -> ! length_map, -> ! H_length_Lind, -> ! H_length_Lval.
+    xsimpl. intros NN1 NN2. unfold null in NN1, NN2.
+    (* hack *)
+    assert (px_ind <> 0%nat) as Hn1 by (intros ->; by apply NN1).
+    assert (px_val <> 0%nat) as Hn2 by (intros ->; by apply NN2).
+    remember (\[(px_ind, (⟨(2, 0), d⟩)%arr) <> null (⟨(2, 0), d⟩)%arr] \*
+      \[(px_val, (⟨(2, 0), d⟩)%arr) <> null (⟨(2, 0), d⟩)%arr] \*
+      \[(px_ind, (⟨(4, 0), d⟩)%arr) <> null (⟨(4, 0), d⟩)%arr] \*
+      \[(px_val, (⟨(4, 0), d⟩)%arr) <> null (⟨(4, 0), d⟩)%arr] \*
+      ((px_ind ~⟨(2%Z, 0%Z), d⟩~> val_header (abs (M + 1)) \* 
+        hcells (LibList.map val_int Lind) (px_ind + 1)%nat (⟨(2, 0), d⟩)%arr) \*
+      (px_ind ~⟨(4%Z, 0%Z), d⟩~> val_header (abs (M + 1)) \*
+        hcells (LibList.map val_int Lval) (px_val + 1)%nat (⟨(4, 0), d⟩)%arr)) \*
+      ((px_val ~⟨(2%Z, 0%Z), d⟩~> val_header (abs M) \*
+        hcells (LibList.map val_int Lval) (px_val + 1)%nat (⟨(2, 0), d⟩)%arr) \*
+      (px_val ~⟨(4%Z, 0%Z), d⟩~> val_header (abs M) \*
+        hcells (LibList.map val_int Lind) (px_ind + 1)%nat (⟨(4, 0), d⟩)%arr))
+    ) as Htarg.
+    match goal with |- context[hsub ?Hsrc _] => assert (Hsrc = Htarg) as Htmp end.
+    1: subst Htarg; xsimpl; auto.
+    rewrite Htmp. clear Htmp. subst Htarg.
+    rewrite ! hsub_hpure_comm.
+    xsimpl.
+    1-4: unfold null; simpl; eqsolve.
+
+    
+
+    unfold  
+    xsimpl.
+
     rewrite <- hbig_fset_union.
     2-4: hnf; auto.
     2:{ apply disjoint_of_not_indom_both. intros (?, ?).
@@ -3190,11 +3374,71 @@ Proof.
         apply local_single.
     }
     {
-      intros. simpl.
-      rewrite filter_union.
+      intros (l, d) H. simpl.
+      (* rewrite filter_union.
       2: { apply disjoint_of_not_indom_both. intros (?, ?).
         rewrite ! indom_label_eq. eqsolve.
+      } *)
+      rewrite indom_label_eq in H. destruct H as (<- & H).
+      assert (filter (fun y : D => fun=> f y = (Lab (2, 0) d)) 
+        (⟨(2, 0), interval 0 N⟩ \u ⟨(4, 0), interval 0 N⟩) = 
+        single (Lab (2, 0) d) tt \u single (Lab (4, 0) d) tt) as Htmp.
+      { apply fset_extens. intros (l', d').
+        rewrite -> filter_indom. 2: constructor; exists tt; auto.
+        subst f. simpl.
+        rewrite ! indom_union_eq ! indom_single_eq ! indom_label_eq.
+        case_if.
+        { destruct C as (<- & C). eqsolve. }
+        { split. intros ([|], HH); try eqsolve.
+          intros [|]. all: inversion H0; subst l' d'; eqsolve.
+        }
       }
+      rewrite Htmp. clear Htmp.
+      rewrite <- update_eq_union_single. 
+      unfold hbig_fset. 
+      rewrite -> (snd (@fset_foldE _ _ _ _)); auto.
+      2: intros; xsimpl.
+      2: rewrite indom_single_eq; eqsolve.
+      rewrite update_empty.
+      rewrite -> (snd (@fset_foldE _ _ _ _)); auto.
+      2: intros; xsimpl.
+      rewrite -> (fst (@fset_foldE _ _ _ _)); auto.
+      rewrite hstar_hempty_r.
+
+      (* get some pure thing *)
+      unfold arr_x_ind, arr_x_val, harray, hheader. 
+      simpl. rewrite -> ! length_map, -> ! H_length_Lind, -> ! H_length_Lval.
+      remember (\[(px_ind, (⟨(2, 0), d⟩)%arr) <> null (⟨(2, 0), d⟩)%arr] \*
+        \[(px_val, (⟨(2, 0), d⟩)%arr) <> null (⟨(2, 0), d⟩)%arr] \*
+        \[(px_ind, (⟨(4, 0), d⟩)%arr) <> null (⟨(4, 0), d⟩)%arr] \*
+        \[(px_val, (⟨(4, 0), d⟩)%arr) <> null (⟨(4, 0), d⟩)%arr] \*
+        ((px_ind ~⟨(2%Z, 0%Z), d⟩~> val_header (abs (M + 1)) \* 
+          hcells (LibList.map val_int Lind) (px_ind + 1)%nat (⟨(2, 0), d⟩)%arr) \*
+        (px_ind ~⟨(4%Z, 0%Z), d⟩~> val_header (abs (M + 1)) \*
+          hcells (LibList.map val_int Lval) (px_val + 1)%nat (⟨(4, 0), d⟩)%arr)) \*
+        ((px_val ~⟨(2%Z, 0%Z), d⟩~> val_header (abs M) \*
+          hcells (LibList.map val_int Lval) (px_val + 1)%nat (⟨(2, 0), d⟩)%arr) \*
+        (px_val ~⟨(4%Z, 0%Z), d⟩~> val_header (abs M) \*
+          hcells (LibList.map val_int Lind) (px_ind + 1)%nat (⟨(4, 0), d⟩)%arr))
+      ) as Htarg.
+      remember (\[(px_ind, (⟨(2, 0), d⟩)%arr) <> null (⟨(2, 0), d⟩)%arr] \*
+        \[(px_val, (⟨(2, 0), d⟩)%arr) <> null (⟨(2, 0), d⟩)%arr] \*
+        (px_ind ~⟨(2%Z, 0%Z), d⟩~> val_header (abs (M + 1)) \*
+          hcells (LibList.map val_int Lind) (px_ind + 1)%nat (⟨(2, 0), d⟩)%arr) \*
+        (px_val ~⟨(2%Z, 0%Z), d⟩~> val_header (abs M) \*
+          hcells (LibList.map val_int Lval) (px_val + 1)%nat (⟨(2, 0), d⟩)%arr)
+      ) as Htarg'.
+      match goal with |- hsub ?Hsrc _ = _ => assert (Hsrc = Htarg) as Htmp end.
+      1: subst Htarg; xsimpl; auto.
+      match goal with |- hsub _ _ = ?Hsrc' => assert (Hsrc' = Htarg') as Htmp' end.
+      1: subst Htarg'; xsimpl; auto.
+      rewrite Htmp Htmp'. clear Htmp Htmp'.
+      subst Htarg Htarg'.
+
+      rewrite ! hsub_hpure_comm.
+
+
+
 
       (* array squash *)
       admit.
@@ -3203,10 +3447,6 @@ Proof.
   (* post sub *)
   { 
     (* into a better shape *)
-
-    admit.
-
-    (*
     (* moving the \Top to innermost still does not work! *)
     apply qimpl_trans with (Q2:=fun hv =>
       hsub
@@ -3217,46 +3457,95 @@ Proof.
             (@hexists (list val) (fun Larr =>
             \[length Larr = (abs N)] \* 
             (\*_(d <- ⟨pair 4 0, interval 0 N⟩) \[(hv \o f) d = (nth (abs (eld d)) Larr)]) \*
-            harray Larr px (Lab (pair 3 0) 0)  \* \Top))))) f).
+            harray Larr px (Lab (pair 3 0) 0))))) \*
+        (\*_(d <- ⟨(1, 0), single 0 tt⟩)
+          arr_x_ind px_ind d \* arr_x_val px_val d) \*
+        (\*_(d <- ⟨(3, 0), single 0 tt⟩)
+          arr_x_ind px_ind d \* arr_x_val px_val d) \*
+        (\*_(d <- ⟨(2, 0), interval 0 N⟩)
+          arr_x_ind px_ind d \* arr_x_val px_val d) \*
+        (\*_(d <- ⟨(4, 0), interval 0 N⟩)
+          arr_x_ind px_ind d \* arr_x_val px_val d)) f).
     1:{
       xsimpl. intros.
       match goal with |- himpl (hsub ?a _) (hsub ?b _) => 
         assert (a = b) as HHH end.
       1:{
-        rewrite -> hstar_comm with (H2:=\Top).
+        (* hand control *)
         rewrite hstar_assoc.
-        rewrite hstars_pick_last_4.  
-        rewrite <- hstar_assoc, -> hstar_htop_htop.
-        rewrite <- hstars_pick_last_3.
-        f_equal. 
-        rewrite ! htop_hexists_comm.
-        f_equal. extens. intros. 
-        rewrite hstar_assoc.
-        (* go fully classical *)
-        match goal with |- iff ?a ?b => enough (a = b) as Htmp end.
-        1: by rewrite Htmp.
-        f_equal. 
-        rewrite htop_hexists_comm.
-        f_equal. extens. intros.
-        by rewrite ! hstar_assoc.
-      }  
+        f_equal.
+        rewrite -> hstar_comm.
+        rewrite -> hstar_assoc.
+        f_equal.
+        xsimpl.
+      }
       by rewrite HHH.
     }
     hnf. intros v.
     rewrite -> hsub_hpure_comm. apply himpl_hstar_hpure_l.
     intros H1.
+    rewrite -> hstar_hexists_comm.
     rewrite -> hsub_hstar. apply himpl_hexists_l.
     intros px.
+    rewrite hstar_assoc.
     rewrite -> hsub_hpure_comm. apply himpl_hstar_hpure_l.
     intros H2.
+    rewrite -> hstar_hexists_comm.
     rewrite -> hsub_hstar. apply himpl_hexists_l.
     intros Larr.
+    rewrite hstar_assoc.
     rewrite -> hsub_hpure_comm. apply himpl_hstar_hpure_l.
     intros H3.
+    rewrite hstar_assoc.
     rewrite -> hstar_fset_pure.
     rewrite -> hsub_hpure_comm. apply himpl_hstar_hpure_l.
     intros H4.
-    *)
+    rewrite -> hsub_hstar_id_l with (fs:=⟨(3, 0), single 0 tt⟩).
+    1: apply himpl_frame_lr. 2: xsimpl.
+    4:{ rewrite label_single.
+      hlocal.
+      all: unfold arr_x_ind, arr_x_val, harray; hlocal.
+      2: hnf; intros h Hh; apply hcells_inv in Hh; subst h; apply hconseq_local.
+      hnf; intros h Hh; apply hheader_inv in Hh; destruct Hh as (-> & ?); 
+        apply local_single.
+    }
+    2:{
+      intros (ll, d). rewrite label_single indom_single_eq. intros <-.
+      subst f. simpl. rewrite indom_label_eq. case_if; eqsolve.
+    }
+    2:{
+      subst f. simpl.
+      intros (ll, d) (ll', d') H HH.
+      rewrite ! indom_label_eq in HH.
+      rewrite ! label_single ! indom_single_eq. 
+      repeat case_if; try eqsolve.
+    }
+    apply himpl_hexists_r with (x:=px).
+    assert (f[1](0) = (Lab (1, 0) 0)) as Hid1.
+    { subst f. simpl. rewrite indom_label_eq. case_if; eqsolve. }
+    assert (f[3](0) = (Lab (3, 0) 0)) as Hid3.
+    { subst f. simpl. rewrite indom_label_eq. case_if; eqsolve. }
+    assert (forall d, indom (interval 0 N) d -> f[2](d) = (Lab (2, 0) d)) as Hid2.
+    { subst f. simpl. intros. rewrite indom_label_eq. case_if; eqsolve. }
+    assert (forall d, indom (interval 0 N) d -> f[4](d) = (Lab (2, 0) d)) as Hid4.
+    { subst f. simpl. intros. rewrite indom_label_eq. case_if; eqsolve. }
+    assert (forall d : int, indom (interval 0 N) d -> v[2](d) = nth (abs d) Larr) as Htmp.
+    { intros. rewrite <- Hid4; auto. apply H4. by rewrite indom_label_eq. }
+    simpl in H2. rewrite Hid3 in H2.
+    apply himpl_hstar_hpure_r; auto.
+    apply himpl_hexists_r with (x:=Larr).
+    simpl in H1. rewrite Hid1 in H1.
+    apply himpl_hstar_hpure_r; auto.
+    1:{ split; auto. rewrite H1.
+      rewrite -> fold_fset_eq with (f2:=fun d acc => val_int (val_int_add acc (v d))).
+      2:{ intros (l, d). rewrite indom_label_eq. intros (<- & H). 
+        extens. intros. rewrite Hid2; auto.
+      }
+      simpl in H4.
+      rewrite -> fold_fset_summation_dedicated with (Larr:=Larr); try math; auto.
+      apply zero_le_N.
+    }
+    xsimpl. rewrite hstar_fset_pure. xsimpl. auto.
   }
 Admitted.
 
@@ -3274,10 +3563,13 @@ Theorem rlsum_rl_ntriple : forall (px_ind px_val : loc),
       (@hexists loc (fun px => \[(hv (Lab (pair 3 0) 0)) = val_loc px] \*
         (@hexists (list val) (fun Larr =>
         \[length Larr = (abs N) /\
-        hv (Lab (pair 1 0) 0) = fold_right val_int_add (val_int 0) Larr] \* 
+        hv (Lab (pair 1 0) 0) = fold_left val_int_add (val_int 0) Larr] \* 
         harray Larr px (Lab (pair 3 0) 0))))) \* \Top).
 Proof.
   intros.
+
+
+
 Admitted.
 
 End Demo.
