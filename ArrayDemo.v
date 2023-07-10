@@ -12,6 +12,41 @@ Module IntDom : Domain with Definition type := int.
 Definition type := int.
 End IntDom.
 
+Lemma Union_fmap_inv {A B T : Type} (fmi : T -> fmap A B) (fs : fset T) x y : 
+  (forall t t', t <> t' -> disjoint (fmi t) (fmi t')) ->
+  fmap_data (Union fs fmi) x = Some y -> 
+  exists t : T, indom fs t /\ fmap_data (fmi t) x = Some y.
+Proof.
+  intros Hdj. pattern fs. apply fset_ind; clear fs; intros.
+  { rewrite Union0 in H. simpl in H. eqsolve. }
+  { rewrite Union_upd in H1; auto.
+    simpl in H1. unfold map_union in H1.
+    setoid_rewrite indom_update_eq.
+    destruct (fmap_data (fmi x0) x) eqn:E.
+    { injection H1 as <-.
+      exists x0. tauto.
+    }
+    { apply H in H1.
+      destruct H1 as (t & Hin & H1).
+      exists t. tauto.
+    }
+  }
+Qed.
+
+Lemma Union_fmap_none_inv {A B T : Type} (fmi : T -> fmap A B) (fs : fset T) x : 
+  (forall t t', t <> t' -> disjoint (fmi t) (fmi t')) ->
+  fmap_data (Union fs fmi) x = None -> 
+  forall t : T, indom fs t -> fmap_data (fmi t) x = None.
+Proof.
+  intros Hdj. pattern fs. apply fset_ind; clear fs; intros.
+  { rewrite Union0 in H. unfolds indom, map_indom. by simpl in *. }
+  { rewrite Union_upd in H1; auto.
+    simpl in H1. unfold map_union in H1.
+    destruct (fmap_data (fmi x0) x) eqn:E; try eqsolve.
+    rewrite indom_update_eq in H2. destruct H2 as [ <- | ]; auto.
+  }
+Qed.
+
 Lemma list_from_map {A : Type} `{Inhab A} (f : int -> A) (L : nat) : 
   exists l : list A, length l = L /\
     forall i : int, (0 <= i < L)%Z -> nth (abs i) l = f i.
@@ -42,6 +77,92 @@ Check eq_refl : D = labeled int.
 
 Global Instance Inhab_D : Inhab D. 
 Proof Build_Inhab (ex_intro (fun=> True) (Lab (0, 0) 0) I).
+
+Fact hstar_fset_inv {A : Type} (fs : fset A) : forall (d : D) (p : A -> loc) (v : A -> val) h,
+  (\*_(a <- fs) ((p a) ~(d)~> (v a))) h -> 
+  h = Union fs (fun a => single ((p a), d) (v a)) /\
+  forall a1 a2, indom fs a1 -> indom fs a2 -> a1 <> a2 -> p a1 <> p a2.
+Proof.
+  intros.
+  pose proof H as H'. rewrite hstar_fsetE in H'.
+  destruct H' as (hi & Eh & Hdj & HH).
+  assert (forall i, indom fs i -> hi i = single (p i, d) (v i)) as HH'.
+  { intros. apply HH, hsingle_inv in H0. by rewrite H0. }
+  assert (forall a1 a2 : A,
+    indom fs a1 -> indom fs a2 -> a1 <> a2 -> p a1 <> p a2) as Hr.
+  { intros. apply HH' in H0, H1. pose proof (Hdj _ _ H2) as Htmp.
+    rewrite -> H0, H1 in Htmp. intros E'. rewrite E' in Htmp.
+    by apply disjoint_single_single_same_inv in Htmp.
+  }
+  split; try assumption.
+  subst h.
+  etransitivity. 2: symmetry; apply Union_localization.
+  2:{ 
+    intros. apply disjoint_single_single. intros ?.
+    inversion H3. revert H5. by apply Hr.
+  }
+  apply Union_eq; try assumption.
+  {
+    apply fm_localization.
+    intros. apply disjoint_single_single. intros ?.
+    inversion H3. revert H5. by apply Hr.
+  }
+  { intros. unfold fm_localize, uni. rewrite HH'; auto. case_if; eqsolve. }
+  (*
+  pattern fs. apply fset_ind; clear fs; intros.
+  { rewrite hbig_fset_empty in H. 
+    rewrite Union0. by apply hempty_inv.
+  }
+  { rewrite hbig_fset_update in H1; auto.
+    rewrite Union_localization.
+    2:{ 
+      intros. apply disjoint_single_single. intros ?.
+      inversion H5. revert H7. by apply Hp.
+    }
+    rewrite -> Union_upd.
+    2:{ 
+      intros. apply fm_localization; try assumption.
+      (* repeat *)
+      intros. apply disjoint_single_single. intros ?.
+      inversion H6. revert H8. by apply Hp.
+    }
+    unfold fm_localize at 1. unfold uni. 
+    rewrite indom_update_eq. case_if; try eqsolve.
+    rewrite -> Union_eq with (fmi2:=fm_localize fs (fun a : A => single (p a, d) (v a))).
+    4:{
+      intros. unfold fm_localize, uni.
+      rewrite indom_update_eq. repeat case_if; try eqsolve.
+    }
+    3:{
+      intros. apply fm_localization; try assumption.
+      (* repeat *)
+      intros. apply disjoint_single_single. intros ?.
+      inversion H6. revert H8. apply Hp; try assumption.
+      all: rewrite indom_update_eq; tauto.
+    }
+    2:{ 
+      intros. apply fm_localization; try assumption.
+      (* repeat *)
+      intros. apply disjoint_single_single. intros ?.
+      inversion H6. revert H8. by apply Hp.
+    }
+    rewrite <- Union_localization.
+    2:{
+      (* repeat *)
+      intros. apply disjoint_single_single. intros ?.
+      inversion H5. revert H7. apply Hp; try assumption.
+      all: rewrite indom_update_eq; tauto.
+    }
+    apply hstar_inv in H1.
+    destruct H1 as (h1 & h2 & Hh1 & Hh2 & Hdj & ->).
+    apply hsingle_inv in Hh1. subst h1. f_equal.
+    apply H; auto.
+    (* repeat *)
+    intros. apply Hp; try assumption.
+    all: rewrite indom_update_eq; tauto.
+  }
+  *)
+Qed.
 
 Section Demo.
 
@@ -140,6 +261,21 @@ Proof.
       by rewrite -> nth_cons.
     }
   }
+Qed.
+
+Lemma hcells_form_transform (L : int) (HLpos : (0 <= L)%Z) (px : loc) (l : D) (hv : int -> val) 
+  (Larr : list val) 
+  (Hlen : length Larr = abs L)
+  (Hcorr : forall i : int, (0 <= i < abs L)%Z -> nth (abs i) Larr = hv i) :
+  \*_(d <- interval 0 L) (px + (abs d))%nat ~(l)~> hv d = 
+  hcells Larr px l.
+Proof.
+  etransitivity. 2: etransitivity. 
+  2: apply hcells_form_transform_pre with (Z:=0) (L:=L) (Larr:=Larr) (px:=px) (hv:=hv).
+  6: change (abs 0) with 0%nat; rewrite Nat.add_0_r; reflexivity.
+  all: try math.
+  1: replace (0+L) with L by math; auto.
+  intros. replace (i+0) with i by math; auto.
 Qed.
 
 Definition Sum (fs : fset int) (f : int -> int) : int :=
@@ -2484,11 +2620,11 @@ Proof.
     xsimpl.
     rewrite -> ! interval_point_segmentation.
     xsimpl.
-    rewrite -> hcells_form_transform_pre with (Z:=0) (L:=N) (Larr:=(LibList.make (abs N) val_uninit)); 
+    rewrite -> hcells_form_transform with (L:=N) (Larr:=(LibList.make (abs N) val_uninit)); 
       try math.
     2: apply zero_le_N.
     2: by rewrite -> length_make.
-    1: by rewrite -> Nat.add_0_r.
+    1: apply himpl_refl.
     intros. apply nth_make. math.
   }
   (* post *)
@@ -2501,12 +2637,10 @@ Proof.
     intros a H. 
     rewrite -> Z.leb_refl in H. subst a.
     rewrite -> ! interval_point_segmentation.
-    rewrite -> hcells_form_transform_pre with (Z:=0) (L:=N) (Larr:=Larr); 
+    rewrite -> hcells_form_transform with (L:=N) (Larr:=Larr); 
       try math.
     2: apply zero_le_N.
     2: intros; rewrite Hcorr; auto.
-    2: replace (i+0) with i by math; auto.
-    rewrite -> Nat.add_0_r.
     xsimpl. 
     rewrite -> hstar_fset_pure. xsimpl. 
     intros. rewrite -> indom_interval in H. rewrite -> Hcorr; auto; try math.
@@ -2962,6 +3096,247 @@ Fact hstar_hexists_comm {A : Type} (H : A -> hhprop) H' :
 Proof. xsimpl. Qed.
 
 (*
+Fact hsub_hsingle_groupmerge {A : Type} {fs : fset A} (f : D -> D) (d1 d2 : D) (Hn : d1 <> d2)
+  (H1 : f d1 = d1) (H2 : f d2 = d1) 
+  (Hdom : forall d, f d = d1 -> d = d1 \/ d = d2)
+  (* (Hdomneg : forall d, f d <> d2) *)
+  (p : A -> loc) (v : A -> val) 
+  (Hp : forall a1 a2, indom fs a1 -> indom fs a2 -> a1 <> a2 -> p a1 <> p a2) 
+  (* (Hfsnonempty : exists a, indom fs a) : *) :
+  hsub (\*_(a <- fs) ((p a) ~(d1)~> (v a) \* (p a) ~(d2)~> (v a))) f =
+  (\*_(a <- fs) ((p a) ~(d1)~> (v a))).
+Proof.
+*)
+
+(* TODO guess can also be done with hsub_hstar_fset; but still need hsub_hsingle_merge *)
+Fact hsub_hsingle_groupmerge' {A : Type} (fs : fset A) (f : D -> D) (d1 d2 : D) (Hn : d1 <> d2)
+  (H1 : f d1 = d1) (H2 : f d2 = d1) 
+  (Hdom : forall d, f d = d1 -> d = d1 \/ d = d2)
+  (Hdomneg : forall d, f d <> d2)
+  (p : A -> loc) (v : A -> val) :
+  (\*_(a <- fs) ((p a) ~(d1)~> (v a))) ==>
+  hsub (\*_(a <- fs) ((p a) ~(d1)~> (v a) \* (p a) ~(d2)~> (v a))) f.
+Proof.
+  hnf. intros h Hh. apply hstar_fset_inv in Hh; auto.
+  destruct Hh as (Hh & Hp).
+  assert (Hp' : forall a1 a2 : A,
+    indom fs a1 -> indom fs a2 -> p a1 = p a2 -> a1 = a2).
+  { intros. destruct (classicT (a1 = a2)); auto. (* ! *)
+    by apply Hp in n.
+  }
+  rewrite Union_localization in Hh.
+  2:{ 
+    intros. apply disjoint_single_single. intros ?.
+    inversion H4. revert H6. by apply Hp.
+  }
+  unfold hsub. 
+  exists (Union fs 
+    (fm_localize fs (fun a : A => single (p a, d1) (v a) \u single (p a, d2) (v a)))).
+
+  (* before that *)
+  assert (valid_subst (Union fs
+     (fm_localize fs (fun a : A => single (p a, d1) (v a) \u single (p a, d2) (v a))))
+    (fun x : loc * D => (x.1, f x.2))) as Hvsub.
+  {
+    hnf. intros (pp, d1') (pp', d2'). simpl.
+    intros H. inversion H. subst pp'.
+    match goal with |- ?a = ?b => destruct a eqn:E, b eqn:E' end; try reflexivity.
+    {
+      apply Union_fmap_inv in E, E'.
+      2:{
+        apply fm_localization.
+        (* repeat *)
+        intros. rew_disjoint. repeat split.
+        all: apply disjoint_single_single; intros Htmp; try eqsolve.
+        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
+      }
+      2:{
+        apply fm_localization.
+        (* repeat *)
+        intros. rew_disjoint. repeat split.
+        all: apply disjoint_single_single; intros Htmp; try eqsolve.
+        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
+      }
+      destruct E as (? & ? & E), E' as (? & ? & E').
+      unfold fm_localize, uni in E, E'.
+      repeat case_if; try eqsolve.
+      simpl in E, E'. unfolds map_union.
+      repeat case_if; try eqsolve.
+      all: injection E as <-; injection E' as <-.
+      all: f_equal; f_equal.
+      all: apply Hp'; eqsolve.
+    }
+    {
+      apply Union_fmap_inv in E.
+      2:{
+        apply fm_localization.
+        (* repeat *)
+        intros. rew_disjoint. repeat split.
+        all: apply disjoint_single_single; intros Htmp; try eqsolve.
+        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
+      }
+      destruct E as (? & ? & E).
+      apply Union_fmap_none_inv with (t:=x) in E'; try assumption.
+      2:{
+        apply fm_localization.
+        (* repeat *)
+        intros. rew_disjoint. repeat split.
+        all: apply disjoint_single_single; intros Htmp; try eqsolve.
+        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
+      }
+      unfold fm_localize, uni in E, E'.
+      case_if; try eqsolve.
+      simpl in E, E'. unfolds map_union.
+      repeat case_if; try eqsolve.
+      { injection C2 as <-. subst d1'.
+        rewrite H1 in H. assert (f d2' = d1) as Htmp by eqsolve.
+        apply Hdom in Htmp; eqsolve.
+      }
+      { injection C3 as <-. subst d1'.
+        rewrite H2 in H. assert (f d2' = d1) as Htmp by eqsolve.
+        apply Hdom in Htmp; eqsolve.
+      }
+    }
+    {
+      apply Union_fmap_inv in E'.
+      2:{
+        apply fm_localization.
+        (* repeat *)
+        intros. rew_disjoint. repeat split.
+        all: apply disjoint_single_single; intros Htmp; try eqsolve.
+        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
+      }
+      destruct E' as (? & ? & E').
+      apply Union_fmap_none_inv with (t:=x) in E; try assumption.
+      2:{
+        apply fm_localization.
+        (* repeat *)
+        intros. rew_disjoint. repeat split.
+        all: apply disjoint_single_single; intros Htmp; try eqsolve.
+        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
+      }
+      unfold fm_localize, uni in E, E'.
+      case_if; try eqsolve.
+      simpl in E, E'. unfolds map_union.
+      repeat case_if; try eqsolve.
+      { injection C0 as <-. subst d2'.
+        rewrite H1 in H. assert (f d1' = d1) as Htmp by eqsolve.
+        apply Hdom in Htmp; eqsolve.
+      }
+      { injection C1 as <-. subst d2'.
+        rewrite H2 in H. assert (f d1' = d1) as Htmp by eqsolve.
+        apply Hdom in Htmp; eqsolve.
+      }
+    }
+  }
+
+  subst h. split. 2: split. 2: apply Hvsub.
+  {
+    apply fmap_extens. intros (pp, dd).
+    unfold fsubst, map_fsubst. simpl.
+    destruct (classicT _) as [ P | P ].
+    { destruct (indefinite_description _) as ((pp', dd') & EE).
+      simpl in EE. destruct EE as (Epd & Hin).
+      injection Epd as <-.
+      rewrite <- Union_localization in Hin.
+      2:{ 
+        (* repeat *)
+        intros. rew_disjoint. repeat split.
+        all: apply disjoint_single_single; intros Htmp; try eqsolve.
+        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
+      }
+      (* TODO cannot rewrite? *)
+      match type of Hin with _ ?a ?b => assert (indom a b) by auto end. 
+      rewrite indom_Union in H0.
+      destruct H0 as (a & Hin' & HH).
+      rewrite indom_union_eq ! indom_single_eq in HH.
+      assert (dd = d1 /\ pp' = p a) as (-> & ->).
+      { destruct HH as [ HH | HH ]; inversion HH; subst pp' dd'; eqsolve. }
+      apply Hdom in H.
+      rewrite -> ! Union_fmap_indomE with (t:=a); try assumption.
+      2:{ 
+        apply fm_localization.
+        (* repeat *)
+        intros. rew_disjoint. repeat split.
+        all: apply disjoint_single_single; intros Htmp; try eqsolve.
+        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
+      }
+      3:{ 
+        apply fm_localization.
+        (* repeat *)
+        intros. rew_disjoint. repeat split.
+        all: apply disjoint_single_single; intros Htmp; try eqsolve.
+        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
+      }
+      2:{
+        unfold fm_localize, uni. case_if; try eqsolve. apply indom_single.
+      }
+      2:{
+        unfold fm_localize, uni. case_if; try eqsolve. rewrite indom_union_eq ! indom_single_eq.
+        eqsolve.
+      }
+      unfold fm_localize, uni. case_if; try eqsolve.
+      simpl. unfold map_union. repeat case_if; try eqsolve.
+    }
+    { symmetry.
+      apply Union_fmap_nindomE.
+      intros. unfold fm_localize, uni.
+      case_if; try eqsolve.
+      rewrite indom_single_eq.
+      intros HH. inversion HH. subst pp dd.
+      apply P.
+      
+      setoid_rewrite <- Union_localization.
+      2:{ 
+        (* repeat *)
+        intros. rew_disjoint. repeat split.
+        all: apply disjoint_single_single; intros Htmp; try eqsolve.
+        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
+      }
+      setoid_rewrite indom_Union.
+      exists (p t, d1). rewrite H1. split; auto.
+      exists t. rewrite indom_union_eq indom_single_eq. eqsolve.
+    }
+  }  
+  {
+    rewrite hstar_fsetE. eexists. split. 1: reflexivity.
+    split.
+    { apply fm_localization. 
+      intros. rew_disjoint. repeat split.
+      all: apply disjoint_single_single; intros Htmp; try eqsolve.
+      all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
+    }
+    { intros. 
+      unfold fm_localize, uni. case_if; try eqsolve.
+      apply hstar_intro.
+      1-2: apply hsingle_intro.
+      apply disjoint_single_single; intros Htmp; try eqsolve.
+    }
+  }
+Qed.
+
+(*
+Fact hsub_hsingle_arraymerge (f : D -> D) (d1 d2 : D) (Hn : d1 <> d2)
+  (H1 : f d1 = d1) (H2 : f d2 = d1) 
+  (Hdom : forall d, f d = d1 -> d = d1 \/ d = d2)
+  (p : loc) (L : list val) (Hnp : p <> 0%nat) :
+  hsub (harray L p d1 \* harray L p d2) f = harray L p d1.
+Proof.
+  unfold harray, hheader.
+  assert ((((p ~(d1)~> val_header (length L) \* \[(p, d1) <> null d1]) \*
+    hcells L (p + 1)%nat d1) \*
+   (p ~(d2)~> val_header (length L) \* \[(p, d2) <> null d2]) \*
+   hcells L (p + 1)%nat d2) = 
+    (\[(p, d1) <> null d1] \* \[(p, d2) <> null d2] \*
+      (p ~(d1)~> val_header (length L) \* p ~(d2)~> val_header (length L)) \*
+      (hcells L (p + 1)%nat d1 \* hcells L (p + 1)%nat d2))) as Htmp.
+  { by xsimpl. }
+  rewrite Htmp. clear Htmp.
+  rewrite ! hsub_hpure_comm.
+  
+*)
+
+(*
 Fact hsub_htop_comm H f : hsub (\Top \* H) f = (\Top \* hsub H f).
 Proof.
   extens. intros h.
@@ -3335,6 +3710,134 @@ Proof.
     xsimpl.
     1-4: unfold null; simpl; eqsolve.
 
+    (* block-ize *)
+    rewrite <- ! hcells_form_transform with (Larr:=(LibList.map val_int Lind)) (L:=M+1)
+      (hv:=fun i => val_int (nth (abs i) Lind)); try math.
+    2,4: by rewrite length_map.
+    2-3: intros; rewrite nth_map; try math.
+    rewrite <- ! hcells_form_transform with (Larr:=(LibList.map val_int Lval)) (L:=M)
+      (hv:=fun i => val_int (nth (abs i) Lval)); try math.
+    2,4: by rewrite length_map.
+    2-3: intros; rewrite nth_map; try math.
+
+    pose (pind:=fun i => (px_ind + abs i)%nat).
+    pose (vind:=fun i => if Z.leb i 0%Z  
+      then val_header (abs (M + 1)) 
+      else nth (abs (i - 1)) Lind).
+    pose (pval:=fun i => (px_val + abs i)%nat).
+    pose (vval:=fun i => if Z.leb i 0%Z  
+      then val_header (abs M)
+      else nth (abs (i - 1)) Lval).
+    pose (pall:=fun i => if Z.leb i (M+1) then pind i else pval (i-(M+2))).
+    pose (vall:=fun i => if Z.leb i (M+1) then vind i else vval (i-(M+2))).
+    assert (forall d, indom (interval 0 N) d -> f[2](d) = (Lab (2, 0) d)) as Hid2.
+    { subst f. simpl. intros. rewrite indom_label_eq. case_if; eqsolve. }
+    assert (forall d, indom (interval 0 N) d -> f[4](d) = (Lab (2, 0) d)) as Hid4.
+    { subst f. simpl. intros. rewrite indom_label_eq. case_if; eqsolve. }
+    eapply himpl_trans. 2: eapply himpl_trans.
+    2: apply hsub_hsingle_groupmerge' with 
+      (p:=pall) (v:=vall) (d1:=(Lab (2, 0) d)) (d2:=(Lab (4, 0) d))
+      (f:=f) (fs:=interval 0 (M+M+3)).
+    2: eqsolve.
+    2: by rewrite Hid2.
+    2: by rewrite Hid4.
+    2:{
+      intros (l0, d0) H0.
+      subst f. simpl in H0. 
+      rewrite indom_label_eq in H0. case_if; try eqsolve.
+    }
+    2:{
+      intros (l0, d0) H0.
+      subst f. simpl in H0. 
+      rewrite indom_label_eq in H0. case_if; try eqsolve.
+      inversion H0. subst l0 d0. eqsolve.
+    }
+    {
+      rewrite -> intervalU with (x:=0) (y:=M+M+3).
+      2: math.
+      rewrite hbig_fset_update; try assumption.
+      3-4: auto.
+      2: rewrite indom_interval; intros ?; math.
+      rewrite <- interval_union with (x:=0+1) (z:=M+M+3) (y:=M+2); try math.
+      rewrite hbig_fset_union; try assumption.
+      2-4: hnf; auto.
+      2:{
+        apply disjoint_of_not_indom_both.
+        intros ?. rewrite ! indom_interval. intros; math.
+      }
+      rewrite <- interval_union with (x:=M+2) (z:=M+M+3) (y:=M+3); try math.
+      rewrite hbig_fset_union; try assumption.
+      2-4: hnf; auto.
+      2:{
+        apply disjoint_of_not_indom_both.
+        intros ?. rewrite ! indom_interval. intros; math.
+      }
+
+      admit.
+    }
+    {
+      admit.
+    }
+
+
+
+
+
+
+    
+    
+
+    (*
+    rewrite <- hstar_fset_Lab with (fs:=interval 0 M) (l:=(2%Z,0%Z)) (Q:=fun d0 =>
+      (px_val + 1 + abs (eld d0))%nat ~(Lab (lab d0) d)~> nth (abs (eld d0)) Lval).
+    rewrite <- hstar_fset_Lab with (fs:=interval 0 (M+1)) (l:=(2%Z,0%Z)) (Q:=fun d0 =>
+      (px_ind + 1 + abs (eld d0))%nat ~(Lab (lab d0) d)~> nth (abs (eld d0)) Lind).
+    rewrite <- hstar_fset_Lab with (fs:=interval 0 M) (l:=(4%Z,0%Z)) (Q:=fun d0 =>
+      (px_val + 1 + abs (eld d0))%nat ~(Lab (lab d0) d)~> nth (abs (eld d0)) Lval).
+    rewrite <- hstar_fset_Lab with (fs:=interval 0 (M+1)) (l:=(4%Z,0%Z)) (Q:=fun d0 =>
+      (px_ind + 1 + abs (eld d0))%nat ~(Lab (lab d0) d)~> nth (abs (eld d0)) Lind).
+    *)
+(*
+    hsub
+    pose (v
+    hsub
+    
+
+    
+
+    rewrite <- hcells_form_transform with (L:=M+1)
+      (hv:=fun i => val_int (nth (abs i) Lind)); try math.
+    2: by rewrite length_map.
+    2: intros; rewrite nth_map; try math.
+    
+
+    (* brute force *)
+    hnf. intros h Hh.
+    apply hstar_inv in Hh. destruct Hh as (h1 & h2 & Hh1 & Hh2 & Hdj1 & ->).
+    apply hstar_inv in Hh2. destruct Hh2 as (h3 & h4 & Hh3 & Hh4 & Hdj2 & ->).
+    apply hstar_inv in Hh4. destruct Hh4 as (h5 & h6 & Hh5 & Hh6 & Hdj3 & ->).
+    apply hcells_inv in Hh3, Hh6. apply hsingle_inv in Hh1, Hh5.
+    subst h1 h3 h5 h6.
+    rewrite -> ! disjoint_union_eq_r in Hdj2.
+    rewrite -> ! disjoint_union_eq_r in Hdj1.
+    unfold hsub.
+    exists ((Fmap.single (px_val, (⟨(2, 0), d⟩)%arr) (val_header (abs M))) \u
+      (Fmap.single (px_val, (⟨(4, 0), d⟩)%arr) (val_header (abs M))) \u
+      (Fmap.hconseq (LibList.map val_int Lval) (px_val + 1) (⟨(2, 0), d⟩)%arr) \u
+      (Fmap.hconseq (LibList.map val_int Lval) (px_val + 1) (⟨(4, 0), d⟩)%arr) \u
+      (Fmap.single (px_ind, (⟨(2, 0), d⟩)%arr) (val_header (abs (M + 1)))) \u
+      (Fmap.single (px_ind, (⟨(4, 0), d⟩)%arr) (val_header (abs (M + 1)))) \u
+      (Fmap.hconseq (LibList.map val_int Lind) (px_ind + 1) (⟨(2, 0), d⟩)%arr)  \u
+      (Fmap.hconseq (LibList.map val_int Lind) (px_ind + 1) (⟨(4, 0), d⟩)%arr) ).
+    split. 2: split.
+    { 
+      hsub
+      unfold fsubst. subst f. simpl.
+      apply fmap_extens.
+      intros (p, (ll, dd)). simpl.
+      unfold map_fsubst, map_union.
+      repeat case_if; auto. 
+
     
 
     unfold  
@@ -3442,7 +3945,8 @@ Proof.
 
       (* array squash *)
       admit.
-    }
+      }
+      *)
   }
   (* post sub *)
   { 
