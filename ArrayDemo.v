@@ -2726,6 +2726,182 @@ Proof.
   }
 Qed.
 
+(* simple 2 to 1 *)
+
+Fact hsub_hsingle_merge (f : D -> D) (p : loc) (d1 d2 : D) (Hn : d1 <> d2)
+  (H1 : f d1 = d1) (H2 : f d2 = d1) 
+  (Hdom : forall d, f d = d1 -> d = d1 \/ d = d2)
+  (v : val) :
+  hsub (p ~(d1)~> v \* p ~(d2)~> v) f = p ~(d1)~> v.
+Proof.
+  extens. intros h.
+  split; intros Hh.
+  { unfold hsub in Hh. destruct Hh as (h' & <- & Hvalid & Hh').
+    apply hstar_inv in Hh'.
+    destruct Hh' as (h1 & h2 & Hh1 & Hh2 & Hdj & ->).
+    apply hsingle_inv in Hh1, Hh2. subst h1 h2.
+    match goal with |- _ ?hf => enough (hf = (Fmap.single (p, d1) v)) as Htmp end.
+    1: rewrite Htmp; apply hsingle_intro.
+    apply fmap_extens. intros (pp, dd). simpl. case_if.
+    { injection C as <-. subst dd.
+      unfold map_fsubst, map_union, map_indom.
+      destruct (classicT _) as [ E | E ].
+      { destruct (indefinite_description E) as ((ll, d) & EE & E'). 
+        simpl in EE. inversion EE. subst ll. rewrite H3.
+        case_if; auto. case_if; auto.
+      }
+      { false E. exists (p, d1). split; auto. case_if. eqsolve. }
+    }
+    { unfold map_fsubst, map_union, map_indom.
+      destruct (classicT _) as [ E | E ]; auto.
+      destruct (indefinite_description E) as ((ll, d) & EE & E'). 
+      simpl in EE. inversion EE. subst ll.
+      case_if; auto. case_if; auto.
+    }
+  }
+  {
+    apply hsingle_inv in Hh. subst h.
+    unfold hsub. 
+    exists (Fmap.single (p, d1) v \u Fmap.single (p, d2) v).
+    split.
+    1:{
+      (* TODO repeat *)
+      apply fmap_extens. intros (pp, dd). simpl. case_if.
+      { injection C as <-. subst dd.
+        unfold map_fsubst, map_union, map_indom.
+        destruct (classicT _) as [ E | E ].
+        { destruct (indefinite_description E) as ((ll, d) & EE & E'). 
+          simpl in EE. inversion EE. subst ll. rewrite H3.
+          case_if; auto. case_if; auto.
+        }
+        { false E. exists (p, d1). split; auto. case_if. eqsolve. }
+      }
+      { unfold map_fsubst, map_union, map_indom.
+        destruct (classicT _) as [ E | E ]; auto.
+        destruct (indefinite_description E) as ((ll, d) & EE & E'). 
+        simpl in EE. inversion EE. subst ll.
+        case_if; auto. case_if; auto.
+      }
+    }
+    split.
+    { hnf. intros (pa, da) (pb, db). simpl. intros.
+      assert (pa = pb) as -> by eqsolve.
+      unfold map_union. 
+      repeat case_if; try eqsolve.
+      { assert (d1 = da) as <- by eqsolve.
+        rewrite H1 in H. 
+        assert (f db = d1) as Htmp by eqsolve. apply Hdom in Htmp; eqsolve.
+      }
+      { assert (d2 = da) as <- by eqsolve.
+        rewrite H2 in H. 
+        assert (f db = d1) as Htmp by eqsolve. apply Hdom in Htmp; eqsolve.
+      }
+      { assert (d1 = db) as <- by eqsolve.
+        rewrite H1 in H. 
+        assert (f da = d1) as Htmp by eqsolve. apply Hdom in Htmp; eqsolve.
+      }
+      { assert (d2 = db) as <- by eqsolve.
+        rewrite H2 in H. 
+        assert (f da = d1) as Htmp by eqsolve. apply Hdom in Htmp; eqsolve.
+      }
+    }
+    apply hstar_intro; try apply hsingle_intro.
+    apply disjoint_single_single.
+    eqsolve.
+  }
+Qed.
+
+Fact hsub_hpure_comm P H f : hsub (\[P] \* H) f = (\[P] \* hsub H f).
+Proof.
+  extens. intros h.
+  split; intros Hh.
+  { unfold hsub in Hh. destruct Hh as (h' & <- & Hvalid & Hh').
+    apply hstar_inv in Hh'.
+    destruct Hh' as (h1 & h2 & Hh1 & Hh2 & Hdj & ->).
+    apply hpure_inv in Hh1. destruct Hh1 as (Hp & ->).
+    rewrite union_empty_l in Hvalid |- *.
+    rewrite <- union_empty_l.
+    apply hstar_intro. 1: by apply hpure_intro.
+    2: auto.
+    unfold hsub. exists h2. intuition.
+  }
+  { rewrite <- union_empty_l in Hh.
+    apply hstar_inv in Hh.
+    destruct Hh as (h1 & h2 & Hh1 & Hh2 & Hdj & E).
+    rewrite union_empty_l in E. subst h.
+    apply hpure_inv in Hh1. destruct Hh1 as (Hp & ->).
+    rewrite union_empty_l.
+    unfold hsub in Hh2 |- *. 
+    destruct Hh2 as (h' & <- & Hvalid & Hh').
+    exists (empty \u h').
+    rewrite ! union_empty_l.
+    split; auto. split; auto. 
+    rewrite <- union_empty_l. apply hstar_intro; auto. by apply hpure_intro.
+  }
+Qed.
+
+(*
+Fact htop_hexists_comm {A : Type} (H : A -> hhprop) : 
+  (hexists H) \* \Top = (hexists (fun a => H a \* \Top)).
+Proof. xsimpl. Qed.
+*)
+(*
+Fact hsub_htop_comm H f : hsub (\Top \* H) f = (\Top \* hsub H f).
+Proof.
+  extens. intros h.
+  split; intros Hh.
+  { unfold hsub in Hh. destruct Hh as (h' & <- & Hvalid & Hh').
+    apply hstar_inv in Hh'.
+    destruct Hh' as (h1 & h2 & Hh1 & Hh2 & Hdj & ->).
+    rewrite <- union_empty_l.
+    apply hstar_intro. 1: by apply htop_intro.
+    2: auto.
+hsub
+
+    unfold hsub. exists (h1 \u h2). intuition.
+  }
+  { rewrite <- union_empty_l in Hh.
+    apply hstar_inv in Hh.
+    destruct Hh as (h1 & h2 & Hh1 & Hh2 & Hdj & E).
+    rewrite union_empty_l in E. subst h.
+    apply hpure_inv in Hh1. destruct Hh1 as (Hp & ->).
+    rewrite union_empty_l.
+    unfold hsub in Hh2 |- *. 
+    destruct Hh2 as (h' & <- & Hvalid & Hh').
+    exists (empty \u h').
+    rewrite ! union_empty_l.
+    split; auto. split; auto. 
+    rewrite <- union_empty_l. apply hstar_intro; auto. by apply hpure_intro.
+  }
+Qed.
+*)
+(*
+Fact hsub_harray_merge (f : D -> D) (p : loc) (d1 d2 : D) (Hn : d1 <> d2)
+  (H1 : f d1 = d1) (H2 : f d2 = d1) 
+  (Hdom : forall d, f d = d1 -> d = d1 \/ d = d2)
+  (L : list val) :
+  hsub (harray L p d1 \* harray L p d2) f = harray L p d1.
+Proof.
+  unfold harray, hheader.
+  assert ((((p ~(d1)~> val_header (length L) \* \[(p, d1) <> null d1]) \*
+    hcells L (p + 1)%nat d1) \*
+   (p ~(d2)~> val_header (length L) \* \[(p, d2) <> null d2]) \*
+   hcells L (p + 1)%nat d2) = 
+    (\[(p, d1) <> null d1] \* \[(p, d2) <> null d2] \*
+      (p ~(d1)~> val_header (length L) \* p ~(d2)~> val_header (length L)) \*
+      (hcells L (p + 1)%nat d1 \* hcells L (p + 1)%nat d2))) as Htmp.
+  { by xsimpl. }
+  rewrite Htmp. clear Htmp.
+  rewrite -> 2 hsub_hpure.
+  
+  
+    (( \* ) \*
+    ) \*
+   ( \* ) \*
+   )
+  induction L.
+  
+*)
 (* a better composition *)
 Lemma rlsum_rl_rli_ntriple : forall (px_ind px_val : loc),
   ntriple 
@@ -2843,7 +3019,8 @@ Proof.
     { simpl in *. comp destruct C5; subst ll.
     rewrite ! indom_single_eq. repeat case_if; try eqsolve. *)
   }
-  eapply htriple_conseq_frame.
+
+  eapply htriple_conseq_frame with (H2:=\[]).
   1:{
     rewrite <- Efs.
     (* sub *)
@@ -2929,12 +3106,161 @@ Proof.
     }
   }
   (* pre sub *)
-  { admit. }
+  {
+    rewrite hstar_hempty_r.
+    rewrite -> hstar_comm with (H1:=(\*_(d <- ⟨(3, 0), single 0 tt⟩)
+      arr_x_ind px_ind d \* arr_x_val px_val d)).
+    rewrite hstar_assoc. 
+    rewrite <- hstar_assoc with (H2:=(\*_(d <- ⟨(4, 0), interval 0 N⟩)
+      arr_x_ind px_ind d \* arr_x_val px_val d)).
+    rewrite -> hsub_hstar_id_l with (fs:=⟨(1, 0), single 0 tt⟩).
+    1: apply himpl_frame_r.
+    4:{ rewrite label_single. rewrite -> hbig_fset_label_single'.
+      hlocal.
+      all: unfold arr_x_ind, arr_x_val, harray; hlocal.
+      2,4: hnf; intros h Hh; apply hcells_inv in Hh; subst h; apply hconseq_local.
+      all: hnf; intros h Hh; apply hheader_inv in Hh; destruct Hh as (-> & ?); 
+        apply local_single.
+    }
+    2:{
+      intros (ll, d). rewrite label_single indom_single_eq. intros <-.
+      subst f. simpl. rewrite indom_label_eq. case_if; eqsolve.
+    }
+    2:{
+      subst f. simpl.
+      intros (ll, d) (ll', d') H HH.
+      rewrite ! indom_label_eq in HH.
+      rewrite ! label_single ! indom_single_eq. 
+      repeat case_if; try eqsolve.
+    }
 
+    rewrite -> hsub_hstar_id_r with (fs:=⟨(3, 0), single 0 tt⟩).
+    1: apply himpl_frame_l.
+    (* repeat *)
+    4:{ rewrite label_single. rewrite -> hbig_fset_label_single'.
+      hlocal.
+      all: unfold arr_x_ind, arr_x_val, harray; hlocal.
+      2,4: hnf; intros h Hh; apply hcells_inv in Hh; subst h; apply hconseq_local.
+      all: hnf; intros h Hh; apply hheader_inv in Hh; destruct Hh as (-> & ?); 
+        apply local_single.
+    }
+    2:{
+      intros (ll, d). rewrite label_single indom_single_eq. intros <-.
+      subst f. simpl. rewrite indom_label_eq. case_if; eqsolve.
+    }
+    2:{
+      subst f. simpl.
+      intros (ll, d) (ll', d') H HH.
+      rewrite ! indom_label_eq in HH.
+      rewrite ! label_single ! indom_single_eq. 
+      repeat case_if; try eqsolve.
+    }
+
+    rewrite <- hbig_fset_union.
+    2-4: hnf; auto.
+    2:{ apply disjoint_of_not_indom_both. intros (?, ?).
+      rewrite ! indom_label_eq. eqsolve.
+    }
+
+    erewrite -> hsub_hstar_fset.
+    1: apply himpl_refl.
+    1:{
+      (* prove by def *)
+      apply fset_extens.
+      intros (ll, d). 
+      rewrite indom_fsubst. split.
+      { intros ((ll', d') & EE & H).
+        subst f. simpl in EE. 
+        rewrite ! indom_label_eq in EE |- *.
+        rewrite ! indom_union_eq ! indom_label_eq in H.
+        case_if; eqsolve.
+      }
+      { intros H. rewrite ! indom_label_eq in H.
+        exists (Lab ll d). 
+        subst f. simpl. rewrite ! indom_union_eq ! indom_label_eq. 
+        case_if; eqsolve.
+      }
+    }
+    1:{
+      intros.
+      hlocal.
+      all: unfold arr_x_ind, arr_x_val, harray; hlocal.
+      2,4: hnf; intros h Hh; apply hcells_inv in Hh; subst h; apply hconseq_local.
+      all: hnf; intros h Hh; apply hheader_inv in Hh; destruct Hh as (-> & ?); 
+        apply local_single.
+    }
+    {
+      intros. simpl.
+      rewrite filter_union.
+      2: { apply disjoint_of_not_indom_both. intros (?, ?).
+        rewrite ! indom_label_eq. eqsolve.
+      }
+
+      (* array squash *)
+      admit.
+    }
+  }
   (* post sub *)
-  { admit. }
+  { 
+    (* into a better shape *)
+
+    admit.
+
+    (*
+    (* moving the \Top to innermost still does not work! *)
+    apply qimpl_trans with (Q2:=fun hv =>
+      hsub
+        (\[(hv \o f) (⟨(1, 0), 0⟩)%arr =
+          fset_fold (val_int 0) (fun d acc => val_int_add acc (hv (f d)))
+            (label (Lab (pair 2 0) (interval 0 N)))] \* 
+        (@hexists loc (fun px => \[((hv \o f) (Lab (pair 3 0) 0)) = val_loc px] \*
+            (@hexists (list val) (fun Larr =>
+            \[length Larr = (abs N)] \* 
+            (\*_(d <- ⟨pair 4 0, interval 0 N⟩) \[(hv \o f) d = (nth (abs (eld d)) Larr)]) \*
+            harray Larr px (Lab (pair 3 0) 0)  \* \Top))))) f).
+    1:{
+      xsimpl. intros.
+      match goal with |- himpl (hsub ?a _) (hsub ?b _) => 
+        assert (a = b) as HHH end.
+      1:{
+        rewrite -> hstar_comm with (H2:=\Top).
+        rewrite hstar_assoc.
+        rewrite hstars_pick_last_4.  
+        rewrite <- hstar_assoc, -> hstar_htop_htop.
+        rewrite <- hstars_pick_last_3.
+        f_equal. 
+        rewrite ! htop_hexists_comm.
+        f_equal. extens. intros. 
+        rewrite hstar_assoc.
+        (* go fully classical *)
+        match goal with |- iff ?a ?b => enough (a = b) as Htmp end.
+        1: by rewrite Htmp.
+        f_equal. 
+        rewrite htop_hexists_comm.
+        f_equal. extens. intros.
+        by rewrite ! hstar_assoc.
+      }  
+      by rewrite HHH.
+    }
+    hnf. intros v.
+    rewrite -> hsub_hpure_comm. apply himpl_hstar_hpure_l.
+    intros H1.
+    rewrite -> hsub_hstar. apply himpl_hexists_l.
+    intros px.
+    rewrite -> hsub_hpure_comm. apply himpl_hstar_hpure_l.
+    intros H2.
+    rewrite -> hsub_hstar. apply himpl_hexists_l.
+    intros Larr.
+    rewrite -> hsub_hpure_comm. apply himpl_hstar_hpure_l.
+    intros H3.
+    rewrite -> hstar_fset_pure.
+    rewrite -> hsub_hpure_comm. apply himpl_hstar_hpure_l.
+    intros H4.
+    *)
+  }
 Admitted.
 
+(* final theorem *)
 Theorem rlsum_rl_ntriple : forall (px_ind px_val : loc),
   ntriple 
     ((\*_(d <- ⟨pair 1 0, single 0 tt⟩) 
@@ -2952,9 +3278,6 @@ Theorem rlsum_rl_ntriple : forall (px_ind px_val : loc),
         harray Larr px (Lab (pair 3 0) 0))))) \* \Top).
 Proof.
   intros.
-  htriple_proj
-  match goal with |- ntriple _ ?ls _ => remember ls as lsq' eqn:E' end.
-  unfold ntriple, nwp. apply wp_equiv.
-
+Admitted.
 
 End Demo.
