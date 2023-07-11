@@ -247,42 +247,11 @@ Notation "'Σ_' ( i <- r ) F" :=
 Lemma Sum0 : Sum empty = fun=> 0.
 Proof. unfold Sum. extens. intros F. rewrite -> (fst (@fset_foldE _ _ _ _)); auto. Qed.
 
-Lemma SumxSx l : Sum (interval l (l + 1)) = @^~ l.
-Proof. 
-  extens. intros f.
-  unfold Sum. rewrite -> intervalUr. 2: math.
-  rewrite -> (snd (@fset_foldE _ _ _ _)); auto.
-  2: math.
-  2: rewrite -> intervalgt. 2: unfolds indom, map_indom; simpl; eqsolve.
-  2: math.
-  rewrite -> intervalgt. 2: math.
-  rewrite -> (fst (@fset_foldE _ _ _ _)); auto.
-Qed.
-
-Lemma SumPart x y z F : x <= y <= z -> 
-  Sum (interval x z) F = Sum (interval x y) F + Sum (interval y z) F.
+Lemma SumxSx F x y (H : x <= y) : Sum (interval x (y + 1)) F = Sum (interval x y) F + F y.
 Proof.
-  remember (abs (z - y)) as n.
-  revert y z Heqn. induction n; intros.
-  { assert (z = y) as -> by math.
-    rewrite -> intervalgt with (x:=y) (y:=y).
-    2: math.
-    rewrite -> Sum0. math.
-  }
-  { assert (z = (y + (nat_to_Z n)) + 1) as -> by math.
-    rewrite -> intervalUr.
-    2: math.
-    rewrite -> intervalUr.
-    2: math.
-    unfold Sum at 1. unfold Sum at 2.
-    rewrite -> ! (snd (@fset_foldE _ _ _ _)); try math.
-    { fold (Sum (interval x (y + n)) F).
-      fold (Sum (interval y (y + n)) F).
-      rewrite -> IHn with (y:=y); try math.
-    }
-    { rewrite -> indom_interval. intros HH. math. }
-    { rewrite -> indom_interval. intros HH. math. }
-  }
+  unfold Sum. rewrite -> intervalUr. 2: math.
+  rewrite -> (snd (@fset_foldE _ _ _ _)); auto. 
+  math. rewrite indom_interval; intros ?; math.
 Qed.
 
 Lemma SumEq F G (fs : fset int) :
@@ -321,155 +290,6 @@ Proof using.
     }
     rewrite -> IHn; math.
   }
-Qed.
-
-(* a specialized version for For loop *)
-Lemma wp_for_aux_alt i fs fs' ht (H : int -> int -> int -> (D -> val) -> hhprop) Z N C fsi hv0 k vr:
-  (Z <= i <= N)%Z ->
-  (* (forall x y z hv1 hv2, x <= y <= z -> H x y hv1 \* H y z hv2 ==> \exists hv, H x z hv) -> *)
-  (* (forall k Z i hv, exists k', forall j, H k' i j hv = H k Z j hv) -> *)
-  (forall i j k hv1 hv2, (forall x, indom (Union (interval i j) fsi) x -> hv1 x = hv2 x) -> H k i j hv1 = H k i j hv2) ->
-  (forall i j, i <> j -> disjoint (fsi i) (fsi j)) ->
-  fs = Union (interval i N) fsi ->
-  (forall t, subst "for" t C = C) ->
-  (forall t, subst "cnt" t C = C) ->
-  (forall t, subst "cond" t C = C) ->
-  var_eq vr "cnt" = false ->
-  var_eq vr "for" = false ->
-  var_eq vr "cond" = false ->
-  disjoint fs' fs ->
-  (forall x, indom fs' x -> ht x = For i N (trm_fun vr C)) ->
-  (forall j k hv, (Z <= j < N)%Z -> H k Z j hv ==> 
-    wp
-      (fs' \u fsi j) 
-      ((fun=> subst vr j C) \u_fs' ht) 
-      (fun hr => H k Z (j + 1) (hv \u_(Union (interval Z j) fsi) hr))) ->
-  H k Z i hv0 ==> 
-    wp
-      (fs' \u fs)
-      ht 
-      (fun hr => H k Z N (hv0 \u_(Union (interval Z i) fsi) hr)).
-Proof. 
-  move=> + hP Dj -> sfor scnt scond vcnt vfor vcond  + +.
-  move: ht hv0.
-  induction_wf IH: (upto N) i; rewrite /upto le_zarith lt_zarith in IH.
-  move=> ht hv0 lN dj htE.
-  rewrite -wp_union // (wp_ht_eq _ _ _ htE) /For /For_aux.
-  rewrite wp_fix_app2.
-  Opaque subst.
-  xwp.
-  Transparent subst. 
-  rewrite vcnt vfor sfor /=.
-  xapp; rewrite vcond scnt scond.
-  xwp; xif; rewrite lt_zarith.
-  { move=> ?. xwp; xlet.
-    apply:himpl_trans; first last.
-    { apply: wp_fun. }
-    simpl; xwp. xseq.
-    Opaque subst.
-    apply: himpl_trans; first last.
-    { apply wp_app_fun=> ?. reflexivity. }
-    simpl; remember (subst vr i C) as sub eqn:subE.
-    Transparent subst.
-    apply: himpl_trans; first last.
-    { apply/wp_conseq=> ?. xwp. xlet. xapp. }
-    apply: himpl_trans; first last.
-    { apply/wp_conseq=> ?. 
-      rewrite hstar_hempty_l. 
-      apply himpl_qwand_r=> ?. rewrite /protect. 
-      xsimpl=>->.
-      rewrite -wp_fix_app2.
-      set (ht' := (fun=> For_aux N (trm_fun vr C) (i + 1)) \u_fs' ht).
-      rewrite (wp_ht_eq _ ht').
-      { apply/wp_conseq=> ?; rewrite (wp_ht_eq _ ht'). xsimpl*.
-        by move=> ? IND; rewrite /ht' uni_nin // => /(disjoint_inv_not_indom_both dj). }
-        by move=> ??; rewrite /ht' uni_in. }
-    rewrite (wp_union (fun hr2 => H k Z N (_ \u_ _ hr2))) //.
-    rewrite // intervalU. 2: math.
-    rewrite // Union_upd // -union_assoc.
-    rewrite union_comm_of_disjoint -?union_assoc; first rewrite union_comm_of_disjoint.
-    2-3: move: dj; rewrite disjoint_union_eq_l ?disjoint_Union.
-    2-3: setoid_rewrite indom_interval=> dj; do ?split.
-    2-5: by intros; (apply/dj; math) + (apply/Dj; math).
-    rewrite -wp_union; first last.
-    { move: dj; rewrite disjoint_union_eq_r ?disjoint_Union.
-      setoid_rewrite indom_interval=> dj; split=> *; [apply/Dj|apply/dj]; math. }
-    set (ht' := (fun=> subst vr i C) \u_fs' ht).
-    rewrite (wp_ht_eq _ ht'); first last.
-    { by move=> *; rewrite subE /ht' uni_in. }
-    rewrite (wp_ht_eq (_ \u_ _ _) ht'); first last.
-    { move=> ??; rewrite /ht' ?uni_nin // => /(@disjoint_inv_not_indom_both _ _ _ _ _); apply; eauto.
-      all: rewrite indom_Union; setoid_rewrite indom_interval; do? eexists;eauto; math. }
-    apply: himpl_trans; last apply/wp_union2; first last.
-    { move: dj; rewrite disjoint_Union disjoint_comm; apply.
-      rewrite indom_interval; math. }
-    have: (Z <= i < N)%Z by math.
-    move: (H0 i k hv0)=> /[apply]/wp_equiv S; xapp S.
-    move=> hr.
-    apply: himpl_trans; first last.
-    { apply: wp_conseq=> ?; rewrite uniA=> ?; exact. }
-    set (hv0 \u_ _ _); rewrite [_ \u fsi i]union_comm_of_disjoint; first last.
-    { rewrite disjoint_Union.
-      setoid_rewrite indom_interval=> *; apply/Dj; math. }
-    rewrite -Union_upd // -intervalUr; last math.
-    rewrite union_comm_of_disjoint; first last.
-    { move: dj; rewrite ?disjoint_Union; setoid_rewrite indom_interval.
-      move=> dj *; apply/dj; math. }
-    apply IH; try math.
-    { move: dj; rewrite ?disjoint_Union; setoid_rewrite indom_interval.
-      move=> dj *; apply/dj; math. }
-    { by move=> *; rewrite uni_in. }
-    move=> j ??.
-    rewrite (wp_ht_eq _ ((fun=> (subst vr j C)) \u_ fs' ht)); eauto.
-    move=> ??; rewrite /uni. case: classicT=> //. }
-    move=> ?; have->: i = N by math.
-    xwp; xval.
-    rewrite intervalgt ?Union0; last math.
-    rewrite wp0_dep. xsimpl hv0.
-    erewrite hP; eauto.
-    by move=> ??; rewrite uni_in. 
-Qed.
-
-Lemma wp_for_alt fs fs' ht (H : int -> int -> int -> (D -> val) -> hhprop) Z N (C : trm) fsi hv0 k (P : hhprop) Q vr :
-(* (forall x y z hv1 hv2, x <= y <= z -> H x y hv1 \* H y z hv2 ==> \exists hv, H x z hv) -> *)
-  (forall k i hv, exists k', 
-    forall j hv', (Z <= i <= j)%Z -> (forall x, indom (Union (interval Z i) fsi) x -> hv x = hv' x) -> 
-      H k' i j hv' = H k Z j hv') ->
-  (forall j k hv, (Z <= j < N)%Z -> H k j j hv ==> wp (fs' \u fsi j) ((fun=> subst vr j C) \u_fs' ht) (H k j (j + 1))) ->
-  (forall i j k hv1 hv2, (forall x, indom (Union (interval i j) fsi) x -> hv1 x = hv2 x) -> H k i j hv1 = H k i j hv2) ->
-  (P ==> H k Z Z hv0) -> 
-  (H k Z N ===> Q) ->
-  (forall i j, i <> j -> disjoint (fsi i) (fsi j)) ->
-  (Z <= N)%Z ->
-  fs = Union (interval Z N) fsi ->
-  (forall t, subst "for" t C = C) ->
-  (forall t, subst "cnt" t C = C) ->
-  (forall t, subst "cond" t C = C) ->
-  var_eq vr "cnt" = false ->
-  var_eq vr "for" = false ->
-  var_eq vr "cond" = false ->
-  disjoint fs' fs ->
-  (forall x, indom fs' x -> ht x = For Z N (trm_fun vr C)) ->
-  P ==> wp (fs' \u fs) ht Q.
-Proof.
-  move=> hp Hwp Heq HP HQ Dj *.
-  apply: himpl_trans; first exact/HP.
-  apply: himpl_trans; first last.
-  { apply: wp_conseq; exact/HQ. }
-  apply: himpl_trans.
-  { apply/(@wp_for_aux_alt Z); eauto; first math.
-    clear -hp Hwp Heq Dj=> i k hv lP.
-    case: (hp k i hv)=> k' /[dup]HE<- //; last math.
-    move=> ? // /Hwp-/(_ lP). apply/wp_conseq=> hr.
-    rewrite -(HE _ (hv \u_ (Union (interval Z i) fsi) hr)).
-    { erewrite Heq; eauto=> ? IND; rewrite uni_nin //.
-      move: IND; rewrite ?indom_Union.
-      do ? setoid_rewrite indom_interval.
-      case=> ? [?] /[swap]-[?][?].
-      apply/disjoint_inv_not_indom_both/Dj; math. }
-    { math. }
-    by move=> ??; rewrite uni_in. }
-  apply/wp_conseq=> ?; rewrite intervalgt ?Union0 ?uni0 //; by math.
 Qed.
 
 Lemma xfor_big_op_lemma Inv (R R' : IntDom.type -> hhprop) 
@@ -524,31 +344,17 @@ Proof.
   apply: himpl_trans; first last.
   { apply/wp_conseq=> ?; apply PostH. }
   rewrite ?Union_label union_empty_r.
-  eapply wp_for_alt with 
-    (H:=(fun x (r : int) q hv => 
+  eapply wp_for with 
+    (H:=(fun q hv => 
       Inv q \* 
       (\*_(d <- Union (interval Z q) fsi1) R' d) \*
       (\*_(d <- Union (interval q N) fsi1) R d) \* 
-      p ~⟨(i, 0%Z), s⟩~> (x + Σ_(l <- interval r q) op hv l)))
-    (hv0:=fun=> 0) (k:=0)=> //; try eassumption.
-  { move=> k r hv.
-    exists (k + Σ_(l <- interval Z r) op hv l)=> t hv' lP hvE.
-    suff->: 
-      k + Σ_(l <- interval Z r) op hv l +
-      Σ_(l <- interval r t) op hv' l = 
-      k + Σ_(l <- interval Z t) op hv' l by xsimpl.
-    rewrite (SumPart _ lP).
-    suff->: 
-      Σ_(l <- interval Z r) op hv' l = 
-      Σ_(l <- interval Z r) op hv l by math.
-    apply/SumEq=> *. 
-    apply/eq_sym/opP=> *; apply/hvE.
-    rewrite indom_Union; eexists; rewrite indom_label_eq; eauto. }
-  { clear -IH Dj iNj.
-    move=>l x hv ?; move: (IH l x).
-    rewrite /ntriple /nwp ?fset_of_cons /= ?fset_of_nil SumxSx.
-    rewrite union_empty_r [interval l l]intervalgt; last math.
-    rewrite Sum0 Z.add_0_r intervalUr; try math.
+      p ~⟨(i, 0%Z), s⟩~> Σ_(l <- interval Z q) op hv l))
+    (hv0:=fun=> 0)=> //; try eassumption.
+  { clear -IH Dj iNj opP.
+    move=>l hv ?; move: (IH l).
+    rewrite /ntriple /nwp ?fset_of_cons /= ?fset_of_nil.
+    rewrite union_empty_r intervalUr; try math.
     rewrite Union_upd // hbig_fset_union; first last.
     2-4: auto.
     2-3: hnf; auto.
@@ -561,28 +367,44 @@ Proof.
     { rewrite disjoint_Union=> ? /[! indom_interval] ?.
       apply/Dj; math. }
     move=> Hwp.
-    erewrite wp_ht_eq.
-    { apply: xapp_lemma'; [|rewrite <-wp_equiv; apply/Hwp; math|].
-      { reflexivity. }
-      unfold protect.
-      rew_heap.
-      xsimpl*.
-      move: (hbig_fset hstar (fsi1 _) _)=> HR.
-      rewrite -hstar_assoc [_ \* HR]hstar_comm hstar_assoc.
-      xsimpl. }
-    case=> l' ?; rewrite indom_union_eq ?indom_label_eq=> -[][??]; subst.
-    { rewrite uni_in ?indom_label_eq //= /htrm_of.
-      case: classicT=> //; autos*. }
-    rewrite uni_nin ?indom_label_eq /= /htrm_of; autos*.
-    2: eqsolve.
-    do ? (case: classicT; autos* ).
-    1: simpl; eqsolve.
-    move=> [_]?[]; split=> //.
-    rewrite indom_Union; setoid_rewrite indom_interval; do ? (eexists; eauto); try math. }
-  { move=> q r k hv hv' hvE.
+    erewrite wp_ht_eq with (ht2:=(htrm_of
+      ((Lab (pair i 0) (FH (single s tt) (fun=> subst vr l C))) ::
+        (Lab (pair j 0) (FH (fsi1 l) (fun ld => C1 ld))) ::
+        nil))).
+    2:{
+      (* repeat? *)
+      intros (ll, d) H. unfold uni, htrm_of. simpl. 
+      rewrite indom_union_eq ! indom_label_eq in H |- *.
+      rewrite indom_single_eq in H |- *. 
+      repeat case_if; try eqsolve.
+      destruct C3 as (<- & HH). false C2. split; auto.
+      rewrite indom_Union. exists l. rewrite indom_interval.
+      split; try math; auto.
+    }
+    assert (Z <= l < N) as Htmp by math. 
+    specialize (Hwp (Sum (interval Z l) (fun i => op hv i)) Htmp). clear Htmp.
+    apply wp_equiv in Hwp. apply wp_equiv.
+    eapply htriple_conseq_frame.
+    1: apply Hwp.
+    1: xsimpl. 1: xsimpl.
+    hnf. intros v.
+    xsimpl. xsimpl.
+    rewrite <- intervalUr; try math. rewrite SumxSx; try math.
+    hnf. intros h Hh. apply hsingle_inv in Hh. subst h.
+    rewrite -> SumEq with (G:=fun i => op hv i).
+    2:{ intros x. rewrite indom_interval. 
+      unfold uni. intros HH. apply opP.
+      intros. rewrite indom_label_eq. case_if; auto.
+      destruct C0 as (_ & H0).
+      false disjoint_inv_not_indom_both. 2: apply H. 2: apply H0.
+      apply Dj. math.
+    }
+    rewrite -> opP with (hv':=v). 1: apply hsingle_intro.
+    intros. unfold uni. rewrite indom_label_eq. case_if; eqsolve. }
+  { move=> r hv hv' hvE.
     suff->:
-      Σ_(l <- interval q r) op hv l = 
-      Σ_(l <- interval q r) op hv' l by xsimpl.
+      Σ_(l <- interval Z r) op hv l = 
+      Σ_(l <- interval Z r) op hv' l by xsimpl.
     apply/SumEq=> *; apply/opP=> *; apply/hvE.
     rewrite indom_Union; eexists; rewrite indom_label_eq; autos*. }
   { rewrite [_ Z Z]intervalgt; last math.
