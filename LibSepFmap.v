@@ -2521,6 +2521,13 @@ Proof.
   { apply Union_upd_pre; auto. }
 Qed.
 
+Fact UnionN0 [T D S : Type] (fs : fset T) : Union fs (fun=> @empty D S) = empty.
+Proof using.
+  pattern fs. apply fset_ind; clear fs.
+  { by rewrite -> Union0. }
+  { intros. rewrite -> Union_upd. 2: auto. by rewrite -> H, -> union_empty_l. }
+Qed.
+
 Lemma update_union_not_r' [A B : Type] `{Inhab B} (h1 : fmap A B) [h2 : fmap A B] [x : A] (v : B) :
   update (h1 \+ h2) x v = update h1 x v \+ h2.
 Proof.

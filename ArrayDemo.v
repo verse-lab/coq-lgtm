@@ -12,40 +12,7 @@ Module IntDom : Domain with Definition type := int.
 Definition type := int.
 End IntDom.
 
-Lemma Union_fmap_inv {A B T : Type} (fmi : T -> fmap A B) (fs : fset T) x y : 
-  (forall t t', t <> t' -> disjoint (fmi t) (fmi t')) ->
-  fmap_data (Union fs fmi) x = Some y -> 
-  exists t : T, indom fs t /\ fmap_data (fmi t) x = Some y.
-Proof.
-  intros Hdj. pattern fs. apply fset_ind; clear fs; intros.
-  { rewrite Union0 in H. simpl in H. eqsolve. }
-  { rewrite Union_upd in H1; auto.
-    simpl in H1. unfold map_union in H1.
-    setoid_rewrite indom_update_eq.
-    destruct (fmap_data (fmi x0) x) eqn:E.
-    { injection H1 as <-.
-      exists x0. tauto.
-    }
-    { apply H in H1.
-      destruct H1 as (t & Hin & H1).
-      exists t. tauto.
-    }
-  }
-Qed.
-
-Lemma Union_fmap_none_inv {A B T : Type} (fmi : T -> fmap A B) (fs : fset T) x : 
-  (forall t t', t <> t' -> disjoint (fmi t) (fmi t')) ->
-  fmap_data (Union fs fmi) x = None -> 
-  forall t : T, indom fs t -> fmap_data (fmi t) x = None.
-Proof.
-  intros Hdj. pattern fs. apply fset_ind; clear fs; intros.
-  { rewrite Union0 in H. unfolds indom, map_indom. by simpl in *. }
-  { rewrite Union_upd in H1; auto.
-    simpl in H1. unfold map_union in H1.
-    destruct (fmap_data (fmi x0) x) eqn:E; try eqsolve.
-    rewrite indom_update_eq in H2. destruct H2 as [ <- | ]; auto.
-  }
-Qed.
+(* auxiliary things *)
 
 Lemma list_from_map {A : Type} `{Inhab A} (f : int -> A) (L : nat) : 
   exists l : list A, length l = L /\
@@ -70,121 +37,11 @@ Proof.
   }
 Qed.
 
-(* Module ArrayDemo (Dom : Domain). *)
-
 Module Export AD := WithArray(IntDom).
 Check eq_refl : D = labeled int.
 
 Global Instance Inhab_D : Inhab D. 
 Proof Build_Inhab (ex_intro (fun=> True) (Lab (0, 0) 0) I).
-
-Fact interval_fsubst_offset (L R offset : int) :
-  fsubst (interval L R) (fun i => i + offset) = 
-  interval (L + offset) (R + offset).
-Proof.
-  apply fset_extens. intros.
-  rewrite indom_fsubst. setoid_rewrite indom_interval.
-  split.
-  { intros (? & <- & ?). math. }
-  { intros. exists (x-offset). math. }
-Qed.
-
-Fact hstar_interval_offset (L R offset : int) (f : int -> hhprop) :
-  \*_(d <- interval L R) f (d + offset) = 
-  \*_(d <- interval (L + offset) (R + offset)) f d.
-Proof.
-  rewrite <- interval_fsubst_offset.
-  rewrite <- hstar_fset_eq with (g:=fun i => i - offset); try reflexivity.
-  hnf. intros. math.
-Qed.
-
-Fact hstar_fset_inv {A : Type} (fs : fset A) : forall (d : D) (p : A -> loc) (v : A -> val) h,
-  (\*_(a <- fs) ((p a) ~(d)~> (v a))) h -> 
-  h = Union fs (fun a => single ((p a), d) (v a)) /\
-  forall a1 a2, indom fs a1 -> indom fs a2 -> a1 <> a2 -> p a1 <> p a2.
-Proof.
-  intros.
-  pose proof H as H'. rewrite hstar_fsetE in H'.
-  destruct H' as (hi & Eh & Hdj & HH).
-  assert (forall i, indom fs i -> hi i = single (p i, d) (v i)) as HH'.
-  { intros. apply HH, hsingle_inv in H0. by rewrite H0. }
-  assert (forall a1 a2 : A,
-    indom fs a1 -> indom fs a2 -> a1 <> a2 -> p a1 <> p a2) as Hr.
-  { intros. apply HH' in H0, H1. pose proof (Hdj _ _ H2) as Htmp.
-    rewrite -> H0, H1 in Htmp. intros E'. rewrite E' in Htmp.
-    by apply disjoint_single_single_same_inv in Htmp.
-  }
-  split; try assumption.
-  subst h.
-  etransitivity. 2: symmetry; apply Union_localization.
-  2:{ 
-    intros. apply disjoint_single_single. intros ?.
-    inversion H3. revert H5. by apply Hr.
-  }
-  apply Union_eq; try assumption.
-  {
-    apply fm_localization.
-    intros. apply disjoint_single_single. intros ?.
-    inversion H3. revert H5. by apply Hr.
-  }
-  { intros. unfold fm_localize, uni. rewrite HH'; auto. case_if; eqsolve. }
-  (*
-  pattern fs. apply fset_ind; clear fs; intros.
-  { rewrite hbig_fset_empty in H. 
-    rewrite Union0. by apply hempty_inv.
-  }
-  { rewrite hbig_fset_update in H1; auto.
-    rewrite Union_localization.
-    2:{ 
-      intros. apply disjoint_single_single. intros ?.
-      inversion H5. revert H7. by apply Hp.
-    }
-    rewrite -> Union_upd.
-    2:{ 
-      intros. apply fm_localization; try assumption.
-      (* repeat *)
-      intros. apply disjoint_single_single. intros ?.
-      inversion H6. revert H8. by apply Hp.
-    }
-    unfold fm_localize at 1. unfold uni. 
-    rewrite indom_update_eq. case_if; try eqsolve.
-    rewrite -> Union_eq with (fmi2:=fm_localize fs (fun a : A => single (p a, d) (v a))).
-    4:{
-      intros. unfold fm_localize, uni.
-      rewrite indom_update_eq. repeat case_if; try eqsolve.
-    }
-    3:{
-      intros. apply fm_localization; try assumption.
-      (* repeat *)
-      intros. apply disjoint_single_single. intros ?.
-      inversion H6. revert H8. apply Hp; try assumption.
-      all: rewrite indom_update_eq; tauto.
-    }
-    2:{ 
-      intros. apply fm_localization; try assumption.
-      (* repeat *)
-      intros. apply disjoint_single_single. intros ?.
-      inversion H6. revert H8. by apply Hp.
-    }
-    rewrite <- Union_localization.
-    2:{
-      (* repeat *)
-      intros. apply disjoint_single_single. intros ?.
-      inversion H5. revert H7. apply Hp; try assumption.
-      all: rewrite indom_update_eq; tauto.
-    }
-    apply hstar_inv in H1.
-    destruct H1 as (h1 & h2 & Hh1 & Hh2 & Hdj & ->).
-    apply hsingle_inv in Hh1. subst h1. f_equal.
-    apply H; auto.
-    (* repeat *)
-    intros. apply Hp; try assumption.
-    all: rewrite indom_update_eq; tauto.
-  }
-  *)
-Qed.
-
-Section Demo.
 
 Definition val_int_add (a b : val) :=
   (match a with val_int a' => a' | _ => 0 end) + 
@@ -243,6 +100,77 @@ Proof.
   }
 Qed. 
 
+Lemma val_int_add_fold_transform hv fs : 
+  val_int (fset_fold 0 (fun d : labeled int =>
+                Z.add^~ match hv d with
+                        | val_int n => n
+                        | _ => 0
+                        end) fs) =
+  fset_fold (val_int 0) (fun (d : labeled int) (acc : val) => val_int_add acc (hv d))
+    fs.
+Proof.
+  pattern fs. apply fset_ind; clear fs.
+  { rewrite -> ! (fst (@fset_foldE _ _ _ _)); auto. }
+  { intros.
+    rewrite -> ! (snd (@fset_foldE _ _ _ _)); auto.
+    2: intros; destruct (hv a), (hv b); unfold val_int_add; try math.
+    2: intros; destruct (hv a), (hv b); unfold val_int_add; try math.
+    rewrite -> val_int_add_distr, -> H. by destruct (hv x).
+  }
+Qed.
+
+(* why so troublesome? *)
+
+Fact fset_fold_val_int_add_is_int fs (hv : D -> val) v :
+  fset_fold (val_int 0) (fun d (acc : val) => val_int (val_int_add acc (hv d))) fs = v ->
+  exists x : int, v = val_int x.
+Proof.
+  revert v. pattern fs. apply fset_ind; clear fs; intros.
+  { rewrite -> ! (fst (@fset_foldE _ _ _ _)) in H. eauto. }
+  { rewrite -> ! (snd (@fset_foldE _ _ _ _)) in H1.
+    3: assumption.
+    2: intros; destruct (hv a), (hv b); unfold val_int_add; try math.
+    match type of H1 with val_int (val_int_add ?a ?b) = _ => 
+      destruct a eqn:E, b eqn:E' end.
+    all: unfold val_int_add in H1; simpl in H1; try (by exists 0).
+    all: try eauto.
+  }
+Qed.
+
+Lemma fset_fold_val_int_add_union (fs fs' : fset D) (Hdj : disjoint fs fs') 
+  (hv : D -> val) :
+  fset_fold (val_int 0) (fun d acc => val_int (val_int_add acc (hv d))) (fs \u fs') =
+  val_int (val_int_add 
+    (fset_fold (val_int 0) (fun d acc => val_int (val_int_add acc (hv d))) fs)
+    (fset_fold (val_int 0) (fun d acc => val_int (val_int_add acc (hv d))) fs')).
+Proof.
+  revert fs Hdj.
+  pattern fs'. apply fset_ind; clear fs'; intros.
+  { rewrite -> union_empty_r.
+    rewrite -> ! (fst (@fset_foldE _ _ _ _)).
+    match goal with |- _ = val_int (val_int_add ?a ?b) => 
+      destruct a eqn:E; unfold val_int_add; simpl end.
+    all: pose proof E as Htmp; apply fset_fold_val_int_add_is_int in Htmp; 
+      destruct Htmp; try discriminate.
+    math.
+  }
+  { rewrite -> union_comm_of_disjoint. 2: apply Hdj.
+    rewrite <- update_union_not_r'. 2: constructor; exists tt; apply I.
+    rewrite -> ! (snd (@fset_foldE _ _ _ _)).
+    2,4: intros; destruct (hv a), (hv b); unfold val_int_add; try math.
+    2: assumption.
+    2:{ rewrite -> indom_union_eq. 
+      rewrite -> disjoint_comm, -> disjoint_update in Hdj.
+      eqsolve.
+    }
+    rewrite -> union_comm_of_disjoint.
+    2: rewrite -> disjoint_comm, -> disjoint_update in Hdj; intuition.
+    rewrite -> H.
+    2: rewrite -> disjoint_comm, -> disjoint_update in Hdj; intuition.
+    unfold val_int_add. math.
+  }
+Qed.
+
 Lemma hcells_form_transform_pre (Z L : int) (HZpos : (0 <= Z)%Z) (HLpos : (0 <= L)%Z) (px : loc) (l : D) (hv : int -> val) 
   (Larr : list val) 
   (Hlen : length Larr = abs L)
@@ -297,6 +225,15 @@ Proof.
   1: replace (0+L) with L by math; auto.
   intros. replace (i+0) with i by math; auto.
 Qed.
+
+Fact hstar_hexists_comm {A : Type} (H : A -> hhprop) H' : 
+  (hexists H) \* H' = (hexists (fun a => H a \* H')).
+Proof. xsimpl. Qed.
+
+Fact fsubst_indom_local (fs : fset D) (h : hheap D) f : 
+  (forall p d, indom (fsubst h f) (p, d) -> indom fs d) -> 
+  local fs (fsubst h f).
+Proof. intros H. hnf. intros. now apply H in H0. Qed.
 
 Definition Sum (fs : fset int) (f : int -> int) : int :=
   fset_fold 0 (fun idx acc => acc + (f idx)) fs.
@@ -837,41 +774,83 @@ Proof.
   by case=> l d; rewrite indom_label_eq /= /htrm_of; case: classicT.
 Qed.
 
-Lemma interval_point_segmentation i j :
-  Union (interval i j) (fun i => single i tt) = interval i j.
-Proof.
-  destruct (Z.leb j i) eqn:E.
-  1:{ rewrite -> Z.leb_le in E. 
-    rewrite -> intervalgt; try math. by rewrite -> Union0.
-  }
-  rewrite -> Z.leb_gt in E.
-  remember (abs (j - i - 1)) as n eqn:E'. revert i j E E'. induction n; intros.
-  { replace j with (i + 1) by math.
-    rewrite -> ! intervalUr, -> intervalgt; try math.
-    rewrite -> Union_upd, Union0.
-    2:{ intros. by apply disjoint_single_single. }
-    by rewrite update_eq_union_single.
-  }
-  { replace j with ((j - 1) + 1) by math.
-    rewrite -> ! intervalUr. 2: math.
-    rewrite -> Union_upd.
-    2:{ intros. by apply disjoint_single_single. }
-    rewrite -> IHn; try math.
-    by rewrite update_eq_union_single.
-  }
-Qed.
+Section Programs.
 
-(* assume properties about the running-length encoding. *)
-(*
-Variables (N M : nat) (Lval : list int) (Lind : list nat).
-Hypothesis H_length_Lval : length Lval = M.
-Hypothesis H_length_Lind : length Lind = S M.
-Hypothesis H_Lind_first : nth 0%nat Lind = 0%nat.
-Hypothesis H_Lind_last : nth M Lind = N.
-Hypothesis H_Lind_inc : forall (i j : nat), 0%nat <= i < M -> 0%nat <= j <= M -> 
-  (i < j)%nat -> nth i Lind < nth j Lind.
-Hypothesis H_Lval_notnil : (1 <= M)%nat.
-*)
+Definition rlsum_loopbody (real_x_ind real_x_val real_s real_i : trm) :=
+  (* need to make it a term; otherwise subst cannot penetrate *)
+  <{  let "tmp1" = ! real_s in
+      let "tmp2" = val_array_get real_x_val real_i in
+      let "tmp3" = real_i + 1 in
+      let "tmp4" = val_array_get real_x_ind "tmp3" in
+      let "tmp5" = val_array_get real_x_ind real_i in
+      let "tmp6" = "tmp4" - "tmp5" in
+      let "tmp7" = "tmp2" * "tmp6" in
+      let "tmp8" = "tmp1" + "tmp7" in
+      real_s := "tmp8" }>.
+
+Definition rlsum_func (M : int) :=
+  let loopbody := rlsum_loopbody "x_ind" "x_val" "s" "i" in
+  let loop := For 0 M (trm_fun "i" loopbody) in
+  (* the arguments should be the location of arrays? *)
+  <{ fun "x_ind" "x_val" => 
+      let "s" = ref 0 in 
+      loop ; 
+      let "res" = ! "s" in
+      free "s"; 
+      "res"
+  }>.
+
+Definition rli_whilecond (i : int) (real_x_ind real_j : trm) :=
+  (* intermediate lang *)
+  (<{ let "tmp1" = ! real_j in
+      let "tmp2" = "tmp1" + 1 in
+      let "tmp3" = val_array_get real_x_ind "tmp2" in
+      "tmp3" <= i }>).
+
+Definition incr (real_j : trm) :=
+  (<{ let "tmp1" = ! real_j in
+      let "tmp2" = "tmp1" + 1 in
+      real_j := "tmp2" }>).
+
+Definition rli_whilebody := Eval unfold incr in incr.
+
+Definition rli_func (i : int) :=
+  let loop := While (rli_whilecond i "x_ind" "j")
+    (rli_whilebody "j") in
+  <{ fun "x_ind" "x_val" => 
+      let "j" = ref 0 in 
+      loop ; 
+      let "tmp" = ! "j" in 
+      free "j";
+      (val_array_get "x_val" "tmp")
+  }>.
+
+Definition rl_loopbody (real_x real_x_ind real_x_val real_i real_k : trm) :=
+  let inc := rli_whilebody real_i in
+  <{  let "tmp1" = ! real_i in
+      let "tmp2" = val_array_get real_x_val "tmp1" in
+      val_array_set real_x real_k "tmp2";
+      let "lhs" = real_k + 1 in
+      let "tmp3" = "tmp1" + 1 in
+      let "rhs" = val_array_get real_x_ind "tmp3" in
+      let "cmp" = "lhs" >= "rhs" in
+      if "cmp" then inc end }>.
+
+Definition rl_func (N : int) :=
+  let loopbody := rl_loopbody "x" "x_ind" "x_val" "i" "k" in
+  let loop := For 0 N (trm_fun "k" loopbody) in
+  let al := abs N in
+  <{ fun "x_ind" "x_val" =>
+      let "x" = val_alloc al in
+      let "i" = ref 0 in 
+      loop ; 
+      free "i"; 
+      "x"
+  }>.
+
+End Programs.
+
+Section Demo.
 
 (* should not mix notations on nat and Z ... *)
 
@@ -910,7 +889,6 @@ Proof using N M Lind H_Lind_inc H_Lind_first H_Lind_last H_Lval_notnil.
   (* extract? *)
   rewrite <- H_Lind_first, <- H_Lind_last. 
   change 0%nat with (abs 0).
-  (* enough (nth (abs 0) Lind < nth (abs M) Lind)%Z by math. *)
   apply H_Lind_inc; math.
 Qed.
 
@@ -921,139 +899,15 @@ Proof using N M Lind H_Lind_inc H_Lind_first H_Lind_last H_Lval_notnil.
   pose proof zero_lt_N. math.
 Qed.
 
-Definition rlsum_loopbody (real_x_ind real_x_val real_s real_i : trm) :=
-  (* need to make it a term; otherwise subst cannot penetrate *)
-  <{  let "tmp1" = ! real_s in
-      let "tmp2" = val_array_get real_x_val real_i in
-      let "tmp3" = real_i + 1 in
-      let "tmp4" = val_array_get real_x_ind "tmp3" in
-      let "tmp5" = val_array_get real_x_ind real_i in
-      let "tmp6" = "tmp4" - "tmp5" in
-      let "tmp7" = "tmp2" * "tmp6" in
-      let "tmp8" = "tmp1" + "tmp7" in
-      real_s := "tmp8" }>.
-
-  (* trm_fun "i"
-  (val_set real_s
-     (val_get
-        (val_add real_s
-           (val_mul (val_array_get real_x_val "i")
-              (val_sub (val_array_get real_x_ind (val_add "i" 1))
-                 (val_array_get real_x_ind "i")))))). *)
-
-Definition rlsum_func :=
-  let loopbody := rlsum_loopbody "x_ind" "x_val" "s" "i" in
-  let loop := For 0 M (trm_fun "i" loopbody) in
-  (* the arguments should be the location of arrays? *)
-  <{ fun "x_ind" "x_val" => 
-      let "s" = ref 0 in 
-      loop ; 
-      let "res" = ! "s" in
-      free "s"; 
-      "res"
-  }>.
-
-Definition rli_whilecond (i : int) (real_x_ind real_j : trm) :=
-  (* intermediate lang *)
-  (* (<{ (val_array_get real_x_ind (! (real_j + 1))) <= i }>). *)
-  (<{ let "tmp1" = ! real_j in
-      let "tmp2" = "tmp1" + 1 in
-      let "tmp3" = val_array_get real_x_ind "tmp2" in
-      "tmp3" <= i }>).
-
-Definition rli_whilebody (real_j : trm) :=
-  (* or incr j? *)
-  (* (<{ real_j := (! real_j) + 1 }>). *)
-  (<{ let "tmp1" = ! real_j in
-      let "tmp2" = "tmp1" + 1 in
-      real_j := "tmp2" }>).
-
-Definition rli_func (i : int) :=
-  let loop := While (rli_whilecond i "x_ind" "j")
-    (rli_whilebody "j") in
-  <{ fun "x_ind" "x_val" => 
-      let "j" = ref 0 in 
-      loop ; 
-      let "tmp" = ! "j" in 
-      free "j";
-      (val_array_get "x_val" "tmp")
-  }>.
-
-Definition rl_loopbody (real_x real_x_ind real_x_val real_i real_k : trm) :=
-  let inc := rli_whilebody real_i in
-  <{  let "tmp1" = ! real_i in
-      let "tmp2" = val_array_get real_x_val "tmp1" in
-      val_array_set real_x real_k "tmp2";
-      let "lhs" = real_k + 1 in
-      let "tmp3" = "tmp1" + 1 in
-      let "rhs" = val_array_get real_x_ind "tmp3" in
-      let "cmp" = "lhs" >= "rhs" in
-      if "cmp" then inc end }>.
-
-Definition rl_func :=
-  let loopbody := rl_loopbody "x" "x_ind" "x_val" "i" "k" in
-  let loop := For 0 N (trm_fun "k" loopbody) in
-  let al := abs N in
-  <{ fun "x_ind" "x_val" =>
-      let "x" = val_alloc al in
-      let "i" = ref 0 in 
-      loop ; 
-      free "i"; 
-      "x"
-  }>.
-
 Definition arr_x_ind (p : loc) (d : D) :=
-  (* harray (LibList.map (fun n => val_int (Z.of_nat n)) Lind) p d. *)
   harray (LibList.map val_int Lind) p d.
 
 Definition arr_x_val (p : loc) (d : D) :=
   harray (LibList.map val_int Lval) p d.
 
-(* sums are equal *)
-
-Fact For_subst ZZ NN t x v : 
-  x <> "cond" -> 
-  x <> "for" ->
-  x <> "cnt" -> 
-  x <> "body" ->
-  subst x v (For ZZ NN t) = For ZZ NN (subst x v t).
-Proof using.
-  intros. unfold For, For_aux. simpl; case_var; eqsolve.
-Qed.
-
-(* Definition int_add_val_int (b : int) (a : val) :=
-  b + (match a with val_int a' => a' | _ => 0 end). *)
-
-(*
-(* a subgoal for goal and other programs *)
-Goal forall (px_ind px_val : loc) (ps0 : loc),
-  ntriple 
-    (ps0 ~⟨(1%Z, 0%Z), 0⟩~> 0 \*
-      arr_x_ind px_ind (⟨(1, 0), 0⟩)%arr \*
-      arr_x_val px_val (⟨(1, 0), 0⟩)%arr \*
-      (\*_(d <- interval 0 N)
-          arr_x_ind px_ind (⟨(2, 0), d⟩)%arr \*
-          arr_x_val px_val (⟨(2, 0), d⟩)%arr))
-    ((Lab (pair 1 0) (FH (single 0 tt) (fun=> 
-      For 0 M (rlsum_loopbody (val_loc px_ind) (val_loc px_val) (val_loc ps0))
-      ))) :: 
-      (Lab (pair 2 0) (FH (interval 0 N) (fun i => (rli_func i px_ind px_val)))) :: 
-      nil)
-    (fun hv => (fun hveta => ps0 ~⟨(1%Z, 0%Z), 0⟩~> 
-      (fset_fold 0 (fun d acc => int_add_val_int acc (hveta d)) 
-        (label (Lab (pair 2 0) (interval 0 N)))) \* \Top) hv).
-Proof.
-  intros.
-  unfold rlsum_loopbody.
-  eapply xfor_lemma.
-
-
-
-
-*)
+Section Segmentation.
 
 Definition ind_seg (i : int) := 
-  (* interval (Z.of_nat (nth (Z.to_nat i) Lind)) (Z.of_nat (nth (Z.to_nat (i + 1)) Lind)). *)
   interval (nth (abs i) Lind) (nth (abs (i + 1)) Lind).
 
 Lemma interval_segmentation_pre i :
@@ -1104,70 +958,60 @@ Proof using N M Lind H_length_Lind H_Lind_first H_Lind_inc H_Lind_last H_Lval_no
   f_equal.
 Qed.
 
-(* order property of this array *)
-(* Lemma ind_find_unique : forall (k : int)
-  (Hk : (0 <= k < N)%Z) (a : int) (Ha : (0 <= a < M)%Z) 
-  (Hka : (nth (abs a) Lind <= k < nth (abs (a + 1)) Lind)%Z),  *)
-
-(*
-Lemma interval_segmentation_pre i :
-  0 <= i <= M -> 
-  Union (interval 0 i) ind_seg = interval 0 (Z.of_nat (nth (Z.to_nat i) Lind)).
-Proof using N M Lind H_length_Lind H_Lind_first H_Lind_inc.
-  clear Lval H_length_Lval H_Lind_last H_Lval_notnil.
-
-  remember (to_nat i) as n.
-  revert i Heqn.
-  induction n as [ | n IH ]; intros.
-  { assert (i = 0) as -> by math. 
-    rewrite -> H_Lind_first. simpl. rewrite -> intervalgt; try math.
-    by rewrite -> Union0.
+Lemma segmentation_sum hv (i : int) (Hi : (0 <= i <= M)%Z) : 
+  val_int (fset_fold 0
+    (fun idx : int =>
+    Z.add^~ (fset_fold 0
+                (fun d : labeled int =>
+                Z.add^~ match hv d with
+                        | val_int n => n
+                        | _ => 0
+                        end) ⟨(2, 0), ind_seg idx⟩)) 
+    (interval 0 i)) =
+  fset_fold (val_int 0) (fun (d : labeled int) (acc : val) => val_int_add acc (hv d))
+    ⟨(2, 0), interval 0 (nth (abs i) Lind)⟩.
+Proof.
+  remember (abs i) as n eqn:E.
+  revert i Hi E. 
+  induction n; intros.
+  { change (abs 0)%Z with 0%nat. 
+    assert (i=0) as -> by math.
+    rewrite -> H_Lind_first.
+    rewrite -> intervalgt; try math.
+    rewrite label_empty. 
+    rewrite -> ! (fst (@fset_foldE _ _ _ _)); auto.
   }
-  { assert (i = (Z.of_nat n) + 1) as -> by math.
-    rewrite -> intervalUr; try math.
-    rewrite -> Union_upd_fset, -> IH; try math.
-    unfold ind_seg. 
-    replace (to_nat (Z.of_nat n)) with n by math.
-    replace (to_nat (Z.of_nat n + 1)) with (S n) by math.
-    rewrite <- interval_union with (x:=0) (y:=(Z.of_nat (nth n Lind)))
-      (z:=(Z.of_nat (nth (S n) Lind))); try math.
-    2:{ apply inj_le, H_Lind_inc; math. }
-    rewrite -> union_comm_of_disjoint. 1: reflexivity.
-    (* TODO may reuse disjoint proof *)
+  { replace i with ((i - 1) + 1)%Z by math.
+    rewrite -> E.
+    rewrite <- interval_union with (x:=0) (y:=(nth (abs (i-1)) Lind))
+      (z:=(nth (abs i) Lind)); try math.
+    2:{ rewrite <- H_Lind_first. 
+      replace 0%nat with (abs 0) by math.
+      apply H_Lind_inc'; math. 
+    }
+    2: apply H_Lind_inc'; math. 
+    rewrite -> intervalUr. 2: math.
+    rewrite -> (snd (@fset_foldE _ _ _ _)); try math.
+    2:{ rewrite -> indom_interval. intros ?. math. }
+    rewrite -> val_int_add_distr, -> IHn; try math.
+    replace n with (abs (i - 1)) by math.
+    rewrite -> val_int_add_fold_transform.
+    rewrite label_union.
+    symmetry.
+    unfold ind_seg. replace (i - 1 + 1) with i by math.
+    rewrite -> fset_fold_val_int_add_union; try reflexivity.
+
     apply disjoint_of_not_indom_both.
-    intros. rewrite -> indom_interval in *. math.
+    intros (?, ?) H H'. 
+    rewrite indom_label_eq in H.
+    rewrite indom_label_eq in H'.
+    destruct H as (<- & H), H' as (_ & H').
+    rewrite -> indom_interval in H, H'. math.
   }
 Qed.
 
-Lemma interval_segmentation :
-  Union (interval 0 M) ind_seg = interval 0 N.
-Proof using N M Lind H_length_Lind H_Lind_first H_Lind_inc H_Lind_last.
-  clear Lval H_length_Lval H_Lval_notnil.
+End Segmentation.
 
-  rewrite -> interval_segmentation_pre with (i:=M). 2: math.
-  rewrite <- H_Lind_last.
-  f_equal. replace (to_nat M) with M by math. math.
-Qed.
-*)
-
-Fact UnionN0 [T D S : Type] (fs : fset T) : Union fs (fun=> @empty D S) = empty.
-Proof using.
-  pattern fs. apply fset_ind; clear fs.
-  { by rewrite -> Union0. }
-  { intros. rewrite -> Union_upd. 2: auto. by rewrite -> H, -> union_empty_l. }
-Qed.
-
-Lemma hbig_fset_label_single' (Q : D -> hhprop) (d : D) :
-  \*_(d0 <- single d tt) Q d0 = Q d.
-Proof using.
-  unfold hbig_fset.
-  rewrite -> update_empty. rewrite -> (snd (@fset_foldE _ _ _ _)); auto.
-  2: intros; xsimpl.
-  rewrite -> (fst (@fset_foldE _ _ _ _)); auto.
-  by rewrite -> hstar_hempty_r.
-Qed.
-
-(* sub-part: evaluating while condition *)
 Lemma rli_whilecond_spec : forall (j k : int) (pj0 px_ind : loc) (d : D)
   (Hj : (0 <= j < M)%Z),
   (pj0 ~(d)~> j \* arr_x_ind px_ind d) ==>
@@ -1579,97 +1423,6 @@ Proof.
     }
   }
 Qed.
-(*
-Lemma htriple_hmerge_frame fs ht P Q p d (v diff : int) : 
-  (forall (v diff : int), 
-    htriple fs ht (hsingle p d v) 
-      (fun=> hstar (hsingle p d (v + diff)) (hpure P))) ->
-  htriple fs ht 
-    (hmerge val_int_add Q (hsingle p d v))
-    (fun=> hstar (hmerge val_int_add Q (hsingle p d (v + diff))) (hpure P)).
-Proof.
-  intros H.
-  unfold htriple in H |- *. intros H'.
-  unfold hhoare in H |- *. intros h Hh.
-  unfold hmerge in Hh. apply hstar_inv in Hh.
-  destruct Hh as (hm & hh' & (hq & hs & Hq & Hs & Em) & Hh' & Hdj & E).
-  apply hsingle_inv in Hs.
-  subst h hs. 
-
-  destruct (fmap_data hm (p, d)) eqn:E.
-  2:{ 
-    subst hm. unfold Fmap.merge, Fmap.map_merge in E. simpl in E.
-    case_if.
-    by destruct (fmap_data hq (p, d)) eqn:E'.
-  }
-  assert (exists delta, v0 = val_int (v + delta)).
-  {
-    subst hm. unfold Fmap.merge, Fmap.map_merge in E. simpl in E.
-    case_if.
-    destruct (fmap_data hq (p, d)) eqn:E'.
-    { destruct (match v1 with val_int _ => true | _ => false end) eqn:E2.
-      { destruct v1; try eqsolve.
-        unfold val_int_add in E. injection E as <-.
-        exists z. math.
-      }
-      { destruct v1; try eqsolve.
-        all: unfold val_int_add in E; injection E as <-.
-        all: exists 0; math.
-      }
-    }
-    injection E as <-.
-    exists 0; math.
-  }
-  destruct H0 as (delta & ->).
-  
-  specialize (H (v + delta) diff H'
-    (Fmap.union (Fmap.single (p, d) (val_int (v + delta))) hh')).
-  match type of H with ?a -> _ => assert a as Hhead end.
-  { apply hstar_intro; try assumption.
-    1: apply hsingle_intro.
-    apply disjoint_of_not_indom_both.
-    intros. 
-    assert (indom hm x) as Htmp.
-    { subst hm. rewrite -> indom_merge_eq. right.
-      by rewrite -> indom_single_eq in H0 |- *.
-    }
-    revert Htmp H1. by apply disjoint_inv_not_indom_both.
-  }
-  specialize (H Hhead). clear Hhead.
-
-  destruct H as (h'' & hv & H & Hh'').
-  pose proof (@Fmap.remove_update_self _ _ _ _ _ E) as Hself.
-  rewrite -> update_eq_union_single in Hself.
-Abort.
-*)
-
-(*
-Lemma hmerge_split Q p d :
-  let Q' := fun h => 
-  forall v : int, hmerge val_int_add Q (hsingle p d v) ==>
-    hexists (fun diff : int =>
-      hstar Q' (hsingle p d (val_int_add v (val_int diff)))).
-Proof.
-
-Lemma hmerge_split Q p d :
-  forall v : int, hmerge val_int_add Q (hsingle p d v) ==>
-    hexists (fun Q' => hexists (fun diff : int =>
-      hstar Q' (hsingle p d (val_int_add v (val_int diff))))).
-Proof.
-  intros.
-  hnf. intros h Hh.
-  unfold hmerge in Hh. destruct Hh as (h1 & h2 & H1 & H2 & E).
-  apply hsingle_inv in H2.
-  (* now ask *)
-  destruct (fmap_data h1 (p, d)) eqn:E1.
-  { destruct (match v0 with val_int _ => true | _ => false end) eqn:E2.
-    { destruct v0; try eqsolve.
-
-      
-
-  hexists_intro
-  
-*)
 
 Lemma rlsum_loopbody_spec d (x : int) (px_ind px_val : loc) (ps0 : loc) (l : int) (Hl : (0 <= l < M)%Z) :
   htriple (single d tt) (fun=> rlsum_loopbody px_ind px_val ps0 l)
@@ -1744,135 +1497,6 @@ Proof.
 Qed.
 
 (* two different forms of summation spec *)
-
-Lemma val_int_add_fold_transform hv fs : 
-  val_int (fset_fold 0 (fun d : labeled int =>
-                Z.add^~ match hv d with
-                        | val_int n => n
-                        | _ => 0
-                        end) fs) =
-  fset_fold (val_int 0) (fun (d : labeled int) (acc : val) => val_int_add acc (hv d))
-    fs.
-Proof.
-  pattern fs. apply fset_ind; clear fs.
-  { rewrite -> ! (fst (@fset_foldE _ _ _ _)); auto. }
-  { intros.
-    rewrite -> ! (snd (@fset_foldE _ _ _ _)); auto.
-    2: intros; destruct (hv a), (hv b); unfold val_int_add; try math.
-    2: intros; destruct (hv a), (hv b); unfold val_int_add; try math.
-    rewrite -> val_int_add_distr, -> H. by destruct (hv x).
-  }
-Qed.
-
-(* why so troublesome? *)
-
-Fact fset_fold_val_int_add_is_int fs (hv : D -> val) v :
-  fset_fold (val_int 0) (fun d (acc : val) => val_int (val_int_add acc (hv d))) fs = v ->
-  exists x : int, v = val_int x.
-Proof using.
-  clear N M Lval Lind H_length_Lval H_length_Lind 
-    H_Lval_notnil H_Lind_last H_Lind_inc H_Lind_first.
-
-  revert v. pattern fs. apply fset_ind; clear fs; intros.
-  { rewrite -> ! (fst (@fset_foldE _ _ _ _)) in H. eauto. }
-  { rewrite -> ! (snd (@fset_foldE _ _ _ _)) in H1.
-    3: assumption.
-    2: intros; destruct (hv a), (hv b); unfold val_int_add; try math.
-    match type of H1 with val_int (val_int_add ?a ?b) = _ => 
-      destruct a eqn:E, b eqn:E' end.
-    all: unfold val_int_add in H1; simpl in H1; try (by exists 0).
-    all: try eauto.
-  }
-Qed.
-
-Lemma fset_fold_val_int_add_union (fs fs' : fset D) (Hdj : disjoint fs fs') 
-  (hv : D -> val) :
-  fset_fold (val_int 0) (fun d acc => val_int (val_int_add acc (hv d))) (fs \u fs') =
-  val_int (val_int_add 
-    (fset_fold (val_int 0) (fun d acc => val_int (val_int_add acc (hv d))) fs)
-    (fset_fold (val_int 0) (fun d acc => val_int (val_int_add acc (hv d))) fs')).
-Proof using.
-  clear N M Lval Lind H_length_Lval H_length_Lind 
-    H_Lval_notnil H_Lind_last H_Lind_inc H_Lind_first.
-
-  revert fs Hdj.
-  pattern fs'. apply fset_ind; clear fs'; intros.
-  { rewrite -> union_empty_r.
-    rewrite -> ! (fst (@fset_foldE _ _ _ _)).
-    match goal with |- _ = val_int (val_int_add ?a ?b) => 
-      destruct a eqn:E; unfold val_int_add; simpl end.
-    all: pose proof E as Htmp; apply fset_fold_val_int_add_is_int in Htmp; 
-      destruct Htmp; try discriminate.
-    math.
-  }
-  { rewrite -> union_comm_of_disjoint. 2: apply Hdj.
-    rewrite <- update_union_not_r'. 2: constructor; exists tt; apply I.
-    rewrite -> ! (snd (@fset_foldE _ _ _ _)).
-    2,4: intros; destruct (hv a), (hv b); unfold val_int_add; try math.
-    2: assumption.
-    2:{ rewrite -> indom_union_eq. 
-      rewrite -> disjoint_comm, -> disjoint_update in Hdj.
-      eqsolve.
-    }
-    rewrite -> union_comm_of_disjoint.
-    2: rewrite -> disjoint_comm, -> disjoint_update in Hdj; intuition.
-    rewrite -> H.
-    2: rewrite -> disjoint_comm, -> disjoint_update in Hdj; intuition.
-    unfold val_int_add. math.
-  }
-Qed.
-
-Lemma segmentation_sum hv (i : int) (Hi : (0 <= i <= M)%Z) : 
-  val_int (fset_fold 0
-    (fun idx : int =>
-    Z.add^~ (fset_fold 0
-                (fun d : labeled int =>
-                Z.add^~ match hv d with
-                        | val_int n => n
-                        | _ => 0
-                        end) ⟨(2, 0), ind_seg idx⟩)) 
-    (interval 0 i)) =
-  fset_fold (val_int 0) (fun (d : labeled int) (acc : val) => val_int_add acc (hv d))
-    ⟨(2, 0), interval 0 (nth (abs i) Lind)⟩.
-Proof.
-  remember (abs i) as n eqn:E.
-  revert i Hi E. 
-  induction n; intros.
-  { change (abs 0)%Z with 0%nat. 
-    assert (i=0) as -> by math.
-    rewrite -> H_Lind_first.
-    rewrite -> intervalgt; try math.
-    rewrite label_empty. 
-    rewrite -> ! (fst (@fset_foldE _ _ _ _)); auto.
-  }
-  { replace i with ((i - 1) + 1)%Z by math.
-    rewrite -> E.
-    rewrite <- interval_union with (x:=0) (y:=(nth (abs (i-1)) Lind))
-      (z:=(nth (abs i) Lind)); try math.
-    2:{ rewrite <- H_Lind_first. 
-      replace 0%nat with (abs 0) by math.
-      apply H_Lind_inc'; math. 
-    }
-    2: apply H_Lind_inc'; math. 
-    rewrite -> intervalUr. 2: math.
-    rewrite -> (snd (@fset_foldE _ _ _ _)); try math.
-    2:{ rewrite -> indom_interval. intros ?. math. }
-    rewrite -> val_int_add_distr, -> IHn; try math.
-    replace n with (abs (i - 1)) by math.
-    rewrite -> val_int_add_fold_transform.
-    rewrite label_union.
-    symmetry.
-    unfold ind_seg. replace (i - 1 + 1) with i by math.
-    rewrite -> fset_fold_val_int_add_union; try reflexivity.
-
-    apply disjoint_of_not_indom_both.
-    intros (?, ?) H H'. 
-    rewrite indom_label_eq in H.
-    rewrite indom_label_eq in H'.
-    destruct H as (<- & H), H' as (_ & H').
-    rewrite -> indom_interval in H, H'. math.
-  }
-Qed.
 
 Lemma rlsum_rli_align_step : forall (px_ind px_val : loc) (ps0 : loc),
   ntriple 
@@ -2147,195 +1771,13 @@ Proof.
   }
 Qed.
 
-Lemma htriple_sequ1 (fs fs' : fset D) H H' Q ht ht1 ht2 htsuf ht'
-  (Hdj : disjoint fs fs')
-  (Htp1 : htriple fs ht1 H (fun=> H'))
-  (Hhtsuf : forall d, indom fs d -> htsuf d = ht2 d)
-  (Hhtsuf' : forall d, indom fs' d -> htsuf d = ht' d)
-  (Htpsuf : htriple (fs \u fs') htsuf H' Q)
-  (Hht : forall d, indom fs d -> ht d = trm_seq (ht1 d) (ht2 d))
-  (Hht' : forall d, indom fs' d -> ht d = ht' d) :
-  htriple (fs \u fs') ht H Q.
-Proof.
-  apply wp_equiv.
-  rewrite <- wp_union; auto.
-  rewrite -> wp_ht_eq with (ht1:=ht) (ht2:=fun d => trm_seq (ht1 d) (ht2 d)).
-  xwp. xseq.
-  apply wp_equiv.
-  eapply htriple_conseq.
-  1: apply Htp1.
-  1: xsimpl.
-  1:{ 
-    xsimpl. 
-    rewrite -> wp_ht_eq with (ht1:=ht2) (ht2:=htsuf).
-    2: intros; by rewrite -> Hhtsuf.
-    eapply himpl_trans. 
-    2: apply wp_conseq with (Q1:=fun v => wp fs' htsuf 
-      (fun hr2 : D -> val => Q ((v \u_ fs) hr2))).
-    2:{ 
-      hnf. intros. 
-      rewrite -> wp_ht_eq with (ht1:=ht) (ht2:=htsuf); auto.
-      intros. rewrite -> Hht'; auto. rewrite -> Hhtsuf'; auto.
-    }
-    rewrite -> wp_union; auto.
-    by apply wp_equiv.
-  }
-  auto.
-Qed.
-
-Lemma htriple_sequ2 (fs fs' : fset D) H Q' Q ht ht1 ht2 htpre ht'
-  (Hdj : disjoint fs fs')
-  (Hhtpre : forall d, indom fs d -> htpre d = ht1 d)
-  (Hhtpre' : forall d, indom fs' d -> htpre d = ht' d)
-  (Htppre : htriple (fs \u fs') htpre H Q') (* hv? *)
-  (Hht : forall d, indom fs d -> ht d = trm_seq (ht1 d) (ht2 d))
-  (Hht' : forall d, indom fs' d -> ht d = ht' d)
-  (Htp2 : forall hv, htriple fs ht2 (Q' hv) (fun hr => Q (uni fs hr hv)))
-  (Hcong : forall hv1 hv2, (forall d, indom (fs \u fs') d -> hv1 d = hv2 d) -> 
-    Q hv1 ==> Q hv2) :
-  htriple (fs \u fs') ht H Q.
-Proof using.
-  apply wp_equiv.
-  rewrite -> union_comm_of_disjoint. 2: apply Hdj.
-  rewrite <- wp_union. 2: rewrite -> disjoint_comm; apply Hdj.
-  rewrite -> wp_ht_eq with (ht2:=ht').
-  2: apply Hht'.
-  rewrite -> wp_ht_eq with (ht2:=htpre).
-  2: introv HH; rewrite -> Hhtpre'; try reflexivity; try apply HH.
-  apply wp_equiv.
-
-  eapply htriple_conseq.
-  3:{ 
-    hnf. intros v. 
-    eapply himpl_trans.
-    1: apply wp_seq.
-    rewrite -> wp_ht_eq with (ht1:=ht) (ht2:=fun d => trm_seq (ht1 d) (ht2 d)).
-    2: apply Hht.
-    apply himpl_refl.
-  }
-  1:{ 
-    apply wp_equiv.
-    eapply wp_conseq. hnf. intros.
-    match goal with |- himpl _ (wp ?fs _ ?ff) => 
-      eapply himpl_trans with (H2:=wp fs htpre ff) end.
-    1: apply himpl_refl.
-    rewrite -> wp_ht_eq with (ht1:=ht1) (ht2:=htpre).
-    2: introv HH; rewrite -> Hhtpre; try reflexivity; try apply HH.
-    apply himpl_refl.
-  }
-  apply wp_equiv in Htppre.
-  rewrite -> union_comm_of_disjoint in Htppre. 2: apply Hdj.
-  rewrite <- wp_union in Htppre. 2: rewrite -> disjoint_comm; apply Hdj.
-  eapply himpl_trans.
-  1: apply Htppre.
-  apply wp_conseq.
-  hnf. intros. apply wp_conseq.
-  hnf. intros. apply wp_equiv. 
-  eapply htriple_conseq.
-  1: apply Htp2.
-  1: xsimpl.
-  hnf. intros. apply Hcong.
-  intros d Hu. rewrite -> indom_union_eq in Hu. unfold uni. 
-  repeat case_if; try eqsolve.
-  exfalso. revert C C0. apply disjoint_inv_not_indom_both. 
-  apply Hdj.
-Qed.
-
-Lemma ntriple_sequ2 (fs fs' : fset _) H Q' Q
-  (ht' ht1 ht2 : _ -> trm) (i j : int) (Hij : i <> j)
-  (Htppre : 
-    ntriple H
-      (Lab (pair i 0) (FH fs ht1) :: 
-       Lab (pair j 0) (FH fs' ht') :: nil)
-    Q')
-  (Htp2 : forall hv, 
-    htriple (label (Lab (pair i 0) fs)) (fun d => ht2 (eld d)) 
-      (Q' hv) (fun hr => Q (uni (label (Lab (pair i 0) fs)) hr hv)))
-  (Hcong : forall hv1 hv2, 
-    (forall d, 
-      indom ((label (Lab (pair i 0) fs)) \u (label (Lab (pair j 0) fs'))) d -> 
-      hv1 d = hv2 d) -> 
-    Q hv1 ==> Q hv2)
-  :
-  ntriple H
-    (Lab (pair i 0) (FH fs (fun d => trm_seq (ht1 d) (ht2 d))) :: 
-     Lab (pair j 0) (FH fs' ht') :: nil)
-    Q.
-Proof using.
-  unfold ntriple, nwp.
-  simpl fset_of. rewrite -> union_empty_r.
-  erewrite -> wp_ht_eq.
-  1: apply wp_equiv.
-  1: eapply htriple_sequ2 with 
-    (ht1:=fun d => ht1 (eld d))
-    (ht2:=fun d => ht2 (eld d))
-    (htpre:=uni (label (Lab (pair i 0) fs)) (fun d => ht1 (eld d))
-      (uni (label (Lab (pair j 0) fs')) (fun d => ht' (eld d)) (fun=> val_unit)))
-    (ht:=uni (label (Lab (pair i 0) fs)) (fun d => trm_seq (ht1 (eld d)) (ht2 (eld d)))
-      (uni (label (Lab (pair j 0) fs')) (fun d => ht' (eld d)) (fun=> val_unit)))
-    (ht':=fun d => ht' (eld d)).
-  1:{
-    apply disjoint_of_not_indom_both.
-    intros (ll, d) H1 H2. apply indom_label in H1, H2. eqsolve.
-  }
-  1:{
-    intros. unfold uni. case_if; try reflexivity. contradiction.
-  }
-  1:{
-    intros. unfold uni. case_if.
-    1:{ destruct d as (ll, d). apply indom_label in H0, C. eqsolve. }
-    case_if; try contradiction. reflexivity.
-  }
-  2:{
-    intros. unfold uni. case_if; try reflexivity. contradiction.
-  }
-  2:{
-    intros. unfold uni. case_if.
-    1:{ destruct d as (ll, d). apply indom_label in H0, C. eqsolve. }
-    case_if; try contradiction. reflexivity.
-  }
-  3: apply Hcong.
-  3:{
-    intros. destruct d as (ll, d).
-    rewrite -> indom_union_eq, -> ! indom_label_eq in H0.
-    destruct H0 as [ (<- & Hin) | (<- & Hin) ].
-    { unfold htrm_of, uni. simpl. case_if; try eqsolve.
-      rewrite -> ! indom_label_eq.
-      case_if; eqsolve.
-    }
-    { unfold htrm_of, uni. simpl. case_if; try eqsolve.
-      rewrite -> ! indom_label_eq.
-      repeat case_if; try eqsolve.
-    }
-  }
-  2: apply Htp2.
-  unfold ntriple, nwp in Htppre.
-  simpl fset_of in Htppre. rewrite -> union_empty_r in Htppre.
-  apply wp_equiv.
-  erewrite -> wp_ht_eq in Htppre.
-  1: apply Htppre.
-
-  (* repeat? *)
-  intros. destruct d as (ll, d).
-  rewrite -> indom_union_eq, -> ! indom_label_eq in H0.
-  destruct H0 as [ (<- & Hin) | (<- & Hin) ].
-  { unfold htrm_of, uni. simpl. case_if; try eqsolve.
-    rewrite -> ! indom_label_eq.
-    case_if; eqsolve.
-  }
-  { unfold htrm_of, uni. simpl. case_if; try eqsolve.
-    rewrite -> ! indom_label_eq.
-    repeat case_if; try eqsolve.
-  }
-Qed.
-
 Lemma rlsum_rli_ntriple : forall (px_ind px_val : loc),
   ntriple 
     ((\*_(d <- ⟨pair 1 0, single 0 tt⟩) 
       ((arr_x_ind px_ind d) \* (arr_x_val px_val d))) \*
      (\*_(d <- ⟨pair 2 0, interval 0 N⟩) 
       ((arr_x_ind px_ind d) \* (arr_x_val px_val d))))
-    ((Lab (pair 1 0) (FH (single 0 tt) (fun=> (rlsum_func px_ind px_val)))) :: 
+    ((Lab (pair 1 0) (FH (single 0 tt) (fun=> (rlsum_func M px_ind px_val)))) :: 
       (Lab (pair 2 0) (FH (interval 0 N) (fun i => (rli_func i px_ind px_val)))) :: 
       nil)
     (fun hv => \[hv (Lab (pair 1 0) 0) = 
@@ -2353,7 +1795,7 @@ Proof.
   apply (xfocus_lemma (pair 1 0)); simpl; try apply xnwp0_lemma.
   rewrite -> union_empty_r.
   (* little change *)
-  rewrite -> wp_ht_eq with (ht2:=(fun=> (rlsum_func px_ind px_val))).
+  rewrite -> wp_ht_eq with (ht2:=(fun=> (rlsum_func M px_ind px_val))).
   2:{ intros. unfolds label. 
     (* coercion: eld *)
     (* TODO extract this out to be a lemma *)
@@ -2745,7 +2187,7 @@ Lemma rl_rli_ntriple : forall (px_ind px_val : loc),
       ((arr_x_ind px_ind d) \* (arr_x_val px_val d))) \*
       (\*_(d <- ⟨pair 4 0, interval 0 N⟩) 
       ((arr_x_ind px_ind d) \* (arr_x_val px_val d))))
-    ((Lab (pair 3 0) (FH (single 0 tt) (fun=> (rl_func px_ind px_val)))) :: 
+    ((Lab (pair 3 0) (FH (single 0 tt) (fun=> (rl_func N px_ind px_val)))) :: 
       (Lab (pair 4 0) (FH (interval 0 N) (fun i => (rli_func i px_ind px_val)))) :: 
       nil)
     (fun hv => 
@@ -2765,7 +2207,7 @@ Proof.
   apply (xfocus_lemma (pair 3 0)); simpl; try apply xnwp0_lemma.
   rewrite -> union_empty_r.
   (* little change *)
-  rewrite -> wp_ht_eq with (ht2:=(fun=> (rl_func px_ind px_val))).
+  rewrite -> wp_ht_eq with (ht2:=(fun=> (rl_func N px_ind px_val))).
   2:{ 
     intros (ll, d) H. rewrite indom_label_eq indom_single_eq in H.
     destruct H as (<- & <-).
@@ -2885,9 +2327,9 @@ Lemma rlsum_rl_rli_ntriple_pre : forall (px_ind px_val : loc),
       ((arr_x_ind px_ind d) \* (arr_x_val px_val d))) \*
       (\*_(d <- ⟨pair 4 0, interval 0 N⟩) 
       ((arr_x_ind px_ind d) \* (arr_x_val px_val d))))
-    ((Lab (pair 1 0) (FH (single 0 tt) (fun=> (rlsum_func px_ind px_val)))) :: 
+    ((Lab (pair 1 0) (FH (single 0 tt) (fun=> (rlsum_func M px_ind px_val)))) :: 
     (Lab (pair 2 0) (FH (interval 0 N) (fun i => (rli_func i px_ind px_val)))) :: 
-      (Lab (pair 3 0) (FH (single 0 tt) (fun=> (rl_func px_ind px_val)))) :: 
+      (Lab (pair 3 0) (FH (single 0 tt) (fun=> (rl_func N px_ind px_val)))) :: 
       (Lab (pair 4 0) (FH (interval 0 N) (fun i => (rli_func i px_ind px_val)))) :: 
       nil)
     (fun hv => 
@@ -2946,7 +2388,7 @@ Proof.
     }
   }
   1:{
-    remember ((Lab (pair 1 0) (FH (single 0 tt) (fun=> (rlsum_func px_ind px_val)))) :: 
+    remember ((Lab (pair 1 0) (FH (single 0 tt) (fun=> (rlsum_func M px_ind px_val)))) :: 
       (Lab (pair 2 0) (FH (interval 0 N) (fun i => (rli_func i px_ind px_val)))) :: nil) as lsq.
     match goal with |- htriple ?fs _ _ _ => replace fs with (fset_of lsq) end.
     2:{ subst. simpl. by rewrite -> union_empty_r. } 
@@ -2961,7 +2403,7 @@ Proof.
     subst lsq. apply rlsum_rli_ntriple.
   }
   1:{
-    remember ((Lab (pair 3 0) (FH (single 0 tt) (fun=> (rl_func px_ind px_val)))) :: 
+    remember ((Lab (pair 3 0) (FH (single 0 tt) (fun=> (rl_func N px_ind px_val)))) :: 
       (Lab (pair 4 0) (FH (interval 0 N) (fun i => (rli_func i px_ind px_val)))) :: nil) as lsq.
     match goal with |- htriple ?fs _ _ _ => replace fs with (fset_of lsq) end.
     2:{ subst. simpl. by rewrite -> union_empty_r. } 
@@ -2977,448 +2419,6 @@ Proof.
   }
 Qed.
 
-(* simple 2 to 1 *)
-(*
-Fact hsub_hsingle_merge (f : D -> D) (p : loc) (d1 d2 : D) (Hn : d1 <> d2)
-  (H1 : f d1 = d1) (H2 : f d2 = d1) 
-  (Hdom : forall d, f d = d1 -> d = d1 \/ d = d2)
-  (Larr : list val) :
-  hsub (harray Larr p d1 \* harray Larr p d2) f = harray Larr p d1.
-Proof.
-  extens. intros h.
-  split; intros Hh.
-  {
-    unfold hsub in Hh. destruct Hh as (h' & <- & Hvalid & Hh').
-    apply hstar_inv in Hh'.
-    destruct Hh' as (h1 & h2 & Hh1 & Hh2 & Hdj & ->).
-
-
-    apply harray_intro
-    apply hsingle_inv in Hh1, Hh2. subst h1 h2.
-    match goal with |- _ ?hf => enough (hf = (Fmap.single (p, d1) v)) as Htmp end.
-    1: rewrite Htmp; apply hsingle_intro.
-*)
-
-Fact hsub_hsingle_merge (f : D -> D) (d1 d2 : D) (Hn : d1 <> d2)
-  (H1 : f d1 = d1) (H2 : f d2 = d1) 
-  (Hdom : forall d, f d = d1 -> d = d1 \/ d = d2)
-  (p : loc) (v : val) :
-  hsub (p ~(d1)~> v \* p ~(d2)~> v) f = p ~(d1)~> v.
-Proof.
-  extens. intros h.
-  split; intros Hh.
-  { unfold hsub in Hh. destruct Hh as (h' & <- & Hvalid & Hh').
-    apply hstar_inv in Hh'.
-    destruct Hh' as (h1 & h2 & Hh1 & Hh2 & Hdj & ->).
-    apply hsingle_inv in Hh1, Hh2. subst h1 h2.
-    match goal with |- _ ?hf => enough (hf = (Fmap.single (p, d1) v)) as Htmp end.
-    1: rewrite Htmp; apply hsingle_intro.
-    apply fmap_extens. intros (pp, dd). simpl. case_if.
-    { injection C as <-. subst dd.
-      unfold map_fsubst, map_union, map_indom.
-      destruct (classicT _) as [ E | E ].
-      { destruct (indefinite_description E) as ((ll, d) & EE & E'). 
-        simpl in EE. inversion EE. subst ll. rewrite H3.
-        case_if; auto. case_if; auto.
-      }
-      { false E. exists (p, d1). split; auto. case_if. eqsolve. }
-    }
-    { unfold map_fsubst, map_union, map_indom.
-      destruct (classicT _) as [ E | E ]; auto.
-      destruct (indefinite_description E) as ((ll, d) & EE & E'). 
-      simpl in EE. inversion EE. subst ll.
-      case_if; auto. case_if; auto.
-    }
-  }
-  {
-    apply hsingle_inv in Hh. subst h.
-    unfold hsub. 
-    exists (Fmap.single (p, d1) v \u Fmap.single (p, d2) v).
-    split.
-    1:{
-      (* TODO repeat *)
-      apply fmap_extens. intros (pp, dd). simpl. case_if.
-      { injection C as <-. subst dd.
-        unfold map_fsubst, map_union, map_indom.
-        destruct (classicT _) as [ E | E ].
-        { destruct (indefinite_description E) as ((ll, d) & EE & E'). 
-          simpl in EE. inversion EE. subst ll. rewrite H3.
-          case_if; auto. case_if; auto.
-        }
-        { false E. exists (p, d1). split; auto. case_if. eqsolve. }
-      }
-      { unfold map_fsubst, map_union, map_indom.
-        destruct (classicT _) as [ E | E ]; auto.
-        destruct (indefinite_description E) as ((ll, d) & EE & E'). 
-        simpl in EE. inversion EE. subst ll.
-        case_if; auto. case_if; auto.
-      }
-    }
-    split.
-    { hnf. intros (pa, da) (pb, db). simpl. intros.
-      assert (pa = pb) as -> by eqsolve.
-      unfold map_union. 
-      repeat case_if; try eqsolve.
-      { assert (d1 = da) as <- by eqsolve.
-        rewrite H1 in H. 
-        assert (f db = d1) as Htmp by eqsolve. apply Hdom in Htmp; eqsolve.
-      }
-      { assert (d2 = da) as <- by eqsolve.
-        rewrite H2 in H. 
-        assert (f db = d1) as Htmp by eqsolve. apply Hdom in Htmp; eqsolve.
-      }
-      { assert (d1 = db) as <- by eqsolve.
-        rewrite H1 in H. 
-        assert (f da = d1) as Htmp by eqsolve. apply Hdom in Htmp; eqsolve.
-      }
-      { assert (d2 = db) as <- by eqsolve.
-        rewrite H2 in H. 
-        assert (f da = d1) as Htmp by eqsolve. apply Hdom in Htmp; eqsolve.
-      }
-    }
-    apply hstar_intro; try apply hsingle_intro.
-    apply disjoint_single_single.
-    eqsolve.
-  }
-Qed.
-
-Fact hsub_hpure_comm P H f : hsub (\[P] \* H) f = (\[P] \* hsub H f).
-Proof.
-  extens. intros h.
-  split; intros Hh.
-  { unfold hsub in Hh. destruct Hh as (h' & <- & Hvalid & Hh').
-    apply hstar_inv in Hh'.
-    destruct Hh' as (h1 & h2 & Hh1 & Hh2 & Hdj & ->).
-    apply hpure_inv in Hh1. destruct Hh1 as (Hp & ->).
-    rewrite union_empty_l in Hvalid |- *.
-    rewrite <- union_empty_l.
-    apply hstar_intro. 1: by apply hpure_intro.
-    2: auto.
-    unfold hsub. exists h2. intuition.
-  }
-  { rewrite <- union_empty_l in Hh.
-    apply hstar_inv in Hh.
-    destruct Hh as (h1 & h2 & Hh1 & Hh2 & Hdj & E).
-    rewrite union_empty_l in E. subst h.
-    apply hpure_inv in Hh1. destruct Hh1 as (Hp & ->).
-    rewrite union_empty_l.
-    unfold hsub in Hh2 |- *. 
-    destruct Hh2 as (h' & <- & Hvalid & Hh').
-    exists (empty \u h').
-    rewrite ! union_empty_l.
-    split; auto. split; auto. 
-    rewrite <- union_empty_l. apply hstar_intro; auto. by apply hpure_intro.
-  }
-Qed.
-
-Fact hstar_hexists_comm {A : Type} (H : A -> hhprop) H' : 
-  (hexists H) \* H' = (hexists (fun a => H a \* H')).
-Proof. xsimpl. Qed.
-
-(*
-Fact hsub_hsingle_groupmerge {A : Type} {fs : fset A} (f : D -> D) (d1 d2 : D) (Hn : d1 <> d2)
-  (H1 : f d1 = d1) (H2 : f d2 = d1) 
-  (Hdom : forall d, f d = d1 -> d = d1 \/ d = d2)
-  (* (Hdomneg : forall d, f d <> d2) *)
-  (p : A -> loc) (v : A -> val) 
-  (Hp : forall a1 a2, indom fs a1 -> indom fs a2 -> a1 <> a2 -> p a1 <> p a2) 
-  (* (Hfsnonempty : exists a, indom fs a) : *) :
-  hsub (\*_(a <- fs) ((p a) ~(d1)~> (v a) \* (p a) ~(d2)~> (v a))) f =
-  (\*_(a <- fs) ((p a) ~(d1)~> (v a))).
-Proof.
-*)
-
-(* TODO guess can also be done with hsub_hstar_fset; but still need hsub_hsingle_merge *)
-Fact hsub_hsingle_groupmerge' {A : Type} (fs : fset A) (f : D -> D) (d1 d2 : D) (Hn : d1 <> d2)
-  (H1 : f d1 = d1) (H2 : f d2 = d1) 
-  (Hdom : forall d, f d = d1 -> d = d1 \/ d = d2)
-  (Hdomneg : forall d, f d <> d2)
-  (p : A -> loc) (v : A -> val) :
-  (\*_(a <- fs) ((p a) ~(d1)~> (v a))) ==>
-  hsub (\*_(a <- fs) ((p a) ~(d1)~> (v a) \* (p a) ~(d2)~> (v a))) f.
-Proof.
-  hnf. intros h Hh. apply hstar_fset_inv in Hh; auto.
-  destruct Hh as (Hh & Hp).
-  assert (Hp' : forall a1 a2 : A,
-    indom fs a1 -> indom fs a2 -> p a1 = p a2 -> a1 = a2).
-  { intros. destruct (classicT (a1 = a2)); auto. (* ! *)
-    by apply Hp in n.
-  }
-  rewrite Union_localization in Hh.
-  2:{ 
-    intros. apply disjoint_single_single. intros ?.
-    inversion H4. revert H6. by apply Hp.
-  }
-  unfold hsub. 
-  exists (Union fs 
-    (fm_localize fs (fun a : A => single (p a, d1) (v a) \u single (p a, d2) (v a)))).
-
-  (* before that *)
-  assert (valid_subst (Union fs
-     (fm_localize fs (fun a : A => single (p a, d1) (v a) \u single (p a, d2) (v a))))
-    (fun x : loc * D => (x.1, f x.2))) as Hvsub.
-  {
-    hnf. intros (pp, d1') (pp', d2'). simpl.
-    intros H. inversion H. subst pp'.
-    match goal with |- ?a = ?b => destruct a eqn:E, b eqn:E' end; try reflexivity.
-    {
-      apply Union_fmap_inv in E, E'.
-      2:{
-        apply fm_localization.
-        (* repeat *)
-        intros. rew_disjoint. repeat split.
-        all: apply disjoint_single_single; intros Htmp; try eqsolve.
-        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
-      }
-      2:{
-        apply fm_localization.
-        (* repeat *)
-        intros. rew_disjoint. repeat split.
-        all: apply disjoint_single_single; intros Htmp; try eqsolve.
-        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
-      }
-      destruct E as (? & ? & E), E' as (? & ? & E').
-      unfold fm_localize, uni in E, E'.
-      repeat case_if; try eqsolve.
-      simpl in E, E'. unfolds map_union.
-      repeat case_if; try eqsolve.
-      all: injection E as <-; injection E' as <-.
-      all: f_equal; f_equal.
-      all: apply Hp'; eqsolve.
-    }
-    {
-      apply Union_fmap_inv in E.
-      2:{
-        apply fm_localization.
-        (* repeat *)
-        intros. rew_disjoint. repeat split.
-        all: apply disjoint_single_single; intros Htmp; try eqsolve.
-        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
-      }
-      destruct E as (? & ? & E).
-      apply Union_fmap_none_inv with (t:=x) in E'; try assumption.
-      2:{
-        apply fm_localization.
-        (* repeat *)
-        intros. rew_disjoint. repeat split.
-        all: apply disjoint_single_single; intros Htmp; try eqsolve.
-        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
-      }
-      unfold fm_localize, uni in E, E'.
-      case_if; try eqsolve.
-      simpl in E, E'. unfolds map_union.
-      repeat case_if; try eqsolve.
-      { injection C2 as <-. subst d1'.
-        rewrite H1 in H. assert (f d2' = d1) as Htmp by eqsolve.
-        apply Hdom in Htmp; eqsolve.
-      }
-      { injection C3 as <-. subst d1'.
-        rewrite H2 in H. assert (f d2' = d1) as Htmp by eqsolve.
-        apply Hdom in Htmp; eqsolve.
-      }
-    }
-    {
-      apply Union_fmap_inv in E'.
-      2:{
-        apply fm_localization.
-        (* repeat *)
-        intros. rew_disjoint. repeat split.
-        all: apply disjoint_single_single; intros Htmp; try eqsolve.
-        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
-      }
-      destruct E' as (? & ? & E').
-      apply Union_fmap_none_inv with (t:=x) in E; try assumption.
-      2:{
-        apply fm_localization.
-        (* repeat *)
-        intros. rew_disjoint. repeat split.
-        all: apply disjoint_single_single; intros Htmp; try eqsolve.
-        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
-      }
-      unfold fm_localize, uni in E, E'.
-      case_if; try eqsolve.
-      simpl in E, E'. unfolds map_union.
-      repeat case_if; try eqsolve.
-      { injection C0 as <-. subst d2'.
-        rewrite H1 in H. assert (f d1' = d1) as Htmp by eqsolve.
-        apply Hdom in Htmp; eqsolve.
-      }
-      { injection C1 as <-. subst d2'.
-        rewrite H2 in H. assert (f d1' = d1) as Htmp by eqsolve.
-        apply Hdom in Htmp; eqsolve.
-      }
-    }
-  }
-
-  subst h. split. 2: split. 2: apply Hvsub.
-  {
-    apply fmap_extens. intros (pp, dd).
-    unfold fsubst, map_fsubst. simpl.
-    destruct (classicT _) as [ P | P ].
-    { destruct (indefinite_description _) as ((pp', dd') & EE).
-      simpl in EE. destruct EE as (Epd & Hin).
-      injection Epd as <-.
-      rewrite <- Union_localization in Hin.
-      2:{ 
-        (* repeat *)
-        intros. rew_disjoint. repeat split.
-        all: apply disjoint_single_single; intros Htmp; try eqsolve.
-        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
-      }
-      (* TODO cannot rewrite? *)
-      match type of Hin with _ ?a ?b => assert (indom a b) by auto end. 
-      rewrite indom_Union in H0.
-      destruct H0 as (a & Hin' & HH).
-      rewrite indom_union_eq ! indom_single_eq in HH.
-      assert (dd = d1 /\ pp' = p a) as (-> & ->).
-      { destruct HH as [ HH | HH ]; inversion HH; subst pp' dd'; eqsolve. }
-      apply Hdom in H.
-      rewrite -> ! Union_fmap_indomE with (t:=a); try assumption.
-      2:{ 
-        apply fm_localization.
-        (* repeat *)
-        intros. rew_disjoint. repeat split.
-        all: apply disjoint_single_single; intros Htmp; try eqsolve.
-        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
-      }
-      3:{ 
-        apply fm_localization.
-        (* repeat *)
-        intros. rew_disjoint. repeat split.
-        all: apply disjoint_single_single; intros Htmp; try eqsolve.
-        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
-      }
-      2:{
-        unfold fm_localize, uni. case_if; try eqsolve. apply indom_single.
-      }
-      2:{
-        unfold fm_localize, uni. case_if; try eqsolve. rewrite indom_union_eq ! indom_single_eq.
-        eqsolve.
-      }
-      unfold fm_localize, uni. case_if; try eqsolve.
-      simpl. unfold map_union. repeat case_if; try eqsolve.
-    }
-    { symmetry.
-      apply Union_fmap_nindomE.
-      intros. unfold fm_localize, uni.
-      case_if; try eqsolve.
-      rewrite indom_single_eq.
-      intros HH. inversion HH. subst pp dd.
-      apply P.
-      
-      setoid_rewrite <- Union_localization.
-      2:{ 
-        (* repeat *)
-        intros. rew_disjoint. repeat split.
-        all: apply disjoint_single_single; intros Htmp; try eqsolve.
-        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
-      }
-      setoid_rewrite indom_Union.
-      exists (p t, d1). rewrite H1. split; auto.
-      exists t. rewrite indom_union_eq indom_single_eq. eqsolve.
-    }
-  }  
-  {
-    rewrite hstar_fsetE. eexists. split. 1: reflexivity.
-    split.
-    { apply fm_localization. 
-      intros. rew_disjoint. repeat split.
-      all: apply disjoint_single_single; intros Htmp; try eqsolve.
-      all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
-    }
-    { intros. 
-      unfold fm_localize, uni. case_if; try eqsolve.
-      apply hstar_intro.
-      1-2: apply hsingle_intro.
-      apply disjoint_single_single; intros Htmp; try eqsolve.
-    }
-  }
-Qed.
-
-(*
-Fact hsub_hsingle_arraymerge (f : D -> D) (d1 d2 : D) (Hn : d1 <> d2)
-  (H1 : f d1 = d1) (H2 : f d2 = d1) 
-  (Hdom : forall d, f d = d1 -> d = d1 \/ d = d2)
-  (p : loc) (L : list val) (Hnp : p <> 0%nat) :
-  hsub (harray L p d1 \* harray L p d2) f = harray L p d1.
-Proof.
-  unfold harray, hheader.
-  assert ((((p ~(d1)~> val_header (length L) \* \[(p, d1) <> null d1]) \*
-    hcells L (p + 1)%nat d1) \*
-   (p ~(d2)~> val_header (length L) \* \[(p, d2) <> null d2]) \*
-   hcells L (p + 1)%nat d2) = 
-    (\[(p, d1) <> null d1] \* \[(p, d2) <> null d2] \*
-      (p ~(d1)~> val_header (length L) \* p ~(d2)~> val_header (length L)) \*
-      (hcells L (p + 1)%nat d1 \* hcells L (p + 1)%nat d2))) as Htmp.
-  { by xsimpl. }
-  rewrite Htmp. clear Htmp.
-  rewrite ! hsub_hpure_comm.
-  
-*)
-
-(*
-Fact hsub_htop_comm H f : hsub (\Top \* H) f = (\Top \* hsub H f).
-Proof.
-  extens. intros h.
-  split; intros Hh.
-  { unfold hsub in Hh. destruct Hh as (h' & <- & Hvalid & Hh').
-    apply hstar_inv in Hh'.
-    destruct Hh' as (h1 & h2 & Hh1 & Hh2 & Hdj & ->).
-    rewrite <- union_empty_l.
-    apply hstar_intro. 1: by apply htop_intro.
-    2: auto.
-hsub
-
-    unfold hsub. exists (h1 \u h2). intuition.
-  }
-  { rewrite <- union_empty_l in Hh.
-    apply hstar_inv in Hh.
-    destruct Hh as (h1 & h2 & Hh1 & Hh2 & Hdj & E).
-    rewrite union_empty_l in E. subst h.
-    apply hpure_inv in Hh1. destruct Hh1 as (Hp & ->).
-    rewrite union_empty_l.
-    unfold hsub in Hh2 |- *. 
-    destruct Hh2 as (h' & <- & Hvalid & Hh').
-    exists (empty \u h').
-    rewrite ! union_empty_l.
-    split; auto. split; auto. 
-    rewrite <- union_empty_l. apply hstar_intro; auto. by apply hpure_intro.
-  }
-Qed.
-*)
-(*
-Fact hsub_harray_merge (f : D -> D) (p : loc) (d1 d2 : D) (Hn : d1 <> d2)
-  (H1 : f d1 = d1) (H2 : f d2 = d1) 
-  (Hdom : forall d, f d = d1 -> d = d1 \/ d = d2)
-  (L : list val) :
-  hsub (harray L p d1 \* harray L p d2) f = harray L p d1.
-Proof.
-  unfold harray, hheader.
-  assert ((((p ~(d1)~> val_header (length L) \* \[(p, d1) <> null d1]) \*
-    hcells L (p + 1)%nat d1) \*
-   (p ~(d2)~> val_header (length L) \* \[(p, d2) <> null d2]) \*
-   hcells L (p + 1)%nat d2) = 
-    (\[(p, d1) <> null d1] \* \[(p, d2) <> null d2] \*
-      (p ~(d1)~> val_header (length L) \* p ~(d2)~> val_header (length L)) \*
-      (hcells L (p + 1)%nat d1 \* hcells L (p + 1)%nat d2))) as Htmp.
-  { by xsimpl. }
-  rewrite Htmp. clear Htmp.
-  rewrite -> 2 hsub_hpure.
-  
-  
-    (( \* ) \*
-    ) \*
-   ( \* ) \*
-   )
-  induction L.
-  
-*)
-
-Fact fsubst_indom_local (fs : fset D) (h : hheap D) f : 
-  (forall p d, indom (fsubst h f) (p, d) -> indom fs d) -> 
-  local fs (fsubst h f).
-Proof. intros H. hnf. intros. now apply H in H0. Qed.
-
 (* a better composition *)
 Lemma rlsum_rl_rli_ntriple : forall (px_ind px_val : loc),
   ntriple 
@@ -3428,17 +2428,15 @@ Lemma rlsum_rl_rli_ntriple : forall (px_ind px_val : loc),
       ((arr_x_ind px_ind d) \* (arr_x_val px_val d))) \*
       (\*_(d <- ⟨pair 3 0, single 0 tt⟩) 
       ((arr_x_ind px_ind d) \* (arr_x_val px_val d))))
-    ((Lab (pair 1 0) (FH (single 0 tt) (fun=> (rlsum_func px_ind px_val)))) :: 
+    ((Lab (pair 1 0) (FH (single 0 tt) (fun=> (rlsum_func M px_ind px_val)))) :: 
       (Lab (pair 2 0) (FH (interval 0 N) (fun i => (rli_func i px_ind px_val)))) ::
-      (Lab (pair 3 0) (FH (single 0 tt) (fun=> (rl_func px_ind px_val)))) ::  
+      (Lab (pair 3 0) (FH (single 0 tt) (fun=> (rl_func N px_ind px_val)))) ::  
       nil)
     (fun hv => 
       (@hexists loc (fun px => \[(hv (Lab (pair 3 0) 0)) = val_loc px] \*
         (@hexists (list val) (fun Larr =>
         \[length Larr = (abs N) /\
         hv (Lab (pair 1 0) 0) = fold_left val_int_add (val_int 0) Larr] \* 
-        (* leave this out? *)
-        (* (\*_(d <- ⟨pair 2 0, interval 0 N⟩) \[hv d = (nth (abs (eld d)) Larr)]) \* *)
         harray Larr px (Lab (pair 3 0) 0))))) \* 
         hhtop (⟨(1, 0), single 0 tt⟩ \u ⟨(2, 0), interval 0 N⟩ \u ⟨(3, 0), single 0 tt⟩)).
 Proof.
@@ -3446,27 +2444,11 @@ Proof.
   match goal with |- ntriple _ ?ls _ => remember ls as lsq' eqn:E' end.
   unfold ntriple, nwp. apply wp_equiv.
   (* the original lsq *)
-  remember ((Lab (pair 1 0) (FH (single 0 tt) (fun=> (rlsum_func px_ind px_val)))) :: 
+  remember ((Lab (pair 1 0) (FH (single 0 tt) (fun=> (rlsum_func M px_ind px_val)))) :: 
     (Lab (pair 2 0) (FH (interval 0 N) (fun i => (rli_func i px_ind px_val)))) :: 
-    (Lab (pair 3 0) (FH (single 0 tt) (fun=> (rl_func px_ind px_val)))) :: 
+    (Lab (pair 3 0) (FH (single 0 tt) (fun=> (rl_func N px_ind px_val)))) :: 
     (Lab (pair 4 0) (FH (interval 0 N) (fun i => (rli_func i px_ind px_val)))) :: 
     nil) as lsq eqn:E.
-  (* pose (f := fun (d : D) => 
-    If (2, 0) = (lab d)
-    then (Lab (3, 0) (eld d))
-    else (If (4, 0) = (lab d)
-          then (Lab (3, 0) (eld d))
-          else (If (3, 0) = (lab d)
-                then (Lab (2, 0) (eld d))
-                else d))). *)
-  (* pose (f := fun (d : D) => 
-    If indom (label (Lab (2, 0) (interval 0 N))) d
-    then (Lab (3, 0) (eld d))
-    else (If indom (label (Lab (4, 0) (interval 0 N))) d
-          then (Lab (3, 0) (eld d))
-          else (If indom (label (Lab (3, 0) (single 0 tt))) d
-                then (Lab (2, 0) (eld d))
-                else d))). *)
   pose (f := fun (d : D) => 
     If indom (label (Lab (4, 0) (interval 0 N))) d
     then (Lab (2, 0) (eld d))
@@ -3521,22 +2503,12 @@ Proof.
       { exists (3, 0) 0. rewrite ! indom_label_eq ! indom_single_eq. repeat case_if; eqsolve. }
     }
   }
-  (* assert (htrm_of lsq = (htrm_of lsq' \o f)) as Eht.
-  { subst lsq lsq'. unfold htrm_of. extens. intros (ll, d). 
-    subst f. simpl.
-    rewrite ! indom_single_eq. repeat case_if; try eqsolve.
-  } *)
   assert (forall d, indom (fset_of lsq) d -> (htrm_of lsq) d = (htrm_of lsq' \o f) d) as Eht.
   { subst lsq lsq'. unfold htrm_of. intros (ll, d) Hid.
     rewrite <- Hindom' in Hid. 
     subst f. simpl.
     rewrite ! indom_label_eq ! indom_single_eq. 
     repeat case_if; simpl; try eqsolve.
-    (* { simpl in *. destruct C4; subst ll d.
-      false C0. split; auto. rewrite indom_interval. pose proof zero_lt_N. math.
-    }
-    { simpl in *. comp destruct C5; subst ll.
-    rewrite ! indom_single_eq. repeat case_if; try eqsolve. *)
   }
 
   eapply htriple_conseq_frame with (H2:=\[]).
@@ -3707,14 +2679,6 @@ Proof.
       \[(px_val, (⟨(2, 0), d⟩)%arr) <> null (⟨(2, 0), d⟩)%arr] \*
       \[(px_ind, (⟨(4, 0), d⟩)%arr) <> null (⟨(4, 0), d⟩)%arr] \*
       \[(px_val, (⟨(4, 0), d⟩)%arr) <> null (⟨(4, 0), d⟩)%arr] \*
-      (* ((px_ind ~⟨(2%Z, 0%Z), d⟩~> val_header (abs (M + 1)) \* 
-        hcells (LibList.map val_int Lind) (px_ind + 1)%nat (⟨(2, 0), d⟩)%arr) \*
-      (px_ind ~⟨(4%Z, 0%Z), d⟩~> val_header (abs (M + 1)) \*
-        hcells (LibList.map val_int Lval) (px_val + 1)%nat (⟨(4, 0), d⟩)%arr)) \*
-      ((px_val ~⟨(2%Z, 0%Z), d⟩~> val_header (abs M) \*
-        hcells (LibList.map val_int Lval) (px_val + 1)%nat (⟨(2, 0), d⟩)%arr) \*
-      (px_val ~⟨(4%Z, 0%Z), d⟩~> val_header (abs M) \*
-        hcells (LibList.map val_int Lind) (px_ind + 1)%nat (⟨(4, 0), d⟩)%arr)) *)
       (px_ind ~⟨(2%Z, 0%Z), d⟩~> val_header (abs (M + 1)) \*
         px_ind ~⟨(4%Z, 0%Z), d⟩~> val_header (abs (M + 1))) \*
       (hcells (LibList.map val_int Lind) (px_ind + 1)%nat (⟨(2, 0), d⟩)%arr \*
@@ -3760,7 +2724,7 @@ Proof.
     assert (forall d, indom (interval 0 N) d -> f[4](d) = (Lab (2, 0) d)) as Hid4.
     { subst f. simpl. intros. rewrite indom_label_eq. case_if; eqsolve. }
     eapply himpl_trans. 2: eapply himpl_trans.
-    2: apply hsub_hsingle_groupmerge' with 
+    2: apply hsub_hsingle_groupmerge_himpl with 
       (p:=pall) (v:=vall) (d1:=(Lab (2, 0) d)) (d2:=(Lab (4, 0) d))
       (f:=f) (fs:=interval 0 (M+M+3)).
     2: eqsolve.
@@ -4053,8 +3017,8 @@ Theorem rlsum_rl_ntriple : forall (px_ind px_val : loc),
       ((arr_x_ind px_ind d) \* (arr_x_val px_val d))) \*
       (\*_(d <- ⟨pair 3 0, single 0 tt⟩) 
       ((arr_x_ind px_ind d) \* (arr_x_val px_val d))))
-    ((Lab (pair 1 0) (FH (single 0 tt) (fun=> (rlsum_func px_ind px_val)))) :: 
-      (Lab (pair 3 0) (FH (single 0 tt) (fun=> (rl_func px_ind px_val)))) :: 
+    ((Lab (pair 1 0) (FH (single 0 tt) (fun=> (rlsum_func M px_ind px_val)))) :: 
+      (Lab (pair 3 0) (FH (single 0 tt) (fun=> (rl_func N px_ind px_val)))) :: 
       nil)
     (fun hv => 
       (@hexists loc (fun px => \[(hv (Lab (pair 3 0) 0)) = val_loc px] \*
@@ -4065,9 +3029,9 @@ Theorem rlsum_rl_ntriple : forall (px_ind px_val : loc),
 Proof.
   intros.
   unfold ntriple, nwp.
-  remember ((Lab (pair 1 0) (FH (single 0 tt) (fun=> (rlsum_func px_ind px_val)))) :: 
+  remember ((Lab (pair 1 0) (FH (single 0 tt) (fun=> (rlsum_func M px_ind px_val)))) :: 
     (Lab (pair 2 0) (FH (interval 0 N) (fun i => (rli_func i px_ind px_val)))) :: 
-    (Lab (pair 3 0) (FH (single 0 tt) (fun=> (rl_func px_ind px_val)))) :: 
+    (Lab (pair 3 0) (FH (single 0 tt) (fun=> (rl_func N px_ind px_val)))) :: 
     nil) as lsq eqn:E.
   simpl fset_of. rew_fmap.
   rewrite -> wp_ht_eq with (ht2:=htrm_of lsq).
