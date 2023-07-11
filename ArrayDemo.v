@@ -1012,6 +1012,8 @@ Qed.
 
 End Segmentation.
 
+Section MainProof.
+
 Lemma rli_whilecond_spec : forall (j k : int) (pj0 px_ind : loc) (d : D)
   (Hj : (0 <= j < M)%Z),
   (pj0 ~(d)~> j \* arr_x_ind px_ind d) ==>
@@ -3146,5 +3148,7 @@ Proof.
   apply himpl_frame_lr. 2: xsimpl.
   apply himpl_refl.
 Qed.
+
+End MainProof.
 
 End Demo.
