@@ -4153,7 +4153,7 @@ Proof.
       {
         intros. rew_disjoint.
         repeat split.
-        all: admit.
+        all: apply hconseq_disjoint_suffcond1; eqsolve.
       }
       {
         intros (ll, d). rewrite indom_label_eq. intros (<- & Hin).
@@ -4162,7 +4162,11 @@ Proof.
         1,3: by rewrite length_map.
         1-2: intros Htmp; inversion Htmp; eqsolve.
         subst h1 h2.
-        admit.
+        rewrite ! length_map in Hdj.
+        rewrite H_length_Lind H_length_Lval in Hdj.
+        eapply hconseq_disjoint_nececond1.
+        1: apply Hdj.
+        eqsolve.
       }
     }
     2:{ intros _. apply hhtop_hlocal. }
@@ -4177,6 +4181,6 @@ Proof.
   hnf. intros v.
   apply himpl_frame_lr. 2: xsimpl.
   apply himpl_refl.
-Admitted.
+Qed.
 
 End Demo.

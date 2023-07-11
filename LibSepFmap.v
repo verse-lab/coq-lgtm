@@ -5,6 +5,8 @@ From SLF Require Import LibCore.
 
 From mathcomp Require Import ssreflect ssrfun.
 
+Ltac eqsolve := solve [ intuition congruence | intuition discriminate ].
+
 (* ################################################################# *)
 (** * Representation of Finite Maps *)
 
@@ -1216,6 +1218,47 @@ Lemma hconseq_cons' : forall [D:Type] B (l:nat) (v:B) (vs:list B) (d : D),
   hconseq (v::vs) l d = (single (l, d) v) \+ (hconseq vs (l+1) d).
 Proof using. intros. math_rewrite (l+1 = S l)%nat. applys hconseq_cons. Qed.
 
+Lemma hconseq_indom : forall [D:Type] B (vs:list B) (l:nat) (d : D) p d',
+  indom (hconseq vs l d) (p, d') <-> d' = d /\ (l <= p < l + length vs)%nat.
+Proof.
+  intros D B vs. induction vs as [ | v vs IH ]; intros.
+  { rewrite -> hconseq_nil, length_nil.
+    unfolds indom, map_indom. simpl. split; intros; try eqsolve.
+    math.
+  }
+  { rewrite -> hconseq_cons, indom_union_eq, indom_single_eq, IH, length_cons.
+    split; intros H.
+    { destruct H as [ HH | (<- & HH) ].
+      { inversion HH. subst. split; auto. math. }
+      { split; auto. math. }
+    }
+    { destruct H as (<- & H).
+      destruct (Nat.eq_dec l p) as [ -> | ].
+      { by left. }
+      { right. split; auto. math. }
+    }
+  }
+Qed.
+
+Lemma hconseq_disjoint_suffcond1 : forall [D:Type] B (vs1 vs2:list B) (l1 l2:nat) (d1 d2 : D),
+  d1 <> d2 -> disjoint (hconseq vs1 l1 d1) (hconseq vs2 l2 d2).
+Proof.
+  intros. apply disjoint_of_not_indom_both.
+  intros (x, d'). rewrite ! hconseq_indom. eqsolve.
+Qed.
+
+Lemma hconseq_disjoint_nececond1 : forall [D:Type] B (vs1 vs2:list B) (l1 l2:nat) (d d' : D),
+  disjoint (hconseq vs1 l1 d) (hconseq vs2 l2 d) ->
+  d <> d' -> disjoint (hconseq vs1 l1 d') (hconseq vs2 l2 d').
+Proof.
+  intros. apply disjoint_of_not_indom_both. intros (x, d'') Ha Hb.
+  rewrite -> hconseq_indom in Ha, Hb.
+  destruct Ha as (<- & Ha), Hb as (_ & Hb).
+  eapply disjoint_inv_not_indom_both with (x:=(x, d)).
+  1: apply H.
+  all: by rewrite hconseq_indom.
+Qed.
+
 Global Opaque hconseq.
 
 Hint Rewrite hconseq_nil hconseq_cons : rew_listx.
@@ -1369,8 +1412,6 @@ Qed.
 End FmapFresh.
 
 From Coq Require Import Permutation.
-
-Ltac eqsolve := solve [ intuition congruence | intuition discriminate ].
 
 Lemma remove_union_not_r  [A B : Type] [h1 h2 : fmap A B] [x : A] :
   ~ indom h2 x -> 
