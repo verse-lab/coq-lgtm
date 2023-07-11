@@ -4093,7 +4093,7 @@ Proof.
     rewrite -> hstar_comm with (H1:=(\*_(d <- ⟨(3, 0), single 0 tt⟩)
       arr_x_ind px_ind d \* arr_x_val px_val d)) in H.
     rewrite -> ! hhtop_hstar in H.
-    eapply htriple_proj with (fs':=⟨(2, 0), interval 0 N⟩)
+    eapply htriple_proj' with (fs':=⟨(2, 0), interval 0 N⟩)
       (Q':=fun=> \[Top ⟨(2, 0), interval 0 N⟩]).
     7:{
       rewrite union_assoc.
@@ -4129,7 +4129,41 @@ Proof.
       hlocal; apply hlocal_harray.
     }
     3:{
-      admit.
+      (* show that the array is replicatable *)
+      intros. apply hstar_inv in H0.
+      destruct H0 as (h1 & _ & Hh1 & _).
+      rewrite hstar_fsetE in Hh1.
+      destruct Hh1 as (hi & -> & Ha & Hb).
+      setoid_rewrite label_single in Hb.
+      specialize (Hb _ (indom_single _ _)).
+      apply hstar_inv in Hb.
+      destruct Hb as (h1 & h2 & Hh1 & Hh2 & Hdj & EE).
+      apply harray_inv in Hh1, Hh2.
+      unfold null in Hh1, Hh2.
+      destruct Hh1 as (Eh1 & Hn1), Hh2 as (Eh2 & Hn2).
+      assert (px_ind <> 0%nat) as Hn1' by (intros ->; by apply Hn1).
+      assert (px_val <> 0%nat) as Hn2' by (intros ->; by apply Hn2).
+      clear Hn1 Hn2.
+      eexists. rewrite hstar_fsetE.
+      exists (fun (li : D) => 
+        (hconseq (val_header (abs (M+1)) :: (LibList.map val_int Lind)) px_ind li) \u
+        (hconseq (val_header (abs M) :: (LibList.map val_int Lval)) px_val li)).
+      split. 1: reflexivity.
+      split.
+      {
+        intros. rew_disjoint.
+        repeat split.
+        all: admit.
+      }
+      {
+        intros (ll, d). rewrite indom_label_eq. intros (<- & Hin).
+        apply hstar_intro.
+        1-2: apply harray_intro.
+        1,3: by rewrite length_map.
+        1-2: intros Htmp; inversion Htmp; eqsolve.
+        subst h1 h2.
+        admit.
+      }
     }
     2:{ intros _. apply hhtop_hlocal. }
     {

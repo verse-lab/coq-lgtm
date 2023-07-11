@@ -2819,7 +2819,30 @@ Lemma hhoare_proj (fs fs' : fset D) H H' (Q Q' : _ -> hhprop) ht :
   hhoare fs ht H Q.
 Proof.
   move=> dj lH lQ lH' lQ' [h' H'h] hh h /[dup]/lH lh Hh.
-  hhoare
+  case: (hh (h \u h')).
+  { exists h h'; splits=> //.
+    apply/disjoint_of_not_indom_both=> -[??] /lh/[swap].
+    move/lH'=> /(_ H'h)/[swap].
+    exact/disjoint_inv_not_indom_both. }
+  move=> ? [hv] []/[swap]-[]h1[h1'][]/[dup]/lQ??[]/[dup]/lQ'??[]?->.
+  move/eval_frame2'=> ev. exists h1 hv; splits=> //.
+  apply/ev=> //. 
+  { exact/lH'. }
+  apply/disjoint_of_not_indom_both=> -[??] /lh/[swap]/lH'-/(_ H'h)/[swap].
+  exact/disjoint_inv_not_indom_both.
+Qed.
+
+(* slightly easier to use *)
+Lemma hhoare_proj' (fs fs' : fset D) H H' (Q Q' : _ -> hhprop) ht : 
+  disjoint fs fs' -> 
+  hlocal H fs -> (forall hv, hlocal (Q hv) fs) -> 
+  hlocal H' fs' -> (forall hv, hlocal (Q' hv) fs') -> 
+  (forall h, H h -> exists h', H' h') ->
+  hhoare (fs \u fs') ht (H \* H') (fun hv => Q hv \* Q' hv) ->
+  hhoare fs ht H Q.
+Proof.
+  move=> dj lH lQ lH' lQ' Himpl hh h /[dup]/lH lh Hh.
+  specialize (Himpl _ Hh). move: Himpl => [h' H'h].
   case: (hh (h \u h')).
   { exists h h'; splits=> //.
     apply/disjoint_of_not_indom_both=> -[??] /lh/[swap].
@@ -4308,6 +4331,24 @@ Proof.
   apply/hhoare_proj; eauto.
   { by apply/hlocal_hstar=> // ?->. }
   { by move=> ?; apply/hlocal_hstar=> // ?->. }
+  apply/hhoare_conseq. apply/(hh (= h)). all: xsimpl*.
+Qed.
+
+Lemma htriple_proj' (fs fs' : fset D) H H' (Q Q' : _ -> hhprop) ht : 
+  disjoint fs fs' -> 
+  hlocal H fs -> (forall hv, hlocal (Q hv) fs) -> 
+  hlocal H' fs' -> (forall hv, hlocal (Q' hv) fs') -> 
+  (forall h, H h -> exists h', H' h') ->
+  htriple (fs \u fs') ht (H \* H') (fun hv => Q hv \* Q' hv) ->
+  htriple fs ht H Q.
+Proof.
+  move=> dj ????? hh.
+  apply/baz=> h ?.
+  apply/hhoare_proj'; eauto.
+  { by apply/hlocal_hstar=> // ?->. }
+  { by move=> ?; apply/hlocal_hstar=> // ?->. }
+  { intros ? Hh0. apply hstar_inv in Hh0. destruct Hh0 as (h1 & ? & Hh1 & <- & Hdj & ->).
+    eauto. }
   apply/hhoare_conseq. apply/(hh (= h)). all: xsimpl*.
 Qed.
 
