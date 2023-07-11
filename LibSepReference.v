@@ -79,7 +79,10 @@ Inductive prim : Type :=
   | val_lt : prim
   | val_ge : prim
   | val_gt : prim
-  | val_ptr_add : prim.
+  | val_ptr_add : prim
+  | val_alloc : prim
+  | val_dealloc : prim
+  | val_length : prim.
 
 (** Locations are defined as natural numbers. *)
 
@@ -106,6 +109,7 @@ Inductive val : Type :=
   | val_fix : var -> var -> trm -> val
   | val_uninit : val
   | val_error : val
+  | val_header : nat -> val
 
 (** The grammar of terms includes values, variables, functions, applications,
     sequence, let-bindings, and conditions. Sequences are redundant with
@@ -272,6 +276,9 @@ Context (D : Type) (d : D).
 Implicit Types f : var.
 Implicit Types v : val.
 
+Definition least_feasible_array_loc {A B} h (L : list B) (p : loc) (a : A) :=
+  forall p', disjoint (Fmap.hconseq L p' a) h -> (p', a) <> null a -> (p <= p')%Z.
+
 Inductive eval1 : hheap D -> trm -> hheap D -> val -> Prop :=
   | eval1_val : forall s v,
       eval1 s (trm_val v) s v
@@ -323,7 +330,24 @@ Inductive eval1 : hheap D -> trm -> hheap D -> val -> Prop :=
       eval1 s (val_set (val_loc p) v) (Fmap.update s (p, d) v) val_unit
   | eval1_free : forall s p,
       Fmap.indom s (p, d) ->
-      eval1 s (val_free (val_loc p)) (Fmap.remove s (p, d)) val_unit.
+      eval1 s (val_free (val_loc p)) (Fmap.remove s (p, d)) val_unit
+  | eval1_alloc : forall k n sa sb p,
+      sb = Fmap.hconseq (val_header k :: LibList.make k val_uninit) p d ->
+      n = nat_to_Z k ->
+      (p, d) <> null d ->
+      Fmap.disjoint sa sb ->
+      (* picking the least feasible location to make allocation points deterministic *)
+      least_feasible_array_loc sa (val_header k :: LibList.make k val_uninit) p d ->
+      eval1 sa (val_alloc (val_int n)) (Fmap.union sb sa) (val_loc p)
+  | eval1_dealloc : forall k vs sa sb p,
+      sb = Fmap.hconseq (val_header k :: vs) p d ->
+      k = LibList.length vs ->
+      Fmap.disjoint sa sb ->
+      eval1 (Fmap.union sb sa) (val_dealloc (val_loc p)) sa val_unit
+  | eval1_length : forall s p k,
+      Fmap.indom s (p, d) ->
+      (val_header k) = Fmap.read s (p, d) ->
+      eval1 s (val_length (val_loc p)) s (val_int k).
 
 (** Specialized eval1uation rules for addition and division, for avoiding the
     indirection via [eval1_binop] in the course. *)
@@ -385,7 +409,23 @@ Proof.
   have ? : forall x s, indom s (x, d) -> indom (s \u h) (x, d).
   { move=> *. rewrite* indom_union_eq. }
   elim=> *; rewrite -?update_union_not_r //; try by (econstructor; eauto).
-  rewrite remove_union_not_r //; by (econstructor; eauto).
+  { rewrite remove_union_not_r //; by (econstructor; eauto). }
+  { rewrite union_assoc. eapply eval1_alloc; eauto. 
+    { rew_disjoint. split; auto.
+      apply disjoint_of_not_indom_both.
+      intros (pp, dd) H1 H2. subst. 
+      rewrite hconseq_indom in H1. destruct H1 as (<- & _). eauto.
+    }
+    { hnf in *. intros p' H Hn. rew_disjoint.
+      destruct H as (H & H'). revert H Hn. eauto.
+    }
+  }
+  { rewrite union_assoc. eapply eval1_dealloc; eauto. 
+    rew_disjoint. split; auto.
+    apply disjoint_of_not_indom_both.
+    intros (pp, dd) H1 H2. subst. 
+    rewrite hconseq_indom in H1. destruct H1 as (<- & _). eauto.
+  }
 Qed.
 
 Lemma eval_seq D fs : forall s1 s2 s3 (ht1 ht2 : D -> trm) hv1 hv,
@@ -1500,6 +1540,14 @@ Proof.
   move=> x d; by rewrite* indom_merge_eq.
 Qed.
 
+Lemma hconseq_local (L : list val) p (d : D) : local (single d tt) (hconseq L p d).
+Proof.
+  revert p d. induction L; intros.
+  { rewrite -> hconseq_nil. unfolds local, indom, map_indom. simpl. eqsolve. }
+  { rewrite -> hconseq_cons. rewrite local_union. split; auto. 
+    hnf. intros ? ?. rewrite ! indom_single_eq. eqsolve. }
+Qed. 
+
 Lemma hlocal_hsingle p x fs d: 
   indom fs d ->
   hlocal (p ~(d)~> x) fs.
@@ -1901,7 +1949,12 @@ Proof.
   elim=> // >.
   { move=> ?? E1 ? E2 ? E3 *; by rewrite E1 // E2 // E3. }
   1-2: by move=> ? E1 ? E2 *; rewrite E1 // E2.
-  all: by move=> *; rewrite (proj_update, proj_remove).
+  all: move=> *; try by rewrite (proj_update, proj_remove).
+  all: subst; rewrite proj_union.
+  all: match goal with |- context[(proj ?hh _) \u _] => 
+    rewrite -> proj_empty with (fs:=single d tt) (h:=hh) end; 
+    try (by rewrite union_empty_l); try (by rewrite indom_single_eq).
+  all: apply hconseq_local.
 Qed.
 
 Lemma hheap_eq_proj h1 h2 :
@@ -1946,6 +1999,37 @@ Proof.
   rewrite (proj_empty _ proj_local) ?indom_single_eq //.
 Qed.
 
+Lemma valid_subst_can {h : hheap D} {f g : D -> D} : 
+  cancel f g -> valid_subst h (fun x => (x.1, f x.2)).
+Proof. by move=> c1 [??][??]/=[->]/(can_inj c1)->. Qed.
+
+Lemma valid_subst_disj_inv {A B C : Type} (fm1 fm2 : fmap A B) (f : A -> C) :
+  valid_subst fm1 f ->
+  valid_subst fm2 f ->
+  disjoint (fsubst fm1 f) (fsubst fm2 f) ->
+    disjoint fm1 fm2.
+Proof.
+  move=> v1 v2 + x=> /(_ (f x)).
+  by rewrite ?fsubst_valid_eq.
+Qed.
+
+Lemma fsubst_hconseq_by_cancel (f g : D -> D) (Hc1 : cancel f g) (Hc2 : cancel g f) 
+  (L : list val) p d :
+  fsubst (hconseq L p d) (fun '(x, d0) => (x, g d0)) = hconseq L p (g d).
+Proof.
+  revert p d. induction L as [ | y L IH ]; intros.
+  { by rewrite ! hconseq_nil fsubst_empty. }
+  { rewrite ! hconseq_cons. 
+    have [Hc1' Hc2']: 
+      cancel (fun '(x, d) => (x : loc, g d)) (fun '(x, d) => (x, f d)) /\
+      cancel (fun '(x, d) => (x : loc, f d)) (fun '(x, d) => (x, g d)).
+    { by split; case=> ??; rewrite (Hc1, Hc2). }
+    rewrite -> fsubst_union with (g:=(fun '(x, d0) => (x, f d0))); auto.
+    rewrite -> fsubst_single with (g:=(fun '(x, d0) => (x, f d0))); auto.
+    by rewrite -> IH.
+  }
+Qed.
+
 Lemma eval1_fsubst ht h h' (f g : D -> D) v d : 
   cancel f g ->
   cancel g f ->
@@ -1973,9 +2057,38 @@ Proof.
   { move=> > dm. erewrite fsubst_update; eauto. 
     apply/eval1_set.
     by rewrite -(fsubst_indom _ _ c1' c2') in dm. }
-  move=> > dm; erewrite <-fsubst_remove; eauto.
-  apply/eval1_free.
-  by rewrite -(fsubst_indom _ _ c1' c2') in dm.
+  { move=> > dm; erewrite <-fsubst_remove; eauto.
+    apply/eval1_free.
+    by rewrite -(fsubst_indom _ _ c1' c2') in dm. }
+  { introv. intros -> -> Hn Hdj Hlfs.
+    erewrite fsubst_union; eauto.
+    eapply eval1_alloc with (k:=k).
+    2: reflexivity.
+    2: unfolds null; intros HH; inversion HH; subst p; by apply Hn.
+    { by apply fsubst_hconseq_by_cancel with (f:=f). }
+    { eapply fsubst_disjoint; eauto. }
+    { unfold least_feasible_array_loc in *.
+      intros p' Hdj' Hn'. apply Hlfs.
+      2: unfolds null; intros HH; inversion HH; subst p'; by apply Hn.
+      rewrite <- fsubst_hconseq_by_cancel with (f:=f) in Hdj'; try assumption.
+      apply valid_subst_disj_inv in Hdj'; auto.
+      all: match goal with |- valid_subst _ ?ff => 
+        replace ff with (fun x : hloc D => (x.1, g x.2)) end.
+      2,4: extens; intros (?, ?); by simpl.
+      all: eapply valid_subst_can; eauto.
+    }
+  }
+  { introv. intros -> -> Hdj.
+    erewrite fsubst_union; eauto.
+    eapply eval1_dealloc with (k:=length vs).
+    2: reflexivity.
+    1: eapply fsubst_hconseq_by_cancel; eauto.
+    eapply fsubst_disjoint; eauto.
+  }
+  { introv. intros Hin Hhd. eapply eval1_length.
+    { by rewrite -(fsubst_indom _ _ c1' c2') in Hin. }
+    by rewrite -(fsubst_read _ _ c1' c2') in Hhd. 
+  }
 Qed.
 
 Lemma eval_fsubst (fs : fset D) ht h h' (f g : D -> D) hv :
@@ -2081,6 +2194,35 @@ Proof.
   by extens.
 Qed.
 
+Lemma union_pair_eq_by_disjoint_raw {A B : Type} (fm1 fm2 fm3 fm4 : fmap A B)
+  (Hdj1 : disjoint fm1 fm2) (Hdj2 : disjoint fm3 fm4)
+  (Hjoin : forall x : A, indom fm1 x <-> indom fm3 x)
+  (E : Fmap.map_union (Fmap.fmap_data fm1) (Fmap.fmap_data fm2) = 
+    Fmap.map_union (Fmap.fmap_data fm3) (Fmap.fmap_data fm4)) : fm2 = fm4.
+Proof.
+  apply fmap_extens. intros x.
+  pose proof (@disjoint_inv_not_indom_both _ _ _ _ x Hdj1) as Hdj1'.
+  pose proof (@disjoint_inv_not_indom_both _ _ _ _ x Hdj2) as Hdj2'.
+  specialize (Hjoin x).
+  assert (indom fm2 x <-> indom fm4 x) as Hj'.
+  { assert (indom (fm1 \u fm2) x <-> indom (fm3 \u fm4) x) as Htmp.
+    { unfolds indom, map_indom. simpl. eqsolve. }
+    rewrite ! indom_union_eq in Htmp. eqsolve.
+  }
+  unfolds indom, map_indom.
+  destruct (fmap_data fm2 x) eqn:E1, (fmap_data fm4 x) eqn:E2; try eqsolve.
+  apply f_equal with (f:=fun h => h x) in E.
+  unfolds map_union.
+  destruct (fmap_data fm1 x) eqn:?, (fmap_data fm3 x) eqn:?; try eqsolve.
+Qed.
+
+Corollary union_pair_eq_by_disjoint {A B : Type} (fm1 fm2 fm3 fm4 : fmap A B)
+  (Hdj1 : disjoint fm1 fm2) (Hdj2 : disjoint fm3 fm4)
+  (Hjoin : forall x : A, indom fm1 x <-> indom fm3 x)
+  (E : fm1 \u fm2 = fm3 \u fm4) : fm2 = fm4.
+Proof.
+  unfolds union. inversion E. by apply union_pair_eq_by_disjoint_raw in H0.
+Qed.
 
 Lemma eval1_det h1 h2 ht d hv h2' hv' : 
   eval1 d h1 ht h2 hv ->
@@ -2128,8 +2270,35 @@ Proof.
     { inversion H4; subst=> //; simpl in *; autos*.
       by inversion H10. }
     by inversion H7. }
-  inversion H0; subst=> //; simpl in *; autos*.
-  by inversion H6.
+  { inversion H0; subst=> //; simpl in *; autos*.
+    by inversion H6. }
+  { subst. inversion H4; subst; simpl in *; auto; try eqsolve.
+    1: by inversion H8.
+    assert (k = k0) as <- by math.
+    unfold least_feasible_array_loc in *.
+    rewrite -> disjoint_comm in H2, H7.
+    apply H3 in H7; try assumption.
+    apply H9 in H2; try assumption.
+    assert (p = p0 :> nat) as <- by math.
+    eqsolve.
+  }
+  { subst. inversion H2; subst; simpl in *; auto; try eqsolve.
+    1: by inversion H6.
+    split; try reflexivity.
+    apply union_pair_eq_by_disjoint_raw in H; auto.
+    intros (?, ?).
+    (* test length *)
+    apply f_equal with (f:=fun h => h (p, d)) in H.
+    rewrite -> ! hconseq_cons in H. 
+    simpl in H. unfolds map_union. case_if; try eqsolve.
+    inversion H.
+    rewrite -> ! hconseq_cons, -> ! indom_union_eq, 
+      -> ! indom_single_eq, -> ! hconseq_indom.
+    eqsolve.
+  }
+  { inversion H1; subst=> //; simpl in *; autos*.
+    1: by inversion H7. eqsolve.
+  }
 Qed.
 
 Lemma eval_valid_subst h h' (f : D -> D) fs hv ht :
@@ -2427,6 +2596,42 @@ Proof.
   apply/disjoint_inv_not_indom_both; eauto.
 Qed.
 
+Lemma diff_union_distr {A B : Type} (h1 h2 h3 : fmap A B) :
+  (h1 \- h2) \u (h3 \- h2) = (h1 \u h3) \- h2.
+Proof.
+  apply fmap_extens. intros x.
+  unfold union, map_union, diff. simpl.
+  unfold map_filter.
+  destruct (fmap_data h1 x) eqn:E1, (fmap_data h2 x) eqn:E2, 
+    (fmap_data h3 x) eqn:E3; repeat case_if; try eqsolve.
+Qed.
+
+Lemma disjoint_diff_refl {A B : Type} (h1 h2 : fmap A B) 
+  (Hdj : disjoint h1 h2) : h1 \- h2 = h1.
+Proof.
+  apply fmap_extens. intros x.
+  pose proof (@disjoint_inv_not_indom_both _ _ _ _ x Hdj).
+  unfolds indom, map_indom. unfold diff, filter. simpl.
+  unfold map_filter.
+  destruct (fmap_data h1 x) eqn:E1, (fmap_data h2 x) eqn:E2; repeat case_if; try eqsolve.
+Qed.
+
+(* a special case of local_disjoint_disjoint *)
+Lemma local_notin_disjoint fs h1 d (Hl : local fs h1) (Hni : ~ indom fs d)
+  h2 (Hls : local (single d tt) h2) : disjoint h1 h2.
+Proof.
+  apply disjoint_of_not_indom_both.
+  intros (p, dd). hnf in Hl, Hls. setoid_rewrite indom_single_eq in Hls.
+  intros H1 H2. apply Hls in H2. apply Hl in H1. subst d. contradiction.
+Qed.
+
+Lemma disjoint_after_diff {A B : Type} (h1 h2 h3 : fmap A B) 
+  (Hdj : disjoint h1 h2) : disjoint (h1 \- h3) h2.
+Proof.
+  apply disjoint_of_not_indom_both. intros x.
+  rewrite diff_indom. move=> [H1 H2]. move: H1. by apply disjoint_inv_not_indom_both.
+Qed.
+
 Lemma eval1_part h1 h2 h fs ht d hv: 
   ~indom fs d ->
   eval1 d (h1 \u h) ht h2 hv -> 
@@ -2448,13 +2653,29 @@ Proof.
     by eexists; eauto).
   try by (case: (H0 h1)=> // s2'[E ?]; subst;
     by eexists; eauto).
-  all: have ?: ~ indom h (p, d) by (move/H2 || move/H1).
+  all: try (have ?: ~ indom h (p, d) by (move/H2 || move/H1)).
   1-2: exists (update h1 (p, d) v); 
         rewrite update_union_not_r //; split=>//; 
         exact/disjoint_update_not_r.
-  exists (Fmap.remove h1 (p, d)).
-  rewrite remove_union_not_r //; split=>//.
-  exact/disjoint_remove_l.
+  { exists (Fmap.remove h1 (p, d)).
+    rewrite remove_union_not_r //; split=>//.
+    exact/disjoint_remove_l. }
+  { setoid_rewrite <- union_assoc. eexists. split. 1: reflexivity.
+    rew_disjoint. split; auto.
+  }
+  { exists (h1 \- (Fmap.hconseq (val_header (length vs) :: vs) p d)).
+    split.
+    { replace h with (h \- hconseq (val_header (length vs) :: vs) p d).
+      2:{
+        apply disjoint_diff_refl.
+        apply local_notin_disjoint with (fs:=fs) (d:=d); try assumption.
+        apply hconseq_local.
+      }
+      rewrite -> diff_union_distr, <- HE1, <- diff_union_distr, -> diffxx, 
+        -> disjoint_diff_refl; auto.
+    }
+    { by apply disjoint_after_diff. }
+  }
 Qed.
 
 Lemma eval_part h1 h2 h (fs fs' : fset D) ht hv: 
@@ -2599,11 +2820,33 @@ Proof.
     move/union_eq_inv_of_disjoint<-=> //.
     { applys* eval1_set. }
     exact/disjoint_update_not_r. }
-  move: HE2. rewrite- remove_union_not_r //.
-  move/union_eq_inv_of_disjoint<-=> //.
-  { applys* eval1_free. }
-  exact/disjoint_remove_l.
-Qed. 
+  { move: HE2. rewrite- remove_union_not_r //.
+    move/union_eq_inv_of_disjoint<-=> //.
+    { applys* eval1_free. }
+    exact/disjoint_remove_l. }
+  { rewrite <- union_assoc in HE2. 
+    apply union_eq_inv_of_disjoint in HE2.
+    2-3: rew_disjoint; auto.
+    subst h2.
+    applys* eval1_alloc.
+    hnf in H3 |- *. intros ? ?. apply H3. 
+    rew_disjoint. split; try tauto.
+    (* disjoint by local? *)
+    rewrite disjoint_comm.
+    apply local_notin_disjoint with (fs:=fs) (d:=d); try assumption.
+    apply hconseq_local.
+  }
+  { rewrite <- union_assoc in HE1. 
+    apply union_eq_inv_of_disjoint in HE1.
+    2-3: rew_disjoint; auto.
+    subst h1.
+    applys* eval1_dealloc.
+  }
+  { destruct H; try contradiction.
+    rewrite read_union_l in H0; try assumption.
+    applys* eval1_length.
+  }
+Qed.
 
 Lemma eval1_frame2_cancel h1 h2 h h' fs ht d hv: 
   eval1 d (h1 \u h) ht (h2 \u h') hv -> 
@@ -2704,6 +2947,24 @@ Proof.
     apply union_eq_inv_of_locals' with (fs':=fs) (fs:=single d tt) (h1:=Fmap.remove h1 (p, d)) (h2:=h2); auto.
     unfolds local, indom, map_indom, Fmap.remove, Fmap.map_remove. intros l d0. 
     specialize (Hl1 l d0). simpls. repeat case_if; eqsolve. 
+  }
+  { rewrite -> union_comm_of_disjoint with (h1:=h) in Eh2'.
+    2: by rewrite disjoint_comm.
+    rewrite <- union_assoc in Eh2'.
+    rewrite -> union_comm_of_disjoint with (h1:=h') in Eh2'.
+    2: by rewrite disjoint_comm.
+    apply union_eq_inv_of_locals' with (fs:=(single d tt)) (fs':=fs) in Eh2'; auto.
+    rewrite local_union. split; auto. apply hconseq_local.
+  }
+  { rewrite <- union_assoc in Eh1'.
+    rewrite -> union_comm_of_disjoint with (h2:=h') in Eh1'.
+    2:{ 
+      rewrite disjoint_comm. apply local_notin_disjoint with (fs:=fs) (d:=d); auto.
+      apply hconseq_local.
+    }
+    rewrite -> union_assoc in Eh1'.
+    apply union_eq_inv_of_locals with (fs':=(single d tt)) (fs:=fs) in Eh1'; auto.
+    rewrite local_union. split; auto. apply hconseq_local.
   }
 Qed.
 
@@ -3504,6 +3765,32 @@ Qed.
 
 End Hoare1.
 
+Lemma local_proj_refl h d (Hl : local (single d tt) h) : proj h d = h.
+Proof. 
+  apply fmap_extens. intros (p, dd).
+  unfold proj, filter. simpl. unfold map_filter.
+  destruct (fmap_data h (p, dd)) eqn:E; rewrite E; try reflexivity.
+  hnf in Hl. specialize (Hl p dd). rewrite indom_single_eq in Hl.
+  case_if; try eqsolve. false Hl. eqsolve.
+Qed.
+
+Lemma disjoint_after_proj d h1 h2
+  (Hdj : disjoint h1 h2) : disjoint (proj h1 d) (proj h2 d).
+Proof.
+  apply disjoint_of_not_indom_both. intros (p, dd). rewrite ! filter_indom.
+  move=> [H1 <-] [H2 _]. move: H1 H2. by apply disjoint_inv_not_indom_both.
+Qed.
+
+Lemma disjoint_of_disj_proj_local d h1 h2 (Hl : local (single d tt) h1)
+  (Hdj : disjoint h1 (proj h2 d)) : disjoint h1 h2.
+Proof.
+  apply disjoint_of_not_indom_both.
+  intros (pp, dd) H1 H2.
+  apply disjoint_inv_not_indom_both with (x:=(pp, dd)) in Hdj; auto.
+  apply Hl in H1. rewrite indom_single_eq in H1. subst.
+  by rewrite filter_indom.
+Qed.
+
 Lemma eval1_proj_d d h h' t v : 
   eval1 d h t h' v -> 
   eval1 d (proj h d) t (proj h' d) v.
@@ -3516,8 +3803,29 @@ Proof.
     by simpl. }
   { move=> *; rewrite /proj filter_update; [case: classicT=> // _|by case].
     apply/eval1_set=> >; rewrite filter_indom; autos*. }
-  move=> *; rewrite proj_remove_eq.
-  apply/eval1_free=> >; rewrite filter_indom; autos*.
+  { move=> *; rewrite proj_remove_eq.
+    apply/eval1_free=> >; rewrite filter_indom; autos*. }
+  { introv. intros -> -> Hn Hdj Hlfs.
+    rewrite proj_union. apply eval1_alloc with (k:=k).
+    2-3: easy.
+    { apply local_proj_refl, hconseq_local. }
+    { apply disjoint_after_proj; auto. }
+    { hnf in Hlfs |- *.
+      intros ? ?. apply Hlfs.
+      apply disjoint_of_disj_proj_local with (d:=d); auto.
+      apply hconseq_local.
+    }
+  }
+  { introv. intros -> -> Hdj.
+    rewrite proj_union. eapply eval1_dealloc with (vs:=vs).
+    2: reflexivity.
+    { rewrite local_proj_refl; auto. apply hconseq_local. }
+    { by apply disjoint_after_proj. }
+  }
+  { introv. intros Hin HH. apply eval1_length.
+    { by rewrite filter_indom. }
+    { by rewrite filter_in. }
+  }
 Qed.
 
 Lemma hhoare_update Q' H Q ht fs d :
@@ -4727,15 +5035,6 @@ Proof.
   exists; eauto.
 Qed.
 
-Lemma valid_subst_disj_inv {A B C : Type} (fm1 fm2 : fmap A B) (f : A -> C) :
-  valid_subst fm1 f ->
-  valid_subst fm2 f ->
-  disjoint (fsubst fm1 f) (fsubst fm2 f) ->
-    disjoint fm1 fm2.
-Proof.
-  move=> v1 v2 + x=> /(_ (f x)).
-  by rewrite ?fsubst_valid_eq.
-Qed.
 
 Arguments valid_subst_disj {_ _ _ _ _} _.
 
@@ -8593,9 +8892,6 @@ Proof.
   case: classicT=> // /[dup]-[y][fE' ?]_[]; rewrite -fE' -fE //; by exists y.
 Qed.
 
-Lemma valid_subst_can {h : hheap D} {f g : D -> D} : 
-  cancel f g -> valid_subst h (fun x => (x.1, f x.2)).
-Proof. by move=> c1 [??][??]/=[->]/(can_inj c1)->. Qed.
 
 
 Lemma hsub_hstar_can g f H Q : 

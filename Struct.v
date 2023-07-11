@@ -27,8 +27,6 @@ Fixpoint hcells (L:list val) (p:loc) (d : D) : hhprop :=
   | x::L' => (p ~(d)~> x) \* (hcells L' (p+1)%nat d)
   end.
 
-Parameter val_header : nat -> val.
-(* Parameter hheader : forall (k:nat) (p:loc) (d : D), hhprop. *)
 Definition hheader := 
   (fun (k:nat) (p:loc) (d : D) => p ~(d)~> (val_header k) \* \[(p, d) <> null d]).
 Fact hheader_def :
@@ -38,38 +36,12 @@ Proof eq_refl.
 Definition harray (L:list val) (p:loc) (d : D) : hhprop :=
   hheader (length L) p d \* hcells L (p+1)%nat d.
 
-Parameter val_alloc : prim.
-
-Parameter val_dealloc : prim.
-
-Parameter val_length : prim.
-(* Parameter val_array_length : val. *)
 Definition val_array_length : val := val_length.
 
 Module Export Realization.
 
 Definition least_feasible_array_loc h L p (d : D) :=
   forall p', disjoint (Fmap.hconseq L p' d) h -> (p', d) <> null d -> (p <= p')%Z.
-
-Parameter eval1_alloc : forall k n sa sb p d,
-  sb = Fmap.hconseq (val_header k :: LibList.make k val_uninit) p d ->
-  n = nat_to_Z k ->
-  (p, d) <> null d ->
-  Fmap.disjoint sa sb ->
-  (* picking the least feasible location to make allocation points deterministic *)
-  least_feasible_array_loc sa (val_header k :: LibList.make k val_uninit) p d ->
-  @eval1 D d sa (val_alloc (val_int n)) (sb \u sa) (val_loc p).
-
-Parameter eval1_dealloc : forall k vs sa sb p d,
-  sb = Fmap.hconseq (val_header k :: vs) p d ->
-  k = LibList.length vs ->
-  Fmap.disjoint sa sb ->
-  @eval1 D d (sb \u sa) (val_dealloc (val_loc p)) sa val_unit.
-
-Parameter eval1_length : forall s p k d,
-  Fmap.indom s (p, d) ->
-  (val_header k) = Fmap.read s (p, d) ->
-  @eval1 D d s (val_length (val_loc p)) s (val_int k).
 
 Lemma hheader_intro : forall p k d,
   (p, d) <> null d ->
@@ -143,13 +115,6 @@ Proof using.
   lets N2': hcells_inv (rm N2). subst*.
 Qed.
 
-Lemma hconseq_local L p (d : D) : local (single d tt) (Fmap.hconseq L p d).
-Proof.
-  revert p d. induction L; intros.
-  { rewrite -> hconseq_nil. unfolds local, indom, map_indom. simpl. eqsolve. }
-  { rewrite -> hconseq_cons, -> local_union. split; auto. apply local_single. }
-Qed. 
-
 Lemma hlocal_hcells (L : list val) p d : hlocal (hcells L p d) (single d tt).
 Proof.
   unfold hlocal. 
@@ -159,36 +124,12 @@ Qed.
 Lemma hlocal_harray (L : list val) p d : hlocal (harray L p d) (single d tt).
 Proof. unfold harray; hlocal. apply hlocal_hheader. apply hlocal_hcells. Qed.
 
-Lemma hconseq_least_fresh_pre (h : hheap D) L d :
-  exists p, 
-    Fmap.disjoint (Fmap.hconseq L p d) h /\ (p, d) <> null d.
-Proof using.
-  destruct (fmap_exact_dom h) as (ldom & (_ & Ha & Hb)).
-  pose proof (loc_fresh_nat_ge ((fst (null d)) :: (LibList.map (fun t => fst (fst t)) ldom))) as (l & H).
-  exists l. split.
-  2:{ specialize (H 0%nat). unfold null. intros HH. false H. rewrite -> Nat.add_0_r, -> mem_In. simpl. eqsolve. } 
-  hnf. intros (p, d0). destruct (Nat.ltb p l) eqn:E.
-  { rewrite -> Nat.ltb_lt in E. left. clear -E. revert l E d0. induction L as [ | y L IH ]; intros.
-    { rewrite -> hconseq_nil. reflexivity. }
-    { rewrite -> hconseq_cons. simpl. unfolds map_union. case_if; auto. 
-      assert (p <> l) by math. eqsolve.
-    }
-  }
-  { right. rewrite -> Nat.ltb_ge in E.
-    specialize (H (p - l)%nat). replace (l+(p-l))%nat with p in H by math.
-    destruct (Fmap.fmap_data h (p, d0)) eqn:EE; auto.
-    assert (mem (p, d0) (LibList.map fst ldom)) as Hm by (apply Ha; eqsolve).
-    apply mem_map with (f:=fst) in Hm. simpl in Hm. rewrite -> LibList.map_map in Hm.
-    false H. apply mem_cons. by right.
-  }
-Qed.
-
 Lemma hconseq_least_fresh (h : hheap D) L d :
   exists p, 
     Fmap.disjoint (Fmap.hconseq L p d) h /\ 
     least_feasible_array_loc h L p d /\ (p, d) <> null d.
 Proof using.
-  pose proof (ex_min _ (hconseq_least_fresh_pre h L d)) as (p & H & H0).
+  pose proof (ex_min _ (hconseq_least_fresh_pre h L d (fun d : D => null d))) as (p & H & H0).
   exists p. unfold least_feasible_array_loc. intuition.
 Qed.
 
@@ -212,7 +153,6 @@ Qed.
 Lemma hhoare_alloc_nat : forall fs H (k : D -> nat),
   hhoare fs (fun d => (val_alloc (k d)))
     H
-    (* (funloc p => (\*_(d <- fs) harray (LibList.make (k d) val_uninit) (p d) d) \* H). *)
     (fun hr => (\*_(d <- fs) \exists p, \[hr d = val_loc p] \* harray (LibList.make (k d) val_uninit) p d) \* H).
 Proof using.
   intros.
@@ -553,7 +493,6 @@ Lemma htriple_array_set : forall fs (p : D -> loc) (i : D -> int) (v : D -> val)
   (forall d, indom fs d -> LibList.nth (abs (i d)) (L d) = v d) ->
   htriple fs (fun d => val_array_set (p d) (i d) (v d))
     (\*_(d <- fs) (harray (L d) (p d) d))
-    (* (fun hr => \[hr = fun _ => val_unit] \* (\*_(d <- fs) (harray (LibList.update (abs (i d)) (v d) (L d)) (p d) d))). *)
     (fun=>(\*_(d <- fs) (harray (LibList.update (abs (i d)) (v d) (L d)) (p d) d))).
 Proof using.
   introv N E. eapply htriple_eval_like.
@@ -604,5 +543,3 @@ End ArrayAccessDef.
 End Realization.
 
 End WithArray.
-
-(* 2023-03-25 11:36 *)

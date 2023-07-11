@@ -1352,6 +1352,7 @@ Proof using.
     { applys IHL. destruct N. { left. math. } { right. math. } } }
 Qed.
 
+(* TODO repeat? *)
 Lemma disjoint_single_hconseq : forall [D:Type] B l l' L (v:B) (d:D),
   (l < l')%nat \/ (l >= l'+length L)%nat ->
   \# (single (l, d) v) (hconseq L l' d).
@@ -2633,4 +2634,29 @@ Proof.
   move: ind; rewrite /map_indom /map_filter.
   case: classicT=> //; by case F: (fmap_data _ _).
 Qed.
+
+Lemma hconseq_least_fresh_pre {D B : Type} (h : fmap (nat * D) B) (L : list B) (d : D) null :
+  exists p, 
+    disjoint (hconseq L p d) h /\ (p, d) <> null d.
+Proof using.
+  destruct (fmap_exact_dom h) as (ldom & (_ & Ha & Hb)).
+  pose proof (loc_fresh_nat_ge ((fst (null d)) :: (LibList.map (fun t => fst (fst t)) ldom))) as (l & H).
+  exists l. split.
+  2:{ specialize (H 0%nat). destruct (null d) as (np, nd). intros HH. false H. rewrite -> Nat.add_0_r, -> mem_In. simpl. eqsolve. } 
+  hnf. intros (p, d0). destruct (Nat.ltb p l) eqn:E.
+  { rewrite -> Nat.ltb_lt in E. left. clear -E. revert l E d0. induction L as [ | y L IH ]; intros.
+    { rewrite -> hconseq_nil. reflexivity. }
+    { rewrite -> hconseq_cons. simpl. unfolds map_union. case_if; auto. 
+      assert (p <> l) by math. eqsolve.
+    }
+  }
+  { right. rewrite -> Nat.ltb_ge in E.
+    specialize (H (p - l)%nat). replace (l+(p-l))%nat with p in H by math.
+    destruct (fmap_data h (p, d0)) eqn:EE; auto.
+    assert (mem (p, d0) (LibList.map fst ldom)) as Hm by (apply Ha; eqsolve).
+    apply mem_map with (f:=fst) in Hm. simpl in Hm. rewrite -> LibList.map_map in Hm.
+    false H. apply mem_cons. by right.
+  }
+Qed.
+
 (* 2023-03-25 11:36 *)
