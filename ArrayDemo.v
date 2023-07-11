@@ -78,6 +78,26 @@ Check eq_refl : D = labeled int.
 Global Instance Inhab_D : Inhab D. 
 Proof Build_Inhab (ex_intro (fun=> True) (Lab (0, 0) 0) I).
 
+Fact interval_fsubst_offset (L R offset : int) :
+  fsubst (interval L R) (fun i => i + offset) = 
+  interval (L + offset) (R + offset).
+Proof.
+  apply fset_extens. intros.
+  rewrite indom_fsubst. setoid_rewrite indom_interval.
+  split.
+  { intros (? & <- & ?). math. }
+  { intros. exists (x-offset). math. }
+Qed.
+
+Fact hstar_interval_offset (L R offset : int) (f : int -> hhprop) :
+  \*_(d <- interval L R) f (d + offset) = 
+  \*_(d <- interval (L + offset) (R + offset)) f d.
+Proof.
+  rewrite <- interval_fsubst_offset.
+  rewrite <- hstar_fset_eq with (g:=fun i => i - offset); try reflexivity.
+  hnf. intros. math.
+Qed.
+
 Fact hstar_fset_inv {A : Type} (fs : fset A) : forall (d : D) (p : A -> loc) (v : A -> val) h,
   (\*_(a <- fs) ((p a) ~(d)~> (v a))) h -> 
   h = Union fs (fun a => single ((p a), d) (v a)) /\
@@ -3694,14 +3714,22 @@ Proof.
       \[(px_val, (⟨(2, 0), d⟩)%arr) <> null (⟨(2, 0), d⟩)%arr] \*
       \[(px_ind, (⟨(4, 0), d⟩)%arr) <> null (⟨(4, 0), d⟩)%arr] \*
       \[(px_val, (⟨(4, 0), d⟩)%arr) <> null (⟨(4, 0), d⟩)%arr] \*
-      ((px_ind ~⟨(2%Z, 0%Z), d⟩~> val_header (abs (M + 1)) \* 
+      (* ((px_ind ~⟨(2%Z, 0%Z), d⟩~> val_header (abs (M + 1)) \* 
         hcells (LibList.map val_int Lind) (px_ind + 1)%nat (⟨(2, 0), d⟩)%arr) \*
       (px_ind ~⟨(4%Z, 0%Z), d⟩~> val_header (abs (M + 1)) \*
         hcells (LibList.map val_int Lval) (px_val + 1)%nat (⟨(4, 0), d⟩)%arr)) \*
       ((px_val ~⟨(2%Z, 0%Z), d⟩~> val_header (abs M) \*
         hcells (LibList.map val_int Lval) (px_val + 1)%nat (⟨(2, 0), d⟩)%arr) \*
       (px_val ~⟨(4%Z, 0%Z), d⟩~> val_header (abs M) \*
-        hcells (LibList.map val_int Lind) (px_ind + 1)%nat (⟨(4, 0), d⟩)%arr))
+        hcells (LibList.map val_int Lind) (px_ind + 1)%nat (⟨(4, 0), d⟩)%arr)) *)
+      (px_ind ~⟨(2%Z, 0%Z), d⟩~> val_header (abs (M + 1)) \*
+        px_ind ~⟨(4%Z, 0%Z), d⟩~> val_header (abs (M + 1))) \*
+      (hcells (LibList.map val_int Lind) (px_ind + 1)%nat (⟨(2, 0), d⟩)%arr \*
+        hcells (LibList.map val_int Lind) (px_ind + 1)%nat (⟨(4, 0), d⟩)%arr) \*
+      (px_val ~⟨(2%Z, 0%Z), d⟩~> val_header (abs M) \*
+        px_val ~⟨(4%Z, 0%Z), d⟩~> val_header (abs M)) \*
+      (hcells (LibList.map val_int Lval) (px_val + 1)%nat (⟨(2, 0), d⟩)%arr \*
+        hcells (LibList.map val_int Lval) (px_val + 1)%nat (⟨(4, 0), d⟩)%arr)
     ) as Htarg.
     match goal with |- context[hsub ?Hsrc _] => assert (Hsrc = Htarg) as Htmp end.
     1: subst Htarg; xsimpl; auto.
@@ -3721,15 +3749,19 @@ Proof.
     2-3: intros; rewrite nth_map; try math.
 
     pose (pind:=fun i => (px_ind + abs i)%nat).
-    pose (vind:=fun i => if Z.leb i 0%Z  
+    (* pose (vind:=fun i => if Z.leb i 0%Z   *)
+    pose (vind:=fun i => If i <= 0
       then val_header (abs (M + 1)) 
       else nth (abs (i - 1)) Lind).
     pose (pval:=fun i => (px_val + abs i)%nat).
-    pose (vval:=fun i => if Z.leb i 0%Z  
+    (* pose (vval:=fun i => if Z.leb i 0%Z   *)
+    pose (vval:=fun i => If i <= 0
       then val_header (abs M)
       else nth (abs (i - 1)) Lval).
-    pose (pall:=fun i => if Z.leb i (M+1) then pind i else pval (i-(M+2))).
-    pose (vall:=fun i => if Z.leb i (M+1) then vind i else vval (i-(M+2))).
+    (* pose (pall:=fun i => if Z.leb i (M+1) then pind i else pval (i-(M+2))). *)
+    pose (pall:=fun i => If i <= (M+1) then pind i else pval (i-(M+2))).
+    (* pose (vall:=fun i => if Z.leb i (M+1) then vind i else vval (i-(M+2))). *)
+    pose (vall:=fun i => If i <= (M+1) then vind i else vval (i-(M+2))).
     assert (forall d, indom (interval 0 N) d -> f[2](d) = (Lab (2, 0) d)) as Hid2.
     { subst f. simpl. intros. rewrite indom_label_eq. case_if; eqsolve. }
     assert (forall d, indom (interval 0 N) d -> f[4](d) = (Lab (2, 0) d)) as Hid4.
@@ -3772,181 +3804,113 @@ Proof.
         apply disjoint_of_not_indom_both.
         intros ?. rewrite ! indom_interval. intros; math.
       }
+      replace (M+2) with ((M+1)+1) at 1 by math.
+      replace (M+2) with (0+(M+2)) by math.
+      replace (M+3) with (1+(M+2)) at 1 by math.
+      replace (M+3) with (0+(M+3)) at 1 by math.
+      replace (M+M+3) with (M+(M+3)) at 1 by math.
+      rewrite <- ! hstar_interval_offset.
+      subst pall vall. simpl.
+      case_if; try math.
 
-      admit.
+      apply himpl_frame_lr.
+      1:{ unfold pind, vind.
+        case_if; try math. 
+        replace (abs 0)%nat with 0%nat by math.
+        by rewrite Nat.add_0_r.
+      }
+      apply himpl_frame_lr.
+      1:{ unfold pind, vind.
+        apply hbig_fset_himpl.
+        intros. rewrite indom_interval in H0. repeat case_if; try math.
+        replace (px_ind + 1 + abs d0)%nat with (px_ind + abs (d0 + 1))%nat by math.
+        replace (d0+1-1) with d0 by math. by [].
+      }
+      apply himpl_frame_lr.
+      1:{ unfold pval, vval.
+        rewrite intervalU. 2: math.
+        rewrite hbig_fset_update. 3-4: auto. 2: rewrite indom_interval; intros ?; math.
+        rewrite intervalgt. 2: math.
+        rewrite hbig_fset_empty.
+        repeat case_if; try math.
+        replace (abs (0 + (M + 2) - (M + 2)))%nat with 0%nat by math.
+        rewrite Nat.add_0_r. xsimpl.
+      }
+      1:{ unfold pval, vval.
+        apply hbig_fset_himpl.
+        intros. rewrite indom_interval in H0. repeat case_if; try math.
+        replace (abs (d0 + (M + 3) - (M + 2)))%nat with (1+abs d0)%nat by math.
+        replace (px_val + 1 + abs d0)%nat with (px_val + (1 + abs d0))%nat by math.
+        replace (d0 + (M + 3) - (M + 2) - 1) with d0 by math.
+        by [].
+      }
     }
     {
-      admit.
-    }
+      match goal with |- himpl (hsub ?a _) (hsub ?b _) => enough (a = b) as Hg end.
+      1: by rewrite Hg.
 
-
-
-
-
-
-    
-    
-
-    (*
-    rewrite <- hstar_fset_Lab with (fs:=interval 0 M) (l:=(2%Z,0%Z)) (Q:=fun d0 =>
-      (px_val + 1 + abs (eld d0))%nat ~(Lab (lab d0) d)~> nth (abs (eld d0)) Lval).
-    rewrite <- hstar_fset_Lab with (fs:=interval 0 (M+1)) (l:=(2%Z,0%Z)) (Q:=fun d0 =>
-      (px_ind + 1 + abs (eld d0))%nat ~(Lab (lab d0) d)~> nth (abs (eld d0)) Lind).
-    rewrite <- hstar_fset_Lab with (fs:=interval 0 M) (l:=(4%Z,0%Z)) (Q:=fun d0 =>
-      (px_val + 1 + abs (eld d0))%nat ~(Lab (lab d0) d)~> nth (abs (eld d0)) Lval).
-    rewrite <- hstar_fset_Lab with (fs:=interval 0 (M+1)) (l:=(4%Z,0%Z)) (Q:=fun d0 =>
-      (px_ind + 1 + abs (eld d0))%nat ~(Lab (lab d0) d)~> nth (abs (eld d0)) Lind).
-    *)
-(*
-    hsub
-    pose (v
-    hsub
-    
-
-    
-
-    rewrite <- hcells_form_transform with (L:=M+1)
-      (hv:=fun i => val_int (nth (abs i) Lind)); try math.
-    2: by rewrite length_map.
-    2: intros; rewrite nth_map; try math.
-    
-
-    (* brute force *)
-    hnf. intros h Hh.
-    apply hstar_inv in Hh. destruct Hh as (h1 & h2 & Hh1 & Hh2 & Hdj1 & ->).
-    apply hstar_inv in Hh2. destruct Hh2 as (h3 & h4 & Hh3 & Hh4 & Hdj2 & ->).
-    apply hstar_inv in Hh4. destruct Hh4 as (h5 & h6 & Hh5 & Hh6 & Hdj3 & ->).
-    apply hcells_inv in Hh3, Hh6. apply hsingle_inv in Hh1, Hh5.
-    subst h1 h3 h5 h6.
-    rewrite -> ! disjoint_union_eq_r in Hdj2.
-    rewrite -> ! disjoint_union_eq_r in Hdj1.
-    unfold hsub.
-    exists ((Fmap.single (px_val, (⟨(2, 0), d⟩)%arr) (val_header (abs M))) \u
-      (Fmap.single (px_val, (⟨(4, 0), d⟩)%arr) (val_header (abs M))) \u
-      (Fmap.hconseq (LibList.map val_int Lval) (px_val + 1) (⟨(2, 0), d⟩)%arr) \u
-      (Fmap.hconseq (LibList.map val_int Lval) (px_val + 1) (⟨(4, 0), d⟩)%arr) \u
-      (Fmap.single (px_ind, (⟨(2, 0), d⟩)%arr) (val_header (abs (M + 1)))) \u
-      (Fmap.single (px_ind, (⟨(4, 0), d⟩)%arr) (val_header (abs (M + 1)))) \u
-      (Fmap.hconseq (LibList.map val_int Lind) (px_ind + 1) (⟨(2, 0), d⟩)%arr)  \u
-      (Fmap.hconseq (LibList.map val_int Lind) (px_ind + 1) (⟨(4, 0), d⟩)%arr) ).
-    split. 2: split.
-    { 
-      hsub
-      unfold fsubst. subst f. simpl.
-      apply fmap_extens.
-      intros (p, (ll, dd)). simpl.
-      unfold map_fsubst, map_union.
-      repeat case_if; auto. 
-
-    
-
-    unfold  
-    xsimpl.
-
-    rewrite <- hbig_fset_union.
-    2-4: hnf; auto.
-    2:{ apply disjoint_of_not_indom_both. intros (?, ?).
-      rewrite ! indom_label_eq. eqsolve.
-    }
-
-    erewrite -> hsub_hstar_fset.
-    1: apply himpl_refl.
-    1:{
-      (* prove by def *)
-      apply fset_extens.
-      intros (ll, d). 
-      rewrite indom_fsubst. split.
-      { intros ((ll', d') & EE & H).
-        subst f. simpl in EE. 
-        rewrite ! indom_label_eq in EE |- *.
-        rewrite ! indom_union_eq ! indom_label_eq in H.
-        case_if; eqsolve.
+      rewrite -> intervalU with (x:=0) (y:=M+M+3).
+      2: math.
+      rewrite hbig_fset_update; try assumption.
+      3-4: auto.
+      2: rewrite indom_interval; intros ?; math.
+      rewrite <- interval_union with (x:=0+1) (z:=M+M+3) (y:=M+2); try math.
+      rewrite hbig_fset_union; try assumption.
+      2-4: hnf; auto.
+      2:{
+        apply disjoint_of_not_indom_both.
+        intros ?. rewrite ! indom_interval. intros; math.
       }
-      { intros H. rewrite ! indom_label_eq in H.
-        exists (Lab ll d). 
-        subst f. simpl. rewrite ! indom_union_eq ! indom_label_eq. 
-        case_if; eqsolve.
+      rewrite <- interval_union with (x:=M+2) (z:=M+M+3) (y:=M+3); try math.
+      rewrite hbig_fset_union; try assumption.
+      2-4: hnf; auto.
+      2:{
+        apply disjoint_of_not_indom_both.
+        intros ?. rewrite ! indom_interval. intros; math.
+      }
+      replace (M+2) with ((M+1)+1) at 1 by math.
+      replace (M+2) with (0+(M+2)) by math.
+      replace (M+3) with (1+(M+2)) at 1 by math.
+      replace (M+3) with (0+(M+3)) at 1 by math.
+      replace (M+M+3) with (M+(M+3)) at 1 by math.
+      rewrite <- ! hstar_interval_offset.
+      subst pall vall. simpl.
+      case_if; try math.
+
+      f_equal.
+      1:{ unfold pind, vind.
+        case_if; try math. 
+        replace (abs 0)%nat with 0%nat by math.
+        by rewrite Nat.add_0_r.
+      }
+      f_equal.
+      1:{ unfold pind, vind.
+        rewrite <- hbig_fset_hstar.
+        apply hbig_fset_eq.
+        intros. rewrite indom_interval in H0. repeat case_if; try math.
+        replace (px_ind + 1 + abs d0)%nat with (px_ind + abs (d0 + 1))%nat by math.
+        replace (d0+1-1) with d0 by math. by [].
+      }
+      f_equal.
+      1:{ unfold pval, vval.
+        rewrite intervalU. 2: math.
+        rewrite hbig_fset_update. 3-4: auto. 2: rewrite indom_interval; intros ?; math.
+        rewrite intervalgt. 2: math.
+        rewrite hbig_fset_empty.
+        repeat case_if; try math.
+        replace (abs (0 + (M + 2) - (M + 2)))%nat with 0%nat by math.
+        rewrite Nat.add_0_r. xsimpl.
+      }
+      1:{ unfold pval, vval.
+        rewrite <- hbig_fset_hstar.
+        apply hbig_fset_eq.
+        intros. rewrite indom_interval in H0. repeat case_if; try math.
+        replace (abs (d0 + (M + 3) - (M + 2)))%nat with (1+abs d0)%nat by math.
+        replace (px_val + 1 + abs d0)%nat with (px_val + (1 + abs d0))%nat by math.
+        replace (d0 + (M + 3) - (M + 2) - 1) with d0 by math.
+        by [].
       }
     }
-    1:{
-      intros.
-      hlocal.
-      all: unfold arr_x_ind, arr_x_val, harray; hlocal.
-      2,4: hnf; intros h Hh; apply hcells_inv in Hh; subst h; apply hconseq_local.
-      all: hnf; intros h Hh; apply hheader_inv in Hh; destruct Hh as (-> & ?); 
-        apply local_single.
-    }
-    {
-      intros (l, d) H. simpl.
-      (* rewrite filter_union.
-      2: { apply disjoint_of_not_indom_both. intros (?, ?).
-        rewrite ! indom_label_eq. eqsolve.
-      } *)
-      rewrite indom_label_eq in H. destruct H as (<- & H).
-      assert (filter (fun y : D => fun=> f y = (Lab (2, 0) d)) 
-        (⟨(2, 0), interval 0 N⟩ \u ⟨(4, 0), interval 0 N⟩) = 
-        single (Lab (2, 0) d) tt \u single (Lab (4, 0) d) tt) as Htmp.
-      { apply fset_extens. intros (l', d').
-        rewrite -> filter_indom. 2: constructor; exists tt; auto.
-        subst f. simpl.
-        rewrite ! indom_union_eq ! indom_single_eq ! indom_label_eq.
-        case_if.
-        { destruct C as (<- & C). eqsolve. }
-        { split. intros ([|], HH); try eqsolve.
-          intros [|]. all: inversion H0; subst l' d'; eqsolve.
-        }
-      }
-      rewrite Htmp. clear Htmp.
-      rewrite <- update_eq_union_single. 
-      unfold hbig_fset. 
-      rewrite -> (snd (@fset_foldE _ _ _ _)); auto.
-      2: intros; xsimpl.
-      2: rewrite indom_single_eq; eqsolve.
-      rewrite update_empty.
-      rewrite -> (snd (@fset_foldE _ _ _ _)); auto.
-      2: intros; xsimpl.
-      rewrite -> (fst (@fset_foldE _ _ _ _)); auto.
-      rewrite hstar_hempty_r.
-
-      (* get some pure thing *)
-      unfold arr_x_ind, arr_x_val, harray, hheader. 
-      simpl. rewrite -> ! length_map, -> ! H_length_Lind, -> ! H_length_Lval.
-      remember (\[(px_ind, (⟨(2, 0), d⟩)%arr) <> null (⟨(2, 0), d⟩)%arr] \*
-        \[(px_val, (⟨(2, 0), d⟩)%arr) <> null (⟨(2, 0), d⟩)%arr] \*
-        \[(px_ind, (⟨(4, 0), d⟩)%arr) <> null (⟨(4, 0), d⟩)%arr] \*
-        \[(px_val, (⟨(4, 0), d⟩)%arr) <> null (⟨(4, 0), d⟩)%arr] \*
-        ((px_ind ~⟨(2%Z, 0%Z), d⟩~> val_header (abs (M + 1)) \* 
-          hcells (LibList.map val_int Lind) (px_ind + 1)%nat (⟨(2, 0), d⟩)%arr) \*
-        (px_ind ~⟨(4%Z, 0%Z), d⟩~> val_header (abs (M + 1)) \*
-          hcells (LibList.map val_int Lval) (px_val + 1)%nat (⟨(4, 0), d⟩)%arr)) \*
-        ((px_val ~⟨(2%Z, 0%Z), d⟩~> val_header (abs M) \*
-          hcells (LibList.map val_int Lval) (px_val + 1)%nat (⟨(2, 0), d⟩)%arr) \*
-        (px_val ~⟨(4%Z, 0%Z), d⟩~> val_header (abs M) \*
-          hcells (LibList.map val_int Lind) (px_ind + 1)%nat (⟨(4, 0), d⟩)%arr))
-      ) as Htarg.
-      remember (\[(px_ind, (⟨(2, 0), d⟩)%arr) <> null (⟨(2, 0), d⟩)%arr] \*
-        \[(px_val, (⟨(2, 0), d⟩)%arr) <> null (⟨(2, 0), d⟩)%arr] \*
-        (px_ind ~⟨(2%Z, 0%Z), d⟩~> val_header (abs (M + 1)) \*
-          hcells (LibList.map val_int Lind) (px_ind + 1)%nat (⟨(2, 0), d⟩)%arr) \*
-        (px_val ~⟨(2%Z, 0%Z), d⟩~> val_header (abs M) \*
-          hcells (LibList.map val_int Lval) (px_val + 1)%nat (⟨(2, 0), d⟩)%arr)
-      ) as Htarg'.
-      match goal with |- hsub ?Hsrc _ = _ => assert (Hsrc = Htarg) as Htmp end.
-      1: subst Htarg; xsimpl; auto.
-      match goal with |- hsub _ _ = ?Hsrc' => assert (Hsrc' = Htarg') as Htmp' end.
-      1: subst Htarg'; xsimpl; auto.
-      rewrite Htmp Htmp'. clear Htmp Htmp'.
-      subst Htarg Htarg'.
-
-      rewrite ! hsub_hpure_comm.
-
-
-
-
-      (* array squash *)
-      admit.
-      }
-      *)
   }
   (* post sub *)
   { 
@@ -4051,7 +4015,7 @@ Proof.
     }
     xsimpl. rewrite hstar_fset_pure. xsimpl. auto.
   }
-Admitted.
+Qed.
 
 (* final theorem *)
 Theorem rlsum_rl_ntriple : forall (px_ind px_val : loc),
