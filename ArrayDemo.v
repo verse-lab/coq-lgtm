@@ -3414,19 +3414,10 @@ Proof.
   
 *)
 
-Fact local_union_fs_l {D} (fs1 fs2 : fset D) (Hdj : disjoint fs1 fs2) h : 
-  local fs1 h -> local (fs1 \u fs2) h.
-Proof.
-  intros. unfolds local.
-  intros. rewrite indom_union_eq. left. by eapply H; eauto.
-Qed.
-
-Fact local_union_fs_r {D} (fs1 fs2 : fset D) (Hdj : disjoint fs1 fs2) h : 
-  local fs2 h -> local (fs1 \u fs2) h.
-Proof.
-  intros. unfolds local.
-  intros. rewrite indom_union_eq. right. by eapply H; eauto.
-Qed.
+Fact fsubst_indom_local (fs : fset D) (h : hheap D) f : 
+  (forall p d, indom (fsubst h f) (p, d) -> indom fs d) -> 
+  local fs (fsubst h f).
+Proof. intros H. hnf. intros. now apply H in H0. Qed.
 
 (* a better composition *)
 Lemma rlsum_rl_rli_ntriple : forall (px_ind px_val : loc),
@@ -3446,8 +3437,10 @@ Lemma rlsum_rl_rli_ntriple : forall (px_ind px_val : loc),
         (@hexists (list val) (fun Larr =>
         \[length Larr = (abs N) /\
         hv (Lab (pair 1 0) 0) = fold_left val_int_add (val_int 0) Larr] \* 
-        (\*_(d <- ⟨pair 2 0, interval 0 N⟩) \[hv d = (nth (abs (eld d)) Larr)]) \*
-        harray Larr px (Lab (pair 3 0) 0))))) \* \Top).
+        (* leave this out? *)
+        (* (\*_(d <- ⟨pair 2 0, interval 0 N⟩) \[hv d = (nth (abs (eld d)) Larr)]) \* *)
+        harray Larr px (Lab (pair 3 0) 0))))) \* 
+        hhtop (⟨(1, 0), single 0 tt⟩ \u ⟨(2, 0), interval 0 N⟩ \u ⟨(3, 0), single 0 tt⟩)).
 Proof.
   intros.
   match goal with |- ntriple _ ?ls _ => remember ls as lsq' eqn:E' end.
@@ -3969,7 +3962,43 @@ Proof.
     rewrite -> hsub_hpure_comm. apply himpl_hstar_hpure_l.
     intros H4.
     rewrite -> hsub_hstar_id_l with (fs:=⟨(3, 0), single 0 tt⟩).
-    1: apply himpl_frame_lr. 2: xsimpl.
+    1: apply himpl_frame_lr. 
+    2:{
+      hnf. intros h Hh. apply hhtop_intro'. 
+      hnf in Hh. destruct Hh as (h' & <- & Hvsub & Hh').
+      apply fsubst_indom_local.
+      intros. rewrite fsubst_valid_indom in H.
+      destruct H as ((p', d') & Epd & H).
+      simpl in Epd. inversion Epd. subst p d.
+
+      match type of Hh' with ?HHH _ => assert (hlocal HHH 
+        (⟨(1, 0), single 0 tt⟩ \u ⟨(2, 0), interval 0 N⟩ \u ⟨(3, 0), single 0 tt⟩ \u ⟨(4, 0), interval 0 N⟩))
+       as Htmp end.
+      {
+        hlocal.
+        1: apply hlocal_union_l.
+        2: apply hlocal_union_r, hlocal_union_r, hlocal_union_l.
+        3: apply hlocal_union_r, hlocal_union_l.
+        4: apply hlocal_union_r, hlocal_union_r, hlocal_union_r.
+        all: apply hlocal_hstar_fset.
+        1-2: intros d; rewrite label_single indom_single_eq; intros <-.
+        1-2: hlocal; apply hlocal_harray.
+        all: intros (l', d''); rewrite indom_label_eq; intros (<- & Hin).
+        1: apply hlocal_subset with (fs1:=single (Lab (2, 0) d'') tt).
+        3: apply hlocal_subset with (fs1:=single (Lab (4, 0) d'') tt).
+        1,3: intros (?, ?); rewrite indom_single_eq; intros <-; 
+          by rewrite indom_label_eq.
+        all: hlocal; apply hlocal_harray.
+      }
+      apply Htmp in Hh'. clear Htmp.
+      apply Hh' in H.
+      destruct d' as (l', d').
+      rewrite ! indom_union_eq ! indom_label_eq ! indom_single_eq in H.
+      subst f. simpl. 
+      rewrite ! indom_union_eq ! indom_label_eq ! label_single ! indom_single_eq.
+      repeat case_if; simpl; rewrite indom_label_eq; try eqsolve.
+      intuition; try subst; eqsolve.
+    }
     4:{ rewrite label_single.
       hlocal.
       all: unfold arr_x_ind, arr_x_val, harray; hlocal.
@@ -4013,7 +4042,7 @@ Proof.
       rewrite -> fold_fset_summation_dedicated with (Larr:=Larr); try math; auto.
       apply zero_le_N.
     }
-    xsimpl. rewrite hstar_fset_pure. xsimpl. auto.
+    (* xsimpl. rewrite hstar_fset_pure. xsimpl. auto. *)
   }
 Qed.
 
@@ -4035,9 +4064,85 @@ Theorem rlsum_rl_ntriple : forall (px_ind px_val : loc),
         harray Larr px (Lab (pair 3 0) 0))))) \* \Top).
 Proof.
   intros.
-
-
-
+  unfold ntriple, nwp.
+  remember ((Lab (pair 1 0) (FH (single 0 tt) (fun=> (rlsum_func px_ind px_val)))) :: 
+    (Lab (pair 2 0) (FH (interval 0 N) (fun i => (rli_func i px_ind px_val)))) :: 
+    (Lab (pair 3 0) (FH (single 0 tt) (fun=> (rl_func px_ind px_val)))) :: 
+    nil) as lsq eqn:E.
+  simpl fset_of. rew_fmap.
+  rewrite -> wp_ht_eq with (ht2:=htrm_of lsq).
+  2:{
+    intros (ll, d) HH. rewrite indom_union_eq ! indom_label_eq ! indom_single_eq in HH.
+    subst lsq. unfold htrm_of. simpl.
+    rewrite ! indom_single_eq. repeat case_if; try eqsolve.
+  }
+  assert (fset_of lsq = (⟨(1, 0), single 0 tt⟩ \u ⟨(3, 0), single 0 tt⟩ \u ⟨(2, 0), interval 0 N⟩)) as Efs.
+  { subst lsq. unfold fset_of. simpl. rew_fmap. 
+    rewrite -> union_comm_of_disjoint with (h1:=⟨(2, 0), interval 0 N⟩). 1: reflexivity.
+    apply disjoint_of_not_indom_both. intros (ll, d). rewrite ! indom_label_eq ! indom_single_eq.
+    intros. eqsolve.
+  }
+  apply wp_equiv.
+  eapply htriple_conseq.
+  1:{
+    pose proof (rlsum_rl_rli_ntriple px_ind px_val) as H.
+    unfold ntriple, nwp in H. rewrite wp_equiv in H.
+    rewrite <- ! E in H.
+    rewrite hstars_pick_last_3 in H.
+    rewrite <- hstar_assoc in H.
+    rewrite -> hstar_comm with (H1:=(\*_(d <- ⟨(3, 0), single 0 tt⟩)
+      arr_x_ind px_ind d \* arr_x_val px_val d)) in H.
+    rewrite -> ! hhtop_hstar in H.
+    eapply htriple_proj with (fs':=⟨(2, 0), interval 0 N⟩)
+      (Q':=fun=> \[Top ⟨(2, 0), interval 0 N⟩]).
+    7:{
+      rewrite union_assoc.
+      match goal with |- htriple ?fs _ _ _ => replace fs with (fset_of lsq) end.
+      (* rewrite <- Efs. *)
+      eapply htriple_conseq.
+      1: apply H. 1: apply himpl_refl.
+      hnf. intros v. 
+      rewrite -> hstar_comm with (H1:=hhtop ⟨(2, 0), interval 0 N⟩).
+      rewrite -> hstars_pick_last_4.
+      rewrite -> hstar_comm with (H2:=hhtop ⟨(2, 0), interval 0 N⟩).
+      apply himpl_refl.
+    }
+    1:{
+      rew_disjoint. split.
+      all: apply disjoint_of_not_indom_both; intros (?, ?).
+      all: rewrite ! indom_label_eq ! indom_single_eq; eqsolve.
+    }
+    1:{
+      hlocal.
+      1: apply hlocal_union_l.
+      2: apply hlocal_union_r.
+      all: apply hlocal_hstar_fset.
+      1-2: intros d; rewrite label_single indom_single_eq; intros <-.
+      1-2: hlocal; apply hlocal_harray.
+    }
+    2:{
+      apply hlocal_hstar_fset.
+      intros (ll, d). rewrite indom_label_eq. intros (<- & HH).
+      apply hlocal_subset with (fs1:=single (Lab (2, 0) d) tt).
+      1: intros (?, ?); rewrite indom_single_eq; intros <-; 
+        by rewrite indom_label_eq.
+      hlocal; apply hlocal_harray.
+    }
+    3:{
+      admit.
+    }
+    2:{ intros _. apply hhtop_hlocal. }
+    {
+      intros. simpl. hlocal.
+      2: apply hlocal_union_l, hhtop_hlocal.
+      2: apply hlocal_union_r, hhtop_hlocal.
+      apply hlocal_union_r. rewrite label_single. apply hlocal_harray.
+    }
+  }
+  1: xsimpl.
+  hnf. intros v.
+  apply himpl_frame_lr. 2: xsimpl.
+  apply himpl_refl.
 Admitted.
 
 End Demo.

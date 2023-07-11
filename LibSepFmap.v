@@ -2120,6 +2120,15 @@ Proof.
   by split=> // -[]_/C.
 Qed.
 
+Lemma filter_indom' {A B : Type} (fs : fmap A B) (P : A -> B -> Prop) y : 
+  indom (filter P fs) y -> 
+  exists x, fmap_data fs y = Some x /\ indom fs y /\ P y x.
+Proof.
+  unfolds indom, map_indom, filter, map_filter, read.
+  simpl. destruct (fmap_data fs y) eqn:E. 2: eqsolve.
+  case_if. 1: intuition eauto. intros. by false H.
+Qed.
+
 Lemma read_arb {A B : Type} (fs : fmap A B) x  `{Inhab B}: 
   ~ indom fs x -> read fs x = arbitrary.
 Proof. 
@@ -2257,6 +2266,15 @@ Proof.
   apply fmap_extens. intros. simpl. unfolds map_filter, map_union.
   destruct (fmap_data fs x) eqn:E; (repeat (case_if; try subst)); try eqsolve.
 Qed.
+
+Lemma filter_compl_disjoint {A B : Type} (fs : fmap A B) (P : A -> B -> Prop) : 
+  disjoint (filter P fs) (filter (fun x y => ~ (P x y)) fs).
+Proof.
+  apply disjoint_of_not_indom_both.
+  intros x H1 H2. apply filter_indom' in H1, H2.
+  destruct H1 as (? & E1 & H1 & ?), H2 as (? & E2 & H2 & ?).
+  rewrite E1 in E2. injection E2 as <-. eqsolve.
+Qed. 
 
 Lemma indom_update {A B : Type} {fm : fmap A B} {x y} :
   indom (update fm x y) x.

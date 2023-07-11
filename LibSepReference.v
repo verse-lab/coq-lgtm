@@ -663,6 +663,9 @@ Definition hpure (P:Prop) : hhprop :=
 Definition htop : hhprop :=
   \exists (H:hhprop), H.
 
+Definition hhtop (fs : fset D) : hhprop :=
+  \exists (H:hhprop), hstar H (hpure (hlocal H fs)).
+
 Definition hwand (H1 H2 : hhprop) : hhprop :=
   \exists H0, H0 \* hpure ((H1 \* H0) ==> H2).
 
@@ -680,6 +683,8 @@ Notation "\[ P ]" := (hpure P)
   (at level 0, format "\[ P ]") : hprop_scope.
 
 Notation "\Top" := (htop) : hprop_scope.
+
+Notation "\[Top d ]" := (hhtop d) : hprop_scope.
 
 Notation "Q \*+ H" := (fun x => hstar (Q x) H)
   (at level 40) : hprop_scope.
@@ -1472,6 +1477,20 @@ Proof.
   move=> x d; by rewrite* indom_union_eq.
 Qed.
 
+Fact local_union_fs_l {D} (fs1 fs2 : fset D) h : 
+  local fs1 h -> local (fs1 \u fs2) h.
+Proof.
+  intros. unfolds local.
+  intros. rewrite indom_union_eq. left. by eapply H; eauto.
+Qed.
+
+Fact local_union_fs_r {D} (fs1 fs2 : fset D) h : 
+  local fs2 h -> local (fs1 \u fs2) h.
+Proof.
+  intros. unfolds local.
+  intros. rewrite indom_union_eq. right. by eapply H; eauto.
+Qed.
+
 Lemma local_merge h1 h2 (fs : fset D) m :
   local fs (merge m h1 h2) = 
   (local fs h1 /\ local fs h2).
@@ -1543,6 +1562,78 @@ Proof. by move=> hl ? [? /hl]. Qed.
 Lemma hlocal_hforall A `{Inhab A} fs (J : A -> _)  :
   (forall x, hlocal (J x) fs) -> hlocal (hforall J) fs.
 Proof. by move=> hl ? /hforall_inv-/(_ arbitrary)/(hl arbitrary). Qed.
+
+Lemma hlocal_union_l H fs1 fs2 : hlocal H fs1 -> hlocal H (fs1 \u fs2).
+Proof.
+  intros. hnf in H0 |- *. intros. apply H0 in H1.
+  by apply local_union_fs_l.
+Qed.
+
+Lemma hlocal_union_r H fs1 fs2 : hlocal H fs2 -> hlocal H (fs1 \u fs2).
+Proof.
+  intros. hnf in H0 |- *. intros. apply H0 in H1.
+  by apply local_union_fs_r.
+Qed.
+
+Lemma hhtop_intro fs H h : hlocal H fs -> H h -> hhtop fs h.
+Proof.
+  intros. hnf. exists H. rewrite <- union_empty_r.
+  by apply hstar_intro.
+Qed.
+
+Lemma hhtop_intro' fs h : local fs h -> hhtop fs h.
+Proof.
+  intros. hnf. exists (fun h' => h = h'). rewrite <- union_empty_r.
+  apply hstar_intro; auto. apply hpure_intro. hnf. by intros ? ->.
+Qed.
+
+Lemma hhtop_inv fs h : hhtop fs h -> exists H : hhprop, hlocal H fs /\ H h.
+Proof.
+  intros. hnf in H. destruct H as (H & Hh).
+  apply hstar_inv in Hh.
+  destruct Hh as (h1 & h2 & Hh1 & Hh2 & Hdj & ->).
+  apply hpure_inv in Hh2. destruct Hh2 as (Hh2 & ->).
+  setoid_rewrite union_empty_r.
+  eauto.
+Qed.
+
+Lemma hhtop_hlocal fs : hlocal (hhtop fs) fs.
+Proof.
+  hnf. intros h Hh. apply hhtop_inv in Hh.
+  destruct Hh as (? & Ha & Hb). by apply Ha in Hb.
+Qed.
+
+Lemma hhtop_hstar fs1 fs2 : hhtop (fs1 \u fs2) = hhtop fs1 \* hhtop fs2.
+Proof.
+  xsimpl.
+  { hnf. intros h Hh. apply hhtop_inv in Hh.
+    destruct Hh as (H & Hl & Hh). apply Hl in Hh.
+    pose (P:=fun (x : hloc D) (_ : val) => indom fs1 (snd x)).
+    rewrite <- filter_union_compl with (P:=P) (fs:=h).
+    pose proof (filter_compl_disjoint h P) as Hdj.
+    apply hstar_intro; try assumption.
+    { apply hhtop_intro with (H:=fun h' => h' = filter P h).
+      2: reflexivity.
+      hnf. intros ? ->. subst P. hnf. intros ? ? HH. apply filter_indom' in HH.
+      simpl in HH. firstorder.
+    }
+    { apply hhtop_intro with (H:=fun h' => h' = filter (fun (x : hloc D) (y : val) => ~ P x y) h).
+      2: reflexivity.
+      hnf. intros ? ->. subst P. hnf. intros ? ? HH. apply filter_indom' in HH.
+      simpl in HH. 
+      hnf in Hh. destruct HH as (? & ? & Hin & Hnotin). apply Hh in Hin.
+      rewrite indom_union_eq in Hin. intuition.
+    }
+  }
+  { hnf. intros h Hh. apply hstar_inv in Hh.
+    destruct Hh as (h1 & h2 & Hh1 & Hh2 & Hdj & ->).
+    apply hhtop_inv in Hh1, Hh2.
+    destruct Hh1 as (H1 & Hl1 & Hh1), Hh2 as (H2 & Hl2 & Hh2).
+    eapply hhtop_intro with (h:=h1 \u h2) (H:=H1 \* H2).
+    { apply hlocal_hstar; try (by apply hlocal_union_l); try (by apply hlocal_union_r). }
+    { by apply hstar_intro. }
+  }
+Qed.
 
 (** From now on, all operators have opaque definitions. *)
 
@@ -2728,6 +2819,7 @@ Lemma hhoare_proj (fs fs' : fset D) H H' (Q Q' : _ -> hhprop) ht :
   hhoare fs ht H Q.
 Proof.
   move=> dj lH lQ lH' lQ' [h' H'h] hh h /[dup]/lH lh Hh.
+  hhoare
   case: (hh (h \u h')).
   { exists h h'; splits=> //.
     apply/disjoint_of_not_indom_both=> -[??] /lh/[swap].

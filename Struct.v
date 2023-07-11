@@ -961,6 +961,13 @@ Proof using.
   split*.
 Qed.
 
+Lemma hlocal_hheader (l : nat) p d : hlocal (hheader l p d) (single d tt).
+Proof.
+  unfold hlocal. 
+  hnf; intros h Hh; apply hheader_inv in Hh; destruct Hh as (-> & ?); 
+  apply local_single.
+Qed.
+
 (** The heap predicate [hheader k p] captures the invariant [p <> null]. *)
 
 Lemma hheader_not_null : forall p k d,
@@ -1043,6 +1050,15 @@ Proof.
   { rewrite -> hconseq_nil. unfolds local, indom, map_indom. simpl. eqsolve. }
   { rewrite -> hconseq_cons, -> local_union. split; auto. apply local_single. }
 Qed. 
+
+Lemma hlocal_hcells (L : list val) p d : hlocal (hcells L p d) (single d tt).
+Proof.
+  unfold hlocal. 
+  hnf; intros h Hh; apply hcells_inv in Hh; subst h; apply hconseq_local.
+Qed.
+
+Lemma hlocal_harray (L : list val) p d : hlocal (harray L p d) (single d tt).
+Proof. unfold harray; hlocal. apply hlocal_hheader. apply hlocal_hcells. Qed.
 
 Lemma hconseq_least_fresh_pre (h : hheap D) L d :
   exists p, 
