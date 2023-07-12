@@ -487,55 +487,31 @@ Proof using.
   apply htriple_set.
 Qed.
 
-(* TODO rewrite this with above? *)
-Lemma htriple_array_set : forall fs (p : D -> loc) (i : D -> int) (v : D -> val) (L : D -> list val),
+Corollary htriple_array_set : forall fs (p : D -> loc) (i : D -> int) (v : D -> val) (L : D -> list val),
   (forall d, indom fs d -> 0 <= (i d) < length (L d)) ->
   (forall d, indom fs d -> LibList.nth (abs (i d)) (L d) = v d) ->
   htriple fs (fun d => val_array_set (p d) (i d) (v d))
     (\*_(d <- fs) (harray (L d) (p d) d))
     (fun=>(\*_(d <- fs) (harray (LibList.update (abs (i d)) (v d) (L d)) (p d) d))).
 Proof using.
-  introv N E. eapply htriple_eval_like.
-  1:{ apply eval_like_app_fun3. all: intros; eqsolve. }
-  simpl.
-  eapply htriple_let. 
-  1:{ replace (\*_(d <- fs) harray (L d) (p d) d) with 
-    (\[] \* \*_(d <- fs) harray (L d) (p d) d) by xsimpl. 
-    eapply htriple_frame. apply htriple_add.
-  }
-  simpl. intros. apply htriple_hpure. intros ->.
-  eapply htriple_let. 
-  1:{ replace (\*_(d <- fs) harray (L d) (p d) d) with 
-    (\[] \* \*_(d <- fs) harray (L d) (p d) d) by xsimpl. 
-    eapply htriple_frame. apply htriple_ptr_add. 
-    intros. specializes N H. math.
-  }
-  simpl. intros. apply htriple_hpure. intros ->.
-  eapply htriple_conseq. 3: apply qimpl_refl. 
+  introv N E. 
+  eapply htriple_conseq. 3: xsimpl.
   2:{ apply hbig_fset_himpl.
     intros. apply harray_focus with (k:=abs (i d)).
     specializes N H. math.
   }
-  simpl. erewrite -> hbig_fset_hstar.
-  eapply htriple_conseq. 2: apply himpl_refl.
-  1:{ apply htriple_frame.
-    eapply htriple_conseq. 3: apply qimpl_refl.
-    2:{ apply hbig_fset_himpl. intros. 
-      replace (p d + 1 + abs (i d))%nat with (abs (p d + (i d + 1))).
-      2:{ specializes N H. math. }
-      apply himpl_refl.
-    } 
-    apply htriple_set.
+  simpl. rewrite -> hbig_fset_hstar.
+  eapply htriple_conseq_frame.
+  1: apply htriple_array_set_pre.
+  1: intros; by apply N.
+  { xsimpl. }
+  { xsimpl. rewrite <- hbig_fset_hstar. 
+    apply hbig_fset_himpl.
+    intros. 
+    replace (p d + 1 + abs (i d))%nat with (abs (p d + (i d + 1))).
+    2:{ specializes N H. math. }
+    xchange (hforall_specialize (v d)).
   }
-  simpl. hnf. xsimpl. 
-  (* 1:{ intros. by rewrite <- E, -> H. }
-  intros ? ->. *)
-  rewrite <- hbig_fset_hstar. 
-  apply hbig_fset_himpl.
-  intros. 
-  replace (p d + 1 + abs (i d))%nat with (abs (p d + (i d + 1))).
-  2:{ specializes N H. math. }
-  xchange (hforall_specialize (v d)).
 Qed.
 
 End ArrayAccessDef.
