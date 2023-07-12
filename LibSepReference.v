@@ -7849,6 +7849,44 @@ Proof with autos*.
   apply/wp_conseq=> ?; rewrite intervalgt ?Union0 ?uni0 //; by math.
 Qed.
 
+Corollary htriple_while fs fs' ht (Inv : bool -> int -> (D -> val) -> hhprop) Z N T C fsi HC s b0 hv0 (P : hhprop) Q :
+  (forall (b : bool) (x : int) hv,
+    Inv b x hv ==>
+      wp 
+        fs'
+        (fun=> C) 
+        (fun hc => \exists c : bool, \[hc s = c] \* HC c b x hv)) -> 
+  (forall b x hv, HC false b x hv ==> \[(x = N)%Z /\ b = false] \* Inv false x hv) ->
+  (forall b j hv, Z <= j < N ->
+    (forall j' b' hv, 
+      j < j' < N -> 
+      Inv b' j' hv ==>
+        wp 
+          (fs' \u Union (interval j' N) fsi)
+          (upd ht s (While C T)) 
+          (fun hr => Inv false N (hv \u_(Union (interval Z j') fsi) hr))) ->
+      HC true b j hv ==> 
+        wp
+          (fs' \u Union (interval j N) fsi) 
+          (upd ht s (trm_seq T (While C T))) 
+          (fun hr => Inv false N (hv \u_(Union (interval Z j) fsi) hr))) ->
+  (forall j b hv1 hv2, (forall x, indom (Union (interval Z j) fsi) x -> hv1 x = hv2 x) -> Inv b j hv1 = Inv b j hv2) ->
+  P ==> Inv b0 Z hv0 ->
+  Inv false N ===> Q ->
+  (Z < N) ->
+  fs = Union (interval Z N) fsi ->
+  fs' = single s tt ->
+  (forall t, subst "while" t T = T) ->
+  (forall t, subst "cond" t T = T) ->
+  (forall t, subst "tt" t T = T) ->
+  (forall t, subst "while" t C = C) ->
+  (forall t, subst "cond" t C = C) ->
+  (forall t, subst "tt" t C = C) ->
+  (forall j, (Z <= j < N)%Z -> ~ indom (fsi j) s) ->
+  (ht s = While C T) ->
+  htriple (fs' \u fs) ht P Q.
+Proof. intros. apply wp_equiv. eapply wp_while; eauto. Qed.
+
 Hint Resolve hmerge_comm hmerge_assoc : core.
 
 Lemma wp_for_hbig_op fs fs' ht fs''
