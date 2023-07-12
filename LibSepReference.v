@@ -5214,7 +5214,6 @@ Proof.
     exists (Fmap.single (p, d1) v \u Fmap.single (p, d2) v).
     split.
     1:{
-      (* TODO repeat *)
       apply fmap_extens. intros (pp, dd). simpl. case_if.
       { injection C as <-. subst dd.
         unfold map_fsubst, map_union, map_indom.
@@ -8557,7 +8556,7 @@ Lemma hlocal_single_hsub (f : D -> D) x H:
   hlocal (hsub H f) (single (f x) tt).
 Proof. by move=> lc ?[h'][]<-[_]/lc/(local_single_fsubst f). Qed.
 
-(* TODO guess can also be done with hsub_hstar_fset; but still need hsub_hsingle_merge *)
+(* this could also be done with hsub_hstar_fset; but still need hsub_hsingle_merge *)
 Fact hsub_hsingle_groupmerge_himpl {A : Type} (fs : fset A) (f : D -> D) (d1 d2 : D) (Hn : d1 <> d2)
   (H1 : f d1 = d1) (H2 : f d2 = d1) 
   (Hdom : forall d, f d = d1 -> d = d1 \/ d = d2)
@@ -8573,6 +8572,14 @@ Proof.
   { intros. destruct (classicT (a1 = a2)); auto. (* ! *)
     by apply Hp in n.
   }
+  assert (Hdj' : forall i j : A, indom fs i -> indom fs j -> i <> j ->
+    disjoint (single (p i, d1) (v i) \u single (p i, d2) (v i))
+      (single (p j, d1) (v j) \u single (p j, d2) (v j))).
+  { intros. rew_disjoint. repeat split.
+    all: apply disjoint_single_single; intros Htmp; try eqsolve.
+    all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
+  }
+
   rewrite Union_localization in Hh.
   2:{ 
     intros. apply disjoint_single_single. intros ?.
@@ -8592,20 +8599,7 @@ Proof.
     match goal with |- ?a = ?b => destruct a eqn:E, b eqn:E' end; try reflexivity.
     {
       apply Union_fmap_inv in E, E'.
-      2:{
-        apply fm_localization.
-        (* repeat *)
-        intros. rew_disjoint. repeat split.
-        all: apply disjoint_single_single; intros Htmp; try eqsolve.
-        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
-      }
-      2:{
-        apply fm_localization.
-        (* repeat *)
-        intros. rew_disjoint. repeat split.
-        all: apply disjoint_single_single; intros Htmp; try eqsolve.
-        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
-      }
+      2-3: by apply fm_localization.
       destruct E as (? & ? & E), E' as (? & ? & E').
       unfold fm_localize, uni in E, E'.
       repeat case_if; try eqsolve.
@@ -8617,22 +8611,10 @@ Proof.
     }
     {
       apply Union_fmap_inv in E.
-      2:{
-        apply fm_localization.
-        (* repeat *)
-        intros. rew_disjoint. repeat split.
-        all: apply disjoint_single_single; intros Htmp; try eqsolve.
-        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
-      }
+      2: by apply fm_localization.
       destruct E as (? & ? & E).
       apply Union_fmap_none_inv with (t:=x) in E'; try assumption.
-      2:{
-        apply fm_localization.
-        (* repeat *)
-        intros. rew_disjoint. repeat split.
-        all: apply disjoint_single_single; intros Htmp; try eqsolve.
-        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
-      }
+      2: by apply fm_localization.
       unfold fm_localize, uni in E, E'.
       case_if; try eqsolve.
       simpl in E, E'. unfolds map_union.
@@ -8648,22 +8630,10 @@ Proof.
     }
     {
       apply Union_fmap_inv in E'.
-      2:{
-        apply fm_localization.
-        (* repeat *)
-        intros. rew_disjoint. repeat split.
-        all: apply disjoint_single_single; intros Htmp; try eqsolve.
-        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
-      }
+      2: by apply fm_localization.
       destruct E' as (? & ? & E').
       apply Union_fmap_none_inv with (t:=x) in E; try assumption.
-      2:{
-        apply fm_localization.
-        (* repeat *)
-        intros. rew_disjoint. repeat split.
-        all: apply disjoint_single_single; intros Htmp; try eqsolve.
-        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
-      }
+      2: by apply fm_localization.
       unfold fm_localize, uni in E, E'.
       case_if; try eqsolve.
       simpl in E, E'. unfolds map_union.
@@ -8687,14 +8657,7 @@ Proof.
     { destruct (indefinite_description _) as ((pp', dd') & EE).
       simpl in EE. destruct EE as (Epd & Hin).
       injection Epd as <-.
-      rewrite <- Union_localization in Hin.
-      2:{ 
-        (* repeat *)
-        intros. rew_disjoint. repeat split.
-        all: apply disjoint_single_single; intros Htmp; try eqsolve.
-        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
-      }
-      (* TODO cannot rewrite? *)
+      rewrite <- Union_localization in Hin; auto.
       match type of Hin with _ ?a ?b => assert (indom a b) by auto end. 
       rewrite indom_Union in H0.
       destruct H0 as (a & Hin' & HH).
@@ -8705,18 +8668,10 @@ Proof.
       rewrite -> ! Union_fmap_indomE with (t:=a); try assumption.
       2:{ 
         apply fm_localization.
-        (* repeat *)
-        intros. rew_disjoint. repeat split.
-        all: apply disjoint_single_single; intros Htmp; try eqsolve.
-        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
+        intros. apply disjoint_single_single; intros Htmp; try eqsolve.
+        assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
       }
-      3:{ 
-        apply fm_localization.
-        (* repeat *)
-        intros. rew_disjoint. repeat split.
-        all: apply disjoint_single_single; intros Htmp; try eqsolve.
-        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
-      }
+      3: by apply fm_localization.
       2:{
         unfold fm_localize, uni. case_if; try eqsolve. apply indom_single.
       }
@@ -8735,13 +8690,7 @@ Proof.
       intros HH. inversion HH. subst pp dd.
       apply P.
       
-      setoid_rewrite <- Union_localization.
-      2:{ 
-        (* repeat *)
-        intros. rew_disjoint. repeat split.
-        all: apply disjoint_single_single; intros Htmp; try eqsolve.
-        all: assert (p i = p j) as Htmp2 by eqsolve; revert Htmp2; by apply Hp.
-      }
+      setoid_rewrite <- Union_localization; auto.
       setoid_rewrite indom_Union.
       exists (p t, d1). rewrite H1. split; auto.
       exists t. rewrite indom_union_eq indom_single_eq. eqsolve.
@@ -9765,18 +9714,9 @@ Proof using.
   erewrite -> wp_ht_eq in Htppre.
   1: apply Htppre.
 
-  (* repeat? *)
   intros. destruct d as (ll, d).
-  rewrite -> indom_union_eq, -> ! indom_label_eq in H0.
-  destruct H0 as [ (<- & Hin) | (<- & Hin) ].
-  { unfold htrm_of, uni. simpl. case_if; try eqsolve.
-    rewrite -> ! indom_label_eq.
-    case_if; eqsolve.
-  }
-  { unfold htrm_of, uni. simpl. case_if; try eqsolve.
-    rewrite -> ! indom_label_eq.
-    repeat case_if; try eqsolve.
-  }
+  rewrite -> indom_union_eq, -> ! indom_label_eq in H0. 
+  unfold htrm_of, uni. rewrite ! indom_label_eq. simpl. repeat case_if; try eqsolve.
 Qed.
 
 Lemma xfocus_lemma (l : labType) fs_hts (Q : (HD.type -> val) -> hhprop) H : 

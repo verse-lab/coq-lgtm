@@ -1240,6 +1240,15 @@ Proof.
   }
 Qed.
 
+Corollary disjoint_single_hconseq : forall [D:Type] B l l' L (v:B) (d:D),
+  (l < l')%nat \/ (l >= l'+length L)%nat ->
+  \# (single (l, d) v) (hconseq L l' d).
+Proof using.
+  intros. apply disjoint_of_not_indom_both.
+  intros (pp, dd). rewrite hconseq_indom indom_single_eq.
+  intros HH (_ & ?). inversion HH. subst. intuition math.
+Qed.
+
 Lemma hconseq_disjoint_suffcond1 : forall [D:Type] B (vs1 vs2:list B) (l1 l2:nat) (d1 d2 : D),
   d1 <> d2 -> disjoint (hconseq vs1 l1 d1) (hconseq vs2 l2 d2).
 Proof.
@@ -1349,18 +1358,6 @@ Proof using.
   { rewrite~ conseq_nil. }
   { rew_list in N. rewrite conseq_cons. rew_disjoint. split.
     { applys disjoint_single_single. destruct N; math. }
-    { applys IHL. destruct N. { left. math. } { right. math. } } }
-Qed.
-
-(* TODO repeat? *)
-Lemma disjoint_single_hconseq : forall [D:Type] B l l' L (v:B) (d:D),
-  (l < l')%nat \/ (l >= l'+length L)%nat ->
-  \# (single (l, d) v) (hconseq L l' d).
-Proof using.
-  introv N. gen l'. induction L as [|L']; intros.
-  { rewrite~ hconseq_nil. }
-  { rew_list in N. rewrite hconseq_cons. rew_disjoint. split.
-    { applys disjoint_single_single. enough (l <> l') by intuition congruence. destruct N; math. }
     { applys IHL. destruct N. { left. math. } { right. math. } } }
 Qed.
 

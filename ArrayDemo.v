@@ -372,7 +372,6 @@ Proof.
         (Lab (pair j 0) (FH (fsi1 l) (fun ld => C1 ld))) ::
         nil))).
     2:{
-      (* repeat? *)
       intros (ll, d) H. unfold uni, htrm_of. simpl. 
       rewrite indom_union_eq ! indom_label_eq in H |- *.
       rewrite indom_single_eq in H |- *. 
@@ -512,15 +511,9 @@ Proof.
     2: { rewrite disjoint_Union=> ? /[! indom_interval] ?.
       apply/Dj; math. }
     erewrite wp_ht_eq with (ht2:=(htrm_of
-      (cons {| lab := pair i 0;
-         el := {| fs_of := single s tt;
-             ht_of := fun _ : IntDom.type => subst vr l C
-           |} |}
-       (cons
-          {| lab := pair j 0;
-            el := {| fs_of := fsi1 l;
-                ht_of := fun ld : IntDom.type => C1 ld
-              |} |} nil)))).
+      ((Lab (pair i 0) (FH (single s tt) (fun=> subst vr l C))) ::
+        (Lab (pair j 0) (FH (fsi1 l) (fun ld => C1 ld))) ::
+        nil))).
     2:{
       intros (ll, d) H. unfold uni, htrm_of. simpl. 
       rewrite indom_union_eq ! indom_label_eq in H |- *.
@@ -557,20 +550,11 @@ Proof.
       math.
     }
   }
-  { intros. xsimpl.
-    { apply hbig_fset_himpl.
-      intros. rewrite -> H; auto.
-      rewrite indom_Union in H0. rewrite indom_Union.
-      destruct H0 as (f & H0 & H2). 
-      exists f. rewrite indom_label_eq. intuition.
-    }
-    (* repeat *)
-    { apply hbig_fset_himpl.
-      intros. rewrite -> H; auto.
-      rewrite indom_Union in H0. rewrite indom_Union.
-      destruct H0 as (f & H0 & H2). 
-      exists f. rewrite indom_label_eq. intuition.
-    }
+  { intros. f_equal. f_equal. f_equal. f_equal. apply hbig_fset_eq.
+    intros. rewrite -> H; auto.
+    rewrite indom_Union in H0. rewrite indom_Union.
+    destruct H0 as (f & H0 & H2). 
+    exists f. rewrite indom_label_eq. intuition.
   }
   { rewrite [_ Z Z]intervalgt; last math.
     rewrite Union0 ! hbig_fset_empty. xsimpl. }
@@ -764,9 +748,29 @@ Proof using N M Lind H_length_Lind H_Lind_first H_Lind_inc.
       apply H_Lind_inc; math. 
     }
     rewrite -> union_comm_of_disjoint. 1: reflexivity.
-    (* TODO may reuse disjoint proof *)
     apply disjoint_of_not_indom_both.
     intros. rewrite -> indom_interval in *. math.
+  }
+Qed.
+
+Lemma ind_seg_disjoint (i j : int) (Hi : indom (interval 0 M) i)
+  (Hj : indom (interval 0 M) j) (Hn : i <> j) : disjoint (ind_seg i) (ind_seg j).
+Proof.
+  unfold ind_seg. 
+  rewrite -> indom_interval in Hi, Hj.
+  destruct Hi as (Hi1 & Hi2), Hj as (Hj1 & Hj2).
+  apply disjoint_of_not_indom_both.
+  intros x Hi Hj. rewrite -> indom_interval in Hi, Hj.
+  destruct (Z.leb (i + 1) j) eqn:E.
+  { rewrite -> Z.leb_le in E.
+    apply H_Lind_inc' in E; try math.
+  }
+  { destruct (Z.leb (j + 1) i) eqn:E'.
+    { rewrite -> Z.leb_le in E'.
+      apply H_Lind_inc' in E'; try math.
+    }
+    rewrite -> Z.leb_gt in E, E'.
+    math.
   }
 Qed.
 
@@ -1351,25 +1355,7 @@ Lemma rlsum_rli_align_step : forall (px_ind px_val : loc) (ps0 : loc),
 Proof.
   intros.
   rewrite -> Union_localization.
-  2:{
-    intros i j Hii Hjj H. unfold ind_seg. 
-    rewrite -> indom_interval in Hii, Hjj.
-    destruct Hii as (Hii1 & Hii2), Hjj as (Hjj1 & Hjj2).
-    (* TODO extract this? *)
-    apply disjoint_of_not_indom_both.
-    intros x Hi Hj. rewrite -> indom_interval in Hi, Hj.
-    destruct (Z.leb (i + 1) j) eqn:E.
-    { rewrite -> Z.leb_le in E.
-      apply H_Lind_inc' in E; try math.
-    }
-    { destruct (Z.leb (j + 1) i) eqn:E'.
-      { rewrite -> Z.leb_le in E'.
-        apply H_Lind_inc' in E'; try math.
-      }
-      rewrite -> Z.leb_gt in E, E'.
-      math.
-    }
-  }
+  2: apply ind_seg_disjoint.
   eapply xfor_big_op_lemma with
     (Inv:=fun=> arr_x_ind px_ind (⟨(1, 0), 0⟩)%arr \*
       arr_x_val px_val (⟨(1, 0), 0⟩)%arr)
@@ -1383,27 +1369,7 @@ Proof.
   all: match goal with |- context[subst _ _ _ = _] => intros; auto | _ => idtac end.
   all: match goal with |- context[var_eq ?a ?b] => intros; auto | _ => idtac end.
   4-5: math.
-  2:{
-    apply fm_localization.
-
-    (* repeat *)
-    intros i j Hii Hjj H. unfold ind_seg. 
-    rewrite -> indom_interval in Hii, Hjj.
-    destruct Hii as (Hii1 & Hii2), Hjj as (Hjj1 & Hjj2).
-    apply disjoint_of_not_indom_both.
-    intros x Hi Hj. rewrite -> indom_interval in Hi, Hj.
-    destruct (Z.leb (i + 1) j) eqn:E.
-    { rewrite -> Z.leb_le in E.
-      apply H_Lind_inc' in E; try math.
-    }
-    { destruct (Z.leb (j + 1) i) eqn:E'.
-      { rewrite -> Z.leb_le in E'.
-        apply H_Lind_inc' in E'; try math.
-      }
-      rewrite -> Z.leb_gt in E, E'.
-      math.
-    }
-  }
+  2: apply fm_localization; apply ind_seg_disjoint.
   2:{
     intros. apply fold_fset_eq. intros. extens. intros.
     destruct d as (ll, dd).
@@ -1415,26 +1381,7 @@ Proof.
   (* pre *)
   2:{
     rewrite <- Union_localization.
-    2:{
-      (* repeat *)
-      intros i j Hii Hjj H. unfold ind_seg. 
-      rewrite -> indom_interval in Hii, Hjj.
-      destruct Hii as (Hii1 & Hii2), Hjj as (Hjj1 & Hjj2).
-      apply disjoint_of_not_indom_both.
-      intros x Hi Hj. rewrite -> indom_interval in Hi, Hj.
-      destruct (Z.leb (i + 1) j) eqn:E.
-      { rewrite -> Z.leb_le in E.
-        apply H_Lind_inc' in E; try math.
-      }
-      { destruct (Z.leb (j + 1) i) eqn:E'.
-        { rewrite -> Z.leb_le in E'.
-          apply H_Lind_inc' in E'; try math.
-        }
-        rewrite -> Z.leb_gt in E, E'.
-        math.
-      }
-    }
-
+    2: apply ind_seg_disjoint.
     rewrite <- interval_segmentation.
     xsimpl.
   }
@@ -1442,25 +1389,7 @@ Proof.
   2:{
     intros. rewrite <- interval_segmentation at 2. xsimpl.
     rewrite <- Union_localization.
-    2:{
-      (* repeat *)
-      intros i j Hii Hjj H. unfold ind_seg. 
-      rewrite -> indom_interval in Hii, Hjj.
-      destruct Hii as (Hii1 & Hii2), Hjj as (Hjj1 & Hjj2).
-      apply disjoint_of_not_indom_both.
-      intros x Hi Hj. rewrite -> indom_interval in Hi, Hj.
-      destruct (Z.leb (i + 1) j) eqn:E.
-      { rewrite -> Z.leb_le in E.
-        apply H_Lind_inc' in E; try math.
-      }
-      { destruct (Z.leb (j + 1) i) eqn:E'.
-        { rewrite -> Z.leb_le in E'.
-          apply H_Lind_inc' in E'; try math.
-        }
-        rewrite -> Z.leb_gt in E, E'.
-        math.
-      }
-    }
+    2: apply ind_seg_disjoint.
     xsimpl.
 
     match goal with |- himpl (hsingle _ _ ?v) (hsingle _ _ ?v') =>
@@ -1620,13 +1549,8 @@ Proof.
   rewrite -> union_empty_r.
   (* little change *)
   rewrite -> wp_ht_eq with (ht2:=(fun=> (rlsum_func M px_ind px_val))).
-  2:{ intros. unfolds label. 
-    (* coercion: eld *)
-    (* TODO extract this out to be a lemma *)
-    rewrite -> indom_Union in H. 
-    setoid_rewrite -> indom_single_eq in H.
-    destruct H as (? & <- & <-).
-    simpl. rewrite -> indom_single_eq. case_if. auto.
+  2:{ intros (?, ?) H. rewrite label_single indom_single_eq in H. 
+    rewrite indom_single_eq. simpl. case_if; eqsolve.
   }
   (* do app2 for rlsum *)
   apply wp_equiv. eapply htriple_eval_like.
@@ -2351,7 +2275,6 @@ Proof.
       assert (forall ll d, indom (fset_of lsq) (Lab ll d) -> hv (Lab ll d) = hv' (Lab ll d)) as H'.
       { intros. by rewrite H. }
       setoid_rewrite <- Hindom' in H'.
-      (* TODO why so verbose here ... *)
       xsimpl; intros.
       {
         specialize (H' (1, 0) 0).
@@ -2427,11 +2350,7 @@ Proof.
     rewrite -> hsub_hstar_id_l with (fs:=⟨(1, 0), single 0 tt⟩).
     1: apply himpl_frame_r.
     4:{ rewrite label_single. rewrite -> hbig_fset_label_single'.
-      hlocal.
-      all: unfold arr_x_ind, arr_x_val, harray; hlocal.
-      2,4: hnf; intros h Hh; apply hcells_inv in Hh; subst h; apply hconseq_local.
-      all: hnf; intros h Hh; apply hheader_inv in Hh; destruct Hh as (-> & ?); 
-        apply local_single.
+      hlocal. all: apply hlocal_harray.
     }
     2:{
       intros (ll, d). rewrite label_single indom_single_eq. intros <-.
@@ -2447,13 +2366,8 @@ Proof.
 
     rewrite -> hsub_hstar_id_r with (fs:=⟨(3, 0), single 0 tt⟩).
     1: apply himpl_frame_l.
-    (* repeat *)
     4:{ rewrite label_single. rewrite -> hbig_fset_label_single'.
-      hlocal.
-      all: unfold arr_x_ind, arr_x_val, harray; hlocal.
-      2,4: hnf; intros h Hh; apply hcells_inv in Hh; subst h; apply hconseq_local.
-      all: hnf; intros h Hh; apply hheader_inv in Hh; destruct Hh as (-> & ?); 
-        apply local_single.
+      hlocal. all: apply hlocal_harray.
     }
     2:{
       intros (ll, d). rewrite label_single indom_single_eq. intros <-.
@@ -2480,14 +2394,7 @@ Proof.
       (repeat case_if); destruct H2, H3; try eqsolve.
     }
     2:{
-      (* repeat *)
-      intros. hlocal.
-      all: unfold arr_x_ind, arr_x_val, harray; hlocal.
-      all: hnf; intros h Hh.
-      1-4: apply local_union_fs_l; try apply disjoint_single_single; try eqsolve.
-      5-8: apply local_union_fs_r; try apply disjoint_single_single; try eqsolve.
-      2,4,6,8: apply hcells_inv in Hh; subst h; apply hconseq_local.
-      all: apply hheader_inv in Hh; destruct Hh as (-> & ?); apply local_single.
+      intros. hlocal. all: (apply hlocal_union_l) + (apply hlocal_union_r); apply hlocal_harray.
     }
 
     apply hbig_fset_himpl.
@@ -2787,13 +2694,7 @@ Proof.
       repeat case_if; simpl; rewrite indom_label_eq; try eqsolve.
       intuition; try subst; eqsolve.
     }
-    4:{ rewrite label_single.
-      hlocal.
-      all: unfold arr_x_ind, arr_x_val, harray; hlocal.
-      2: hnf; intros h Hh; apply hcells_inv in Hh; subst h; apply hconseq_local.
-      hnf; intros h Hh; apply hheader_inv in Hh; destruct Hh as (-> & ?); 
-        apply local_single.
-    }
+    4:{ rewrite label_single. apply hlocal_harray. }
     2:{
       intros (ll, d). rewrite label_single indom_single_eq. intros <-.
       subst f. simpl. rewrite indom_label_eq. case_if; eqsolve.
