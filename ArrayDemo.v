@@ -119,8 +119,6 @@ Proof.
   }
 Qed.
 
-(* why so troublesome? *)
-
 Fact fset_fold_val_int_add_is_int fs (hv : D -> val) v :
   fset_fold (val_int 0) (fun d (acc : val) => val_int (val_int_add acc (hv d))) fs = v ->
   exists x : int, v = val_int x.
@@ -430,7 +428,6 @@ Proof.
   by case=> l d; rewrite indom_label_eq /= /htrm_of; case: classicT.
 Qed.
 
-(* the original wp_for is good. *)
 Lemma xfor_specialized_lemma (Inv : int -> hhprop) (R R' : IntDom.type -> hhprop) 
   s fsi1 vr
   Z N (C1 : IntDom.type -> trm) (i j : int) (C : trm)
@@ -597,7 +594,6 @@ Definition rlsum_loopbody (real_x_ind real_x_val real_s real_i : trm) :=
 Definition rlsum_func (M : int) :=
   let loopbody := rlsum_loopbody "x_ind" "x_val" "s" "i" in
   let loop := For 0 M (trm_fun "i" loopbody) in
-  (* the arguments should be the location of arrays? *)
   <{ fun "x_ind" "x_val" => 
       let "s" = ref 0 in 
       loop ; 
@@ -607,7 +603,6 @@ Definition rlsum_func (M : int) :=
   }>.
 
 Definition rli_whilecond (i : int) (real_x_ind real_j : trm) :=
-  (* intermediate lang *)
   (<{ let "tmp1" = ! real_j in
       let "tmp2" = "tmp1" + 1 in
       let "tmp3" = val_array_get real_x_ind "tmp2" in
@@ -657,8 +652,6 @@ Definition rl_func (N : int) :=
 End Programs.
 
 Section Demo.
-
-(* should not mix notations on nat and Z ... *)
 
 Variables (N M : int) (Lval : list int) (Lind : list int).
 Hypothesis H_length_Lval : length Lval = abs M.
@@ -1323,8 +1316,6 @@ Proof.
   xsimpl.
   rewrite -> ! hbig_fset_label_single'. xsimpl.
 Qed.
-
-(* two different forms of summation spec *)
 
 Lemma rlsum_rli_align_step : forall (px_ind px_val : loc) (ps0 : loc),
   ntriple 

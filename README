@@ -34,25 +34,34 @@ Please note that warnings (in yellow colour) may appear during the compilation, 
 
 Structural rules:
 - WpNest: `wp_union` in LibSepReference.v
-- Prod: `htriple_union_pointwise` in ArrayDemo.v
+- Prod: `htriple_union_pointwise` in LibSepReference.v
 - Conseq: `htriple_conseq` in LibSepReference.v
-- Frame: `htriple_frame` in 
+- Frame: `htriple_frame` in LibSepReference.v
 
-In Figure 4:
-- Rule Merge: `htriple_hsub`
+Lockstep rules: 
+- Ret: `htriple_val` in LibSepReference.v
+- Read: `htriple_get` in LibSepReference.v
+- Asn: `htriple_set` in LibSepReference.v
+- Fr: `htriple_free` in LibSepReference.v
+- Alc: `htriple_ref` in LibSepReference.v
+- MAlc: `htriple_alloc` in LibSepReference.v
+- MFr: `htriple_dealloc` in LibSepReference.v
+- Let: `htriple_let` in LibSepReference.v
+- If: `htriple_if` in LibSepReference.v
+- Len: `htriple_array_length` in Struct.v
+- AsnArr: `htriple_array_set` in Struct.v
+- ReadArr: `htriple_array_get` in Struct.v
 
-In Figure 5:
-- Rule SeqU1: `htriple_sequ1`
-- Rule SeqU2: `htriple_sequ2`
-- Rule SeqU: `wp_union`
+Domain substitution rule: 
+- Subst: `htriple_hsub` in LibSepReference.v
 
-In Figure 6:
-- Rule For: `wp_for`
+Rule for for-loops: 
+- For: `xfor_lemma` in LibSepReference.v
 
-In Figure 7:
-- Rule Prod: `htriple_union_pointwise`
+Rule for while-loops: 
+- While: `htriple_while` in LibSepReference.v
 
-## Important Results
+### Important Results
 
 We list the important results, namely the proofs of the hyper-triples, as follows. We refer to the hyper-triples in the paper by their tags. 
 - Hyper-triple (2): `rlsum_rl_ntriple`
