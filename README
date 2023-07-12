@@ -1,25 +1,67 @@
-#########################################################################
-                           SOFTWARE FOUNDATIONS
-#########################################################################
+# Building Instructions
 
-This directory contains both Coq scripts (.v files) and more readable
-HTML files for the Software Foundations electronic textbook,
-covering volume 6, entitled "Separation Logic Foundations".
+The version of Coq used in our development is **8.16.1**, where the version of underlying OCaml compiler is **4.12.0**. We list the required packages along with their respective versions (printed by `opam list`) as follows. 
 
-  - index.html
-    The book's cover page and navigation starting point
+```
+coq-cfml               20220112
+coq-cfml-basis         20220112
+coq-cfml-stdlib        20220112
+coq-fcsl-pcm           1.7.0
+coq-mathcomp-algebra   1.15.0
+coq-mathcomp-fingroup  1.15.0
+coq-mathcomp-finmap    1.5.2
+coq-mathcomp-ssreflect 1.15.0
+coq-mathcomp-zify      1.3.0+1.12+8.13
+coq-tlc                20211215
+```
 
-  - deps.html
-    Overview of the ordering of chapters
+## Prerequisites
 
-  - LICENSE
-    Explanation of how these files may be redistributed
+We recommend installing Coq and the required packages via OPAM. [The official page of OPAM](https://opam.ocaml.org/doc/Install.html) describes how to install and configure OPAM, and [the official page of Coq](https://coq.inria.fr/opam-using.html) describes how to install Coq and Coq packages with OPAM. 
 
-  - Files SLF*.v
-    Contents of the course
+## Build the Coq Project
 
-  - Files Lib*.v
-    Contents of the TLC library
+Execute the following command in the terminal: 
 
-  - Other *.v files
-    Implementation of CFML
+```
+make
+```
+
+Please note that warnings (in yellow colour) may appear during the compilation, but they will not cause the compilation to fail. 
+## Navigation Guide
+
+### Important Proof Rules
+
+Structural rules:
+- WpNest: `wp_union` in LibSepReference.v
+- Prod: `htriple_union_pointwise` in ArrayDemo.v
+- Conseq: `htriple_conseq` in LibSepReference.v
+- Frame: `htriple_frame` in 
+
+In Figure 4:
+- Rule Merge: `htriple_hsub`
+
+In Figure 5:
+- Rule SeqU1: `htriple_sequ1`
+- Rule SeqU2: `htriple_sequ2`
+- Rule SeqU: `wp_union`
+
+In Figure 6:
+- Rule For: `wp_for`
+
+In Figure 7:
+- Rule Prod: `htriple_union_pointwise`
+
+## Important Results
+
+We list the important results, namely the proofs of the hyper-triples, as follows. We refer to the hyper-triples in the paper by their tags. 
+- Hyper-triple (2): `rlsum_rl_ntriple`
+- Hyper-triple (3), (9): `rlsum_rli_ntriple`
+- Hyper-triple (8): `rl_rli_ntriple`
+- Hyper-triple (10): `rlsum_rl_rli_ntriple_pre`
+- Hyper-triple (14): `rlsum_rl_rli_ntriple`
+- Hyper-triple (18): `rl_rli_align_step`
+- Hyper-triple (22): `rli_func_spec`
+- Hyper-triple (24): `rlsum_rli_align_step`
+
+We note that not all hyper-triples are mentioned above since their proofs are nested in the proofs of other hyper-triples. For example, hyper-triple (27) is proved in the proof of hyper-triple (24) with the Rule Prod. 
