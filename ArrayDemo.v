@@ -843,6 +843,7 @@ Proof.
   xwp. xlet.
   (* hard to only wp *)
   apply wp_equiv.
+  (* Vova: automate this *)
   eapply htriple_conseq_frame with (H1:=pj0 ~(d)~> j).
   1:{
     replace (pj0 ~(d)~> j) with (\*_(d0 <- single d tt) (pj0 ~(d0)~> j)).
@@ -1119,6 +1120,7 @@ Proof.
     1: apply wp_equiv; apply rli_whilebody_spec.
     xsimpl.
 
+    (* Qiyuan: check the proof outline of this? *)
     destruct (Z.leb (a-1) j) eqn:Ef.
     { (* check if it is the end *)
       rewrite -> Z.leb_le in Ef.
@@ -1251,6 +1253,7 @@ Lemma rlsum_loopbody_spec d (x : int) (px_ind px_val : loc) (ps0 : loc) (l : int
     (fun hv => ps0 ~(d)~> (x + ((nth (abs l) Lval) * ((nth (abs (l+1)) Lind) - (nth (abs l) Lind)))%Z) 
       \* arr_x_val px_val d \* arr_x_ind px_ind d).
 Proof.
+  (* Vova: automate this? *)
   unfold rlsum_loopbody.
   apply wp_equiv.
   xwp. xlet.
@@ -1408,6 +1411,7 @@ Proof.
     intros l x Hl.
 
     (* unset localization *)
+    (* Qiyuan: recall what this is for *)
     unfold fm_localize, uni. rewrite -> indom_interval.
     case_if; try eqsolve.
     destruct Hl as (Hl1 & Hl2).
@@ -1479,6 +1483,7 @@ Proof.
     rewrite -> hstar_fset_pure. xsimpl. intros. 
 
     (* now, only a single thing is left *)
+    (* Qiyuan & Vova: where is unfocus? *)
     unfold nwp. simpl. rewrite -> union_empty_r.
     match goal with |- himpl _ (wp _ (htrm_of (cons (Lab _ (FH _ ?ht)) _)) _) => pose (ff:=ht) end.
     rewrite -> wp_ht_eq with (ht2:=ff).
@@ -2019,6 +2024,7 @@ Proof.
     }
     1: xsimpl.
     xsimpl. xwp. xval.
+    (* Vova: check this? *)
     rewrite <- hstars_pick_last_4.
     rewrite -> hstar_assoc at 1.
     rewrite -> hstars_pick_last_4.
