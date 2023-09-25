@@ -407,10 +407,10 @@ Definition val_array_get : val :=
 
 Lemma htriple_array_get : forall fs (p : D -> loc) (i : D -> int) (v : D -> val) (L : D -> list val),
   (forall d, indom fs d -> 0 <= (i d) < length (L d)) ->
-  (forall d, indom fs d -> LibList.nth (abs (i d)) (L d) = v d) ->
+  (forall d, LibList.nth (abs (i d)) (L d) = v d) ->
   htriple fs (fun d => val_array_get (p d) (i d))
     (\*_(d <- fs) (harray (L d) (p d) d))
-    (fun hr => \[forall d, indom fs d -> hr d = v d] \* (\*_(d <- fs) (harray (L d) (p d) d))).
+    (fun hr => \[hr = v] \* (\*_(d <- fs) (harray (L d) (p d) d))).
 Proof using.
   introv N E. eapply htriple_eval_like.
   1:{ apply eval_like_app_fun2. intros. eqsolve. }
@@ -445,7 +445,7 @@ Proof using.
     apply htriple_get.
   }
   simpl. hnf. xsimpl. 
-  1:{ intros. by rewrite <- E, -> H. }
+  1:{ intros. extens=> ?. by rewrite <- E, -> H. }
   intros ? ->.
   rewrite <- hbig_fset_hstar. 
   apply hbig_fset_himpl.
@@ -453,6 +453,79 @@ Proof using.
   replace (p d + 1 + abs (i d))%nat with (abs (p d + (i d + 1))).
   2:{ specializes N H. math. } 
   xsimpl.
+Qed.
+
+Definition intr {A : Type} (fs : fset A) (b : A -> Prop) : fset A := (Fmap.filter (fun x _ => b x) fs).
+
+
+Lemma htriple_if_dep (H : D -> hhprop) (Q : D -> hhprop) f fs : forall (b:D -> bool) t1 t2,
+  htriple (intr fs b) t1 
+  (
+    \*_(d <- (intr fs b)) H d
+  )
+  (fun hr => 
+    \[forall d, b d -> hr d = f d] \*
+    \*_(d <- (intr fs b)) Q d
+  ) ->
+
+  htriple (intr fs (not \o b)) t2
+  (
+    \*_(d <- (intr fs (not \o b))) H d
+  )
+  (fun hr =>
+    \[forall d, ~ b d -> hr d = f d] \*
+    \*_(d <- (intr fs (not \o b))) Q d
+  ) -> 
+
+  htriple fs (fun d => trm_if (b d) (t1 d) (t2 d))
+  (
+    \*_(d <- fs) H d
+  )
+  (fun hr =>
+    \[hr = f] \*
+    \*_(d <- fs) Q d
+  ).
+Proof.
+  introv H1 H2.
+  have Dj: disjoint (intr fs (fun x : D => b x)) (intr fs (not \o (fun x : D => b x))).
+  { apply/disjoint_of_not_indom_both=> ?;
+    rewrite /intr ?filter_indom /=. firstorder. }
+  apply/htriple_if.
+  have: fs = (intr fs b) \u (intr fs (not \o b)).
+  { apply/fset_extens=> x.
+    rewrite /intr indom_union_eq ?filter_indom /=.
+    case: (classicT (b x)); firstorder. }
+  move=> /[dup] fsE->.
+  rewrite ?hbig_fset_union //.
+  set (Q1 := \*_(d <- intr fs b) Q d).
+  set (Q2 := \*_(d <- intr fs (not \o (fun x : D => b x))) Q d).
+  apply wp_equiv.
+  apply: himpl_trans; last apply/wp_hv.
+  xsimpl.
+  rewrite -{2}fsE.
+  have Impl: 
+    (fun hr : D -> val => (\[forall d, indom fs d -> b d -> hr d = f d] \* Q1) \* 
+                          (\[forall d, indom fs d -> ~ b d -> hr d = f d] \* Q2)) ===>
+    (fun hr : D -> val => \exists g, \[hr \u_fs g = f] \* Q1 \* Q2).
+  { xsimpl f=> r r1 r2. extens=> y.
+    case: (classicT (indom fs y))=> [/[dup]/(@uni_in _ _ _ _ _ _)|/[dup]/(@uni_nin _ _ _ _ _ _)]-> //.
+    case: (classicT (b y)); eauto. }
+  apply/wp_equiv/htriple_conseq; last apply/Impl; eauto.
+  apply/htriple_union=> //.
+  { introv hE. xsimpl=> hf ?? /[dup]/hf<- // ? /[! hE] //.
+    by rewrite /intr filter_indom. }
+  { introv hE. xsimpl=> hf ?? /[dup]/hf<- // ? /[! hE] //.
+    by rewrite /intr filter_indom. }
+  { rewrite -wp_equiv (wp_ht_eq _ t1) 1?wp_equiv.
+    { apply/htriple_conseq; eauto. 
+      by xsimpl=> ? E ?? /E. }
+    move=> ?; rewrite /intr filter_indom=> -[?].
+    by case: (b _). }
+  rewrite -wp_equiv (wp_ht_eq _ t2) 1?wp_equiv.
+  { apply/htriple_conseq; eauto. 
+    by xsimpl=> ? E ?? /E. }
+  move=> ?; rewrite /intr filter_indom=> -[?] /=.
+  by case: (b _).
 Qed.
 
 Definition val_abs : val :=
@@ -468,10 +541,18 @@ Lemma htriple_abs `{Inhab D} : forall fs (i : D -> int),
     \[]
     (fun hr => \[hr = fun d => abs (i d)]).
 Proof.
-move=> *; apply/wp_equiv.
+move=> fs i; apply/wp_equiv.
 do 3 (xwp; xapp).
-xwp. 
-Admitted.
+apply/wp_equiv/htriple_conseq;
+[apply (@htriple_if_dep (fun=> \[]) (fun=> \[]) (fun d => abs (i d)))| |]; 
+rewrite ?hbig_fset_emptys // -1?wp_equiv; try xsimpl*.
+{ xwp; xval; xsimpl=> ?.
+  move: (i _)=> {}i ?.
+  math. }
+xwp; xval; xsimpl=> ? /[! istrue_isTrue_eq].
+move: (i _)=> {}i ?.
+math.
+Qed.
 
 Definition read_array : val :=
   <{ fun 'p 'i =>
@@ -487,20 +568,34 @@ Lemma htriple_array_read `{Inhab D} : forall fs (p : D -> loc) (i : D -> int) (L
     (\*_(d <- fs) (harray_int (L d) (p d) d))
     (fun hr => \[hr = fun d => List.nth (abs (i d)) (L d) 0] \* (\*_(d <- fs) (harray_int (L d) (p d) d))).
 Proof using.
-move=> *.
+move=> ?? i L.
 eapply htriple_eval_like.
 1:{ apply eval_like_app_fun2. intros. eqsolve. }
 simpl.
 apply wp_equiv.
+(* apply: himpl_trans; last apply wp_hv. *)
+simpl.
 xwp; xapp htriple_abs.
 xwp; xapp htriple_array_length.
 xwp; xapp.
-(* xwp; xapp htriple_ptr_add.
-{ intros. math. }
-xwp; xapp.
-xwp; xapp. *)
-Admitted.
-
+rewrite wp_equiv.
+apply/htriple_if_dep; rewrite -wp_equiv.
+{ apply/xapp_lemma.
+  { apply/(htriple_array_get _ _ _ (fun d => LibList.map val_int (L d))); last reflexivity.
+    move=> ?. rewrite /intr filter_indom=> -[] ?; math. }
+  unfold protect.
+  xsimpl=> f-> d.
+  rewrite length_map=> Lt.
+  replace (abs (abs (i d))) with (abs (i d)); [| math].
+  rewrite nth_map; try math; move:Lt.
+  move: (abs _) (L _)=> /[swap].
+  elim=> // ?. 
+  { rewrite length_nil; math. }
+  move=> l IHl [|?] /=; rewrite length_cons ?nth_zero // => ?.
+  rewrite nth_cons IHl //. rewrite istrue_isTrue_eq. math. }
+xwp; xval;xsimpl=>?. rewrite length_map istrue_isTrue_eq=> ?.
+rewrite List.nth_overflow // -length_List_length. math.
+Qed.
 
 Definition val_array_set : val :=
   <{ fun 'p 'i 'v =>
