@@ -860,6 +860,7 @@ Admitted. *)
 (* Vova: Probably we should move it to Struct.v *)
 Hint Resolve htriple_array_read : htriple.
 
+(* Vova: I don't remember why, but we need it *)
 Context `{Inhab D}.
 
 (* cahnge to htriple to use in xapp *)
