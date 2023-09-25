@@ -1,5 +1,4 @@
 (** * LibSepFmap: Appendix - Finite Maps *)
-
 Set Implicit Arguments.
 From SLF Require Import LibCore.
 

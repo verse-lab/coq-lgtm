@@ -39,36 +39,37 @@ Appendix is attached in `appendix.pdf`.
 ### Important Proof Rules
 
 Structural rules:
-- WpNest: `wp_union` in LibSepReference.v
-- Prod: `htriple_union_pointwise` in LibSepReference.v
-- Conseq: `htriple_conseq` in LibSepReference.v
-- Frame: `htriple_frame` in LibSepReference.v
+- WpNest: `wp_union` in `LibSepReference.v`
+- Prod: `htriple_union_pointwise` in `LibSepReference.v`
+- Conseq: `htriple_conseq` in `LibSepReference.v`
+- Frame: `htriple_frame` in `LibSepReference.v`
 
 Lockstep rules: 
-- Ret: `htriple_val` in LibSepReference.v
-- Read: `htriple_get` in LibSepReference.v
-- Asn: `htriple_set` in LibSepReference.v
-- Fr: `htriple_free` in LibSepReference.v
-- Alc: `htriple_ref` in LibSepReference.v
-- MAlc: `htriple_alloc` in LibSepReference.v
-- MFr: `htriple_dealloc` in LibSepReference.v
-- Let: `htriple_let` in LibSepReference.v
-- If: `htriple_if` in LibSepReference.v
-- Len: `htriple_array_length` in Struct.v
-- AsnArr: `htriple_array_set` in Struct.v
-- ReadArr: `htriple_array_get` in Struct.v
+- Ret: `htriple_val` in `LibSepReference.v`
+- Read: `htriple_get` in `LibSepReference.v`
+- Asn: `htriple_set` in `LibSepReference.v`
+- Fr: `htriple_free` in `LibSepReference.v`
+- Alc: `htriple_ref` in `LibSepReference.v`
+- MAlc: `htriple_alloc` in `LibSepReference.v`
+- MFr: `htriple_dealloc` in `LibSepReference.v`
+- Let: `htriple_let` in `LibSepReference.v`
+- If: `htriple_if` in `LibSepReference.v`
+- Len: `htriple_array_length` in `Struct.v`
+- AsnArr: `htriple_array_set` in `Struct.v`
+- ReadArr: `htriple_array_get` in `Struct.v`
 
 Domain substitution rule: 
-- Subst: `htriple_hsub` in LibSepReference.v
+- Subst: `htriple_hsub` in `LibSepReference.v`
 
 Rule for for-loops: 
-- For: `xfor_lemma` in LibSepReference.v
+- For: `xfor_lemma` in `LibSepReference.v`
 
 Rule for while-loops: 
-- While: `htriple_while` in LibSepReference.v
+- While: `htriple_while` in `LibSepReference.v`
 
 ### Important Results
 
+The mechanisation of the overview example from the paper can be found in `ArrayDemo.v`.
 We list the important results, namely the proofs of the hyper-triples, as follows. We refer to the hyper-triples in the paper by their tags. 
 - Hyper-triple (2): `rlsum_rl_ntriple`
 - Hyper-triple (3), (9): `rlsum_rli_ntriple`

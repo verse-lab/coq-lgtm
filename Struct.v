@@ -36,6 +36,9 @@ Proof eq_refl.
 Definition harray (L:list val) (p:loc) (d : D) : hhprop :=
   hheader (length L) p d \* hcells L (p+1)%nat d.
 
+Definition harray_int (L:list int) (p:loc) (d : D) : hhprop :=
+  harray (LibList.map val_int L) p d.
+
 Definition val_array_length : val := val_length.
 
 Module Export Realization.
@@ -70,10 +73,14 @@ Lemma hheader_not_null : forall p k d,
   hheader k p d ==> hheader k p d \* \[(p, d) <> null d].
 Proof using. intros. rewrite hheader_def. xsimpl*. Qed.
 
+(* Transparent Fmap.hconseq.
+Arguments Fmap.hconseq : simpl nomatch.
+Arguments LibList.map : simpl nomatch. *)
+
 Lemma hcells_intro : forall L p d,
   (hcells L p d) (Fmap.hconseq L p d).
 Proof using.
-  intros L. induction L as [|L']; intros; rew_listx.
+  intros L. induction L as [|L']; intros; rew_listx; simpl.
   { applys hempty_intro. }
   { simpl. applys hstar_intro.
     { applys* hsingle_intro. }
@@ -447,6 +454,53 @@ Proof using.
   2:{ specializes N H. math. } 
   xsimpl.
 Qed.
+
+Definition val_abs : val :=
+  <{ fun 'i => 
+     let 'c = 'i < 0 in 
+     let 'm = 0 - 1 in
+     let 'j = 'm * 'i in
+     if 'c then 'j else 'i
+  }>.
+
+Lemma htriple_abs `{Inhab D} : forall fs (i : D -> int),
+  htriple fs (fun d => val_abs (i d))
+    \[]
+    (fun hr => \[hr = fun d => abs (i d)]).
+Proof.
+move=> *; apply/wp_equiv.
+do 3 (xwp; xapp).
+xwp. 
+Admitted.
+
+Definition read_array : val :=
+  <{ fun 'p 'i =>
+      let 'i = val_abs 'i in
+      let 'l = val_length 'p in
+      let 'c = 'i < 'l in
+      if 'c then 
+        val_array_get 'p 'i
+      else 0 }>.
+
+Lemma htriple_array_read `{Inhab D} : forall fs (p : D -> loc) (i : D -> int) (L : D -> list int),
+  htriple fs (fun d => read_array (p d) (i d))
+    (\*_(d <- fs) (harray_int (L d) (p d) d))
+    (fun hr => \[hr = fun d => List.nth (abs (i d)) (L d) 0] \* (\*_(d <- fs) (harray_int (L d) (p d) d))).
+Proof using.
+move=> *.
+eapply htriple_eval_like.
+1:{ apply eval_like_app_fun2. intros. eqsolve. }
+simpl.
+apply wp_equiv.
+xwp; xapp htriple_abs.
+xwp; xapp htriple_array_length.
+xwp; xapp.
+(* xwp; xapp htriple_ptr_add.
+{ intros. math. }
+xwp; xapp.
+xwp; xapp. *)
+Admitted.
+
 
 Definition val_array_set : val :=
   <{ fun 'p 'i 'v =>

@@ -1387,7 +1387,7 @@ Proof.
   apply/fsubst_disjoint; eauto.
 Qed.
 
-(* Hint Rewrite hsubst_hempty hsubst_hsingle : hsubst. *)
+(* Global Hint Rewrite hsubst_hempty hsubst_hsingle : hsubst. *)
 
 (* ----------------------------------------------------------------- *)
 (** *** Functor Instantiation to Obtain [xsimpl] *)
@@ -3518,6 +3518,23 @@ Proof using.
   by do ? (econstructor; eauto).
 Qed.
 
+Lemma hhoare_fix_app2' : forall (f x : D -> var) ht1 H Q fs (t : _ -> val),
+  hhoare fs (fun d => (trm_fix (f d) (x d) (ht1 d)) (t d)) H Q <->
+  hhoare fs (fun d => (val_fix (f d) (x d) (ht1 d)) (t d)) H Q.
+Proof using.
+  split.
+  { move=> > M ? /M [h] [hv] [] [IN ?] ?.
+    exists h, hv; do ? split=> //.
+    move=> ? /IN; (do ? move: (proj _ _))=> ?? ev.
+    inversion ev. 
+    inversion H3; subst.
+    by inversion H5; subst. }
+  move=> > M ? /M [h] [hv] [] [IN ?] ?.
+  exists h, hv; do ? split=> //.
+  move=> ? /IN; (do ? move: (proj _ _))=> ?? ev.
+  by do ? (econstructor; eauto).
+Qed.
+
 Lemma hoare_app_fun : forall v1 v2 x t1 H Q,
   v1 = val_fun x t1 ->
   hoare (subst x v2 t1) H Q ->
@@ -4562,6 +4579,10 @@ Lemma wp_fix_app2 : forall f x t Q (v : val),
   wp (fun d => trm_fix (f d) (x d) (t d) v) Q = wp (fun d => val_fix (f d) (x d) (t d) v) Q.
 Proof using. intros. unfold wp. xsimpl;intros H' ??; applys* hhoare_fix_app2. Qed.
 
+Lemma wp_fix_app2' : forall f x t Q (v : _ -> val),
+  wp (fun d => trm_fix (f d) (x d) (t d) (v d)) Q = wp (fun d => val_fix (f d) (x d) (t d) (v d)) Q.
+Proof using. intros. unfold wp. xsimpl;intros H' ??; applys* hhoare_fix_app2'. Qed.
+
 Lemma wp_fix_appapp2 : forall f x t t' Q (v : val),
   wp (fun d => trm_seq t' (trm_fix (f d) (x d) (t d) v)) Q = wp (fun d => trm_seq t' (val_fix (f d) (x d) (t d) v)) Q.
 Proof using. intros. unfold wp. xsimpl;intros H' ??; applys* hhoare_fix_appapp2. Qed.
@@ -5287,6 +5308,14 @@ Proof.
     rewrite <- union_empty_l. apply hstar_intro; auto. by apply hpure_intro.
   }
 Qed.
+
+(* Lemma htriple_if_dep fs : forall (b:D -> bool) t1 t2 H Q,
+  htriple (Fmap.filter (fun x _ => b x) fs) t1 H Q ->
+  htriple (Fmap.filter (fun x _ => ~ b x) fs) t1 H Q ->
+  htriple fs (fun d => trm_if (b d) (t1 d) (t2 d)) H Q.
+Proof.
+  
+Qed. *)
 
 (* Lemma hsub_eq_hstrar (fs : fset D) H1 H2 Q f R :
   (forall x, indom fs x -> f x = x) ->
@@ -6239,6 +6268,16 @@ Proof using.
   applys* wp_app_fix. by rewrite M1.
 Qed.
 
+Lemma xwp_lemma_fix' : forall hv1 (hv2 : D -> val) f x t H Q,
+  (hv1 = fun d => trm_fix (f d) (x d) (t d)) ->
+  H ==> wpgen (fun d => subst (x d) (hv2 d) (subst (f d) (val_fix (f d) (x d) (t d)) (t d))) Q ->
+  htriple fs (fun d => trm_app (hv1 d) (hv2 d)) H Q.
+Proof using.
+  move=> > -> ?.
+  rewrite -wp_equiv wp_fix_app2' wp_equiv.
+  by apply/xwp_lemma_fix.
+Qed.
+
 Lemma xwp_lemma_wp_fix : forall hv1 (hv2 : D -> val) f x t H Q,
   (hv1 = fun d => val_fix (f d) (x d) (t d)) ->
   H ==> wpgen (fun d => subst (x d) (hv2 d) (subst (f d) (hv1 d) (t d))) Q ->
@@ -6247,6 +6286,14 @@ Proof using.
   introv M1 M2. xchange M2.
   xchange (>> wpgen_sound (fun d => subst (x d) (hv2 d) (subst (f d) (hv1 d) (t d))) Q).
   applys* wp_app_fix. by rewrite M1.
+Qed.
+
+Lemma xwp_lemma_wp_fix' : forall hv1 (hv2 : D -> val) f x t H Q,
+  (hv1 = fun d => trm_fix (f d) (x d) (t d)) ->
+  H ==> wpgen (fun d => subst (x d) (hv2 d) (subst (f d) (val_fix (f d) (x d) (t d)) (t d))) Q ->
+  H ==> wp fs (fun d => trm_app (hv1 d) (hv2 d)) Q.
+Proof using.
+  move=> >; rewrite wp_equiv; apply/xwp_lemma_fix'.
 Qed.
 
 Lemma xhtriple_lemma : forall t H (Q:(D->val)->hhprop),
@@ -6313,7 +6360,7 @@ Tactic Notation "xhtriple" :=
 
 Tactic Notation "xhtriple_if_needed" :=
   try match goal with |- htriple ?t ?H ?Q => applys xhtriple_lemma end.
-
+    
 (** [xapp_simpl] performs the final step of the tactic [xapp]. *)
 
 Lemma xapp_simpl_lemma : forall (F : formula) H Q,
@@ -6886,13 +6933,17 @@ Qed. *)
 
 (** Weakest preconditions for applications to several arguments. *)
 
-(* Lemma wp_app_fun2 fs : forall x1 x2 v0 v1 v2 t1 Q,
+Lemma wp_app_fun2 fs : forall x1 x2 v0 v1 v2 t1 Q,
   (v0 = fun d => val_fun (x1 d) (trm_fun (x2 d) (t1 d))) ->
   (forall d, x1 d <> x2 d) ->
   wp fs (fun d => subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t1 d))) Q ==> wp fs (fun d => trm_app (v0 d) (v1 d) (v2 d)) Q.
-Proof using. introv EQ1 N. applys wp_eval_like. applys* eval_like_app_fun2. Qed.
+Proof using. 
+  introv EQ1 N. applys wp_eval_like. 
+  rewrite EQ1.
+  by apply eval_like_app_fun2. 
+Qed.
 
-Lemma wp_app_fix2 fs : forall f x1 x2 v0 v1 v2 t1 Q,
+(* Lemma wp_app_fix2 fs : forall f x1 x2 v0 v1 v2 t1 Q,
   (v0 = fun d => val_fix (f d) (x1 d) (trm_fun (x2 d) (t1 d))) ->
   (forall d, x1 d <> x2 d /\ f d <> x2 d) ->
   wp fs (fun d => subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (subst (f d) (v0 d) (t1 d)))) Q ==> wp fs (fun d => trm_app (v0 d) (v1 d) (v2 d)) Q.
@@ -6916,13 +6967,18 @@ Proof using. introv EQ1 N. applys wp_eval_like. applys* eval_like_app_fix3. Qed.
 (** Generalization of [xwp] to handle functions of arity 2 and 3,
     and to handle weakening of an existing specification. *)
 
-(* Lemma xwp_lemma_fun2 : forall v0 v1 v2 x1 x2 t H Q fs,
+Lemma xwp_lemma_fun2 : forall v0 v1 v2 x1 x2 t H Q fs,
   (v0 = fun d => val_fun (x1 d) (trm_fun (x2 d) (t d))) ->
   (forall d, var_eq (x1 d) (x2 d) = false) ->
   H ==> wpgen fs (fun d => subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t d))) Q ->
   htriple fs (fun d => (v0 d) (v1 d) (v2 d)) H Q.
 Proof using.
-
+  introv E M1 M2. rewrite <- wp_equiv. xchange M2.
+  xchange (>> wpgen_sound (fun d => subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t d))) Q).
+  applys* wp_app_fun2=> d. 
+  by move: (M1 d); rewrite var_eq_spec isTrue_eq_false_eq.
+Qed.
+(*
 
 Lemma xwp_lemma_wp_fun2 : forall v0 v1 v2 x1 x2 t H Q fs,
   (v0 = fun d => val_fun (x1 d) (trm_fun (x2 d) (t d))) ->
@@ -6999,7 +7055,10 @@ Tactic Notation "xwp" :=
   first [ applys xwp_lemma_fun;     [ reflexivity | ]
         | applys xwp_lemma_wp_fun;  [ reflexivity | ]
         | applys xwp_lemma_fix;     [ reflexivity | ]
+        | applys xwp_lemma_fix';    [ reflexivity | ]
+        | applys xwp_lemma_wp_fix';    [ reflexivity | ]
         | applys xwp_lemma_wp_fix;  [ reflexivity | ]
+        | applys xwp_lemma_fun2;    [ reflexivity | reflexivity | ]
         (* | applys xwp_lemma_fix2;    [ reflexivity | reflexivity | ]
         | applys xwp_lemma_wp_fun2; [ reflexivity | reflexivity | ]
         | applys xwp_lemma_fun2;    [ reflexivity | reflexivity | ]
@@ -9849,26 +9908,26 @@ Proof.
 Qed.
 
 
-(* Lemma hhoare_ref_lab : forall H (f : D.type -> val) fs l,
+Lemma hhoare_ref_lab : forall H (f : D.type -> val) fs l,
   hhoare ⟨l, fs⟩ (fun d => val_ref (f d))
     H
     (fun hr => (\exists (p : D.type -> loc), \[hr = fun d => val_loc (p d)] \* \*_(d <- ⟨l, fs⟩) p (eld d) ~(d)~> f (eld d)) \* H).
-Proof.
-
+Proof using.
+Admitted.
 
 Lemma lhtriple_ref : forall (f : val)  l x, 
   htriple ⟨l, (single x tt)⟩ (fun d => val_ref f)
     \[]
     (fun hr => (\exists (p : loc), \[hr = fun=> val_loc p] \*  p ~(Lab l x)~> f)).
-Proof.
-
+Proof using.
+Admitted.
 
 Lemma htriple_ref_lab : forall (f : val) fs l,
   htriple ⟨l, fs⟩ (fun d => val_ref f)
     \[]
     (fun hr => (\exists (p : D.type -> loc), \[hr = fun d => val_loc (p d)] \* \*_(d <- ⟨l, fs⟩) p (eld d) ~(d)~> f)).
-Proof.
-  *)
+Proof using.
+Admitted.
 
 Lemma lhtriple_get : forall v (p : loc) fs,
   htriple fs (fun d => val_get p)
@@ -9878,14 +9937,14 @@ Proof using.
   intros. unfold htriple. intros H'. applys hhoare_conseq hhoare_get; xsimpl~.
 Qed.
 
-(* Lemma lhtriple_set : forall v (w : _ -> val) (p : loc) fs,
+Lemma lhtriple_set : forall v (w : _ -> val) (p : loc) fs,
   htriple fs (fun d => val_set p (w d))
   (\*_(d <- fs) p ~(d)~> v)
   (fun hr => \[hr = w] \* (\*_(d <- fs) p ~(d)~> w d)).
-Proof using. *)
+Proof using.
+Admitted.
 
-
-(* Hint Resolve htriple_ref_lab lhtriple_ref lhtriple_get lhtriple_set : lhtriple. *)
+Hint Resolve htriple_ref_lab lhtriple_ref lhtriple_get lhtriple_set : lhtriple.
 
 Arguments xfocus_lemma _ {_}.
 Arguments xunfocus_lemma _ {_}.
@@ -10009,7 +10068,7 @@ Proof.
   hnf. intros. math.
 Qed.
 
-Hint Rewrite hstar_fset_label_single hstar_fset_Lab : hstar_fset.
+Global Hint Rewrite hstar_fset_label_single hstar_fset_Lab : hstar_fset.
 
 Arguments lab_fun_upd /.
 
@@ -10087,9 +10146,9 @@ Proof.
   *)
 
 
-(* Hint Rewrite @disjoint_single disjoint_interval disjoint_single_interval 
+(* Global Hint Rewrite @disjoint_single disjoint_interval disjoint_single_interval 
   disjoint_interval_single @disjoint_eq_label @disjoint_label : disjointE. *)
-Hint Rewrite indom_interval indom_single_eq : indomE.
+Global Hint Rewrite indom_interval indom_single_eq : indomE.
 
 Definition Get {A} Z N (fsi : int -> fset A) (x : A)  :=
   match classicT (exists i, indom (interval Z N) i /\ indom (fsi i) x) with 
