@@ -2425,6 +2425,16 @@ Proof.
   by apply/eval_hv; eauto=> ?? /[! uni_in].
 Qed.
 
+(* Lemma hhoare_hv_eq_impl H Q (f g : (D -> val) -> (D -> val)) fs ht : 
+  (forall hv d, indom fs d -> f hv d = g hv d) ->
+  hhoare fs ht H (Q \o f) ->
+  hhoare fs ht H (Q \o g).
+Proof.
+  move=> QE hh ? /hh[h'][hv][ev]?.
+  exists h', (fun d => f hv \u_fs ); split=>//=.
+  rewrite (QE hv hv) //.
+Qed. *)
+
 
 Lemma hhoare0_dep ht H Q : 
   hhoare empty ht H Q = (H ==> \exists hv, Q hv).
@@ -4644,6 +4654,16 @@ Proof.
   apply/hhoare_hv/hhoare_conseq; eauto.
   by xsimpl.
 Qed.
+
+(* Lemma wp_hv_eq ht Q :
+  (forall hv1 hv2, (forall d, indom fs d -> hv1 d = hv2 d) -> Q hv1 = Q hv2)
+  wp ht Q' ==>
+  wp ht Q.
+Proof.
+  rewrite /wp. xsimpl=> H' hh ?.
+  apply/hhoare_hv/hhoare_conseq; eauto.
+  by xsimpl.
+Qed. *)
 
 End htriple.
 
@@ -7434,17 +7454,6 @@ Qed.
 
 Open Scope Z_scope.
 
-Lemma fset_extens {A} (fs fs' : fset A) : 
-  fs = fs' <->
-  forall x, indom fs x <-> indom fs' x.
-Proof.
-  split=> [->|] //.
-  move=> fsE; apply/fmap_extens=> x.
-  case: (prop_inv (indom fs x))=> [/[dup]/fsE|?].
-  { by rewrite /indom /map_indom; do ? case: (fmap_data _ _)=> // -[].  }
-  by rewrite ?fmapNone // -fsE.
-Qed.
-
 Lemma Union_upd_fset {T A} (x : T) (fs : fset T) (fsi : T -> fset A) : 
   Union (update fs x tt) fsi = fsi x \u Union fs fsi.
 Proof.
@@ -7820,6 +7829,42 @@ Proof with autos*.
   by xsimpl hv0; erewrite HE; eauto=> ??; rewrite uni_in.
 Qed.
 
+Lemma wp_while_aux_unary i fs' (H : bool -> int -> (D -> val) -> hhprop) Z N T C s b0 hv0 :
+  fs' = single s tt ->
+  (forall t, subst "while" t T = T) ->
+  (forall t, subst "cond" t T = T) ->
+  (forall t, subst "tt" t T = T) ->
+  (forall t, subst "while" t C = C) ->
+  (forall t, subst "cond" t C = C) ->
+  (forall t, subst "tt" t C = C) ->
+  (Z <= i <= N)%Z ->
+  (forall (b : bool) (x : int) hv,
+    H b x hv ==>
+      wp 
+        fs'
+        (fun=> C) 
+        (fun hc => \[hc s = b] \* H b x hv)) -> 
+  (forall x hv, H false x hv ==> \[(x = N)%Z] \* H false x hv) ->
+  (forall b j hv, Z <= j < N ->
+    (forall j' b' hv, 
+      j < j' <= N -> 
+      H b' j' hv ==>
+        wp 
+          fs'
+          (fun=> While C T)
+          (H false N)) ->
+    H true j hv ==> 
+      wp
+        fs' 
+        (fun=> (trm_seq T (While C T))) 
+        (H false N)) ->
+  H b0 i hv0 ==> 
+    wp
+      fs'
+      (fun=> While C T) 
+      (H false N).
+Proof with autos*.
+Admitted.
 
 Lemma wp_for fs fs' ht 
   (H : int -> (D -> val) -> hhprop) Z N (C : trm) fsi hv0 (P : hhprop) Q vr :
@@ -7907,6 +7952,41 @@ Proof with autos*.
   { apply/(wp_while_aux (i := Z) (ht := ht) _ (T := T)); eauto. math. }
   apply/wp_conseq=> ?; rewrite intervalgt ?Union0 ?uni0 //; by math.
 Qed.
+
+Lemma wp_while_unary fs' (Inv : bool -> int -> (D -> val) -> hhprop) Z N T C s b0 hv0 (P : hhprop) Q :
+  (forall (b : bool) (x : int) hv,
+    Inv b x hv ==>
+      wp 
+        fs'
+        (fun=> C) 
+        (fun hc => \[hc s = b] \* Inv b x hv)) -> 
+  (forall x hv, Inv false x hv ==> \[(x = N)%Z] \* Inv false x hv) ->
+  (forall b j hv, Z <= j < N ->
+    (forall j' b' hv, 
+      j < j' <= N -> 
+      Inv b' j' hv ==>
+        wp 
+          fs'
+          (fun=> While C T) 
+          (Inv false N)) ->
+      Inv true j hv ==> 
+        wp
+          fs' 
+          (fun=> trm_seq T (While C T))
+          (Inv false N)) ->
+  P ==> Inv b0 Z hv0 ->
+  Inv false N ===> Q ->
+  (Z <= N) ->
+  fs' = single s tt ->
+  (forall t, subst "while" t T = T) ->
+  (forall t, subst "cond" t T = T) ->
+  (forall t, subst "tt" t T = T) ->
+  (forall t, subst "while" t C = C) ->
+  (forall t, subst "cond" t C = C) ->
+  (forall t, subst "tt" t C = C) ->
+  P ==> wp fs' (fun=> While C T) Q.
+Proof.
+Admitted.
 
 Corollary htriple_while fs fs' ht (Inv : bool -> int -> (D -> val) -> hhprop) Z N T C fsi HC s b0 hv0 (P : hhprop) Q :
   (forall (b : bool) (x : int) hv,
@@ -9837,6 +9917,108 @@ Proof.
   move=> h Hwp; rewrite -/fs //.
 Qed.
 
+Lemma disjoint_eq_label {T} (l : labType) (fs1 fs2 : fset T) : 
+  disjoint (label (Lab l fs1)) (label (Lab l fs2)) <-> disjoint fs1 fs2.
+Proof.
+  split.
+  { move/(@disjoint_inv_not_indom_both _ _ _ _ _)=> dj.
+    apply/disjoint_of_not_indom_both=> x in1 in2.
+    by apply/(dj (Lab l x)); rewrite indom_label_eq. }
+  move/(@disjoint_inv_not_indom_both _ _ _ _ _)=> dj.
+  apply/disjoint_of_not_indom_both=> -[??].
+  by rewrite ?indom_label_eq=> -[_]/[swap]-[_]/dj/[apply].
+Qed.
+
+Lemma disjoint_subset {A} (fs1 fs2 fs : fset A) : 
+  disjoint fs1 fs2 -> 
+  (forall x, indom fs x -> indom fs1 x) -> 
+  disjoint fs fs2.
+Proof.
+  move/(@disjoint_inv_not_indom_both _ _ _ _ _)=> dj ind.
+  apply/disjoint_of_not_indom_both=> ? /ind; eauto.
+Qed.
+
+Arguments disjoint_subset {_} _.
+
+Lemma xfocus_pred_lemma (p : D.type -> Prop) (l : labType) fs_hts (Q : (HD.type -> val) -> hhprop) H : 
+  let fs_ht := lookup fs_hts l in
+  let fs    := fs_of (el fs_ht) in 
+  let ht    := ht_of (el fs_ht) in
+    H ==> wp ⟨l, fs ∖ p⟩ [eta ht]
+            (fun hr => nwp (Lab l (FH (fs ∩ p) ht) :: remove fs_hts l) (fun hr' => Q (hr \u_⟨l, fs ∖ p⟩ hr'))) ->
+    ntriple H fs_hts Q.
+Proof.
+  move=> fs_ht fs ht.
+  have sb: forall x P, indom ⟨l, intr fs P⟩ x -> indom ⟨l, fs⟩ x.
+  { case=> ???; by rewrite ?indom_label_eq /intr filter_indom=> -[->][]. }
+  apply: himpl_trans_r.
+  rewrite /nwp (fset_htrm_lookup_remove l fs_hts) -/fs_ht -/fs. 
+  rewrite fset_of_cons /fs_of /=.
+  rewrite (wp_ht_eq [eta ht] (htrm_of fs_hts)).
+  { set (Fs := (⟨_,_⟩ \u _)).
+    set (Fn := (fun ld => If _ then _ else _)).
+    have->: wp Fs Fn = wp Fs (htrm_of fs_hts).
+    { apply/fun_ext_1=> ?; apply/wp_ht_eq.
+      rewrite /Fs/Fn=> -[l' x] /=.
+      case: classicT.
+      { case=><- ??; rewrite /ht /fs_ht (lookup_eq l) //.
+        apply/sb; rewrite indom_label_eq; eauto. }
+      rewrite indom_union_eq=> /[swap]-[].
+      { by rewrite indom_label_eq=> -[->]?[]. }
+      by move/remove_eq->. }
+    rewrite wp_union.
+    { rewrite /Fs -union_assoc -label_union.
+      rewrite [(_ ∖ _) \u _]union_comm_of_disjoint ?fs_pred_part //.
+      rewrite disjoint_comm; exact/fs_pred_part_disj. }
+    rewrite /Fs disjoint_union_eq_r disjoint_eq_label; split.
+    { rewrite disjoint_comm; exact/fs_pred_part_disj. }
+    apply/(disjoint_subset ⟨l, fs⟩); eauto.
+    exact/fset_htrm_label_remove_disj. }
+  by move=> ? /sb/lookup_eq ->.
+Qed.
+
+Definition uni_pred {A B} (f g : A -> B) (p : A -> Prop) := 
+  fun x => If p x then f x else g x.
+
+Lemma xfocus_pred_lemma' (p : D.type -> Prop) (l : labType) fs_hts (Q : (HD.type -> val) -> hhprop) H : 
+  let fs_ht := lookup fs_hts l in
+  let fs    := fs_of (el fs_ht) in 
+  let ht    := ht_of (el fs_ht) in
+    H ==> wp ⟨l, fs ∖ p⟩ [eta ht]
+            (fun hr => 
+              nwp (Lab l (FH (fs ∩ p) ht) :: remove fs_hts l) 
+                (fun hr' => Q (lab_fun_upd (uni_pred hr' hr p) hr' l))) ->
+    ntriple H fs_hts Q.
+Proof.
+  move=> fs_ht fs ht Impl.
+  apply/(@xfocus_pred_lemma p l). rewrite -/fs_ht -/fs -/ht.
+  apply: himpl_trans; eauto. apply/wp_conseq=> hr.
+  apply: himpl_trans; first last.
+  { apply/wp_hv. } 
+  rewrite -/(nwp _ _); apply/wp_conseq=> hr'.
+  xsimpl (lab_fun_upd (uni_pred hr' hr p) hr' l)=> ?.
+  apply:applys_eq_init; fequals; extens=> -[l' x].
+  case: (classicT (l' = l))=>[->|?].
+  { rewrite /uni_pred /= /lab_fun_upd /= eqbxx.
+    case: classicT=> px.
+    { rewrite uni_nin.
+      { rewrite /uni; do ? case: classicT=> //=.
+        by rewrite eqbxx. }
+      rewrite indom_label_eq /intr filter_indom /=. autos*. }
+    rewrite /uni; case: classicT=> // ?.
+    case: classicT=> //=.
+    { rewrite indom_union_eq indom_label_eq /intr filter_indom=> -[]; autos*.
+      by move/indom_remove. }
+    rewrite ?eqbxx; by case: classicT. }
+  rewrite lab_fun_upd_neq; eauto.
+  rewrite /uni; case: classicT=> [/indom_label?|]; first by subst.
+  case: classicT=> //; rewrite lab_fun_upd_neq //.
+Qed.
+
+
+Check wp_hv.
+
+
 Arguments htrm_of : simpl never.
 
 Lemma xunfocus_lemma (Q : (HD.type -> val) (*-> (HD.type -> val)*) -> hhprop) fs_hts 
@@ -10134,11 +10316,9 @@ Lemma disjoint_single_interval (x1 y1 x : int) :
   disjoint (single x tt) (interval x1 y1)  = (x < x1) \/ (y1 <= x).
 Proof.
 
+*)
 
-Lemma disjoint_eq_label {T} (l : labType) (fs1 fs2 : fset T) : 
-  disjoint (label (Lab l fs1)) (label (Lab l fs2)) = disjoint fs1 fs2.
-Proof.
-
+(*
 
 Lemma disjoint_label {T} (l l' : labType) (fs1 fs2 : fset T) : 
   disjoint (label (Lab l fs1)) (label (Lab l' fs2)) = ((l <> l') \/ disjoint fs1 fs2).
