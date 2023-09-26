@@ -7736,7 +7736,103 @@ Lemma upd_upd_eq {A B} (f : A -> B) x y y' :
   upd (upd f x y) x y' = upd f x y'.
 Proof. by extens=> ?; rewrite /upd; do ? case: classicT. Qed.
 
-Lemma wp_while_aux i fs fs' ht (H : bool -> int -> (D -> val) -> hhprop) Z N T C fsi HC s b0 hv0 :
+Lemma wp_while_aux i fs fs' ht (H : bool -> int -> (D -> val) -> hhprop) Z N T C fsi s b0 hv0 :
+  (forall j b hv1 hv2, (forall x, indom (Union (interval Z j) fsi) x -> hv1 x = hv2 x) -> H b j hv1 = H b j hv2) ->
+  fs = Union (interval i N) fsi ->
+  fs' = single s tt ->
+  (forall t, subst "while" t T = T) ->
+  (forall t, subst "cond" t T = T) ->
+  (forall t, subst "tt" t T = T) ->
+  (forall t, subst "while" t C = C) ->
+  (forall t, subst "cond" t C = C) ->
+  (forall t, subst "tt" t C = C) ->
+  (forall j, (i <= j < N)%Z -> ~ indom (fsi j) s) ->
+  (Z <= i <= N)%Z ->
+  (ht s = While C T) ->
+  (forall (b : bool) (x : int) hv,
+    H b x hv ==>
+      wp 
+        fs'
+        (fun=> C) 
+        (fun hc => \[hc s = b] \* H b x hv)) -> 
+  (forall x hv, H false x hv ==> \[(x = N)%Z] \* H false x hv) ->
+  (forall x hv, H true x hv ==> \[(x < N)%Z] \* H true x hv) ->
+  (forall j hv, Z <= j < N ->
+    (forall j' b' hv, 
+      j < j' <= N -> 
+      H b' j' hv ==>
+        wp 
+          (fs' \u Union (interval j' N) fsi)
+          (upd ht s (While C T)) 
+          (fun hr => H false N (hv \u_(Union (interval Z j') fsi) hr))) ->
+    H true j hv ==> 
+      wp
+        (fs' \u Union (interval j N) fsi) 
+        (upd ht s (trm_seq T (While C T))) 
+        (fun hr => H false N (hv \u_(Union (interval Z j) fsi) hr))) ->
+  H b0 i hv0 ==> 
+    wp
+      (fs' \u fs)
+      ht 
+      (fun hr => H false N (hv0 \u_(Union (interval Z i) fsi) hr)).
+Proof with autos*.
+  move=> HE ->-> swhile scond stt cw cc ct +++ HCi IHf HCi'.
+  move: ht hv0 b0. induction_wf IH: (upto N) i.
+  move=> ht hv0 b Dj' ? htsE IHt.
+  have htE: forall x, indom (single s tt) x -> ht x = While C T.
+  { by move=> ? /[! @indom_single_eq]<-. }
+  have?: disjoint (single s tt) (Union (interval i N) fsi).
+  { rewrite disjoint_Union=> ?/[! @indom_interval]?.
+    rewrite disjoint_comm.
+    apply/disjoint_single_of_not_indom/Dj'; math. }
+  rewrite -wp_union // (wp_ht_eq _ _ _ htE) /While /While_aux. 
+  rewrite wp_fix_app2.
+  Opaque subst.
+  xwp.
+  Transparent subst.
+  rewrite /= cw swhile stt ct.
+  xlet.
+  move=> ? /HCi; apply/wp_conseq=> hv.
+  xpull; case:b => -hvsE.
+  { under wp_ht_eq.
+    { move=> ? /[! indom_single_eq]<-/[! hvsE] /[! over] //. }
+    rewrite -/(himpl _ _).
+    Opaque subst.
+    xwp.
+    Transparent subst.
+    xif=> // _.
+    rewrite scond. rewrite -/(While_aux _ _).
+    rewrite -wp_fix_appapp2 -/(While_aux _ _)-/(While _ _).
+    under wp_ht_eq; rewrite -/(himpl _ _).
+    { move=> s' /[! indom_single_eq] sE.
+      rewrite -(upd_eq _ _ ht s (trm_seq T (While C T))) {2}sE over //. }
+    rewrite wp_equiv.
+    apply/htriple_conseq; first last; [|clear HCi; eauto|].
+    { move=> ?. under wp_ht_eq; rewrite -/(himpl _ _).
+      { move=> s'; rewrite indom_Union=> -[?][].
+        rewrite indom_interval le_zarith lt_zarith=> /Dj' ??.
+        rewrite -(upd_neq _ _ ht s (trm_seq T (While C T))) ?over //.
+        move=> ?. by subst. } 
+      move=> ?; exact. }
+    rewrite -wp_equiv (wp_union (fun hv => H false N (_ \u_ _ hv))) //.
+    xpull=> ?.
+    apply/IHt; first by math.
+    move=> j' b' ??.
+    apply/IH; try math.
+    { move=> ??; apply/Dj'; math. }
+    { by rewrite upd_eq. }
+    move=> > ?.
+    rewrite ?upd_upd_eq; exact/IHt. }
+  under wp_ht_eq.
+  { move=> ? /[! indom_single_eq]<-/[! hvsE] /[! over] //. }
+  rewrite -/(himpl _ _).
+  xwp; xif=> // _.
+  xwp; xval; apply:himpl_trans; [exact/IHf|].
+  xsimpl=> ->; rewrite intervalgt ?Union0 ?wp0_dep; last math.
+  by xsimpl hv0; erewrite HE; eauto=> ??; rewrite uni_in.
+Qed.
+
+(* Lemma wp_while_aux i fs fs' ht (H : bool -> int -> (D -> val) -> hhprop) Z N T C fsi HC s b0 hv0 :
   (forall j b hv1 hv2, (forall x, indom (Union (interval Z j) fsi) x -> hv1 x = hv2 x) -> H b j hv1 = H b j hv2) ->
   fs = Union (interval i N) fsi ->
   fs' = single s tt ->
@@ -7827,7 +7923,7 @@ Proof with autos*.
   xwp; xval; apply:himpl_trans; [exact/IHf|].
   xsimpl=> -[]-> ?; rewrite intervalgt ?Union0 ?wp0_dep; last math.
   by xsimpl hv0; erewrite HE; eauto=> ??; rewrite uni_in.
-Qed.
+Qed. *)
 
 Lemma wp_while_aux_unary i fs' (H : bool -> int -> (D -> val) -> hhprop) Z N T C s b0 hv0 :
   fs' = single s tt ->
@@ -7845,24 +7941,14 @@ Lemma wp_while_aux_unary i fs' (H : bool -> int -> (D -> val) -> hhprop) Z N T C
         (fun=> C) 
         (fun hc => \[hc s = b] \* H b x hv)) -> 
   (forall x hv, H false x hv ==> \[(x = N)%Z] \* H false x hv) ->
+  (forall x hv, H true x hv ==> \[(x < N)%Z] \* H true x hv) ->
   (forall b j hv, Z <= j < N ->
     (forall j' b' hv, 
       j < j' <= N -> 
       H b' j' hv ==>
-        wp 
-          fs'
-          (fun=> While C T)
-          (H false N)) ->
-    H true j hv ==> 
-      wp
-        fs' 
-        (fun=> (trm_seq T (While C T))) 
-        (H false N)) ->
-  H b0 i hv0 ==> 
-    wp
-      fs'
-      (fun=> While C T) 
-      (H false N).
+        wp fs' (fun=> While C T) (H false N)) ->
+    H true j hv ==> wp fs' (fun=> (trm_seq T (While C T))) (H false N)) ->
+  H b0 i hv0 ==> wp fs' (fun=> While C T) (H false N).
 Proof with autos*.
 Admitted.
 
@@ -7944,14 +8030,15 @@ Lemma wp_while fs fs' ht (Inv : bool -> int -> (D -> val) -> hhprop) Z N T C fsi
   (ht s = While C T) ->
   P ==> wp (fs' \u fs) ht Q.
 Proof with autos*.
-  move=> HwpC HwpF HwpT Heq HP HQ *.
+  (* move=> HwpC HwpF HwpT Heq HP HQ *.
   apply: himpl_trans; first exact/HP.
   apply: himpl_trans; first last.
   { apply: wp_conseq; exact/HQ. }
   apply: himpl_trans.
   { apply/(wp_while_aux (i := Z) (ht := ht) _ (T := T)); eauto. math. }
   apply/wp_conseq=> ?; rewrite intervalgt ?Union0 ?uni0 //; by math.
-Qed.
+Qed. *)
+Admitted.
 
 Lemma wp_while_unary fs' (Inv : bool -> int -> (D -> val) -> hhprop) Z N T C s b0 hv0 (P : hhprop) Q :
   (forall (b : bool) (x : int) hv,
@@ -7961,7 +8048,8 @@ Lemma wp_while_unary fs' (Inv : bool -> int -> (D -> val) -> hhprop) Z N T C s b
         (fun=> C) 
         (fun hc => \[hc s = b] \* Inv b x hv)) -> 
   (forall x hv, Inv false x hv ==> \[(x = N)%Z] \* Inv false x hv) ->
-  (forall b j hv, Z <= j < N ->
+  (forall x hv, Inv true x hv ==> \[(x < N)%Z] \* Inv false x hv) ->
+  (forall j hv, Z <= j < N ->
     (forall j' b' hv, 
       j < j' <= N -> 
       Inv b' j' hv ==>
@@ -7988,7 +8076,7 @@ Lemma wp_while_unary fs' (Inv : bool -> int -> (D -> val) -> hhprop) Z N T C s b
 Proof.
 Admitted.
 
-Corollary htriple_while fs fs' ht (Inv : bool -> int -> (D -> val) -> hhprop) Z N T C fsi HC s b0 hv0 (P : hhprop) Q :
+(* Corollary htriple_while fs fs' ht (Inv : bool -> int -> (D -> val) -> hhprop) Z N T C fsi HC s b0 hv0 (P : hhprop) Q :
   (forall (b : bool) (x : int) hv,
     Inv b x hv ==>
       wp 
@@ -8024,7 +8112,7 @@ Corollary htriple_while fs fs' ht (Inv : bool -> int -> (D -> val) -> hhprop) Z 
   (forall j, (Z <= j < N)%Z -> ~ indom (fsi j) s) ->
   (ht s = While C T) ->
   htriple (fs' \u fs) ht P Q.
-Proof. intros. apply wp_equiv. eapply wp_while; eauto. Qed.
+Proof. intros. apply wp_equiv. eapply wp_while; eauto. Qed. *)
 
 Hint Resolve hmerge_comm hmerge_assoc : core.
 
