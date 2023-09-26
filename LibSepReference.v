@@ -7942,7 +7942,7 @@ Lemma wp_while_aux_unary i fs' (H : bool -> int -> (D -> val) -> hhprop) Z N T C
         (fun hc => \[hc s = b] \* H b x hv)) -> 
   (forall x hv, H false x hv ==> \[(x = N)%Z] \* H false x hv) ->
   (forall x hv, H true x hv ==> \[(x < N)%Z] \* H true x hv) ->
-  (forall b j hv, Z <= j < N ->
+  (forall j hv, Z <= j < N ->
     (forall j' b' hv, 
       j < j' <= N -> 
       H b' j' hv ==>
@@ -7950,7 +7950,9 @@ Lemma wp_while_aux_unary i fs' (H : bool -> int -> (D -> val) -> hhprop) Z N T C
     H true j hv ==> wp fs' (fun=> (trm_seq T (While C T))) (H false N)) ->
   H b0 i hv0 ==> wp fs' (fun=> While C T) (H false N).
 Proof with autos*.
-Admitted.
+  move=>-> ?????? ? HC Hf HC'.
+
+Qed.
 
 Lemma wp_for fs fs' ht 
   (H : int -> (D -> val) -> hhprop) Z N (C : trm) fsi hv0 (P : hhprop) Q vr :
@@ -8048,7 +8050,7 @@ Lemma wp_while_unary fs' (Inv : bool -> int -> (D -> val) -> hhprop) Z N T C s b
         (fun=> C) 
         (fun hc => \[hc s = b] \* Inv b x hv)) -> 
   (forall x hv, Inv false x hv ==> \[(x = N)%Z] \* Inv false x hv) ->
-  (forall x hv, Inv true x hv ==> \[(x < N)%Z] \* Inv false x hv) ->
+  (forall x hv, Inv true x hv ==> \[(x < N)%Z] \* Inv true x hv) ->
   (forall j hv, Z <= j < N ->
     (forall j' b' hv, 
       j < j' <= N -> 
