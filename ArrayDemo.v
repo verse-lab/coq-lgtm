@@ -657,6 +657,7 @@ Section Demo.
 Variables (N M : int) (Lval : list int) (Lind : list int).
 Hypothesis H_length_Lval : length Lval = abs M.
 Hypothesis H_length_Lind : length Lind = abs (M + 1).
+(*
 Hypothesis H_Lind_first : nth 0%nat Lind = 0.
 Hypothesis H_Lind_last : nth (abs M) Lind = N.
 Hypothesis H_Lind_inc : forall (i j : nat), 
@@ -664,13 +665,22 @@ Hypothesis H_Lind_inc : forall (i j : nat),
   (0 <= (nat_to_Z j) <= abs M)%Z -> 
   (i < j)%nat -> 
   (nth i Lind < nth j Lind)%Z.
+*)
+(* Qiyuan: TODO is it necessary to change the nth to List.nth here? guess so since they are related to reading Lind *)
+Hypothesis H_Lind_first : List.nth 0%nat Lind 0 = 0.
+Hypothesis H_Lind_last : List.nth (abs M) Lind 0 = N.
+Hypothesis H_Lind_inc : forall (i j : nat), 
+  (0 <= (nat_to_Z i) <= abs M)%Z -> 
+  (0 <= (nat_to_Z j) <= abs M)%Z -> 
+  (i < j)%nat -> 
+  (List.nth i Lind 0 < List.nth j Lind 0)%Z.
 Hypothesis H_Lval_notnil : (0 < M)%Z.
 
 Fact H_Lind_inc' : forall (i j : int), 
   (0 <= i <= M)%Z -> 
   (0 <= j <= M)%Z -> 
   (i <= j)%Z -> 
-  (nth (abs i) Lind <= nth (abs j) Lind)%Z.
+  (List.nth (abs i) Lind 0 <= List.nth (abs j) Lind 0)%Z.
 Proof using M Lind H_Lind_inc.
   clear N Lval H_length_Lval H_length_Lind H_Lval_notnil H_Lind_last H_Lind_first.
 
@@ -708,11 +718,11 @@ Definition arr_x_val (p : loc) (d : D) :=
 Section Segmentation.
 
 Definition ind_seg (i : int) := 
-  interval (nth (abs i) Lind) (nth (abs (i + 1)) Lind).
+  interval (List.nth (abs i) Lind 0) (List.nth (abs (i + 1)) Lind 0).
 
 Lemma interval_segmentation_pre i :
   0 <= i <= M -> 
-  Union (interval 0 i) ind_seg = interval 0 (nth (abs i) Lind).
+  Union (interval 0 i) ind_seg = interval 0 (List.nth (abs i) Lind 0).
 Proof using N M Lind H_length_Lind H_Lind_first H_Lind_inc.
   clear Lval H_length_Lval H_Lind_last H_Lval_notnil.
 
@@ -730,10 +740,10 @@ Proof using N M Lind H_length_Lind H_Lind_first H_Lind_inc.
     unfold ind_seg. 
     replace ((abs n)) with n by math.
     replace (abs (n + 1)) with (S n) by math.
-    rewrite <- interval_union with (x:=0) (y:=(nth n Lind))
-      (z:=(nth (S n) Lind)); try math.
+    rewrite <- interval_union with (x:=0) (y:=(List.nth n Lind 0))
+      (z:=(List.nth (S n) Lind 0)); try math.
     2:{
-      rewrite <- H_Lind_first. 
+      rewrite <- H_Lind_first at 1. 
       destruct n; try math. 
       match goal with |- (?a <= ?b)%Z => enough (a < b)%Z; try math end. 
       apply H_Lind_inc; math. 
@@ -789,7 +799,7 @@ Lemma segmentation_sum hv (i : int) (Hi : (0 <= i <= M)%Z) :
                         end) ⟨(2, 0), ind_seg idx⟩)) 
     (interval 0 i)) =
   fset_fold (val_int 0) (fun (d : labeled int) (acc : val) => val_int_add acc (hv d))
-    ⟨(2, 0), interval 0 (nth (abs i) Lind)⟩.
+    ⟨(2, 0), interval 0 (List.nth (abs i) Lind 0)⟩.
 Proof.
   remember (abs i) as n eqn:E.
   revert i Hi E. 
@@ -803,9 +813,9 @@ Proof.
   }
   { replace i with ((i - 1) + 1)%Z by math.
     rewrite -> E.
-    rewrite <- interval_union with (x:=0) (y:=(nth (abs (i-1)) Lind))
-      (z:=(nth (abs i) Lind)); try math.
-    2:{ rewrite <- H_Lind_first. 
+    rewrite <- interval_union with (x:=0) (y:=(List.nth (abs (i-1)) Lind 0))
+      (z:=(List.nth (abs i) Lind 0)); try math.
+    2:{ rewrite <- H_Lind_first at 1. 
       replace 0%nat with (abs 0) by math.
       apply H_Lind_inc'; math. 
     }
@@ -873,14 +883,9 @@ Lemma rli_whilecond_spec : forall (j k : int) (pj0 px_ind : loc) (d : D)
 Proof.
   intros. apply wp_equiv; do 4 (xwp; xapp).
   xwp; xval; xsimpl. 
+  f_equal.
   rewrite -> isTrue_eq_if.
-  case_if. 
-  { assert (List.nth (abs (j + 1)) Lind 0 <=? k = true)%Z as ->; auto.
-    apply Z.leb_le. math.
-  }
-  { assert (List.nth (abs (j + 1)) Lind 0 <=? k = false)%Z as ->; auto.
-    apply Z.leb_gt. math.
-  }
+  case_if; symmetry; [ apply Z.leb_le | apply Z.leb_gt ]; math.
 Qed.
 
 Lemma rli_whilebody_spec : forall (pj0 : loc) (d : D) (j : int),
@@ -894,9 +899,14 @@ Lemma wp_single d t Q :
   wp (single d tt) (fun=> t d) Q.
 Proof. by apply/wp_ht_eq=> ? /[! indom_single_eq]->. Qed.
 
+Lemma wp_single_update d ht t Q : 
+  wp (single d tt) (fun=> upd ht d t d) Q =
+  wp (single d tt) (fun=> t) Q. 
+Proof. apply/wp_ht_eq=> ? /[! indom_single_eq]->. unfold upd. case_if; eqsolve. Qed.
+
 (* Vova: we need this tactic to fold back `While` and `rli` at each step with `...` *)
 Ltac fold_rli := 
-  rewrite ?wp_single 
+  rewrite ?wp_single ?wp_single_update
     -/(rli_whilecond _ _ _) 
     -/(rli_whilebody _) 
     -/(While_aux _ _) 
@@ -1051,13 +1061,13 @@ Proof with fold_rli.
   rewrite -> E in Hka.
   (* use single wp_while here *)
   rewrite <- union_empty_r with (h:=single d tt).
-  apply wp_equiv.
+  (* Qiyuan: I remember that I am unable to directly use wp_while above because the Z < N constraint *)
   eapply wp_while with (fsi:=fun=> empty) (s:=d) (Z:=0) (N:=a) (b0:=true) (hv0:=fun=> val_unit)
     (Inv:=fun b j _ => \[(0 <= j < M)%Z /\
-      (nth (abs j) Lind <= k)%Z /\ b = Z.leb (nth (abs (j+1)) Lind) k] 
+      (List.nth (abs j) Lind 0 <= k)%Z /\ b = Z.leb (List.nth (abs (j+1)) Lind 0) k] 
       \* pj0 ~(d)~> j \* arr_x_ind px_ind d \* arr_x_val px_val d)
     (HC:=fun c b j _ => \[(0 <= j < M)%Z /\ c = b /\ 
-      (nth (abs j) Lind <= k)%Z /\ b = Z.leb (nth (abs (j+1)) Lind) k] 
+      (List.nth (abs j) Lind 0 <= k)%Z /\ b = Z.leb (List.nth (abs (j+1)) Lind 0) k] 
       \* pj0 ~(d)~> j \* arr_x_ind px_ind d \* arr_x_val px_val d).
   17: reflexivity.
   9-15: auto; try math.
@@ -1065,51 +1075,40 @@ Proof with fold_rli.
   7: math.
   7: intros; auto.
   { intros b j _. xsimpl. intros (H1 & H2 & ->).
-    apply wp_equiv.
-    eapply htriple_conseq_frame with (H1:=pj0 ~(d)~> j \* arr_x_ind px_ind d).
-    1:{ apply wp_equiv, rli_whilecond_spec. math. }
-    1: xsimpl.
-    xsimpl.
-    { intros. rewrite H. reflexivity. }
-    { intros. auto. }
+    xapp rli_whilecond_spec; auto.
+    intros ? ->. xsimpl*.
   }
   { intros b j _. xsimpl.
     { intros (Hj & <- & Hleb & EE).
       symmetry in EE.
       split; auto.
       (* here is the unique proof *)
+      (* Qiyuan: TODO extract this as a property for searching array *)
       rewrite -> Z.leb_gt in EE.
       destruct Hka as (Hka1 & Hka2).
       destruct (Z.leb (j+1) a) eqn:Eu.
       { rewrite -> Z.leb_le in Eu.
-        enough (nth (abs (j + 1)) Lind <= nth (abs a) Lind)%Z by math.
+        enough (List.nth (abs (j + 1)) Lind 0 <= List.nth (abs a) Lind 0)%Z by math.
         apply H_Lind_inc'; math.
       }
       { destruct (Z.leb (a+1) j) eqn:Eu'.
         { rewrite -> Z.leb_le in Eu'.
-          enough (nth (abs (a + 1)) Lind <= nth (abs j) Lind)%Z by math.
+          enough (List.nth (abs (a + 1)) Lind 0 <= List.nth (abs j) Lind 0)%Z by math.
           apply H_Lind_inc'; math.
         }
         { rewrite -> Z.leb_gt in Eu, Eu'. math. }
       }
     }
-    { intros (Hj & <- & Hleb & EE).
-      split; auto.
-    }
+    { intros (Hj & <- & Hleb & EE). auto. }
   }
   { intros b j hv (Hj1 & Hj2) IH.
     xsimpl. intros (_ & <- & H1 & H2).
-    symmetry in H2. rewrite -> Z.leb_le in H2.
-    rewrite -> UnionN0, -> union_empty_r.
-    rewrite -> wp_ht_eq with (ht2:=fun=> trm_seq (rli_whilebody pj0) 
-       (While (rli_whilecond k px_ind pj0) (rli_whilebody pj0))).
-    2:{ 
-      introv HH. unfold upd. 
-      rewrite -> indom_single_eq in HH. subst. case_if; eqsolve.
-    }
+    apply eq_sym, Z.leb_le in H2.
+    rewrite -> UnionN0, -> union_empty_r...
     xwp. xseq.
 
     (* body: a simple incr *)
+    (* HMM *)
     apply wp_equiv.
     eapply htriple_conseq_frame with (H1:=pj0 ~(d)~> j).
     2: xsimpl.
@@ -1121,34 +1120,14 @@ Proof with fold_rli.
       rewrite -> Z.leb_le in Ef.
       assert (j = a - 1) as -> by math.
       replace (a - 1 + 1) with a in * by math.
-      
-      (* script reuse *)
-      unfold While, While_aux, rli_whilecond.
-      rewrite -> wp_fix_app2. 
-      apply wp_equiv, htriple_app_fix_direct.
-      simpl.
-      apply wp_equiv.    
-      xwp. xlet.
 
-      (* use the spec above *)
-      apply wp_equiv.
-      eapply htriple_conseq_frame with (H1:=pj0 ~(d)~> a \* arr_x_ind px_ind d).
-      2: xsimpl.
-      1:{ apply wp_equiv, rli_whilecond_spec. math. }
-      xsimpl.
-      intros r Er.
-
-      (* ready for the rest *)
-      match goal with |- himpl _ (wp _ ?ht _) => pose (ff:=ht) end.
-      erewrite -> wp_ht_eq with (ht2:=fun=> ff d).
-      2:{ 
-        intros. rewrite -> indom_single_eq in H. by subst.
-      }
-      subst ff. simpl.
+      xwp; xapp rli_whilecond_spec...
+      intros r Er...
       destruct Hka as (_ & Hka).
       rewrite <- Z.leb_gt in Hka.
       rewrite -> Hka in Er.
-      xwp. rewrite -> Er. xif. 1: intros; by false.
+      rewrite Er.
+      xwp. xif. 1: intros; by false.
       intros _. 
       xwp. xval.
 
@@ -1159,20 +1138,12 @@ Proof with fold_rli.
       assert (j + 1 < a)%Z as Hj2 by math.
       assert (j < j + 1)%Z as Hj3 by math.
       specialize (IH (j+1) true (fun=> val_unit) (conj Hj3 Hj2)).
-      rewrite -> UnionN0, -> union_empty_r in IH.
-      rewrite -> wp_ht_eq with (ht2:=fun=> 
-        (While (rli_whilecond k px_ind pj0) (rli_whilebody pj0))) in IH.
-      2:{ 
-        introv HH. unfold upd. 
-        rewrite -> indom_single_eq in HH. subst. case_if; eqsolve.
-      }
-      apply wp_equiv.
+      rewrite -> UnionN0, -> union_empty_r, ?wp_single, ?wp_single_update in IH.
       destruct Hka as (Hka1 & Hka2).
-      eapply htriple_conseq.
-      1: apply wp_equiv, IH.
+      eapply himpl_trans. 2: apply IH.
       { xsimpl. split; try math. split; try assumption. 
         symmetry. apply Z.leb_le.
-        transitivity (nth (abs a) Lind); try assumption. 
+        transitivity (List.nth (abs a) Lind 0); try assumption. 
         destruct (Z.leb a (j+1+1)) eqn:EE.
         { rewrite -> Z.leb_le in EE.
           assert (j+1+1 = a) as -> by math.
@@ -1183,17 +1154,16 @@ Proof with fold_rli.
           apply H_Lind_inc; math.
         }
       }
-      auto.
     }
   }
   { intros. auto. }
   { xsimpl. split; try math. destruct Hka as (Hka1 & Hka2). split.
-    { transitivity (nth (abs a) Lind); try assumption.
+    { transitivity (List.nth (abs a) Lind 0); try assumption.
       match goal with |- (?a <= ?b)%Z => enough (a < b)%Z; try math end.
       apply H_Lind_inc; math.
     }
     { symmetry. apply Z.leb_le. change (0+1) with 1.
-      transitivity (nth (abs a) Lind); try assumption.
+      transitivity (List.nth (abs a) Lind 0); try assumption.
       destruct n. 1: replace a with 1 by math; reflexivity.
       match goal with |- (?a <= ?b)%Z => enough (a < b)%Z; try math end.
       apply H_Lind_inc; math.
@@ -1202,43 +1172,8 @@ Proof with fold_rli.
   { xsimpl. intros _ (_ & H1 & H2).
     symmetry in H2. rewrite -> Z.leb_gt in H2.
     rewrite -> E, -> union_empty_r.
-
-    (* again the rest part? *)
-    xwp. xlet.
-    apply wp_equiv.
-    eapply htriple_conseq_frame with (H1:=pj0 ~(d)~> a).
-    1:{
-      replace (pj0 ~(d)~> a) with (\*_(d0 <- single d tt) (pj0 ~(d0)~> a)).
-      2: apply hbig_fset_label_single'.
-      apply htriple_get.
-    }
-    1: apply himpl_refl.
-    xsimpl.
-    intros ? ->.
-    xwp. xseq. xwp. xapp. 
-
-    (* restore the thing array get after seq *)
-    apply wp_equiv.
-    eapply htriple_conseq_frame with (H1:=arr_x_val px_val d).
-    1:{ 
-      replace (arr_x_val px_val d) with 
-        (\*_(d0 <- single d tt) (arr_x_val px_val d0)).
-      2: apply hbig_fset_label_single'.
-      apply htriple_array_get.
-      { intros. rewrite -> length_map, -> H_length_Lval. math. }
-      { intros. reflexivity. } 
-    }
-    1: xsimpl.
-    xsimpl.
-    { 
-      introv Er0. specialize (Er0 d (indom_single _ _)).
-      rewrite -> Er0, -> nth_map; math.
-    }
-    {
-      introv Er0. specialize (Er0 d (indom_single _ _)).
-      rewrite -> ! hbig_fset_label_single'.
-      xsimpl.
-    }
+    xwp. xapp. xwp. xapp. xwp. xapp.
+    xsimpl*.
   }
 Qed.
 
