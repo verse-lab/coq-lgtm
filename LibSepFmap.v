@@ -2655,4 +2655,33 @@ Proof using.
   }
 Qed.
 
+Definition intr {A : Type} (fs : fset A) (b : A -> Prop) : fset A := (filter (fun x _ => b x) fs).
+Infix "∩" := intr (at level 30).
+Notation "fs '∖' p" := (intr fs (not \o p)) (at level 30).
+
+Lemma fset_extens {A} (fs fs' : fset A) : 
+  fs = fs' <->
+  forall x, indom fs x <-> indom fs' x.
+Proof.
+  split=> [->|] //.
+  move=> fsE; apply/fmap_extens=> x.
+  case: (prop_inv (indom fs x))=> [/[dup]/fsE|?].
+  { by rewrite /indom /map_indom; do ? case: (fmap_data _ _)=> // -[].  }
+  by rewrite ?fmapNone // -fsE.
+Qed.
+
+Lemma fs_pred_part {A : Type} (fs : fset A) (p : A -> Prop) : 
+  fs ∩ p \+ fs ∖ p = fs.
+Proof.
+  apply/fset_extens=> x; split; rewrite indom_union_eq /intr ?filter_indom /=; firstorder.
+  case: (classicT (p x)); firstorder.
+Qed.
+
+Lemma fs_pred_part_disj {A : Type} (fs : fset A) (p : A -> Prop) : 
+  \# (fs ∩ p) (fs ∖ p).
+Proof.
+  apply/disjoint_of_not_indom_both=> ?; rewrite /intr ?filter_indom/=; firstorder.
+Qed.
+
+
 (* 2023-03-25 11:36 *)

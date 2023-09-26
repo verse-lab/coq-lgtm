@@ -564,7 +564,8 @@ Definition read_array : val :=
       else 0 }>.
 
 Lemma htriple_array_read `{Inhab D} : forall fs (p : D -> loc) (i : D -> int) (L : D -> list int),
-  htriple fs (fun d => read_array (p d) (i d))
+  htriple fs 
+    (fun d => read_array (p d) (i d))
     (\*_(d <- fs) (harray_int (L d) (p d) d))
     (fun hr => \[hr = fun d => List.nth (abs (i d)) (L d) 0] \* (\*_(d <- fs) (harray_int (L d) (p d) d))).
 Proof using.
