@@ -25,16 +25,8 @@ Proof Build_Inhab (ex_intro (fun=> True) (Lab (0, 0) 0) I).
       k++
 *)
 
-Lemma hstar_fset_label_single (x : D) : 
-hbig_fset hstar (single x tt) = @^~ x.
-Proof. 
-apply/fun_ext_1=> ?.
-rewrite update_empty hbig_fset_update // hbig_fset_empty. xsimpl*. Qed.
 
-Hint Rewrite hstar_fset_label_single hstar_fset_Lab : hstar_fset.
-
-
-Section pure_index.
+Section pure_facts.
 
 Implicit Type l s : list int.
 Implicit Type i : int.
@@ -66,27 +58,57 @@ Lemma indexG0 x s : 0 <= index x s.
 Proof. Admitted.
 
 
-End pure_index.
+End pure_facts.
 
+Module and.
 
-Module index.
-
-Definition and :=
-  <{
-    fun 'b 'c =>
+Definition func :=
+  <{fun 'b 'c =>
     if 'b then 'c 
     else false
   }>.
 
-Lemma and_spec (b c : bool) d : 
+Lemma spec (b c : bool) d : 
   htriple (single d tt) 
-    (fun=> and b c)
+    (fun=> func b c)
     \[]
     (fun hr => \[hr d = b && c]).
 Proof.
   xwp; xif=> bp; xwp; xval; xsimpl.
   all: by case: c b bp=> -[].
 Qed.
+
+End and.
+
+Notation "t1 && t2" :=
+  (and.func t1 t2)
+  (in custom trm at level 58) : trm_scope.
+
+Hint Resolve and.spec : htriple.
+
+Module incr.
+
+Definition func :=
+  (<{ fun "real_j" =>
+      let "tmp1" = ! "real_j" in
+      let "tmp2" = "tmp1" + 1 in
+      "real_j" := "tmp2" }>).
+
+Lemma spec (pj0 : loc) (d : D) (j : int) :
+  htriple (single d tt)
+  (fun=> func pj0) 
+  (pj0 ~(d)~> j)
+    (fun=> pj0 ~(d)~> (j+1)).
+Proof. by do 3 (xwp; xapp). Qed.
+
+End incr.
+
+Notation "'++' k" :=
+  (incr.func k)
+  (in custom trm at level 58) : trm_scope.
+
+
+Module index.
 
 Definition whilecond N (i x_ind k : trm) :=
   <{
@@ -95,18 +117,12 @@ Definition whilecond N (i x_ind k : trm) :=
     let 'c = "x_ind[k]" = i in 
     let 'c = not 'c in
     let 'l = 'k < N in 
-    and 'c 'l
+    'c && 'l
   }>.
-
-Definition incr :=
-  (<{ fun "real_j" =>
-      let "tmp1" = ! "real_j" in
-      let "tmp2" = "tmp1" + 1 in
-      "real_j" := "tmp2" }>).
 
 
 Definition func (N : int) := 
-  let loop := While (whilecond N "i" "x_ind" "k") (incr "k") in
+  let loop := While (whilecond N "i" "x_ind" "k") <{++"k"}> in
   <{
     fun "i" "x_ind" =>
       let 'k = ref 0 in 
@@ -115,18 +131,6 @@ Definition func (N : int) :=
       free 'k;
       "ans"
   }>.
-
-Lemma incr_spec (pj0 : loc) (d : D) (j : int) :
-  htriple (single d tt)
-  (fun=> incr pj0) 
-  (pj0 ~(d)~> j)
-    (fun=> pj0 ~(d)~> (j+1)).
-Proof. by do 3 (xwp; xapp). Qed.
-
-Lemma wp_single d t Q : 
-  wp (single d tt) t Q = 
-  wp (single d tt) (fun=> t d) Q.
-Proof. by apply/wp_ht_eq=> ? /[! indom_single_eq]->. Qed.
 
 Lemma val_int_eq i j : 
   (val_int i = val_int j) = (i = j).
@@ -139,15 +143,6 @@ Ltac fold' :=
     -/(While_aux _ _) 
     -/(While _ _) //=.
 
-Ltac xwhile Z N b Inv := 
-  let N := constr:(N) in
-  let Z := constr:(Z) in 
-  let Inv' := constr:(Inv) in
-  xseq_xlet_if_needed; xstruct_if_needed;
-  eapply (wp_while_unary Inv b (Z := Z) (N := N)); autos*.
-
-Hint Resolve htriple_array_read : htriple.
-
 Notation "x '[' i ']'" := (List.nth (abs i) x 0) (at level 50, format "x [ i ]").
 
 Import List.
@@ -155,9 +150,6 @@ Import List.
 Ltac bool_rew := 
   rewrite ?false_eq_isTrue_eq ?true_eq_isTrue_eq -?(isTrue_and, isTrue_not, isTrue_or).
 
-(*
-  bool --> Prop in Inv
-*)
 
 Lemma spec `{Inhab D} d N (i : int) (xind : list int) (x_ind : loc) : 
   htriple (single d tt) 
@@ -173,9 +165,9 @@ Proof with fold'.
       k d ~(d)~> x \*
       harray_int xind x_ind d
     ).
-  xwp; xwhile 0 (index i xind) (cond 0) Inv; rewrite /Inv.
+  xwp; xwhile1 0 (index i xind) (cond 0) Inv; rewrite /Inv.
   { xsimpl=> ?? -[->]??. 
-    do 5 (xwp; xapp); xapp and_spec=> ?->; xsimpl*.
+    do 5 (xwp; xapp); xapp=> ?->; xsimpl*.
     rewrite /cond. bool_rew... }
   { move=> x; rewrite /cond. xsimpl*.
     bool_rew; rewrite not_and_eq=> -[].
@@ -190,7 +182,7 @@ Proof with fold'.
     suff: (index i xind <> k) by math.
     move=> E; apply/xindN; rewrite -E nth_index // -index_mem; math. }
   { move=> j ? IH; rewrite /cond; bool_rew.
-    xsimpl=> -[][]??? T. xwp; xapp incr_spec; xapp. 
+    xsimpl=> -[][]??? T. xwp; xapp incr.spec; xapp. 
     { split; [reflexivity|math]. }
     { move: T; rewrite ?in_take; math. }
     { math. }
@@ -199,6 +191,5 @@ Proof with fold'.
   { move=> _. xsimpl=> *; do 2 (xwp; xapp); xwp; xval; xsimpl*. }
   exact/indexG0.
 Qed.
-
 
 End index.

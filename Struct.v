@@ -564,8 +564,7 @@ Definition read_array : val :=
       else 0 }>.
 
 Lemma htriple_array_read `{Inhab D} : forall fs (p : D -> loc) (i : D -> int) (L : D -> list int),
-  htriple fs 
-    (fun d => read_array (p d) (i d))
+  htriple fs (fun d => read_array (p d) (i d))
     (\*_(d <- fs) (harray_int (L d) (p d) d))
     (fun hr => \[hr = fun d => List.nth (abs (i d)) (L d) 0] \* (\*_(d <- fs) (harray_int (L d) (p d) d))).
 Proof using.
@@ -597,6 +596,8 @@ apply/htriple_if_dep; rewrite -wp_equiv.
 xwp; xval;xsimpl=>?. rewrite length_map istrue_isTrue_eq=> ?.
 rewrite List.nth_overflow // -length_List_length. math.
 Qed.
+
+Global Hint Resolve htriple_array_read : htriple.
 
 Definition val_array_set : val :=
   <{ fun 'p 'i 'v =>

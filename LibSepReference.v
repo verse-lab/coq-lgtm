@@ -5376,6 +5376,11 @@ Proof.
   xsimpl*.
 Qed.
 
+Lemma wp_single d t Q : 
+  wp (single d tt) t Q = 
+  wp (single d tt) (fun=> t d) Q.
+Proof. by apply/wp_ht_eq=> ? /[! indom_single_eq]->. Qed.
+
 Lemma htriple_union_test1 : forall H Q Q' t fs1 fs2,
   disjoint fs1 fs2 ->
   htriple fs1 t H Q' ->
@@ -10323,9 +10328,12 @@ Tactic Notation "xnsimpl" :=
 Notation "f '[' i ']' '(' j ')'" := (f (Lab (i,0)%Z j)) (at level 30, format "f [ i ] ( j )") : fun_scope.
 Notation "'⟨' l ',' x '⟩'" := ((Lab l%Z x%fs)) (at level 5, right associativity, format "⟨ l ,  x ⟩") : arr_scope.
 
-Lemma hstar_fset_label_single Q (x : D.type) : 
-  \*_(d <- single x tt) Q d = Q x.
-Proof. rewrite update_empty hbig_fset_update // hbig_fset_empty; xsimpl*. Qed.
+Lemma hstar_fset_label_single (x : D) : 
+hbig_fset hstar (single x tt) = @^~ x.
+Proof. 
+  apply/fun_ext_1=> ?.
+  rewrite update_empty hbig_fset_update // hbig_fset_empty. xsimpl*. 
+Qed.
 
 Lemma hbig_fset_label_single' (Q : D -> hhprop) (d : D) :
   \*_(d0 <- single d tt) Q d0 = Q d.
@@ -10356,6 +10364,13 @@ Proof.
   rewrite <- hstar_fset_eq with (g:=fun i => i - offset); try reflexivity.
   hnf. intros. math.
 Qed.
+
+Ltac xwhile1 Z N b Inv := 
+  let N := constr:(N) in
+  let Z := constr:(Z) in 
+  let Inv' := constr:(Inv) in
+  xseq_xlet_if_needed; xstruct_if_needed;
+  eapply (wp_while_unary Inv b (Z := Z) (N := N)); autos*.
 
 Global Hint Rewrite hstar_fset_label_single hstar_fset_Lab : hstar_fset.
 
