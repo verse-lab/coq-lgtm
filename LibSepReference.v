@@ -6998,7 +6998,7 @@ Proof using.
   applys* wp_app_fun2=> d. 
   by move: (M1 d); rewrite var_eq_spec isTrue_eq_false_eq.
 Qed.
-(*
+
 
 Lemma xwp_lemma_wp_fun2 : forall v0 v1 v2 x1 x2 t H Q fs,
   (v0 = fun d => val_fun (x1 d) (trm_fun (x2 d) (t d))) ->
@@ -7006,7 +7006,8 @@ Lemma xwp_lemma_wp_fun2 : forall v0 v1 v2 x1 x2 t H Q fs,
   H ==> wpgen fs (fun d => subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t d))) Q ->
   H ==> wp fs (fun d => (v0 d) (v1 d) (v2 d)) Q.
 Proof using.
-
+Admitted.
+(*
 
 Lemma xwp_lemma_fix2 fs : forall f v0 v1 v2 x1 x2 t H Q,
   (v0 = fun d => val_fix (f d) (x1 d) (trm_fun (x2 d) (t d))) ->
@@ -7025,14 +7026,14 @@ Lemma xwp_lemma_wp_fix2 fs : forall f v0 v1 v2 x1 x2 t H Q,
 Proof using.
 
 
-
+*)
 Lemma xwp_lemma_fun3 : forall v0 v1 v2 v3 x1 x2 x3 t H Q fs,
   (v0 = fun d => val_fun (x1 d) (trm_fun (x2 d) (trm_fun (x3 d) (t d)))) ->
   (forall d, var_eq (x1 d) (x2 d) = false /\ var_eq (x1 d) (x3 d) = false /\ var_eq (x2 d) (x3 d) = false) ->
   H ==> wpgen fs (fun d => subst (x3 d) (v3 d) (subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t d)))) Q ->
   htriple fs (fun d => (v0 d) (v1 d) (v2 d) (v3 d)) H Q.
 Proof using.
-
+Admitted.
 
 Lemma xwp_lemma_wp_fun3 : forall v0 v1 v2 v3 x1 x2 x3 t H Q fs,
   (v0 = fun d => val_fun (x1 d) (trm_fun (x2 d) (trm_fun (x3 d) (t d)))) ->
@@ -7040,7 +7041,8 @@ Lemma xwp_lemma_wp_fun3 : forall v0 v1 v2 v3 x1 x2 x3 t H Q fs,
   H ==> wpgen fs (fun d => subst (x3 d) (v3 d) (subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t d)))) Q ->
   H ==> wp fs (fun d => (v0 d) (v1 d) (v2 d) (v3 d)) Q.
 Proof using.
-
+Admitted.
+(*
 
 
 Lemma xwp_lemma_fix3 : forall f v0 v1 v2 v3 x1 x2 x3 t H Q fs,
@@ -7076,18 +7078,18 @@ Tactic Notation "xwp" :=
         | applys xwp_lemma_wp_fun;  [ reflexivity | ]
         | applys xwp_lemma_fix;     [ reflexivity | ]
         | applys xwp_lemma_fix';    [ reflexivity | ]
-        | applys xwp_lemma_wp_fix';    [ reflexivity | ]
+        | applys xwp_lemma_wp_fix'; [ reflexivity | ]
         | applys xwp_lemma_wp_fix;  [ reflexivity | ]
         | applys xwp_lemma_fun2;    [ reflexivity | reflexivity | ]
-        (* | applys xwp_lemma_fix2;    [ reflexivity | reflexivity | ]
         | applys xwp_lemma_wp_fun2; [ reflexivity | reflexivity | ]
+        (* | applys xwp_lemma_fix2;    [ reflexivity | reflexivity | ]
         | applys xwp_lemma_fun2;    [ reflexivity | reflexivity | ]
         | applys xwp_lemma_fix2;    [ reflexivity | (do ? split); reflexivity | ]
-        | applys xwp_lemma_fun3;    [ reflexivity | (do ? split); reflexivity | ]
         | applys xwp_lemma_fix3;    [ reflexivity | (do ? split); reflexivity | ]
-        | applys xwp_lemma_wp_fix2; [ reflexivity | (do ? split); reflexivity | ]
+        | applys xwp_lemma_wp_fix2; [ reflexivity | (do ? split); reflexivity | ]*)
+        | applys xwp_lemma_fun3;    [ reflexivity | (do ? split); reflexivity | ]
         | applys xwp_lemma_wp_fun3; [ reflexivity | (do ? split); reflexivity | ]
-        | applys xwp_lemma_wp_fix3; [ reflexivity | (do ? split); reflexivity | ] *)
+        (* | applys xwp_lemma_wp_fix3; [ reflexivity | (do ? split); reflexivity | ] *)
         | applys wp_of_wpgen
         | fail 1 "xwp only applies to functions defined using [val_fun] or [val_fix], with at most 3 arguments" ];
   xwp_simpl.
@@ -7759,11 +7761,9 @@ Lemma wp_while_aux i fs fs' ht (H : bool -> int -> (D -> val) -> hhprop) Z N T C
   (forall x hv, H true x hv ==> \[(x < N)%Z] \* H true x hv) ->
   (forall j hv, Z <= j < N ->
     (forall j' b' hv, 
-      j < j' <= N -> 
-      H b' j' hv ==>
-        wp 
-          (fs' \u Union (interval j' N) fsi)
+        htriple (fs' \u Union (interval j' N) fsi)
           (upd ht s (While C T)) 
+          (H b' j' hv \* \[j < j' <= N])
           (fun hr => H false N (hv \u_(Union (interval Z j') fsi) hr))) ->
     H true j hv ==> 
       wp
@@ -7817,7 +7817,7 @@ Proof with autos*.
     rewrite -wp_equiv (wp_union (fun hv => H false N (_ \u_ _ hv))) //.
     xpull=> ?.
     apply/IHt; first by math.
-    move=> j' b' ??.
+    move=> j' b' ?; apply wp_equiv; xsimpl=> ?.
     apply/IH; try math.
     { move=> ??; apply/Dj'; math. }
     { by rewrite upd_eq. }
@@ -7944,9 +7944,10 @@ Lemma wp_while_aux_unary i fs' (H : bool -> int -> hhprop) Z N T C s b0 :
   (forall x, H true x ==> \[(x < N)%Z] \* H true x) ->
   (forall j, Z <= j < N ->
     (forall j' b', 
-      j < j' <= N -> 
-      H b' j' ==>
-        wp fs' (fun=> While C T) (fun=> H false N)) ->
+      htriple fs'
+        (fun=> While C T)
+        (H b' j' \* \[j < j' <= N])
+        (fun=> H false N)) ->
     H true j ==> wp fs' (fun=> (trm_seq T (While C T))) (fun=> H false N)) ->
   H b0 i ==> wp fs' (fun=> While C T) (fun=> H false N).
 Proof with autos*.
@@ -7958,7 +7959,8 @@ Proof with autos*.
     move=> ? _ {}/IH IH IH'.
     rewrite UnionN0 union_empty_r.
     rewrite (wp_ht_eq _ (fun=> trm_seq T (While C T))).
-    { apply/IH=> j' b /(IH' _ b (fun=> val_unit)).
+    { apply/IH=> j' b.
+      move: (IH' j' b (fun=> val_unit)); rewrite -?wp_equiv=> {}IH' ? /IH'.
       rewrite UnionN0 (wp_ht_eq _ (fun=> While C T)) ?union_empty_r //.
       by move=> ?; rewrite indom_single_eq=>->; rewrite upd_eq. }
     by move=> ?; rewrite indom_single_eq=>->; rewrite upd_eq. }
@@ -8017,12 +8019,10 @@ Lemma wp_while fs fs' ht (Inv : bool -> int -> (D -> val) -> hhprop) Z N T C fsi
   (forall x hv, Inv true x hv ==> \[(x < N)%Z] \* Inv true x hv) ->
   (forall j hv, Z <= j < N ->
     (forall j' b' hv, 
-      j < j' <= N -> 
-      Inv b' j' hv ==>
-        wp 
-          (fs' \u Union (interval j' N) fsi)
-          (upd ht s (While C T)) 
-          (fun hr => Inv false N (hv \u_(Union (interval Z j') fsi) hr))) ->
+      htriple (fs' \u Union (interval j' N) fsi)
+        (upd ht s (While C T)) 
+        (Inv b' j' hv \* \[j < j' <= N])
+        (fun hr => Inv false N (hv \u_(Union (interval Z j') fsi) hr))) ->
       Inv true j hv ==> 
         wp
           (fs' \u Union (interval j N) fsi) 
@@ -8064,13 +8064,11 @@ Lemma wp_while_unary fs' (Inv : bool -> int -> hhprop) Z N T C s b0 (P : hhprop)
   (forall x, Inv true x ==> \[(x < N)%Z] \* Inv true x) ->
   (forall j, Z <= j < N ->
     (forall j' b', 
-      j < j' <= N -> 
-      Inv b' j' ==>
-        wp 
-          fs'
-          (fun=> While C T) 
-          (fun=> Inv false N)) ->
-      Inv true j ==> 
+      htriple fs'
+        (fun=> While C T) 
+        (Inv b' j' \* \[j < j' <= N])
+        (fun=> Inv false N)) ->
+    Inv true j ==> 
         wp
           fs' 
           (fun=> trm_seq T (While C T))
@@ -8078,7 +8076,7 @@ Lemma wp_while_unary fs' (Inv : bool -> int -> hhprop) Z N T C s b0 (P : hhprop)
   P ==> Inv b0 Z ->
   (fun=> Inv false N) ===> Q ->
   (Z <= N) ->
-  fs' = single s tt ->
+  fs' = single s tt  ->
   (forall t, subst "while" t T = T) ->
   (forall t, subst "cond" t T = T) ->
   (forall t, subst "tt" t T = T) ->
