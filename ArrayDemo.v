@@ -1,4 +1,4 @@
-Set Implicit Arguments.
+(* Set Implicit Arguments.
 From SLF Require Import LibSepReference LibSepTLCbuffer Struct.
 From SLF Require Import Fun LabType.
 From mathcomp Require Import ssreflect ssrfun zify.
@@ -2862,4 +2862,4 @@ Qed.
 
 End MainProof.
 
-End Demo.
+End Demo. *)

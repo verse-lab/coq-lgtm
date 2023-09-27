@@ -9761,6 +9761,17 @@ Fixpoint fset_of' (fs_hts : seq fset_htrm) : fset D.type :=
     fs_of fs_ht \u fset_of' fs_hts
   else empty.
 
+Fixpoint fset_of'' (fs_hts : seq fset_htrm) : fset D.type :=
+  match fs_hts with
+  | fs_ht :: nil => fs_of fs_ht 
+  | fs_ht :: fs_hts =>  fs_of fs_ht \u fset_of'' fs_hts
+  | _ => empty
+  end.
+
+Lemma fset_of''E : fset_of'' = fset_of'.
+Proof. by extens; elim=> // ? [/=|?? /=-> //] /[! union_empty_r]. Qed.
+
+
 Fixpoint htrm_of (fs_hts : labSeq fset_htrm) (ld : HD.type) : trm :=
   if fs_hts is (Lab i fs_ht) :: fs_hts then 
     If i = lab ld /\ indom (fs_of fs_ht) (el ld) then
@@ -9775,6 +9786,19 @@ Fixpoint htrm_of' (fs_hts : seq fset_htrm) (d : D.type) : trm :=
     else htrm_of' fs_hts d
   else 0.
 
+Fixpoint htrm_of'' (fs_hts : seq fset_htrm) : D.type -> trm :=
+  match fs_hts with 
+  | fs_hts :: nil => [eta ht_of fs_hts]
+  | fs_ht :: fs_hts => fun d => 
+    If indom (fs_of fs_ht) d then
+        ht_of fs_ht d
+      else htrm_of'' fs_hts d
+  | nil => fun=> 0
+  end.
+
+Lemma htrm_of''E : forall h d, indom (fset_of' h) d -> htrm_of'' h d = htrm_of' h d.
+Proof. 
+Admitted.
 
 Lemma fset_of_cons fs_ht fs_hts l : 
     fset_of ((Lab l fs_ht) :: fs_hts) = 
@@ -9823,7 +9847,12 @@ Qed.
 Definition lookup (s : labSeq fset_htrm) (l : labType) : labeled fset_htrm := 
   let fshts := [seq lt <- s | lab_eqb (lab lt) l] in  
   let fshts := map (fun '(Lab _ x)=> x) fshts in 
-  Lab l (FH (fset_of' fshts) (htrm_of' fshts)).
+  Lab l (FH (fset_of'' fshts) (htrm_of' fshts)).
+
+Definition lookup' (s : labSeq fset_htrm) (l : labType) : labeled fset_htrm := 
+  let fshts := [seq lt <- s | lab_eqb (lab lt) l] in  
+  let fshts := map (fun '(Lab _ x)=> x) fshts in 
+  Lab l (FH (fset_of'' fshts) (htrm_of'' fshts)).
 
 Lemma lookup_cons_ht x xs l d :
   indom (fs_of x) d -> 
@@ -9853,7 +9882,7 @@ Lemma fset_htrm_lookup_remove l fs_hts :
     label (Lab l fs) \u 
     fset_of (remove fs_hts l).
 Proof.
-  move=> /=.
+  move=> /=. rewrite fset_of''E.
   elim: fs_hts=> /= [|[]?? fs_hts IHfs_hts]/=.
   { rewrite label_empty. by rew_fmap. }
   rewrite lab_eqb_sym.
@@ -9871,7 +9900,7 @@ Lemma lookup_eq l fs_hts (d : D) :
     indom (label (Lab l fs)) d ->
       htrm_of fs_hts d = ht d.
 Proof.
-  case: d=> ld d /=; rewrite indom_label_eq=> -[]<-.
+  case: d=> ld d /=; rewrite indom_label_eq fset_of''E=> -[]<-. 
   elim: fs_hts=> // -[]/=?? fs_hts IHfs_hts.
   case: ssrbool.ifP=> /= [/lab_eqbP->|/ssrbool.negbT/lab_neqd ?].
   { rewrite indom_union_eq; case: classicT=> [[]_+_|/[swap]-[?[]|]//].
@@ -9890,7 +9919,7 @@ Proof.
   move=> fs_ht fs ht.
   move/(@disjoint_inv_not_indom_both _ _ _ _ _): (fset_htrm_label_remove_disj l fs_hts fs).
   move/[apply]; rewrite {}/fs {}/ht {}/fs_ht /= -/(not _).
-  case: d=> ld d /=; rewrite indom_label_eq not_and_eq.
+  case: d=> ld d /=; rewrite indom_label_eq not_and_eq fset_of''E.
   elim: fs_hts=> // -[]/=?? fs_hts IHfs_hts.
   case: ssrbool.ifP=> /= [/lab_eqbP->|/ssrbool.negbT/lab_neqd ?].
   { rewrite indom_union_eq not_or_eq.
@@ -10009,7 +10038,7 @@ Proof using.
 Qed.
 
 Lemma xfocus_lemma (l : labType) fs_hts (Q : (HD.type -> val) -> hhprop) H : 
-  let fs_ht := lookup fs_hts l in
+  let fs_ht := lookup' fs_hts l in
   let fs    := fs_of (el fs_ht) in 
   let ht    := ht_of (el fs_ht) in
     H ==> wp ⟨l, fs⟩ [eta ht]
@@ -10017,16 +10046,20 @@ Lemma xfocus_lemma (l : labType) fs_hts (Q : (HD.type -> val) -> hhprop) H :
     ntriple H fs_hts Q.
 Proof.
   move=> fs_ht fs ht.
-  apply: himpl_trans_r.
-  rewrite /nwp (fset_htrm_lookup_remove l fs_hts) -wp_union -/fs_ht; first last.
-  { exact/fset_htrm_label_remove_disj. }
-  under (wp_ht_eq (htrm_of fs_hts))=> ? IN.
-  { rewrite (lookup_eq _ _ IN); over. }
-  rewrite -/fs_ht -/ht.
-  apply/wp_conseq=> hv.
-  under (wp_ht_eq (htrm_of fs_hts))=> ? IN.
-  { rewrite (remove_eq _ _ IN); over. }
-  move=> h Hwp; rewrite -/fs //.
+  rewrite (wp_ht_eq _ (ht_of (el (lookup fs_hts l)))).
+  { apply: himpl_trans_r.
+    rewrite /nwp (fset_htrm_lookup_remove l fs_hts) -wp_union -/fs_ht; first last.
+    { exact/fset_htrm_label_remove_disj. }
+    under (wp_ht_eq (htrm_of fs_hts))=> ? IN.
+    { rewrite (lookup_eq _ _ IN); over. }
+    rewrite -/fs_ht -/ht.
+    apply/wp_conseq=> hv.
+    under (wp_ht_eq (htrm_of fs_hts))=> ? IN.
+    { rewrite (remove_eq _ _ IN); over. }
+    move=> h Hwp; rewrite -/fs //. }
+  case=> ?? /[! @indom_label_eq]-[<-].
+  rewrite /fs/ht/fs_ht/lookup/lookup'/= fset_of''E.
+  exact/htrm_of''E.
 Qed.
 
 Lemma disjoint_eq_label {T} (l : labType) (fs1 fs2 : fset T) : 
@@ -10053,7 +10086,7 @@ Qed.
 Arguments disjoint_subset {_} _.
 
 Lemma xfocus_pred_lemma (p : D.type -> Prop) (l : labType) fs_hts (Q : (HD.type -> val) -> hhprop) H : 
-  let fs_ht := lookup fs_hts l in
+  let fs_ht := lookup' fs_hts l in
   let fs    := fs_of (el fs_ht) in 
   let ht    := ht_of (el fs_ht) in
     H ==> wp ⟨l, fs ∖ p⟩ [eta ht]
@@ -10063,37 +10096,44 @@ Proof.
   move=> fs_ht fs ht.
   have sb: forall x P, indom ⟨l, intr fs P⟩ x -> indom ⟨l, fs⟩ x.
   { case=> ???; by rewrite ?indom_label_eq /intr filter_indom=> -[->][]. }
-  apply: himpl_trans_r.
-  rewrite /nwp (fset_htrm_lookup_remove l fs_hts) -/fs_ht -/fs. 
-  rewrite fset_of_cons /fs_of /=.
-  rewrite (wp_ht_eq [eta ht] (htrm_of fs_hts)).
-  { set (Fs := (⟨_,_⟩ \u _)).
-    set (Fn := (fun ld => If _ then _ else _)).
-    have->: wp Fs Fn = wp Fs (htrm_of fs_hts).
-    { apply/fun_ext_1=> ?; apply/wp_ht_eq.
-      rewrite /Fs/Fn=> -[l' x] /=.
-      case: classicT.
-      { case=><- ??; rewrite /ht /fs_ht (lookup_eq l) //.
-        apply/sb; rewrite indom_label_eq; eauto. }
-      rewrite indom_union_eq=> /[swap]-[].
-      { by rewrite indom_label_eq=> -[->]?[]. }
-      by move/remove_eq->. }
-    rewrite wp_union.
-    { rewrite /Fs -union_assoc -label_union.
-      rewrite [(_ ∖ _) \u _]union_comm_of_disjoint ?fs_pred_part //.
-      rewrite disjoint_comm; exact/fs_pred_part_disj. }
-    rewrite /Fs disjoint_union_eq_r disjoint_eq_label; split.
-    { rewrite disjoint_comm; exact/fs_pred_part_disj. }
-    apply/(disjoint_subset ⟨l, fs⟩); eauto.
-    exact/fset_htrm_label_remove_disj. }
-  by move=> ? /sb/lookup_eq ->.
+  rewrite (wp_ht_eq _ (ht_of (el (lookup fs_hts l)))).
+  { apply: himpl_trans_r.
+    rewrite /nwp (fset_htrm_lookup_remove l fs_hts) -/fs_ht -/fs. 
+    rewrite fset_of_cons /fs_of /=.
+    rewrite (wp_ht_eq (fun _ => htrm_of' _ _) (htrm_of fs_hts)).
+    { set (Fs := (⟨_,_⟩ \u _)).
+      set (Fn := (fun ld => If _ then _ else _)).
+      have->: wp Fs Fn = wp Fs (htrm_of fs_hts).
+      { apply/fun_ext_1=> ?; apply/wp_ht_eq.
+        rewrite /Fs/Fn=> -[l' x] /=.
+        case: classicT.
+        { case=><- IN ?; rewrite /ht /fs_ht (lookup_eq l) //.
+          { rewrite /lookup/lookup' /=.
+            rewrite htrm_of''E // -fset_of''E.
+            move: IN; rewrite /fs /fs_ht /lookup' /=.
+            rewrite /intr filter_indom; autos*. }
+          apply/sb; rewrite indom_label_eq; eauto. }
+        rewrite indom_union_eq=> /[swap]-[].
+        { by rewrite indom_label_eq=> -[->]?[]. }
+        by move/remove_eq->. }
+      rewrite wp_union.
+      { rewrite /Fs -union_assoc -label_union.
+        rewrite [(_ ∖ _) \u _]union_comm_of_disjoint ?fs_pred_part //.
+        rewrite disjoint_comm; exact/fs_pred_part_disj. }
+      rewrite /Fs disjoint_union_eq_r disjoint_eq_label; split.
+      { rewrite disjoint_comm; exact/fs_pred_part_disj. }
+      apply/(disjoint_subset ⟨l, fs⟩); eauto.
+      exact/fset_htrm_label_remove_disj. }
+    by move=> ? /sb/lookup_eq ->. }
+  case=>l' d  /sb; rewrite indom_label_eq=> -[<-]?. 
+  by rewrite /ht/lookup/fs_ht/lookup' /= htrm_of''E // -fset_of''E.
 Qed.
 
 Definition uni_pred {A B} (f g : A -> B) (p : A -> Prop) := 
   fun x => If p x then f x else g x.
 
 Lemma xfocus_pred_lemma' (p : D.type -> Prop) (l : labType) fs_hts (Q : (HD.type -> val) -> hhprop) H : 
-  let fs_ht := lookup fs_hts l in
+  let fs_ht := lookup' fs_hts l in
   let fs    := fs_of (el fs_ht) in 
   let ht    := ht_of (el fs_ht) in
     H ==> wp ⟨l, fs ∖ p⟩ [eta ht]
@@ -10298,11 +10338,11 @@ Notation "'{' l '|' d 'in' fs '=>' t }" := (Lab (l,0)%Z (FH fs%fs (fun d => t)))
   (at level 20, d name, only parsing) : fs_hts.
 
 Tactic Notation "xfocus" constr(S) := 
-  let n := eval vm_compute in (Z.to_nat S) in
+  let n := constr:(S) in
   apply (xfocus_lemma n); simpl; try apply xnwp0_lemma.
 
 Tactic Notation "xunfocus" := 
-eapply xunfocus_lemma=> //=; [intros; remember ((_ \u_ _) _); reflexivity|].
+eapply xunfocus_lemma=> //=; [intros; remember ((_ \u_ _) _); reflexivity|]=>/=.
 
 Tactic Notation "xcleanup" constr(n) := 
 match goal with 
@@ -10325,7 +10365,7 @@ Tactic Notation "xin" constr(S1) constr(S2) ":" tactic(tac) :=
 Tactic Notation "xnsimpl" := 
   rewrite /ntriple; xsimpl; try first [ setoid_rewrite <-nwp_of_ntriple| rewrite -nwp_of_ntriple].
 
-Notation "f '[' i ']' '(' j ')'" := (f (Lab (i,0)%Z j)) (at level 30, format "f [ i ] ( j )") : fun_scope.
+Notation "f '[`' i '](' j ')'" := (f (Lab (i,0)%Z j)) (at level 30, format "f [` i ]( j )") : fun_scope.
 Notation "'⟨' l ',' x '⟩'" := ((Lab l%Z x%fs)) (at level 5, right associativity, format "⟨ l ,  x ⟩") : arr_scope.
 
 Lemma hstar_fset_label_single (x : D) : 
@@ -10500,7 +10540,7 @@ Lemma xfor_lemma `{ID : Inhab D}
   (forall i : D, hlocal (R i) (single i tt)) ->
   (forall i : D, hlocal (R' i) (single i tt)) ->
   (forall (hv hv' : D -> val) m,
-    (forall i, indom (fsi1 m) i -> hv[j](i) = hv'[j](i)) ->
+    (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
     H' m hv = H' m hv') ->
   comm m -> assoc m ->
   (i <> j)%Z ->

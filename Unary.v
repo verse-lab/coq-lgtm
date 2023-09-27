@@ -57,6 +57,9 @@ Proof. Admitted.
 Lemma indexG0 x s : 0 <= index x s.
 Proof. Admitted.
 
+Lemma memNindex x s :  ~In x s -> index x s = length s.
+Admitted.
+
 
 End pure_facts.
 
@@ -86,7 +89,7 @@ Notation "t1 && t2" :=
 
 Hint Resolve and.spec : htriple.
 
-Module incr.
+Module incr1.
 
 Definition func :=
   (<{ fun "real_j" =>
@@ -101,12 +104,32 @@ Lemma spec (pj0 : loc) (d : D) (j : int) :
     (fun=> pj0 ~(d)~> (j+1)).
 Proof. by do 3 (xwp; xapp). Qed.
 
-End incr.
+End incr1.
 
 Notation "'++' k" :=
-  (incr.func k)
-  (in custom trm at level 58) : trm_scope.
+  (incr1.func k)
+  (in custom trm at level 58, format "++ k") : trm_scope.
 
+Module incr.
+
+Definition func :=
+  (<{ fun "real_j" "x" =>
+      let "tmp1" = ! "real_j" in
+      let "tmp2" = "tmp1" + "x" in
+      "real_j" := "tmp2" }>).
+
+Lemma spec (pj0 : loc) (d : D) (j x : int) :
+  htriple (single d tt)
+  (fun=> func pj0 x) 
+  (pj0 ~(d)~> j)
+    (fun=> pj0 ~(d)~> (j+x)).
+Proof. by do 3 (xwp; xapp). Qed.
+
+End incr.
+
+Notation "k '+=' x" :=
+  (incr.func k x)
+  (in custom trm at level 58, format "k  +=  x") : trm_scope.
 
 Module index.
 
@@ -155,37 +178,34 @@ Lemma spec `{Inhab D} d N (i : int) (xind : list int) (x_ind : loc) :
   htriple (single d tt) 
     (fun=> func N i x_ind)
     (harray_int xind x_ind d \* \[length xind = N :> int] \* \[List.NoDup xind])
-    (fun hv => harray_int xind x_ind d \* \[hv d = index i xind]).
+    (fun hv => harray_int xind x_ind d \* \[hv = fun=> index i xind]).
 Proof with fold'.
   xwp; xsimpl=> ??; xapp=> k...
   set (cond x := isTrue (List.nth (abs x) xind 0 <> i /\ x < N)).
   set (Inv b x := 
-    \[b = cond x /\ 0 <= x <= N] \*
+    \[b = cond x] \* \[0 <= x <= N] \*
     \[~ In i (take (abs x) xind)] \*
-      k d ~(d)~> x \*
-      harray_int xind x_ind d
+    k d ~(d)~> x \* harray_int xind x_ind d
     ).
   xwp; xwhile1 0 (index i xind) (cond 0) Inv; rewrite /Inv.
-  { xsimpl=> ?? -[->]??. 
+  { xsimpl=> ??->??. 
     do 5 (xwp; xapp); xapp=> ?->; xsimpl*.
     rewrite /cond. bool_rew... }
-  { move=> x; rewrite /cond. xsimpl*.
-    bool_rew; rewrite not_and_eq=> -[].
+  { move=> x; rewrite /cond; xsimpl*.
+    bool_rew; rewrite not_and_eq.
     case: (classicT (x = N)).
     { move=>-> _ _. rewrite in_take; last math.
       move: (index_size i xind); math. }
     move=> ? [/not_not_inv<- ? _|]; last math.
     rewrite index_nodup //; math. }
-  { xsimpl*=> {Inv}k []; rewrite /cond; bool_rew.
-    case=> xindN ??.
-    rewrite in_take; last math.
+  { xsimpl*=> {Inv}k; rewrite /cond; bool_rew.
+    case=> xindN ??; rewrite in_take; last math.
     suff: (index i xind <> k) by math.
     move=> E; apply/xindN; rewrite -E nth_index // -index_mem; math. }
   { move=> j ? IH; rewrite /cond; bool_rew.
-    xsimpl=> -[][]??? T. xwp; xapp incr.spec; xapp. 
-    { split; [reflexivity|math]. }
+    xsimpl=> -?? T. xwp; xapp incr1.spec; xapp; try math. 
+    { eauto. }
     { move: T; rewrite ?in_take; math. }
-    { math. }
     rewrite /cond; bool_rew. xsimpl*. }
   { xsimpl*; split=> //; math. }
   { move=> _. xsimpl=> *; do 2 (xwp; xapp); xwp; xval; xsimpl*. }
@@ -193,3 +213,4 @@ Proof with fold'.
 Qed.
 
 End index.
+
