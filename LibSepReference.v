@@ -10323,7 +10323,7 @@ Notation "'{{' H '}}' fs_hts '{{' v ',' Q '}}'" :=
 
 Notation "'[{' fs1 ';' fs2 ';' .. ';' fsn '}]'" := 
   (cons fs1%fh (cons fs2%fh .. (cons fsn%fh nil) ..)) (at level 30
-  , format "[{ '['  fs1 ';' '/'  fs2 ';' '/'  .. ';' '/'  fsn  ']' }] "
+  , format "[{ '['  fs1 ';' '//'  fs2 ';' '//'  .. ';' '//'  fsn  ']' }] "
   ) : fs_hts.
 
 Notation "'[{' fs '}]'" := 
@@ -10351,7 +10351,7 @@ end=>//; [intros; remember ((_ \u_ _) _); reflexivity|].
 
 
 Tactic Notation "xin" constr(S1) ":" tactic(tac) := 
-  let n := eval vm_compute in (Z.to_nat S1) in
+  let n := constr:(S1) in
   xfocus n; tac; try(
   first [xunfocus | xcleanup n]; simpl; try apply xnwp0_lemma).
 
