@@ -228,7 +228,7 @@ Class IncreasingIntList (L : list int) := {
 
 Section search_pure_facts.
 
-Context (L : list int) `{H : IncreasingIntList L}.
+Context (L : list int) {H : IncreasingIntList L}.
 
 Fact IIL_L_inc' : forall (i j : nat), 
   (0 <= i < length L)%nat -> 
@@ -412,8 +412,8 @@ Definition func :=
 
 Section search_proof.
 
-Context (L : list int) `{H : IncreasingIntList L}.
-Context `{HDInhabit : Inhab D}.
+Context (L : list int) {H : IncreasingIntList L}.
+Context {HDInhabit : Inhab D}.
 
 Lemma whilecond_spec (j k : int) (pj p_arr : loc) (d : D) :
   htriple (single d tt)
@@ -499,8 +499,9 @@ Proof with fold_search.
       assert (j < j + 1)%Z as Hj3 by math.
       specialize (IH (j+1) true).
       destruct Hka as (Hka1 & Hka2).
-      eapply himpl_trans. 2: apply wp_equiv, IH.
-      { xsimpl*. split; try math. split; try assumption. 
+      xapp IH; try math.
+      2: intros; xsimpl*.
+      { split; try math. split; try assumption. 
         symmetry. apply Z.leb_le.
         transitivity (List.nth (abs a) L 0); try assumption. 
         destruct (Z.leb a (j+1+1)) eqn:EE.
