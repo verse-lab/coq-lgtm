@@ -1,10 +1,10 @@
 Set Implicit Arguments.
-From SLF Require Import LibSepReference LibSepTLCbuffer Struct.
 From SLF Require Import Fun LabType.
+From SLF Require Import LibSepReference LibSepTLCbuffer Struct Loops.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
-Module NatDom : Domain with Definition type := nat.
+(* Module NatDom : Domain with Definition type := nat.
 Definition type := nat.
 End NatDom.
 
@@ -16,7 +16,7 @@ Module Export AD := WithArray(IntDom).
 Check eq_refl : D = labeled int.
 
 Global Instance Inhab_D : Inhab D. 
-Proof Build_Inhab (ex_intro (fun=> True) (Lab (0, 0) 0) I).
+Proof Build_Inhab (ex_intro (fun=> True) (Lab (0, 0) 0) I). *)
 
 (*
   cooi i x_ind x_val = 
@@ -165,8 +165,6 @@ Ltac fold' :=
     -/(incr _) 
     -/(While_aux _ _) 
     -/(While _ _) //=.
-
-Notation "x '[' i ']'" := (List.nth (abs i) x 0) (at level 50, format "x [ i ]").
 
 Import List.
 

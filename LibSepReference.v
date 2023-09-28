@@ -4804,8 +4804,9 @@ Proof.
   move=> dj.
   elim/fset_ind: fs t=> // fs y IHfs ? t.
   rewrite indom_update_eq=> -[<-|].
-  { rewrite Union_upd //; exact/fmapU_in1. }
-  move=> ind1 ind2; rewrite Union_upd // fmapU_nin1 ?(IHfs t) //.
+  { rewrite Union_upd //; autos*; exact/fmapU_in1. }
+  move=> ind1 ind2; rewrite Union_upd //; autos*; 
+  rewrite fmapU_nin1 ?(IHfs t) //.
   move: ind2; apply/disjoint_inv_not_indom_both/dj=> ?; by subst.
 Qed.
 
@@ -4821,7 +4822,7 @@ Lemma Union_fmap_inv {A B T : Type} (fmi : T -> fmap A B) (fs : fset T) x y :
 Proof.
   intros Hdj. pattern fs. apply fset_ind; clear fs; intros.
   { rewrite Union0 in H. simpl in H. eqsolve. }
-  { rewrite Union_upd in H1; auto.
+  { rewrite Union_upd in H1; autos*.
     simpl in H1. unfold map_union in H1.
     setoid_rewrite indom_update_eq.
     destruct (fmap_data (fmi x0) x) eqn:E.
@@ -6452,7 +6453,11 @@ Tactic Notation "xapp_try_subst" :=
   end.
 
 Tactic Notation "xapp" constr(E) :=
-  xapp_nosubst E; xapp_try_subst.
+  rewrite ?label_single; (* we need to deal with a situations when the
+   unary lemma is formulated for fs := single d tt
+   but the goal's is ⟨_, single d tt⟩ *)
+  xapp_nosubst E; xapp_try_subst;
+  rewrite -?label_single.
 
 Tactic Notation "xapp" :=
   xapp_nosubst; xapp_try_subst.
@@ -7638,7 +7643,7 @@ Lemma wp_for_aux  i fs fs' ht (H : int -> (D -> val) -> hhprop) Z N C fsi hv0 vr
   (* (forall x y z hv1 hv2, x <= y <= z -> H x y hv1 \* H y z hv2 ==> \exists hv, H x z hv) -> *)
   (* (forall k Z i hv, exists k', forall j, H k' i j hv = H k Z j hv) -> *)
   (forall j hv1 hv2, (forall x, indom (Union (interval Z j) fsi) x -> hv1 x = hv2 x) -> H j hv1 = H j hv2) ->
-  (forall i j, i <> j -> disjoint (fsi i) (fsi j)) ->
+  (forall i j, i <> j -> Z <= i < N -> Z <= j < N -> disjoint (fsi i) (fsi j)) ->
   fs = Union (interval i N) fsi ->
   (forall t, subst "for" t C = C) ->
   (forall t, subst "cnt" t C = C) ->
@@ -7695,7 +7700,11 @@ Proof.
         by move=> ??; rewrite /ht' uni_in. }
     rewrite (wp_union (fun hr2 => H N (_ \u_ _ hr2))) //.
     rewrite // intervalU; last math. 
-    rewrite // Union_upd // -union_assoc.
+    rewrite // Union_upd // -?union_assoc; first last.
+    { introv Neq. rewrite ?indom_union_eq ?indom_interval ?indom_single_eq le_zarith lt_zarith.
+      case=> [?[?|]|]; first by subst.
+      { subst=> ?; apply/Dj=> //; math. }
+      move=> ? [?|?]; subst; apply/Dj; math. }
     rewrite union_comm_of_disjoint -?union_assoc; first rewrite union_comm_of_disjoint.
     2-3: move: dj; rewrite disjoint_union_eq_l ?disjoint_Union.
     2-3: setoid_rewrite indom_interval=> dj; do ?split.
@@ -7730,7 +7739,10 @@ Proof.
     { by move=> *; rewrite uni_in. }
     move=> j ??.
     rewrite (wp_ht_eq _ ((fun=> (subst vr j C)) \u_ fs' ht)); eauto.
-    move=> ??; rewrite /uni. case: classicT=> //. }
+    move=> ??; rewrite /uni. case: classicT=> //.
+    rewrite le_zarith; math.
+    move=> ???; rewrite ?indom_interval le_zarith lt_zarith=> ??.
+    apply/Dj; math. }
     move=> ?; have->: i = N by math.
     xwp; xval.
     rewrite intervalgt ?Union0; last math.
@@ -7978,7 +7990,7 @@ Lemma wp_for fs fs' ht
   (forall j hv1 hv2, (forall x, indom (Union (interval Z j) fsi) x -> hv1 x = hv2 x) -> H j hv1 = H j hv2) ->
   (P ==> H Z hv0) -> 
   (H N ===> Q) ->
-  (forall i j, i <> j -> disjoint (fsi i) (fsi j)) ->
+  (forall i j, i <> j -> Z <= i < N -> Z <= j < N -> disjoint (fsi i) (fsi j)) ->
   (Z <= N) ->
   fs = Union (interval Z N) fsi ->
   (forall t, subst "for" t C = C) ->
@@ -8000,7 +8012,11 @@ Proof.
     clear -Hwp Heq Dj=> i hv lP.
     move=> ? // /Hwp -/(_ lP). apply/wp_conseq=> hr.
     erewrite Heq; eauto=> ?.
-    rewrite intervalUr ?Union_upd // ?indom_union_eq; last math.
+    rewrite intervalUr ?Union_upd // ?indom_union_eq; last math; first last.
+    { introv Neq. rewrite ?indom_union_eq ?indom_interval ?indom_single_eq le_zarith lt_zarith.
+      case=> [?[?|]|]; first by subst.
+      { subst=> ?; apply/Dj=> //; math. }
+      move=> ? [?|?]; subst; apply/Dj; math. }
     have ?: disjoint (Union (interval Z i) fsi) (fsi i).
     { apply/disjoint_of_not_indom_both=> ?; rewrite indom_Union.
       case=> ?; rewrite indom_interval=> -[?].
@@ -8196,12 +8212,12 @@ Proof.
     move=> l hv ?. 
     set (Q := (\(m)_(i <- interval Z l) H' i hv) \(m) (\(m)_(i <- interval (l + 1) N) H i)).
     move: (Hwp l Q)=> IH.
-    rewrite {1}intervalUr ?Union_upd //; last math.
+    rewrite {1}intervalUr ?Union_upd //; last math; autos*.
     have Dj': disjoint (fsi l) (Union (interval Z l) fsi).
     { rewrite disjoint_Union=> ? /[! indom_interval] ?.
       apply/Dj; math. }
     rewrite hbig_fset_union // (@intervalU l N); last math.
-    rewrite Union_upd // hbig_fset_union //; first last.
+    rewrite Union_upd //; autos*; rewrite hbig_fset_union //; first last.
     { rewrite disjoint_Union=> ? /[! indom_interval] ?.
       apply/Dj; math. }
     apply/xapp_lemma'; [|rewrite <-wp_equiv; apply/IH; try math|].
@@ -8442,7 +8458,7 @@ Proof.
   move=> fs x IHfs ?.
   have?: disjoint (fsi x) (Union fs fsi).
   { rewrite disjoint_Union=> y ?; apply/dj=> ?; by subst. }
-  by rewrite Union_upd // hbig_fset_union // hbig_fset_update // IHfs.
+  by rewrite Union_upd //; autos*; rewrite hbig_fset_union // hbig_fset_update // IHfs.
 Qed.
 
 Lemma valid_subst_not_squash h1 h2 (f : D -> D) fs1 fs2 : 
@@ -8666,7 +8682,7 @@ Lemma fsubst_Union_valid' {A B C T : Type} fm y `{Inhab B} (fmi : T -> fmap A B)
 Proof.
   move=> v.
   have{v}: valid_subst' (Union fs fmi) f by move=>*; exact/v.
-  move=> + dj; elim/fset_ind: fs y=> // fs x IHfs ? y /[! @Union_upd] // fsb fmiE.
+  move=> + dj; elim/fset_ind: fs y=> // fs x IHfs ? y /[! @Union_upd] // fsb fmiE; autos*.
   case: (prop_inv (fs = empty))=> [?|/[! fmapN0E]-[y' ?] ]; subst.
   { rewrite Union0 union_empty_r=> /[dup]/fmiE /[swap].
     by rewrite indom_update_eq=> -[->|]. }
@@ -8725,7 +8741,7 @@ Proof.
   move=> ??.
   elim/fset_ind: fs.
   { by rewrite ?Union0. }
-  move=> fs x IHfs ? fmiE. rewrite ?Union_upd // IHfs.
+  move=> fs x IHfs ? fmiE. rewrite ?Union_upd //; autos*; rewrite IHfs.
   { fequal; apply/fmiE; rewrite* indom_update_eq. }
   move=> *; apply/fmiE; rewrite* indom_update_eq.
 Qed.
@@ -8759,7 +8775,7 @@ Proof.
     have?: forall i j, i <> j -> disjoint ((hi \u_ fs) (fun=> empty) i) ((hi \u_ fs) (fun=> empty) j).
     { move=> *; rewrite /uni; do ? case: classicT=> //; autos*. }
     exists (upd (hi \u_fs (fun=> empty)) x h1); splits.
-    { rewrite Union_upd ?upd_eq.
+    { rewrite Union_upd ?upd_eq; autos*.
       { fequal; apply/Union_eq=> // ??.
         {  move=> *; rewrite /upd; do ? case: classicT=> ?; subst; autos*. } 
         rewrite upd_neq // ?uni_in // => ?; by subst. }
@@ -8768,7 +8784,7 @@ Proof.
     move=> ?; rewrite indom_update_eq=> -[<-|/[dup]?/ind?].
     { by rewrite upd_eq. }
     rewrite upd_neq ?uni_in // => ?; by subst. }
-  case=> hi[->][dj] ind; rewrite Union_upd //.
+  case=> hi[->][dj] ind; rewrite Union_upd //; autos*.
   exists (hi x), (Union fs hi); splits=> //.
   { apply/ind; rewrite* indom_update_eq. }
   { rewrite IHfs; exists hi; splits=> // ??.
@@ -8820,7 +8836,7 @@ Proof.
   have lc': forall z : T, indom fs z -> local (fsi z) (fmi z).
   { move=> *; apply/lc; rewrite* indom_update_eq. }
   rewrite indom_update_eq=> -[<-|].
-  { rewrite Union_upd // =>?; rewrite fmapU_nin2 //.
+  { rewrite Union_upd // =>?; autos*; rewrite fmapU_nin2 //.
     rewrite indom_Union=> -[]?[]/[dup]?/lc'/[apply].
     apply/disjoint_inv_not_indom_both; last eauto.
     apply/dj1=> ?; by subst. }
@@ -8829,7 +8845,7 @@ Proof.
   { move/lc=> ind. apply/(disjoint_inv_not_indom_both (dj1 t y _)); eauto.
     { move=> ?; by subst. }
     exact/ind/indom_update. }
-  rewrite Union_upd // fmapU_nin1 ?(IHfs t) //.
+  rewrite Union_upd //; autos*; rewrite fmapU_nin1 ?(IHfs t) //.
 Qed.
 
 Lemma local_single_fsubst (f : D -> D) h x: 
@@ -10301,6 +10317,22 @@ Proof.
   by apply: himpl_trans_r=> ? /[! nwp0].
 Qed.
 
+Lemma xnwp1_lemma fs_ht l :
+  wp (label (Lab l (fs_of fs_ht))) (ht_of fs_ht) =
+  nwp ((Lab l fs_ht) :: nil).
+Proof.
+  apply/fun_ext_1=> ?.
+  rewrite /nwp /= union_empty_r /htrm_of /=.
+  erewrite wp_ht_eq; first eauto.
+  case=> ??; rewrite indom_label_eq=> -[<-] /=.
+  case: classicT; autos*.
+Qed.
+
+Lemma xntriple1_lemma H Q fs_ht l :
+  H ==> wp (label (Lab l (fs_of fs_ht))) (ht_of fs_ht) Q =
+  ntriple H ((Lab l fs_ht) :: nil) Q.
+Proof. by rewrite /ntriple xnwp1_lemma. Qed.
+
 Lemma nwp_of_ntriple H Q fs_hts :
   ntriple H fs_hts Q =
   H ==> nwp fs_hts Q.
@@ -10341,6 +10373,20 @@ Tactic Notation "xfocus" constr(S) :=
   let n := constr:(S) in
   apply (xfocus_lemma n); simpl; try apply xnwp0_lemma.
 
+Tactic Notation "xfocus" constr(S) constr(P) := 
+  let n := constr:(S) in
+  let P := constr:(P) in
+  apply (@xfocus_pred_lemma' P n); simpl; rewrite /uni_pred /=; rewrite -?xntriple1_lemma; try apply xnwp0_lemma.
+
+Lemma ntriple_conseq_frame H2 H1 H Q fs_ht:
+  ntriple H1 fs_ht (Q \*+ \Top) ->
+  H ==> H1 \* H2 -> ntriple H fs_ht (Q \*+ \Top).
+Admitted.
+
+Tactic Notation "xframe" constr(H) := 
+  let h := constr:(H) in
+  eapply (@ntriple_conseq_frame h (protect _)); [|xsimpl]; rewrite /protect; eauto.
+
 Tactic Notation "xunfocus" := 
 eapply xunfocus_lemma=> //=; [intros; remember ((_ \u_ _) _); reflexivity|]=>/=.
 
@@ -10353,7 +10399,7 @@ end=>//; [intros; remember ((_ \u_ _) _); reflexivity|].
 Tactic Notation "xin" constr(S1) ":" tactic(tac) := 
   let n := constr:(S1) in
   xfocus n; tac; try(
-  first [xunfocus | xcleanup n]; simpl; try apply xnwp0_lemma).
+  first [xunfocus | xcleanup n]; simpl; try apply xnwp0_lemma); rewrite -?xntriple1_lemma /=.
 
 
 Tactic Notation "xin" constr(S1) constr(S2) ":" tactic(tac) := 
@@ -10368,7 +10414,7 @@ Tactic Notation "xnsimpl" :=
 Notation "f '[`' i '](' j ')'" := (f (Lab (i,0)%Z j)) (at level 30, format "f [` i ]( j )") : fun_scope.
 Notation "'⟨' l ',' x '⟩'" := ((Lab l%Z x%fs)) (at level 5, right associativity, format "⟨ l ,  x ⟩") : arr_scope.
 
-Lemma hstar_fset_label_single (x : D) : 
+Lemma hstar_fset_label_single {A : Type} (x : A) : 
 hbig_fset hstar (single x tt) = @^~ x.
 Proof. 
   apply/fun_ext_1=> ?.
@@ -10412,7 +10458,12 @@ Ltac xwhile1 Z N b Inv :=
   xseq_xlet_if_needed; xstruct_if_needed;
   eapply (wp_while_unary Inv b (Z := Z) (N := N)); autos*.
 
-Global Hint Rewrite hstar_fset_label_single hstar_fset_Lab : hstar_fset.
+Lemma hbig_fset_htop {A : Type} (fs : fset A):
+  hbig_fset hstar fs (fun=> \Top) = \Top.
+Proof.
+Admitted.
+
+Global Hint Rewrite @hstar_fset_label_single hstar_fset_Lab @hbig_fset_htop : hstar_fset.
 
 Arguments lab_fun_upd /.
 

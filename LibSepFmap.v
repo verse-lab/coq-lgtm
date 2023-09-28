@@ -1521,14 +1521,18 @@ Proof.
 Qed.
 
 Lemma fold_right_Permutation [A B : Type] (f : A -> B -> B) (b : B) (l l' : list A)
-  (Hcomm : forall a b p, f a (f b p) = f b (f a p))
+  (Hcomm : forall a b p, List.In a l -> List.In b l -> f a (f b p) = f b (f a p))
   (Hperm : Permutation l l') : fold_right f b l = fold_right f b l'.
 Proof.
   induction Hperm.
   { auto. }
-  { rewrite -> ! fold_right_cons, -> IHHperm. reflexivity. }
-  { rewrite -> ! fold_right_cons. rewrite -> Hcomm. reflexivity. }
-  { eqsolve. }
+  { rewrite -> ! fold_right_cons, -> IHHperm. reflexivity.
+    intros; apply/Hcomm; applys* List.in_cons. }
+  { rewrite -> ! fold_right_cons. rewrite -> Hcomm. reflexivity.
+    { apply/List.in_eq. }
+    { apply/List.in_cons/List.in_eq. } }
+  { rewrite IHHperm1 // IHHperm2 //.
+    move=> ???;rewrite* <-Hperm1. }
 Qed.
 
 End Aux. 
@@ -1774,13 +1778,13 @@ Definition fset_fold [A P : Type] (p : P) (f : A -> P -> P) (h : fset A) : P :=
 
 Lemma fset_foldE A (P : Type) (p : P) (f : A -> P -> P) :
   (fset_fold p f empty = p) *
-  ((forall (a b : A) (p : P), f a (f b p) = f b (f a p)) ->
-    forall fs x, ~ indom fs x -> fset_fold p f (update fs x tt) = f x (fset_fold p f fs)).
+  (forall fs x, (forall (a b : A) (p : P), indom (update fs x tt) a -> indom (update fs x tt) b -> f a (f b p) = f b (f a p)) ->
+     ~ indom fs x -> fset_fold p f (update fs x tt) = f x (fset_fold p f fs)).
 Proof.
   unfolds fset_fold.
   split.
   { rewrite -> fmap_exact_dom_empty. auto. }
-  { intros Hcomm. intros.
+  { intros fs x Hcomm H.
     destruct (fmap_exact_dom fs) as (l & H0), (fmap_exact_dom (update fs x tt)) as (l' & H1').
     simpl.
     pose proof (@supp_update A unit fs x tt H _ H0) as H1.
@@ -1789,6 +1793,11 @@ Proof.
     rewrite -> fold_right_Permutation with (l:=(LibList.map fst l')) (l':=x :: (LibList.map fst l)).
     2: auto.
     { rewrite -> fold_right_cons. auto. }
+    { introv IN1 IN2; apply/Hcomm.
+      { applys* is_map_supp_dom. apply/mem_In.
+        by rewrite* <-H3; split*=> /H2. }
+      applys* is_map_supp_dom. apply/mem_In.
+      by rewrite* <-H3; split*=> /H2. }
     { change x with (fst (x, tt)). rewrite <- map_cons. apply H3. intros. rewrite -> H2. reflexivity. }
   }
 Qed.
@@ -2482,7 +2491,7 @@ Proof.
 Qed.
 
 Lemma Union_upd_pre {T A B} (x : T) (fs : fset T) (fsi : T -> fmap A B) : 
-  (forall i j, i <> j -> disjoint (fsi i) (fsi j)) ->
+  (forall i j, i <> j -> indom (update fs x tt) i -> indom (update fs x tt) j -> disjoint (fsi i) (fsi j)) ->
   ~ indom fs x ->
   Union (update fs x tt) fsi = fsi x \+ Union fs fsi.
 Proof.
@@ -2492,7 +2501,9 @@ Proof.
   { rewrite -> union_comm_of_disjoint; auto.
     fold (Union fs fsi).
     rewrite -> (fst (@disjoint_Union _ _ _ _ _ _)).
-    intros. apply H. unfolds indom, map_indom. eqsolve. 
+    intros. apply H=> //. 
+    { unfolds indom, map_indom. eqsolve. }
+    all: rewrite* indom_update_eq.
   }
   { intros. destruct (classicT (a = b)) as [ -> | Hneq ]; auto.
     rewrite -> union_assoc, -> union_comm_of_disjoint with (h1:=fsi b).
@@ -2503,7 +2514,7 @@ Proof.
 Qed.
 
 Lemma Union_upd {T A B} (x : T) (fs : fset T) (fsi : T -> fmap A B) : 
-  (forall i j, i <> j -> disjoint (fsi i) (fsi j)) ->
+  (forall i j, i <> j -> indom (update fs x tt) i -> indom (update fs x tt) j -> disjoint (fsi i) (fsi j)) ->
   Union (update fs x tt) fsi = fsi x \+ Union fs fsi.
 Proof.
   intros.
@@ -2512,8 +2523,9 @@ Proof.
     pose proof (@remove_update_self _ _ _ _ _ E) as Eh. 
     rewrite -> Eh, -> update_updatexx.
     rewrite -> ! Union_upd_pre; auto.
-    2:{ rewrite -> indom_remove_eq. eqsolve. }
-    rewrite <- union_assoc, -> union_self. reflexivity.
+    3:{ rewrite -> indom_remove_eq. eqsolve. }
+    { rewrite <- union_assoc, -> union_self. reflexivity. }
+    introv N IN1 IN2; apply/H=> //; move: IN1 IN2; rewrite ?indom_update_eq ?indom_remove_eq; autos*.
   }
   { apply Union_upd_pre; auto. }
 Qed.
@@ -2682,6 +2694,16 @@ Lemma fs_pred_part_disj {A : Type} (fs : fset A) (p : A -> Prop) :
 Proof.
   apply/disjoint_of_not_indom_both=> ?; rewrite /intr ?filter_indom/=; firstorder.
 Qed.
+
+Notation "'`{' i '}'" := (single i tt) (at level 10, format "`{ i }").
+Notation "'`[' j ',' i ']'" := (interval j i) (format "`[ j ,  i ]").
+
+Reserved Notation "'\U_' ( i <- r ) F"
+(at level 41, F at level 41, i, r at level 50,
+          format "'[' \U_ ( i  <-  r ) '/  '  F ']'").
+
+Notation "'\U_' ( i <- r ) F" :=
+  (Union r (fun i => F)).
 
 
 (* 2023-03-25 11:36 *)

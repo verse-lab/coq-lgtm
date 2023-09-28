@@ -6,6 +6,8 @@ From SLF Require Import Fun LabType.
 From mathcomp Require Import ssreflect ssrfun.
 Hint Rewrite conseq_cons' : rew_listx.
 
+Notation "x '[' i ']'" := (List.nth (abs i) x 0) (at level 5, format "x [ i ]").
+
 Module WithArray (Dom : Domain).
 
 Module Export NS := nReasoning(Dom).
@@ -38,6 +40,9 @@ Definition harray (L:list val) (p:loc) (d : D) : hhprop :=
 
 Definition harray_int (L:list int) (p:loc) (d : D) : hhprop :=
   harray (LibList.map val_int L) p d.
+
+Notation "'arr(' x ',' y ')⟨' l ',' d '⟩'" := 
+  (harray_int y x (Lab (l,0) d)) (at level 32, format "arr( x ,  y )⟨ l ,  d ⟩") : hprop_scope.
 
 Definition val_array_length : val := val_length.
 
@@ -596,6 +601,14 @@ apply/htriple_if_dep; rewrite -wp_equiv.
 xwp; xval;xsimpl=>?. rewrite length_map istrue_isTrue_eq=> ?.
 rewrite List.nth_overflow // -length_List_length. math.
 Qed.
+
+Lemma lhtriple_array_read `{Inhab D} : forall fs (p : loc) (i : D -> int) (L : list int),
+  htriple fs (fun d => read_array p (i d))
+    (\*_(d <- fs) (harray_int L p d))
+    (fun hr => \[hr = fun d => List.nth (abs (i d)) L 0] \* (\*_(d <- fs) (harray_int L p d))).
+Admitted.
+
+Global Hint Resolve lhtriple_array_read : lhtriple.
 
 Global Hint Resolve htriple_array_read : htriple.
 
