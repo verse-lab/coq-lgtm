@@ -5376,6 +5376,11 @@ Proof.
   xsimpl*.
 Qed.
 
+Lemma wp_single d t Q : 
+  wp (single d tt) t Q = 
+  wp (single d tt) (fun=> t d) Q.
+Proof. by apply/wp_ht_eq=> ? /[! indom_single_eq]->. Qed.
+
 Lemma htriple_union_test1 : forall H Q Q' t fs1 fs2,
   disjoint fs1 fs2 ->
   htriple fs1 t H Q' ->
@@ -6998,7 +7003,7 @@ Proof using.
   applys* wp_app_fun2=> d. 
   by move: (M1 d); rewrite var_eq_spec isTrue_eq_false_eq.
 Qed.
-(*
+
 
 Lemma xwp_lemma_wp_fun2 : forall v0 v1 v2 x1 x2 t H Q fs,
   (v0 = fun d => val_fun (x1 d) (trm_fun (x2 d) (t d))) ->
@@ -7006,7 +7011,8 @@ Lemma xwp_lemma_wp_fun2 : forall v0 v1 v2 x1 x2 t H Q fs,
   H ==> wpgen fs (fun d => subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t d))) Q ->
   H ==> wp fs (fun d => (v0 d) (v1 d) (v2 d)) Q.
 Proof using.
-
+Admitted.
+(*
 
 Lemma xwp_lemma_fix2 fs : forall f v0 v1 v2 x1 x2 t H Q,
   (v0 = fun d => val_fix (f d) (x1 d) (trm_fun (x2 d) (t d))) ->
@@ -7025,14 +7031,14 @@ Lemma xwp_lemma_wp_fix2 fs : forall f v0 v1 v2 x1 x2 t H Q,
 Proof using.
 
 
-
+*)
 Lemma xwp_lemma_fun3 : forall v0 v1 v2 v3 x1 x2 x3 t H Q fs,
   (v0 = fun d => val_fun (x1 d) (trm_fun (x2 d) (trm_fun (x3 d) (t d)))) ->
   (forall d, var_eq (x1 d) (x2 d) = false /\ var_eq (x1 d) (x3 d) = false /\ var_eq (x2 d) (x3 d) = false) ->
   H ==> wpgen fs (fun d => subst (x3 d) (v3 d) (subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t d)))) Q ->
   htriple fs (fun d => (v0 d) (v1 d) (v2 d) (v3 d)) H Q.
 Proof using.
-
+Admitted.
 
 Lemma xwp_lemma_wp_fun3 : forall v0 v1 v2 v3 x1 x2 x3 t H Q fs,
   (v0 = fun d => val_fun (x1 d) (trm_fun (x2 d) (trm_fun (x3 d) (t d)))) ->
@@ -7040,7 +7046,8 @@ Lemma xwp_lemma_wp_fun3 : forall v0 v1 v2 v3 x1 x2 x3 t H Q fs,
   H ==> wpgen fs (fun d => subst (x3 d) (v3 d) (subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t d)))) Q ->
   H ==> wp fs (fun d => (v0 d) (v1 d) (v2 d) (v3 d)) Q.
 Proof using.
-
+Admitted.
+(*
 
 
 Lemma xwp_lemma_fix3 : forall f v0 v1 v2 v3 x1 x2 x3 t H Q fs,
@@ -7076,18 +7083,18 @@ Tactic Notation "xwp" :=
         | applys xwp_lemma_wp_fun;  [ reflexivity | ]
         | applys xwp_lemma_fix;     [ reflexivity | ]
         | applys xwp_lemma_fix';    [ reflexivity | ]
-        | applys xwp_lemma_wp_fix';    [ reflexivity | ]
+        | applys xwp_lemma_wp_fix'; [ reflexivity | ]
         | applys xwp_lemma_wp_fix;  [ reflexivity | ]
         | applys xwp_lemma_fun2;    [ reflexivity | reflexivity | ]
-        (* | applys xwp_lemma_fix2;    [ reflexivity | reflexivity | ]
         | applys xwp_lemma_wp_fun2; [ reflexivity | reflexivity | ]
+        (* | applys xwp_lemma_fix2;    [ reflexivity | reflexivity | ]
         | applys xwp_lemma_fun2;    [ reflexivity | reflexivity | ]
         | applys xwp_lemma_fix2;    [ reflexivity | (do ? split); reflexivity | ]
-        | applys xwp_lemma_fun3;    [ reflexivity | (do ? split); reflexivity | ]
         | applys xwp_lemma_fix3;    [ reflexivity | (do ? split); reflexivity | ]
-        | applys xwp_lemma_wp_fix2; [ reflexivity | (do ? split); reflexivity | ]
+        | applys xwp_lemma_wp_fix2; [ reflexivity | (do ? split); reflexivity | ]*)
+        | applys xwp_lemma_fun3;    [ reflexivity | (do ? split); reflexivity | ]
         | applys xwp_lemma_wp_fun3; [ reflexivity | (do ? split); reflexivity | ]
-        | applys xwp_lemma_wp_fix3; [ reflexivity | (do ? split); reflexivity | ] *)
+        (* | applys xwp_lemma_wp_fix3; [ reflexivity | (do ? split); reflexivity | ] *)
         | applys wp_of_wpgen
         | fail 1 "xwp only applies to functions defined using [val_fun] or [val_fix], with at most 3 arguments" ];
   xwp_simpl.
@@ -7759,11 +7766,9 @@ Lemma wp_while_aux i fs fs' ht (H : bool -> int -> (D -> val) -> hhprop) Z N T C
   (forall x hv, H true x hv ==> \[(x < N)%Z] \* H true x hv) ->
   (forall j hv, Z <= j < N ->
     (forall j' b' hv, 
-      j < j' <= N -> 
-      H b' j' hv ==>
-        wp 
-          (fs' \u Union (interval j' N) fsi)
+        htriple (fs' \u Union (interval j' N) fsi)
           (upd ht s (While C T)) 
+          (H b' j' hv \* \[j < j' <= N])
           (fun hr => H false N (hv \u_(Union (interval Z j') fsi) hr))) ->
     H true j hv ==> 
       wp
@@ -7817,7 +7822,7 @@ Proof with autos*.
     rewrite -wp_equiv (wp_union (fun hv => H false N (_ \u_ _ hv))) //.
     xpull=> ?.
     apply/IHt; first by math.
-    move=> j' b' ??.
+    move=> j' b' ?; apply wp_equiv; xsimpl=> ?.
     apply/IH; try math.
     { move=> ??; apply/Dj'; math. }
     { by rewrite upd_eq. }
@@ -7944,9 +7949,10 @@ Lemma wp_while_aux_unary i fs' (H : bool -> int -> hhprop) Z N T C s b0 :
   (forall x, H true x ==> \[(x < N)%Z] \* H true x) ->
   (forall j, Z <= j < N ->
     (forall j' b', 
-      j < j' <= N -> 
-      H b' j' ==>
-        wp fs' (fun=> While C T) (fun=> H false N)) ->
+      htriple fs'
+        (fun=> While C T)
+        (H b' j' \* \[j < j' <= N])
+        (fun=> H false N)) ->
     H true j ==> wp fs' (fun=> (trm_seq T (While C T))) (fun=> H false N)) ->
   H b0 i ==> wp fs' (fun=> While C T) (fun=> H false N).
 Proof with autos*.
@@ -7958,7 +7964,8 @@ Proof with autos*.
     move=> ? _ {}/IH IH IH'.
     rewrite UnionN0 union_empty_r.
     rewrite (wp_ht_eq _ (fun=> trm_seq T (While C T))).
-    { apply/IH=> j' b /(IH' _ b (fun=> val_unit)).
+    { apply/IH=> j' b.
+      move: (IH' j' b (fun=> val_unit)); rewrite -?wp_equiv=> {}IH' ? /IH'.
       rewrite UnionN0 (wp_ht_eq _ (fun=> While C T)) ?union_empty_r //.
       by move=> ?; rewrite indom_single_eq=>->; rewrite upd_eq. }
     by move=> ?; rewrite indom_single_eq=>->; rewrite upd_eq. }
@@ -8017,12 +8024,10 @@ Lemma wp_while fs fs' ht (Inv : bool -> int -> (D -> val) -> hhprop) Z N T C fsi
   (forall x hv, Inv true x hv ==> \[(x < N)%Z] \* Inv true x hv) ->
   (forall j hv, Z <= j < N ->
     (forall j' b' hv, 
-      j < j' <= N -> 
-      Inv b' j' hv ==>
-        wp 
-          (fs' \u Union (interval j' N) fsi)
-          (upd ht s (While C T)) 
-          (fun hr => Inv false N (hv \u_(Union (interval Z j') fsi) hr))) ->
+      htriple (fs' \u Union (interval j' N) fsi)
+        (upd ht s (While C T)) 
+        (Inv b' j' hv \* \[j < j' <= N])
+        (fun hr => Inv false N (hv \u_(Union (interval Z j') fsi) hr))) ->
       Inv true j hv ==> 
         wp
           (fs' \u Union (interval j N) fsi) 
@@ -8064,13 +8069,11 @@ Lemma wp_while_unary fs' (Inv : bool -> int -> hhprop) Z N T C s b0 (P : hhprop)
   (forall x, Inv true x ==> \[(x < N)%Z] \* Inv true x) ->
   (forall j, Z <= j < N ->
     (forall j' b', 
-      j < j' <= N -> 
-      Inv b' j' ==>
-        wp 
-          fs'
-          (fun=> While C T) 
-          (fun=> Inv false N)) ->
-      Inv true j ==> 
+      htriple fs'
+        (fun=> While C T) 
+        (Inv b' j' \* \[j < j' <= N])
+        (fun=> Inv false N)) ->
+    Inv true j ==> 
         wp
           fs' 
           (fun=> trm_seq T (While C T))
@@ -8078,7 +8081,7 @@ Lemma wp_while_unary fs' (Inv : bool -> int -> hhprop) Z N T C s b0 (P : hhprop)
   P ==> Inv b0 Z ->
   (fun=> Inv false N) ===> Q ->
   (Z <= N) ->
-  fs' = single s tt ->
+  fs' = single s tt  ->
   (forall t, subst "while" t T = T) ->
   (forall t, subst "cond" t T = T) ->
   (forall t, subst "tt" t T = T) ->
@@ -9758,6 +9761,17 @@ Fixpoint fset_of' (fs_hts : seq fset_htrm) : fset D.type :=
     fs_of fs_ht \u fset_of' fs_hts
   else empty.
 
+Fixpoint fset_of'' (fs_hts : seq fset_htrm) : fset D.type :=
+  match fs_hts with
+  | fs_ht :: nil => fs_of fs_ht 
+  | fs_ht :: fs_hts =>  fs_of fs_ht \u fset_of'' fs_hts
+  | _ => empty
+  end.
+
+Lemma fset_of''E : fset_of'' = fset_of'.
+Proof. by extens; elim=> // ? [/=|?? /=-> //] /[! union_empty_r]. Qed.
+
+
 Fixpoint htrm_of (fs_hts : labSeq fset_htrm) (ld : HD.type) : trm :=
   if fs_hts is (Lab i fs_ht) :: fs_hts then 
     If i = lab ld /\ indom (fs_of fs_ht) (el ld) then
@@ -9772,6 +9786,19 @@ Fixpoint htrm_of' (fs_hts : seq fset_htrm) (d : D.type) : trm :=
     else htrm_of' fs_hts d
   else 0.
 
+Fixpoint htrm_of'' (fs_hts : seq fset_htrm) : D.type -> trm :=
+  match fs_hts with 
+  | fs_hts :: nil => [eta ht_of fs_hts]
+  | fs_ht :: fs_hts => fun d => 
+    If indom (fs_of fs_ht) d then
+        ht_of fs_ht d
+      else htrm_of'' fs_hts d
+  | nil => fun=> 0
+  end.
+
+Lemma htrm_of''E : forall h d, indom (fset_of' h) d -> htrm_of'' h d = htrm_of' h d.
+Proof. 
+Admitted.
 
 Lemma fset_of_cons fs_ht fs_hts l : 
     fset_of ((Lab l fs_ht) :: fs_hts) = 
@@ -9820,7 +9847,12 @@ Qed.
 Definition lookup (s : labSeq fset_htrm) (l : labType) : labeled fset_htrm := 
   let fshts := [seq lt <- s | lab_eqb (lab lt) l] in  
   let fshts := map (fun '(Lab _ x)=> x) fshts in 
-  Lab l (FH (fset_of' fshts) (htrm_of' fshts)).
+  Lab l (FH (fset_of'' fshts) (htrm_of' fshts)).
+
+Definition lookup' (s : labSeq fset_htrm) (l : labType) : labeled fset_htrm := 
+  let fshts := [seq lt <- s | lab_eqb (lab lt) l] in  
+  let fshts := map (fun '(Lab _ x)=> x) fshts in 
+  Lab l (FH (fset_of'' fshts) (htrm_of'' fshts)).
 
 Lemma lookup_cons_ht x xs l d :
   indom (fs_of x) d -> 
@@ -9850,7 +9882,7 @@ Lemma fset_htrm_lookup_remove l fs_hts :
     label (Lab l fs) \u 
     fset_of (remove fs_hts l).
 Proof.
-  move=> /=.
+  move=> /=. rewrite fset_of''E.
   elim: fs_hts=> /= [|[]?? fs_hts IHfs_hts]/=.
   { rewrite label_empty. by rew_fmap. }
   rewrite lab_eqb_sym.
@@ -9868,7 +9900,7 @@ Lemma lookup_eq l fs_hts (d : D) :
     indom (label (Lab l fs)) d ->
       htrm_of fs_hts d = ht d.
 Proof.
-  case: d=> ld d /=; rewrite indom_label_eq=> -[]<-.
+  case: d=> ld d /=; rewrite indom_label_eq fset_of''E=> -[]<-. 
   elim: fs_hts=> // -[]/=?? fs_hts IHfs_hts.
   case: ssrbool.ifP=> /= [/lab_eqbP->|/ssrbool.negbT/lab_neqd ?].
   { rewrite indom_union_eq; case: classicT=> [[]_+_|/[swap]-[?[]|]//].
@@ -9887,7 +9919,7 @@ Proof.
   move=> fs_ht fs ht.
   move/(@disjoint_inv_not_indom_both _ _ _ _ _): (fset_htrm_label_remove_disj l fs_hts fs).
   move/[apply]; rewrite {}/fs {}/ht {}/fs_ht /= -/(not _).
-  case: d=> ld d /=; rewrite indom_label_eq not_and_eq.
+  case: d=> ld d /=; rewrite indom_label_eq not_and_eq fset_of''E.
   elim: fs_hts=> // -[]/=?? fs_hts IHfs_hts.
   case: ssrbool.ifP=> /= [/lab_eqbP->|/ssrbool.negbT/lab_neqd ?].
   { rewrite indom_union_eq not_or_eq.
@@ -10006,7 +10038,7 @@ Proof using.
 Qed.
 
 Lemma xfocus_lemma (l : labType) fs_hts (Q : (HD.type -> val) -> hhprop) H : 
-  let fs_ht := lookup fs_hts l in
+  let fs_ht := lookup' fs_hts l in
   let fs    := fs_of (el fs_ht) in 
   let ht    := ht_of (el fs_ht) in
     H ==> wp ⟨l, fs⟩ [eta ht]
@@ -10014,16 +10046,20 @@ Lemma xfocus_lemma (l : labType) fs_hts (Q : (HD.type -> val) -> hhprop) H :
     ntriple H fs_hts Q.
 Proof.
   move=> fs_ht fs ht.
-  apply: himpl_trans_r.
-  rewrite /nwp (fset_htrm_lookup_remove l fs_hts) -wp_union -/fs_ht; first last.
-  { exact/fset_htrm_label_remove_disj. }
-  under (wp_ht_eq (htrm_of fs_hts))=> ? IN.
-  { rewrite (lookup_eq _ _ IN); over. }
-  rewrite -/fs_ht -/ht.
-  apply/wp_conseq=> hv.
-  under (wp_ht_eq (htrm_of fs_hts))=> ? IN.
-  { rewrite (remove_eq _ _ IN); over. }
-  move=> h Hwp; rewrite -/fs //.
+  rewrite (wp_ht_eq _ (ht_of (el (lookup fs_hts l)))).
+  { apply: himpl_trans_r.
+    rewrite /nwp (fset_htrm_lookup_remove l fs_hts) -wp_union -/fs_ht; first last.
+    { exact/fset_htrm_label_remove_disj. }
+    under (wp_ht_eq (htrm_of fs_hts))=> ? IN.
+    { rewrite (lookup_eq _ _ IN); over. }
+    rewrite -/fs_ht -/ht.
+    apply/wp_conseq=> hv.
+    under (wp_ht_eq (htrm_of fs_hts))=> ? IN.
+    { rewrite (remove_eq _ _ IN); over. }
+    move=> h Hwp; rewrite -/fs //. }
+  case=> ?? /[! @indom_label_eq]-[<-].
+  rewrite /fs/ht/fs_ht/lookup/lookup'/= fset_of''E.
+  exact/htrm_of''E.
 Qed.
 
 Lemma disjoint_eq_label {T} (l : labType) (fs1 fs2 : fset T) : 
@@ -10050,7 +10086,7 @@ Qed.
 Arguments disjoint_subset {_} _.
 
 Lemma xfocus_pred_lemma (p : D.type -> Prop) (l : labType) fs_hts (Q : (HD.type -> val) -> hhprop) H : 
-  let fs_ht := lookup fs_hts l in
+  let fs_ht := lookup' fs_hts l in
   let fs    := fs_of (el fs_ht) in 
   let ht    := ht_of (el fs_ht) in
     H ==> wp ⟨l, fs ∖ p⟩ [eta ht]
@@ -10060,37 +10096,44 @@ Proof.
   move=> fs_ht fs ht.
   have sb: forall x P, indom ⟨l, intr fs P⟩ x -> indom ⟨l, fs⟩ x.
   { case=> ???; by rewrite ?indom_label_eq /intr filter_indom=> -[->][]. }
-  apply: himpl_trans_r.
-  rewrite /nwp (fset_htrm_lookup_remove l fs_hts) -/fs_ht -/fs. 
-  rewrite fset_of_cons /fs_of /=.
-  rewrite (wp_ht_eq [eta ht] (htrm_of fs_hts)).
-  { set (Fs := (⟨_,_⟩ \u _)).
-    set (Fn := (fun ld => If _ then _ else _)).
-    have->: wp Fs Fn = wp Fs (htrm_of fs_hts).
-    { apply/fun_ext_1=> ?; apply/wp_ht_eq.
-      rewrite /Fs/Fn=> -[l' x] /=.
-      case: classicT.
-      { case=><- ??; rewrite /ht /fs_ht (lookup_eq l) //.
-        apply/sb; rewrite indom_label_eq; eauto. }
-      rewrite indom_union_eq=> /[swap]-[].
-      { by rewrite indom_label_eq=> -[->]?[]. }
-      by move/remove_eq->. }
-    rewrite wp_union.
-    { rewrite /Fs -union_assoc -label_union.
-      rewrite [(_ ∖ _) \u _]union_comm_of_disjoint ?fs_pred_part //.
-      rewrite disjoint_comm; exact/fs_pred_part_disj. }
-    rewrite /Fs disjoint_union_eq_r disjoint_eq_label; split.
-    { rewrite disjoint_comm; exact/fs_pred_part_disj. }
-    apply/(disjoint_subset ⟨l, fs⟩); eauto.
-    exact/fset_htrm_label_remove_disj. }
-  by move=> ? /sb/lookup_eq ->.
+  rewrite (wp_ht_eq _ (ht_of (el (lookup fs_hts l)))).
+  { apply: himpl_trans_r.
+    rewrite /nwp (fset_htrm_lookup_remove l fs_hts) -/fs_ht -/fs. 
+    rewrite fset_of_cons /fs_of /=.
+    rewrite (wp_ht_eq (fun _ => htrm_of' _ _) (htrm_of fs_hts)).
+    { set (Fs := (⟨_,_⟩ \u _)).
+      set (Fn := (fun ld => If _ then _ else _)).
+      have->: wp Fs Fn = wp Fs (htrm_of fs_hts).
+      { apply/fun_ext_1=> ?; apply/wp_ht_eq.
+        rewrite /Fs/Fn=> -[l' x] /=.
+        case: classicT.
+        { case=><- IN ?; rewrite /ht /fs_ht (lookup_eq l) //.
+          { rewrite /lookup/lookup' /=.
+            rewrite htrm_of''E // -fset_of''E.
+            move: IN; rewrite /fs /fs_ht /lookup' /=.
+            rewrite /intr filter_indom; autos*. }
+          apply/sb; rewrite indom_label_eq; eauto. }
+        rewrite indom_union_eq=> /[swap]-[].
+        { by rewrite indom_label_eq=> -[->]?[]. }
+        by move/remove_eq->. }
+      rewrite wp_union.
+      { rewrite /Fs -union_assoc -label_union.
+        rewrite [(_ ∖ _) \u _]union_comm_of_disjoint ?fs_pred_part //.
+        rewrite disjoint_comm; exact/fs_pred_part_disj. }
+      rewrite /Fs disjoint_union_eq_r disjoint_eq_label; split.
+      { rewrite disjoint_comm; exact/fs_pred_part_disj. }
+      apply/(disjoint_subset ⟨l, fs⟩); eauto.
+      exact/fset_htrm_label_remove_disj. }
+    by move=> ? /sb/lookup_eq ->. }
+  case=>l' d  /sb; rewrite indom_label_eq=> -[<-]?. 
+  by rewrite /ht/lookup/fs_ht/lookup' /= htrm_of''E // -fset_of''E.
 Qed.
 
 Definition uni_pred {A B} (f g : A -> B) (p : A -> Prop) := 
   fun x => If p x then f x else g x.
 
 Lemma xfocus_pred_lemma' (p : D.type -> Prop) (l : labType) fs_hts (Q : (HD.type -> val) -> hhprop) H : 
-  let fs_ht := lookup fs_hts l in
+  let fs_ht := lookup' fs_hts l in
   let fs    := fs_of (el fs_ht) in 
   let ht    := ht_of (el fs_ht) in
     H ==> wp ⟨l, fs ∖ p⟩ [eta ht]
@@ -10280,7 +10323,7 @@ Notation "'{{' H '}}' fs_hts '{{' v ',' Q '}}'" :=
 
 Notation "'[{' fs1 ';' fs2 ';' .. ';' fsn '}]'" := 
   (cons fs1%fh (cons fs2%fh .. (cons fsn%fh nil) ..)) (at level 30
-  , format "[{ '['  fs1 ';' '/'  fs2 ';' '/'  .. ';' '/'  fsn  ']' }] "
+  , format "[{ '['  fs1 ';' '//'  fs2 ';' '//'  .. ';' '//'  fsn  ']' }] "
   ) : fs_hts.
 
 Notation "'[{' fs '}]'" := 
@@ -10295,11 +10338,11 @@ Notation "'{' l '|' d 'in' fs '=>' t }" := (Lab (l,0)%Z (FH fs%fs (fun d => t)))
   (at level 20, d name, only parsing) : fs_hts.
 
 Tactic Notation "xfocus" constr(S) := 
-  let n := eval vm_compute in (Z.to_nat S) in
+  let n := constr:(S) in
   apply (xfocus_lemma n); simpl; try apply xnwp0_lemma.
 
 Tactic Notation "xunfocus" := 
-eapply xunfocus_lemma=> //=; [intros; remember ((_ \u_ _) _); reflexivity|].
+eapply xunfocus_lemma=> //=; [intros; remember ((_ \u_ _) _); reflexivity|]=>/=.
 
 Tactic Notation "xcleanup" constr(n) := 
 match goal with 
@@ -10308,7 +10351,7 @@ end=>//; [intros; remember ((_ \u_ _) _); reflexivity|].
 
 
 Tactic Notation "xin" constr(S1) ":" tactic(tac) := 
-  let n := eval vm_compute in (Z.to_nat S1) in
+  let n := constr:(S1) in
   xfocus n; tac; try(
   first [xunfocus | xcleanup n]; simpl; try apply xnwp0_lemma).
 
@@ -10322,12 +10365,15 @@ Tactic Notation "xin" constr(S1) constr(S2) ":" tactic(tac) :=
 Tactic Notation "xnsimpl" := 
   rewrite /ntriple; xsimpl; try first [ setoid_rewrite <-nwp_of_ntriple| rewrite -nwp_of_ntriple].
 
-Notation "f '[' i ']' '(' j ')'" := (f (Lab (i,0)%Z j)) (at level 30, format "f [ i ] ( j )") : fun_scope.
+Notation "f '[`' i '](' j ')'" := (f (Lab (i,0)%Z j)) (at level 30, format "f [` i ]( j )") : fun_scope.
 Notation "'⟨' l ',' x '⟩'" := ((Lab l%Z x%fs)) (at level 5, right associativity, format "⟨ l ,  x ⟩") : arr_scope.
 
-Lemma hstar_fset_label_single Q (x : D.type) : 
-  \*_(d <- single x tt) Q d = Q x.
-Proof. rewrite update_empty hbig_fset_update // hbig_fset_empty; xsimpl*. Qed.
+Lemma hstar_fset_label_single (x : D) : 
+hbig_fset hstar (single x tt) = @^~ x.
+Proof. 
+  apply/fun_ext_1=> ?.
+  rewrite update_empty hbig_fset_update // hbig_fset_empty. xsimpl*. 
+Qed.
 
 Lemma hbig_fset_label_single' (Q : D -> hhprop) (d : D) :
   \*_(d0 <- single d tt) Q d0 = Q d.
@@ -10358,6 +10404,13 @@ Proof.
   rewrite <- hstar_fset_eq with (g:=fun i => i - offset); try reflexivity.
   hnf. intros. math.
 Qed.
+
+Ltac xwhile1 Z N b Inv := 
+  let N := constr:(N) in
+  let Z := constr:(Z) in 
+  let Inv' := constr:(Inv) in
+  xseq_xlet_if_needed; xstruct_if_needed;
+  eapply (wp_while_unary Inv b (Z := Z) (N := N)); autos*.
 
 Global Hint Rewrite hstar_fset_label_single hstar_fset_Lab : hstar_fset.
 
@@ -10487,7 +10540,7 @@ Lemma xfor_lemma `{ID : Inhab D}
   (forall i : D, hlocal (R i) (single i tt)) ->
   (forall i : D, hlocal (R' i) (single i tt)) ->
   (forall (hv hv' : D -> val) m,
-    (forall i, indom (fsi1 m) i -> hv[j](i) = hv'[j](i)) ->
+    (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
     H' m hv = H' m hv') ->
   comm m -> assoc m ->
   (i <> j)%Z ->
