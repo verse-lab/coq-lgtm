@@ -10439,12 +10439,14 @@ Proof.
   hnf. intros. lia.
 Qed.
 
-Lemma hbig_fset_htop {A : Type} (fs : fset A):
+(* Lemma hbig_fset_htop {A : Type} (fs : fset A):
   hbig_fset hstar fs (fun=> \Top) = \Top.
 Proof.
-Admitted.
+  elim/fset_ind: fs. 
+  {  }
+Admitted. *)
 
-Global Hint Rewrite @hstar_fset_label_single hstar_fset_Lab @hbig_fset_htop : hstar_fset.
+Global Hint Rewrite @hstar_fset_label_single hstar_fset_Lab : hstar_fset.
 
 Arguments lab_fun_upd /.
 

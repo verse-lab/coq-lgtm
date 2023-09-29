@@ -479,7 +479,7 @@ Tactic Notation "xfor_sum" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(
   |
   |
   |
-  | rewrite ?hbig_fset_hstar; xsimpl
+  | rewrite /Inv /R; rewrite -> ?hbig_fset_hstar; xsimpl
   | intros ?; xsimpl
   ]=> //; autos*.
 
