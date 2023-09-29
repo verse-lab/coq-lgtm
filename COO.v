@@ -36,6 +36,7 @@ Section coo_vec.
 
 Notation "'xind'" := ("x_ind":var) (in custom trm at level 0) : trm_scope.
 Notation "'xval'" := ("x_val":var) (in custom trm at level 0) : trm_scope.
+Notation "'dvec'" := ("d_vec":var) (in custom trm at level 0) : trm_scope.
 
 Import List Vars.
 
@@ -179,7 +180,7 @@ Proof with fold'.
   set (R i := arr(x_ind, xind)⟨2, i⟩ \* arr(x_val, xval)⟨2, i⟩).
   set (Inv (i : int) := arr(x_ind, xind)⟨1, 0⟩ \* arr(x_val, xval)⟨1, 0⟩).
   xfor_sum Inv R (fun=> \Top) (fun hv i => hv[`2](xind[i])) s.
-  { rewrite /Inv. 
+  { rewrite /Inv.
     (xin (1,0): (xwp; xapp; xapp incr.spec=> y))...
     xapp get_spec_in=> //; xsimpl*. }
   { move=> Neq ???; apply/Neq. 
@@ -189,6 +190,72 @@ Proof with fold'.
   under (@SumEq _ _ `[0,M]).
   { move=>*; rewrite to_int_if; over. }
   rewrite SumIf E SumList // len_xind Sum0s; math.
+Qed.
+
+Context (dvec : list int).
+Context (dvec_len : length dvec = M :> int).
+
+Definition dotprod := 
+  <{
+  fun xind xval dvec =>
+  let s = ref 0 in
+  for i <- [0, N] {
+    let x = read_array xval i in 
+    let i = read_array xind i in 
+    let v = read_array dvec i in 
+    let x = x * v in
+    s += x
+  };
+  ! s
+}>.
+
+Opaque harray_int.
+
+Lemma SumIf {A : Type} {P : A -> Prop} {fs F G} (C : A -> int -> int) : 
+  (Σ_(i <- fs) C i (If P i then F i else G i)) = 
+  Σ_(i <- fs ∩ P) C i (F i) + Σ_(i <- fs ∖ P) C i (G i).
+Proof using.
+Admitted.
+
+Lemma dotprod_spec `{Inhab D} (x_ind x_val d_vec : loc) : 
+  {{ arr(x_ind, xind)⟨1, 0⟩ \\*
+     arr(x_val, xval)⟨1, 0⟩ \\*
+     arr(d_vec, dvec)⟨1, 0⟩ \\* 
+     (\*_(i <- `[0, M]) arr(x_ind, xind)⟨2, i⟩) \\*
+     (\*_(i <- `[0, M]) arr(x_val, xval)⟨2, i⟩) \\* 
+     (\*_(i <- `[0, M]) arr(d_vec, dvec)⟨2, i⟩) }}
+  [{
+    [1| ld in `{0}   => dotprod x_ind x_val d_vec];
+    [2| ld in `[0,M] => get ld x_ind x_val]
+  }]
+  {{ hv, \[hv[`1](0) = Σ_(i <- `[0,M]) (hv[`2](i) * dvec[i])] \* \Top}}.
+Proof with fold'.
+  xfocus (2,0) xind.
+  rewrite (hbig_fset_part `[0, M] xind). (* TODO: move to xfocus *)
+  xapp get_spec_out=> //.
+  { case=> ?? /[! @indom_label_eq]-[_]/=; rewrite /intr filter_indom; autos*. }
+  set (H1 := hbig_fset hstar (_ ∖ _) _); 
+  set (H2 := hbig_fset hstar (_ ∖ _) _).
+  set (H3 := hbig_fset hstar (_ ∖ _) _).
+  xframe (H1 \* H2 \* H3); clear H1 H2 H3.
+  xin (1,0) : xwp; xapp=> s...
+  have E : `[0,M] ∩ xind = xind.
+  { apply/fset_extens=> x; rewrite /intr filter_indom -fset_of_list_in; splits*.
+    move=> ?; splits*; rewrite* indom_interval. }
+  rewrite E fset_of_list_nodup // len_xind.
+  set (R i := arr(x_ind, xind)⟨2, i⟩ \* arr(x_val, xval)⟨2, i⟩ \* arr(d_vec, dvec)⟨2,i⟩).
+  set (Inv (i : int) := arr(x_ind, xind)⟨1, 0⟩ \* arr(x_val, xval)⟨1, 0⟩ \* arr(d_vec, dvec)⟨1,0⟩).
+  xfor_sum Inv R (fun=> \Top) (fun hv i => (hv[`2](xind[i]) * dvec[xind[i] ])) s.
+  { rewrite /Inv /R.
+    (xin (1,0): do 4 (xwp; xapp); xapp incr.spec=> y)...
+    xapp get_spec_in=> //; xsimpl*. }
+  { move=> Neq ???; apply/Neq. 
+    move/NoDup_nthZ: nodup_xind; apply; autos*; math. }
+  { rewrite -len_xind; math. }
+  xapp; xsimpl.
+  under (@SumEq _ _ `[0,M]).
+  { move=>*; rewrite to_int_if; over. }
+  rewrite (SumIf (fun c i => i * dvec[c])) E SumList // len_xind Sum0s; math.
 Qed.
   
 End coo_vec.
