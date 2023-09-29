@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-From SLF Require Import LabType Fun LibSepFmap.
+From SLF Require Import LabType Fun LibSepFmap Sum.
 From SLF Require Import LibSepReference LibSepTLCbuffer Struct Unary Loops.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
