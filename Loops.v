@@ -513,13 +513,20 @@ Qed.
 
 Lemma disjoint_interval_single (x1 y1 x : int) : 
   disjoint (interval x1 y1) (single x tt) = ((x < x1) \/ (y1 <= x)).
-Proof.
-Admitted.
+Proof. by rewrite disjoint_comm disjoint_single_interval. Qed.
 
 Lemma disjoint_label {T} (l l' : labType) (fs1 fs2 : fset T) : 
   disjoint (label (Lab l fs1)) (label (Lab l' fs2)) = ((l <> l') \/ disjoint fs1 fs2).
 Proof.
-Admitted.
+  extens; split=> [/(@disjoint_inv_not_indom_both _ _ _ _ _)|].
+  { move=> IN; case: (classicT (l = l')); [right|left]=> //; subst.
+    apply/disjoint_of_not_indom_both=> x.
+    move: (IN (Lab l' x)); rewrite ?indom_label_eq; autos*. }
+  case: (classicT (l = l'))=> [<-|? _].
+  { rewrite*  @disjoint_eq_label. }
+  apply/disjoint_of_not_indom_both=> -[??]; rewrite ?indom_label_eq.
+  case=><-; autos*.
+Qed.
 
 
 Global Hint Rewrite @disjoint_single disjoint_interval disjoint_single_interval 

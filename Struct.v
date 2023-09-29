@@ -606,7 +606,7 @@ Lemma lhtriple_array_read `{Inhab D} : forall fs (p : loc) (i : D -> int) (L : l
   htriple fs (fun d => read_array p (i d))
     (\*_(d <- fs) (harray_int L p d))
     (fun hr => \[hr = fun d => List.nth (abs (i d)) L 0] \* (\*_(d <- fs) (harray_int L p d))).
-Admitted.
+Proof. move=> *; exact/htriple_array_read. Qed.
 
 Global Hint Resolve lhtriple_array_read : lhtriple.
 
