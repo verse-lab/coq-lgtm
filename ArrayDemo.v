@@ -1,7 +1,7 @@
-Set Implicit Arguments.
+(* Set Implicit Arguments.
 From SLF Require Import LibSepReference LibSepTLCbuffer Struct.
 From SLF Require Import Fun LabType.
-From mathcomp Require Import ssreflect ssrfun.
+From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
 Module NatDom : Domain with Definition type := nat.
@@ -605,8 +605,9 @@ Definition rlsum_func (M : int) :=
 Definition rli_whilecond (i : int) (real_x_ind real_j : trm) :=
   (<{ let "tmp1" = ! real_j in
       let "tmp2" = "tmp1" + 1 in
-      let "tmp3" = val_array_get real_x_ind "tmp2" in
-      "tmp3" <= i }>).
+      let "tmp3" = read_array real_x_ind "tmp2" in
+      let "cnd" = "tmp3" <= i in 
+      "cnd" }>).
 
 Definition incr (real_j : trm) :=
   (<{ let "tmp1" = ! real_j in
@@ -623,7 +624,7 @@ Definition rli_func (i : int) :=
       loop ; 
       let "tmp" = ! "j" in 
       free "j";
-      (val_array_get "x_val" "tmp")
+      (read_array "x_val" "tmp")
   }>.
 
 Definition rl_loopbody (real_x real_x_ind real_x_val real_i real_k : trm) :=
@@ -699,10 +700,10 @@ Proof using N M Lind H_Lind_inc H_Lind_first H_Lind_last H_Lval_notnil.
 Qed.
 
 Definition arr_x_ind (p : loc) (d : D) :=
-  harray (LibList.map val_int Lind) p d.
+  harray_int Lind p d.
 
 Definition arr_x_val (p : loc) (d : D) :=
-  harray (LibList.map val_int Lval) p d.
+  harray_int Lval p d.
 
 Section Segmentation.
 
@@ -833,106 +834,85 @@ End Segmentation.
 
 Section MainProof.
 
+Lemma hstar_fset_label_single (x : D) : 
+  hbig_fset hstar (single x tt) = @^~ x.
+Proof. 
+apply/fun_ext_1=> ?.
+rewrite update_empty hbig_fset_update // hbig_fset_empty. xsimpl*. Qed.
+
+Hint Rewrite hstar_fset_label_single hstar_fset_Lab : hstar_fset.
+
+(* Lemma htriple_array_get : forall fs (p : D -> loc) (i : D -> int) (L : D -> list val),
+  htriple fs (fun d => val_array_get (p d) (i d))
+    (\*_(d <- fs) (harray (L d) (p d) d) \*
+     \[forall d, indom fs d -> 0 <= (i d) < length (L d)])
+    (fun hr => \[hr = fun d => LibList.nth (abs (i d)) (L d)] \* (\*_(d <- fs) (harray (L d) (p d) d))).
+Proof using.
+Admitted. *)
+
+(* Lemma htriple_array_read : forall fs (p : D -> loc) (i : D -> int) (L : D -> list int),
+  htriple fs (fun d => read_array (p d) (i d))
+    (\*_(d <- fs) (harray_int (L d) (p d) d))
+    (fun hr => \[hr = fun d => List.nth (abs (i d)) (L d) 0] \* (\*_(d <- fs) (harray_int (L d) (p d) d))). *)
+
+(* Vova: xapp tries to apply all lemmas mentioned in `htriple` hint data base. 
+   Those lemmas SHOULD be in form of `htriple`s NOT `wp` *)
+(* Vova: Probably we should move it to Struct.v *)
+Hint Resolve htriple_array_read : htriple.
+
+(* Vova: I don't remember why, but we need it *)
+Context `{Inhab D}.
+
+(* cahnge to htriple to use in xapp *)
 Lemma rli_whilecond_spec : forall (j k : int) (pj0 px_ind : loc) (d : D)
   (Hj : (0 <= j < M)%Z),
-  (pj0 ~(d)~> j \* arr_x_ind px_ind d) ==>
-  wp (single d tt) (fun=> rli_whilecond k px_ind pj0) 
-    (fun hv => \[hv d = (Z.leb (nth (abs (j+1)) Lind) k)] \* pj0 ~(d)~> j \* arr_x_ind px_ind d).
+  htriple (single d tt)
+    (fun=> rli_whilecond k px_ind pj0) 
+    (pj0 ~(d)~> j \* arr_x_ind px_ind d)  
+    (fun hv => \[hv d = (Z.leb (List.nth (abs (j+1)) Lind 0) k)] \* pj0 ~(d)~> j \* arr_x_ind px_ind d).
 Proof.
-  intros.
-  xwp. xlet.
-  (* hard to only wp *)
-  apply wp_equiv.
-  (* Vova: automate this *)
-  eapply htriple_conseq_frame with (H1:=pj0 ~(d)~> j).
-  1:{
-    replace (pj0 ~(d)~> j) with (\*_(d0 <- single d tt) (pj0 ~(d0)~> j)).
-    2: apply hbig_fset_label_single'.
-    apply htriple_get.
+  intros. apply wp_equiv; do 4 (xwp; xapp).
+  xwp; xval; xsimpl. 
+  rewrite -> isTrue_eq_if.
+  case_if. 
+  { assert (List.nth (abs (j + 1)) Lind 0 <=? k = true)%Z as ->; auto.
+    apply Z.leb_le. math.
   }
-  1: apply himpl_refl.
-  xsimpl.
-  intros ? ->.
-  xwp. xlet. xapp.
-  xwp. xlet.
-  (* use array opr triple *)
-  apply wp_equiv.
-
-  (* again? *)
-  eapply htriple_conseq_frame with (H1:=arr_x_ind px_ind d).
-  1:{ 
-    replace (arr_x_ind px_ind d) with 
-      (\*_(d0 <- single d tt) (arr_x_ind px_ind d0)).
-    2: apply hbig_fset_label_single'.
-    apply htriple_array_get.
-    { intros. rewrite -> length_map, -> H_length_Lind. math. }
-    { intros. reflexivity. } 
+  { assert (List.nth (abs (j + 1)) Lind 0 <=? k = false)%Z as ->; auto.
+    apply Z.leb_gt. math.
   }
-  1: xsimpl.
-  xsimpl.
-  introv Er. specialize (Er d (indom_single _ _)).
-
-  apply wp_equiv.
-  eapply htriple_conseq_frame with (H1:=\[]).
-  1:{
-    apply wp_equiv. 
-    rewrite -> wp_ht_eq with (ht2:=fun=> trm_app (trm_app val_le (r d)) k).
-    2:{
-      introv H. rewrite -> indom_single_eq in H. by subst.
-    }
-    (* bad *)
-    apply wp_equiv, htriple_binop.
-    introv H. 
-    instantiate (1:=fun=> (Z.leb (nth (abs (j+1)) Lind) k)). simpl.
-    rewrite -> Er.
-    pose proof (evalbinop_le (nth (abs (j+1)) Lind) k) as HH.
-    rewrite -> nth_map. 2: math.
-    rewrite -> isTrue_eq_if in HH.
-    case_if. 
-    { assert (nth (abs (j + 1)) Lind <=? k = true)%Z as ->; auto.
-      apply Z.leb_le. math.
-    }
-    { assert (nth (abs (j + 1)) Lind <=? k = false)%Z as ->; auto.
-      apply Z.leb_gt. math.
-    }
-  }
-  1: rewrite -> hstar_hempty_l; apply himpl_refl.
-  xsimpl. 1: intros ? ->; reflexivity.
-  intros ? ->.
-  rewrite -> ! hbig_fset_label_single'.
-  xsimpl.
 Qed.
 
 Lemma rli_whilebody_spec : forall (pj0 : loc) (d : D) (j : int),
   (pj0 ~(d)~> j) ==>
   wp (single d tt) (fun=> rli_whilebody pj0) 
     (fun=> pj0 ~(d)~> (j+1)).
-Proof using.
-  intros.
-  unfold rli_whilebody.
-  xwp. xlet.
-  apply wp_equiv.
-  eapply htriple_conseq_frame with (H2:=\[]).
-  2: xsimpl.
-  1:{ 
-    rewrite <- hbig_fset_label_single' with (Q:=fun d0 => pj0 ~(d0)~> j).
-    apply htriple_get.
-  }
-  xsimpl.
-  intros ? ->.
-  xwp. xlet. xapp. xapp. by rewrite -> hbig_fset_label_single'.
-Qed.
+Proof. by do 3 (xwp; xapp). Qed.
+
+Lemma wp_single d t Q : 
+  wp (single d tt) t Q = 
+  wp (single d tt) (fun=> t d) Q.
+Proof. by apply/wp_ht_eq=> ? /[! indom_single_eq]->. Qed.
+
+(* Vova: we need this tactic to fold back `While` and `rli` at each step with `...` *)
+Ltac fold_rli := 
+  rewrite ?wp_single 
+    -/(rli_whilecond _ _ _) 
+    -/(rli_whilebody _) 
+    -/(While_aux _ _) 
+    -/(While _ _) //.
 
 (* using While on a single program *)
 Lemma rli_func_spec : forall (d : D) (px_ind px_val : loc) (k : int)
   (Hk : (0 <= k < N)%Z) (a : int) (Ha : (0 <= a < M)%Z) 
-  (Hka : (nth (abs a) Lind <= k < nth (abs (a + 1)) Lind)%Z), 
+  (Hka : (List.nth (abs a) Lind 0 <= k < List.nth (abs (a + 1)) Lind 0)%Z), 
   htriple (single d tt) 
     (fun=> rli_func k px_ind px_val)
     (arr_x_ind px_ind d \* arr_x_val px_val d)
-    (fun hv => \[hv d = val_int (nth (abs a) Lval)] \* arr_x_ind px_ind d \* arr_x_val px_val d).
-Proof.
-  intros. 
+    (fun hv => \[hv d = val_int (List.nth (abs a) Lval 0)] \* arr_x_ind px_ind d \* arr_x_val px_val d).
+Proof with fold_rli.
+  (* xwp; xapp.  *)
+  (* intros.
   unfold rli_func.
   (* do app2 for rlsum *)
   eapply htriple_eval_like.
@@ -952,18 +932,24 @@ Proof.
   intros. simpl. 
   (* simplify hexists *)
   apply wp_equiv.
-  xsimpl. intros pj ->. xsimpl.
+  xsimpl. intros pj ->. xsimpl. *)
+  xwp; xapp=> pj /=...
+
   (* use only one point location of pj; then forget pj *)
   remember (pj d) as pj0.
-  erewrite -> wp_ht_eq with (ht2:=
+
+  (* erewrite -> wp_ht_eq with (ht2:=
     fun=> trm_seq (While (rli_whilecond k px_ind pj0) (rli_whilebody pj0)) 
       (trm_let "tmp" (val_get pj0) (trm_seq (val_free pj0)
           (val_array_get px_val "tmp")))).
   2:{ 
     intros. unfolds While, While_aux, rli_whilecond, rli_whilebody. 
     rewrite -> indom_single_eq in H. by subst.
-  }
-  apply wp_equiv.
+  } *)
+  
+  
+  (* not needed: `\*_(i <- single d tt) p i` is already simplified *)
+  (* apply wp_equiv.
   eapply htriple_conseq.
   3: apply qimpl_refl.
   2:{
@@ -971,11 +957,10 @@ Proof.
     rewrite -> update_empty, -> hbig_fset_update, -> hbig_fset_empty; auto.
     xsimpl.
   }
-  clear pj Heqpj0.
+  clear pj Heqpj0. *)
   (* use single wp_while here *)
-  apply wp_equiv.
-  xwp. xseq.
-  apply wp_equiv.
+  (* apply wp_equiv. *)
+  xwp; xseq.
 
   (* first have to check if a = 0 or not; slightly troublesome here *)
   remember (abs a) as n eqn:E.
@@ -984,37 +969,43 @@ Proof.
     replace a with 0 in * by math.
     replace (0+1) with 1 in * by math.
     replace (abs 1) with 1%nat in Hka by math.
-
-    unfold While, While_aux, rli_whilecond.
-    apply wp_equiv. rewrite -> wp_fix_app2. 
+    
+    (*rewrite -> wp_fix_app2.
+    xwp. 
     apply wp_equiv, htriple_app_fix_direct.
     simpl.
     apply wp_equiv.    
-    xwp. xlet.
+    xwp. xlet.*)
 
     (* use the spec above *)
-    apply wp_equiv.
+    (* apply wp_equiv.
     eapply htriple_conseq_frame with (H1:=pj0 ~(d)~> 0 \* arr_x_ind px_ind d).
     2: xsimpl.
     1:{ apply wp_equiv, rli_whilecond_spec. math. }
-    xsimpl.
+    xsimpl. *)
+
+    (* Vova: I don't want to put `rli_whilecond_spec` into a data base, so I pass it to xapp directly *)
+    xwp; xapp rli_whilecond_spec...
     intros r Er.
     change (abs (0 + 1)) with 1%nat in Er.
 
     (* ready for the rest *)
-    match goal with |- himpl _ (wp _ ?ht _) => pose (ff:=ht) end.
+    (* Vova: don't need it because of `wp_single` *)
+    (* match goal with |- himpl _ (wp _ ?ht _) => pose (ff:=ht) end.
     erewrite -> wp_ht_eq with (ht2:=fun=> ff d).
     2:{ 
       intros. rewrite -> indom_single_eq in H. by subst.
     }
-    subst ff. simpl.
+    subst ff. simpl. *)
+
     destruct Hka as (_ & Hka).
     rewrite <- Z.leb_gt in Hka.
-    rewrite -> Hka in Er.
+    rewrite -> Hka in Er...
     xwp. rewrite -> Er. xif. 1: intros; by false.
     intros _. 
-    xwp. xval. 
-    xwp. xlet.
+    xwp. xval.
+    
+    (*xwp; xlet.
     apply wp_equiv.
     eapply htriple_conseq_frame with (H1:=pj0 ~(d)~> 0).
     1:{
@@ -1024,11 +1015,13 @@ Proof.
     }
     1: apply himpl_refl.
     xsimpl.
-    intros ? ->.
-    xwp. xseq. xwp. xapp.
+    intros ? ->.*)
+    xwp; xapp.
+    xwp; xseq. 
+    xwp; xapp.
 
     (* restore the thing array get after seq *)
-    apply wp_equiv.
+    (* apply wp_equiv.
     eapply htriple_conseq_frame with (H1:=arr_x_val px_val d).
     1:{ 
       replace (arr_x_val px_val d) with 
@@ -1048,9 +1041,12 @@ Proof.
       introv Er0. specialize (Er0 d (indom_single _ _)).
       rewrite -> ! hbig_fset_label_single'.
       xsimpl.
-    }
+    } *)
+    xwp; xapp.
+    by xsimpl.
   }
 
+  (*  Vova: here I have stopped :) *)
   assert (0 < a < M)%Z as (Ha1 & Ha2) by math.
   rewrite -> E in Hka.
   (* use single wp_while here *)
@@ -2871,4 +2867,4 @@ Qed.
 
 End MainProof.
 
-End Demo.
+End Demo. *)
