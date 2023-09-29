@@ -144,36 +144,6 @@ Ltac fold' :=
     -/(For_aux _ _) 
     -/(For _ _ _) //=.
 
-
-Lemma disjoint_single {T} (x y : T) : 
-  disjoint (single x tt) (single y tt) = (x <> y).
-Proof.
-Admitted.
-
-Lemma disjoint_interval (x1 y1 x2 y2 : int) : 
-  disjoint (interval x1 y1) (interval x2 y2) = (y1 <= x2) \/ (y2 <= x1).
-Proof.
-Admitted.
-
-Lemma disjoint_interval_single (x1 y1 x : int) : 
-  disjoint (interval x1 y1) (single x tt) = (x < x1) \/ (y1 <= x).
-Proof.
-Admitted.
-
-Lemma disjoint_single_interval (x1 y1 x : int) : 
-  disjoint (single x tt) (interval x1 y1)  = (x < x1) \/ (y1 <= x).
-Proof.
-Admitted.
-
-Lemma disjoint_label {T} (l l' : labType) (fs1 fs2 : fset T) : 
-  disjoint (label (Lab l fs1)) (label (Lab l' fs2)) = ((l <> l') \/ disjoint fs1 fs2).
-Proof.
-Admitted.
-
-
-Hint Rewrite @disjoint_single disjoint_interval disjoint_single_interval 
-  disjoint_interval_single @disjoint_eq_label @disjoint_label : disjointE.
-
 Lemma sum_spec `{Inhab D} (x_ind x_val : loc) : 
   {{ arr(x_ind, xind)⟨1, 0⟩ \*
      arr(x_val, xval)⟨1, 0⟩ \\* 
@@ -210,9 +180,6 @@ Proof with fold'.
   { move=>*; rewrite to_int_if; over. }
   rewrite SumIf E SumList // len_xind Sum0s; math.
 Qed.
-
-
-
   
 End coo_vec.
 

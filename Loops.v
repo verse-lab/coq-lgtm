@@ -394,22 +394,6 @@ Proof.
   by case=> l d; rewrite indom_label_eq /= /htrm_of; case: classicT.
 Qed.
 
-Lemma xnwp1_lemma fs_ht l :
-  wp (label (Lab l (fs_of fs_ht))) (ht_of fs_ht) =
-  nwp ((Lab l fs_ht) :: nil).
-Proof.
-  apply/fun_ext_1=> ?.
-  rewrite /nwp /= union_empty_r /htrm_of /=.
-  erewrite wp_ht_eq; first eauto.
-  case=> ??; rewrite indom_label_eq=> -[<-] /=.
-  case: classicT; autos*.
-Qed.
-
-Lemma xntriple1_lemma H Q fs_ht l :
-  H ==> wp (label (Lab l (fs_of fs_ht))) (ht_of fs_ht) Q =
-  ntriple H ((Lab l fs_ht) :: nil) Q.
-Proof. by rewrite /ntriple xnwp1_lemma. Qed.
-
 Lemma lab_eqbE l1 l2: 
   (lab_eqb l1 l2) = (l1 = l2) :> Prop.
 Proof. by extens; split=> [/lab_eqbP|->]// /[! eqbxx]. Qed.
@@ -515,3 +499,32 @@ Tactic Notation "xfor_sum" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(
   | rewrite ?hbig_fset_hstar; xsimpl
   | intros ?; xsimpl
   ]=> //; autos*.
+
+Lemma disjoint_single {T} (x y : T) : 
+  disjoint (single x tt) (single y tt) = (x <> y).
+Proof.
+Admitted.
+
+Lemma disjoint_interval (x1 y1 x2 y2 : int) : 
+  disjoint (interval x1 y1) (interval x2 y2) = (y1 <= x2) \/ (y2 <= x1).
+Proof.
+Admitted.
+
+Lemma disjoint_interval_single (x1 y1 x : int) : 
+  disjoint (interval x1 y1) (single x tt) = (x < x1) \/ (y1 <= x).
+Proof.
+Admitted.
+
+Lemma disjoint_single_interval (x1 y1 x : int) : 
+  disjoint (single x tt) (interval x1 y1)  = (x < x1) \/ (y1 <= x).
+Proof.
+Admitted.
+
+Lemma disjoint_label {T} (l l' : labType) (fs1 fs2 : fset T) : 
+  disjoint (label (Lab l fs1)) (label (Lab l' fs2)) = ((l <> l') \/ disjoint fs1 fs2).
+Proof.
+Admitted.
+
+
+Global Hint Rewrite @disjoint_single disjoint_interval disjoint_single_interval 
+  disjoint_interval_single @disjoint_eq_label @disjoint_label : disjointE.
