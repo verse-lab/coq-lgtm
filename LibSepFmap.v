@@ -1918,7 +1918,7 @@ Lemma update_updatexx {A B : Type} {x : A} {y w : B} (fm : fmap A B) :
     update fm x w.
 Proof. apply fmap_extens. intros. simpl. unfold map_union. case_if; eqsolve. Qed.
 
-Search sig.
+(* Search sig. *)
 
 Definition map_fsubst {A B C : Type} (fm : map A B) (f : A -> C) : map C B :=
   fun c =>

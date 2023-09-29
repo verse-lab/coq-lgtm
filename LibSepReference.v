@@ -7464,7 +7464,7 @@ Proof using.
   intros. unfold For, For_aux. simpl; case_var; eqsolve.
 Qed.
 
-Open Scope Z_scope.
+(* Open Scope Z_scope. *)
 
 Lemma Union_upd_fset {T A} (x : T) (fs : fset T) (fsi : T -> fset A) : 
   Union (update fs x tt) fsi = fsi x \u Union fs fsi.
@@ -7666,7 +7666,7 @@ Lemma wp_for_aux  i fs fs' ht (H : int -> (D -> val) -> hhprop) Z N C fsi hv0 vr
 Proof. 
   move=> + hP Dj -> sfor scnt scond vcnt vfor vcond  + +.
   move: ht hv0.
-  induction_wf IH: (upto N) i; rewrite /upto le_zarith lt_zarith in IH.
+  induction_wf IH: (upto N) i; rewrite /upto in IH.
   move=> ht hv0 lN dj htE.
   rewrite -wp_union // (wp_ht_eq _ _ _ htE) /For /For_aux.
   rewrite wp_fix_app2.
@@ -7729,7 +7729,7 @@ Proof.
     set (hv0 \u_ _ _); rewrite [_ \u fsi i]union_comm_of_disjoint; first last.
     { rewrite disjoint_Union.
       setoid_rewrite indom_interval=> *; apply/Dj; math. }
-    rewrite -Union_upd // -intervalUr; last math.
+    rewrite -Union_upd // -intervalUr; try math.
     rewrite union_comm_of_disjoint; first last.
     { move: dj; rewrite ?disjoint_Union; setoid_rewrite indom_interval.
       move=> dj *; apply/dj; math. }
@@ -7740,7 +7740,6 @@ Proof.
     move=> j ??.
     rewrite (wp_ht_eq _ ((fun=> (subst vr j C)) \u_ fs' ht)); eauto.
     move=> ??; rewrite /uni. case: classicT=> //.
-    rewrite le_zarith; math.
     move=> ???; rewrite ?indom_interval le_zarith lt_zarith=> ??.
     apply/Dj; math. }
     move=> ?; have->: i = N by math.
@@ -7765,8 +7764,8 @@ Lemma wp_while_aux i fs fs' ht (H : bool -> int -> (D -> val) -> hhprop) Z N T C
   (forall t, subst "while" t C = C) ->
   (forall t, subst "cond" t C = C) ->
   (forall t, subst "tt" t C = C) ->
-  (forall j, (i <= j < N)%Z -> ~ indom (fsi j) s) ->
-  (Z <= i <= N)%Z ->
+  (forall j, (i <= j < N) -> ~ indom (fsi j) s) ->
+  (Z <= i <= N) ->
   (ht s = While C T) ->
   (forall (b : bool) (x : int) hv,
     H b x hv ==>
@@ -7774,8 +7773,8 @@ Lemma wp_while_aux i fs fs' ht (H : bool -> int -> (D -> val) -> hhprop) Z N T C
         fs'
         (fun=> C) 
         (fun hc => \[hc s = b] \* H b x hv)) -> 
-  (forall x hv, H false x hv ==> \[(x = N)%Z] \* H false x hv) ->
-  (forall x hv, H true x hv ==> \[(x < N)%Z] \* H true x hv) ->
+  (forall x hv, H false x hv ==> \[(x = N)] \* H false x hv) ->
+  (forall x hv, H true x hv ==> \[(x < N)] \* H true x hv) ->
   (forall j hv, Z <= j < N ->
     (forall j' b' hv, 
         htriple (fs' \u Union (interval j' N) fsi)
@@ -7827,7 +7826,7 @@ Proof with autos*.
     apply/htriple_conseq; first last; [|clear HCi; eauto|].
     { move=> ?. under wp_ht_eq; rewrite -/(himpl _ _).
       { move=> s'; rewrite indom_Union=> -[?][].
-        rewrite indom_interval le_zarith lt_zarith=> /Dj' ??.
+        rewrite indom_interval => /Dj' ??.
         rewrite -(upd_neq _ _ ht s (trm_seq T (While C T))) ?over //.
         move=> ?. by subst. } 
       move=> ?; exact. }
@@ -7950,15 +7949,15 @@ Lemma wp_while_aux_unary i fs' (H : bool -> int -> hhprop) Z N T C s b0 :
   (forall t, subst "while" t C = C) ->
   (forall t, subst "cond" t C = C) ->
   (forall t, subst "tt" t C = C) ->
-  (Z <= i <= N)%Z ->
+  (Z <= i <= N) ->
   (forall (b : bool) (x : int),
     H b x ==>
       wp 
         fs'
         (fun=> C) 
         (fun hc => \[hc s = b] \* H b x)) -> 
-  (forall x, H false x ==> \[(x = N)%Z] \* H false x) ->
-  (forall x, H true x ==> \[(x < N)%Z] \* H true x) ->
+  (forall x, H false x ==> \[(x = N)] \* H false x) ->
+  (forall x, H true x ==> \[(x < N)] \* H true x) ->
   (forall j, Z <= j < N ->
     (forall j' b', 
       htriple fs'
@@ -8013,7 +8012,7 @@ Proof.
     move=> ? // /Hwp -/(_ lP). apply/wp_conseq=> hr.
     erewrite Heq; eauto=> ?.
     rewrite intervalUr ?Union_upd // ?indom_union_eq; last math; first last.
-    { introv Neq. rewrite ?indom_union_eq ?indom_interval ?indom_single_eq le_zarith lt_zarith.
+    { introv Neq. rewrite ?indom_union_eq ?indom_interval ?indom_single_eq.
       case=> [?[?|]|]; first by subst.
       { subst=> ?; apply/Dj=> //; math. }
       move=> ? [?|?]; subst; apply/Dj; math. }
@@ -8036,8 +8035,8 @@ Lemma wp_while fs fs' ht (Inv : bool -> int -> (D -> val) -> hhprop) Z N T C fsi
         fs'
         (fun=> C) 
         (fun hc => \[hc s = b] \* Inv b x hv)) -> 
-  (forall x hv, Inv false x hv ==> \[(x = N)%Z] \* Inv false x hv) ->
-  (forall x hv, Inv true x hv ==> \[(x < N)%Z] \* Inv true x hv) ->
+  (forall x hv, Inv false x hv ==> \[(x = N)] \* Inv false x hv) ->
+  (forall x hv, Inv true x hv ==> \[(x < N)] \* Inv true x hv) ->
   (forall j hv, Z <= j < N ->
     (forall j' b' hv, 
       htriple (fs' \u Union (interval j' N) fsi)
@@ -8061,7 +8060,7 @@ Lemma wp_while fs fs' ht (Inv : bool -> int -> (D -> val) -> hhprop) Z N T C fsi
   (forall t, subst "while" t C = C) ->
   (forall t, subst "cond" t C = C) ->
   (forall t, subst "tt" t C = C) ->
-  (forall j, (Z <= j < N)%Z -> ~ indom (fsi j) s) ->
+  (forall j, (Z <= j < N) -> ~ indom (fsi j) s) ->
   (ht s = While C T) ->
   P ==> wp (fs' \u fs) ht Q.
 Proof with autos*.
@@ -8072,47 +8071,6 @@ Proof with autos*.
   apply: himpl_trans.
   { apply/(wp_while_aux (i := Z) (ht := ht) _ (T := T)); eauto. math. }
   apply/wp_conseq=> ?; rewrite intervalgt ?Union0 ?uni0 //; by math.
-Qed.
-
-Lemma wp_while_unary fs' (Inv : bool -> int -> hhprop) Z N T C s b0 (P : hhprop) Q :
-  (forall (b : bool) (x : int),
-    Inv b x ==>
-      wp 
-        fs'
-        (fun=> C) 
-        (fun hc => \[hc s = b] \* Inv b x)) -> 
-  (forall x, Inv false x ==> \[(x = N)%Z] \* Inv false x) ->
-  (forall x, Inv true x ==> \[(x < N)%Z] \* Inv true x) ->
-  (forall j, Z <= j < N ->
-    (forall j' b', 
-      htriple fs'
-        (fun=> While C T) 
-        (Inv b' j' \* \[j < j' <= N])
-        (fun=> Inv false N)) ->
-    Inv true j ==> 
-        wp
-          fs' 
-          (fun=> trm_seq T (While C T))
-          (fun=> Inv false N)) ->
-  P ==> Inv b0 Z ->
-  (fun=> Inv false N) ===> Q ->
-  (Z <= N) ->
-  fs' = single s tt  ->
-  (forall t, subst "while" t T = T) ->
-  (forall t, subst "cond" t T = T) ->
-  (forall t, subst "tt" t T = T) ->
-  (forall t, subst "while" t C = C) ->
-  (forall t, subst "cond" t C = C) ->
-  (forall t, subst "tt" t C = C) ->
-  P ==> wp fs' (fun=> While C T) Q.
-Proof.
-  move=> HwpC HwpF HwpT HwpT' HP HQ *.
-  apply: himpl_trans; first exact/HP.
-  apply: himpl_trans; first last.
-  { apply: wp_conseq; exact/HQ. }
-  apply: himpl_trans.
-  { apply/(wp_while_aux_unary (i := Z) _ (T := T)); eauto. math. }
-  by [].
 Qed.
 
 (* Corollary htriple_while fs fs' ht (Inv : bool -> int -> (D -> val) -> hhprop) Z N T C fsi HC s b0 hv0 (P : hhprop) Q :
@@ -8239,10 +8197,11 @@ Proof.
           apply/Heq=> ? ind; rewrite uni_nin //.
           move: ind=> /[swap]; apply/disjoint_inv_not_indom_both/Dj; math. }
         apply/Heq=> *; by rewrite uni_in. }
-      rewrite indom_interval le_zarith lt_zarith. lia. }
+      rewrite indom_interval not_and_eq; right. math. }
       rewrite /Q hmerge_assoc // [_ \(m) H _]hmerge_comm //.
       rewrite hbig_fset_update ?indom_interval; eauto.
-      rewrite le_zarith lt_zarith; lia. }
+      rewrite not_and_eq; left.
+      math. }
   { move=> q hv hv' hvE.
     suff->:
       (\(m)_(i0 <- interval Z q) H' i0 hv') = 
@@ -10451,13 +10410,6 @@ Proof.
   hnf. intros. math.
 Qed.
 
-Ltac xwhile1 Z N b Inv := 
-  let N := constr:(N) in
-  let Z := constr:(Z) in 
-  let Inv' := constr:(Inv) in
-  xseq_xlet_if_needed; xstruct_if_needed;
-  eapply (wp_while_unary Inv b (Z := Z) (N := N)); autos*.
-
 Lemma hbig_fset_htop {A : Type} (fs : fset A):
   hbig_fset hstar fs (fun=> \Top) = \Top.
 Proof.
@@ -10573,7 +10525,7 @@ Lemma xfor_lemma `{ID : Inhab D}
   (i j : Z)
   Pre Post: 
   (forall (l : int) Q, 
-    (0 <= l < N)%Z ->
+    (0 <= l < N) ->
     {{ Inv l \* 
         (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R d) \* 
         Q \(m) H l }}
@@ -10595,7 +10547,7 @@ Lemma xfor_lemma `{ID : Inhab D}
     H' m hv = H' m hv') ->
   comm m -> assoc m ->
   (i <> j)%Z ->
-  0 <= N%Z ->
+  0 <= N ->
   (forall t : val, subst "for" t C = C) -> 
   (forall t : val, subst "cnt" t C = C) ->
   (forall t : val, subst "cond" t C = C) ->
@@ -11256,8 +11208,6 @@ Proof with myfold.
 Qed. *)
 
 (* From mathcomp Require Import zify.
-
-Open Scope Z_scope.
 
 Lemma htriple_pow_times_aux n (s : Dom.type -> int) v (p : Dom.type -> loc) q :
   n >= 0 ->

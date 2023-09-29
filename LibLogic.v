@@ -21,10 +21,10 @@ Generalizable Variables A B P.
 (** Projections *)
 
 Definition sig_val (A : Type) (P : A->Prop) (e : sig P) : A :=
-  match e with exist _ a _ => a end.
+  match e with exist a _ => a end.
 
 Definition sig_proof (A : Type) (P : A->Prop) (e : sig P) : P (sig_val e) :=
-  match e with exist _ _ b => b end.
+  match e with exist _ b => b end.
 
 (* ********************************************************************** *)
 (* ################################################################# *)

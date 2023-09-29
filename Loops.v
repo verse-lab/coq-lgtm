@@ -19,6 +19,55 @@ Module Export AD := WithArray(IntDom).
 Global Instance Inhab_D : Inhab D. 
 Proof Build_Inhab (ex_intro (fun=> True) (Lab (0, 0) 0) I).
 
+Lemma wp_while_unary  fs' (Inv : bool -> int -> hhprop) Z N T C s b0 (P : hhprop) Q :
+  (forall (b : bool) (x : int),
+    Inv b x ==>
+      wp 
+        fs'
+        (fun=> C) 
+        (fun hc => \[hc s = b] \* Inv b x)) -> 
+  (forall x, Inv false x ==> \[(x = N)] \* Inv false x) ->
+  (forall x, Inv true x ==> \[(x < N)] \* Inv true x) ->
+  (forall j, (Z <= j < N) ->
+    (forall j' b', 
+      htriple fs'
+        (fun=> While C T) 
+        (Inv b' j' \* \[j < j' <= N])
+        (fun=> Inv false N)) ->
+    Inv true j ==> 
+        wp
+          fs' 
+          (fun=> trm_seq T (While C T))
+          (fun=> Inv false N)) ->
+  P ==> Inv b0 Z ->
+  (fun=> Inv false N) ===> Q ->
+  (Z <= N) ->
+  fs' = single s tt  ->
+  (forall t, subst "while" t T = T) ->
+  (forall t, subst "cond" t T = T) ->
+  (forall t, subst "tt" t T = T) ->
+  (forall t, subst "while" t C = C) ->
+  (forall t, subst "cond" t C = C) ->
+  (forall t, subst "tt" t C = C) ->
+  P ==> wp fs' (fun=> While C T) Q.
+Proof.
+  move=> HwpC HwpF HwpT HwpT' HP HQ *.
+  apply: himpl_trans; first exact/HP.
+  apply: himpl_trans; first last.
+  { apply: wp_conseq; exact/HQ. }
+  apply: himpl_trans.
+  { apply/(wp_while_aux_unary (Z := Z) (i := Z) _ (T := T)); eauto. math. }
+  by [].
+Qed.
+
+Ltac xwhile1 Z N b Inv := 
+  let N := constr:(N) in
+  let Z := constr:(Z) in 
+  let Inv' := constr:(Inv) in
+  xseq_xlet_if_needed; xstruct_if_needed;
+  eapply (wp_while_unary Inv b (Z := Z) (N := N)); autos*.
+
+
 Lemma xfor_big_op_lemma_aux Inv (R R' : IntDom.type -> hhprop) 
   (op : (D -> val) -> int -> int) p 
   s fsi1 vr
@@ -83,7 +132,7 @@ Proof.
     rewrite /ntriple /nwp ?fset_of_cons /= ?fset_of_nil.
     rewrite union_empty_r intervalUr; try math.
     rewrite Union_upd //; first last. 
-    { introv Neq. rewrite ?indom_union_eq ?indom_interval ?indom_single_eq le_zarith lt_zarith.
+    { introv Neq. rewrite ?indom_union_eq ?indom_interval ?indom_single_eq.
       case=> [?[?|]|]; first by subst.
       { subst=> ?; apply/Dj=> //; math. }
       move=> ? [?|?]; subst; apply/Dj; math. }

@@ -28,8 +28,8 @@ Inductive list (A : Type) : Type :=
   | cons : A -> list A -> list A.
 *)
 
-Arguments nil {A}.
-Arguments cons {A}.
+Arguments nil {T}.
+Arguments cons {T}.
 
 Declare Scope liblist_scope.
 Open Scope liblist_scope.
@@ -873,8 +873,8 @@ Lemma Nth_app_r : forall n x l1 l2,
   Nth (n + length l1)%nat (l1 ++ l2) x.
 Proof using.
   intros. gen n. induction l1; introv H; rew_list.
-  { applys_eq~ H. }
-  { applys_eq* Nth_succ. }
+  { applys_eq~ H. math. }
+  { applys_eq* Nth_succ. math. }
 Qed.
 
 Lemma Nth_app_r' : forall n m x l1 l2,

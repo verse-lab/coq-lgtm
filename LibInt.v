@@ -12,6 +12,8 @@ Require Export Coq.ZArith.ZArith.
 From SLF Require Import LibTactics LibLogic LibReflect LibRelation.
 Export LibTacticsCompatibility.
 From SLF Require Export LibNat.
+(* From mathcomp Require Import zify. *)
+Require Import Coq.micromega.Lia.
 
 (* --LATER: rename [plus] to [add] everywhere? *)
 

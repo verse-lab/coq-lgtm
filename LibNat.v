@@ -8,7 +8,8 @@
 **************************************************************************)
 
 Set Implicit Arguments.
-Require Export Coq.Arith.Arith Coq.micromega.Lia.
+Require Export Coq.Arith.Arith.
+From mathcomp Require Import zify.
 From SLF Require Import LibTactics LibReflect LibBool LibOperation LibRelation LibOrder.
 From SLF Require Export LibOrder.
 Global Close Scope positive_scope.

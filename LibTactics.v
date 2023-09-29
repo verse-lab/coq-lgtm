@@ -3251,7 +3251,7 @@ Tactic Notation "induction_wf" ident(IH) ":" constr(E) ident(X) :=
     (see LibTacticsDemos for an example) *)
 
 Require Import Coq.Arith.Compare_dec.
-Require Import Coq.micromega.Lia.
+From mathcomp Require Import zify.
 
 Lemma induct_height_max2 : forall n1 n2 : nat,
   exists n, n1 < n /\ n2 < n.
