@@ -4126,6 +4126,19 @@ Context (fs : fset D).
 Definition htriple (ht : D -> trm) (H : hhprop) (Q : (D -> val) -> hhprop) : Prop :=
   forall (H' : hhprop), hhoare fs ht (H \* H') (Q \*+ H').
 
+Lemma htriple_val_eq H Q (f : D -> val) ht :
+  htriple ht H (fun hv => \[forall d, indom fs d -> hv d = f d] \* Q) ->
+  htriple ht H (fun hv => \[hv = f] \* Q).
+Proof.
+  move=> T ?. 
+  apply/hhoare_conseq; 
+   [ |eauto| move=> ?; rewrite hstar_assoc=> ?; apply:applys_eq_init; reflexivity].
+  apply/hhoare_val_eq.
+  apply/hhoare_conseq; 
+  [ |eauto| move=> ?; rewrite -hstar_assoc=> ?; apply:applys_eq_init; reflexivity].
+  exact/T.
+Qed.
+
 (** We introduce a handy notation for postconditions of functions
     that return a pointer:  [funloc p => H] is short for
     [fun (r:val) => \exists (p:loc), \[r = val_loc p] \* H)]. *)
