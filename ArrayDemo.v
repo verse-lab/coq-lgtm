@@ -28,7 +28,7 @@ Proof.
     { rewrite -> Z.leb_le in E.
       replace (abs i) with L by math.
       rewrite -> nth_last_case. case_if. subst.
-      by replace i with (nat_to_Z (length l)) by math.
+      by replace i with (Z_of_nat (length l)) by math.
     }
     { rewrite -> Z.leb_gt in E.
       rewrite -> nth_app_l. 2: math.
@@ -660,8 +660,8 @@ Hypothesis H_length_Lind : length Lind = abs (M + 1).
 Hypothesis H_Lind_first : nth 0%nat Lind = 0.
 Hypothesis H_Lind_last : nth (abs M) Lind = N.
 Hypothesis H_Lind_inc : forall (i j : nat), 
-  (0 <= (nat_to_Z i) <= abs M)%Z -> 
-  (0 <= (nat_to_Z j) <= abs M)%Z -> 
+  (0 <= (Z_of_nat i) <= abs M)%Z -> 
+  (0 <= (Z_of_nat j) <= abs M)%Z -> 
   (i < j)%nat -> 
   (nth i Lind < nth j Lind)%Z.
 Hypothesis H_Lval_notnil : (0 < M)%Z.
@@ -724,7 +724,7 @@ Proof using N M Lind H_length_Lind H_Lind_first H_Lind_inc.
     rewrite -> H_Lind_first. simpl. rewrite -> intervalgt; try math.
     by rewrite -> Union0.
   }
-  { assert (i = (nat_to_Z n) + 1) as -> by math.
+  { assert (i = (Z_of_nat n) + 1) as -> by math.
     rewrite -> intervalUr; try math.
     rewrite -> Union_upd_fset, -> IH; try math.
     unfold ind_seg. 

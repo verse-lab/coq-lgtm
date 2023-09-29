@@ -4,6 +4,8 @@ From SLF Require Import LibSepReference LibSepTLCbuffer Struct Unary Loops.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
+Open Scope Z_scope.
+
 Definition to_int (v : val) : int := 
   match v with 
   | val_int i => i 
@@ -95,7 +97,9 @@ Lemma hbig_fset_part {A : Type} (fs : fset A) (P : A -> Prop) :
   hbig_fset hstar fs = 
   fun H => hbig_fset hstar (fs ∩ P) H \* hbig_fset hstar (fs ∖ P) H.
 Proof.
-Admitted.
+  apply/fun_ext_1=> ?; rewrite -hbig_fset_union // ?fs_pred_part //.
+  exact/fs_pred_part_disj.
+Qed.
 
 
 Lemma get_spec_out `{Inhab D} fs (x_ind x_val : loc) : 

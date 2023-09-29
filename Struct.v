@@ -3,10 +3,10 @@
 Set Implicit Arguments.
 From SLF Require Import LibSepReference LibSepTLCbuffer.
 From SLF Require Import Fun LabType.
-From mathcomp Require Import ssreflect ssrfun.
+From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
-Notation "x '[' i ']'" := (List.nth (abs i) x 0) (at level 5, format "x [ i ]").
+Open Scope Z_scope.
 
 Module WithArray (Dom : Domain).
 
@@ -278,7 +278,7 @@ Proof using.
   intros. eapply himpl_trans. 1: apply hcells_focus with (k:=k); auto.
   apply himpl_frame_r.
   apply himpl_hforall_l with (x:=nth k L).
-  rewrite -> update_nth_same; auto.
+  rewrite update_nth_same; math_3=> //; lia.
 Qed.
 
 End Properties_hcell.
@@ -302,7 +302,7 @@ Proof using.
   introv E. unfolds harray. eapply himpl_trans. 1: apply harray_focus.
   1: apply E.
   apply himpl_frame_r. xchange (hforall_specialize (LibList.nth k L)).
-  rewrite -> update_nth_same; auto.
+  rewrite -> update_nth_same; math_3=> //; lia.
 Qed.
 
 Lemma hoare_ptr_add : forall (d : D) p n H,
@@ -370,15 +370,15 @@ Import ProgramSyntax.
 Open Scope wp_scope.
 
 Lemma abs_lt_inbound : forall i k,
-  0 <= i < nat_to_Z k ->
+  0 <= i < Z_of_nat k ->
   (abs i < k).
 Proof using.
-  introv N. apply lt_nat_of_lt_int. rewrite abs_nonneg; math.
+  introv N. rewrite abs_nonneg; math.
 Qed.
 
 Lemma succ_int_plus_abs : forall p i,
   i >= 0 ->
-  ((p + 1 + abs i) = abs (nat_to_Z p + (i + 1)))%nat.
+  ((p + 1 + abs i) = abs (Z_of_nat p + (i + 1)))%nat.
 Proof using.
   introv N. rewrite abs_nat_plus_nonneg; [|math].
   math_rewrite (i+1 = 1 + i).

@@ -268,7 +268,7 @@ Proof using.
   introv HL HR. do 2 rewrite length_eq in HL.
   unfold read, read_inst, read_impl in HR.
   applys~ LibList.eq_of_extens l1 l2.
-  { intros n L. forwards M: (rm HR) (nat_to_Z n). math.
+  { intros n L. forwards M: (rm HR) (Z_of_nat n). math.
     case_if. false; math. rewrite~ abs_nat in M. }
 Qed.
 

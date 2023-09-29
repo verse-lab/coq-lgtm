@@ -49,18 +49,18 @@ Proof using. intros. apply (Inhab_of_val 0%Z). Qed.
    because otherwise when we try to make the coercion opaque using:
       Opaque Z_of_nat.
    the lia fails to work.
-   Thus, we introduce an alias, called [nat_to_Z] for [Z_of_nat],
-   and we register [nat_to_Z] as coercion.
+   Thus, we introduce an alias, called [Z_of_nat] for [Z_of_nat],
+   and we register [Z_of_nat] as coercion.
 *)
 
-Definition nat_to_Z := Z_of_nat.
+(* Definition Z_of_nat := Z_of_nat.
 
-Lemma nat_to_Z_eq_Z_of_nat : nat_to_Z = Z_of_nat.
-Proof using. reflexivity. Qed.
+Lemma Z_of_nat_eq_Z_of_nat : Z_of_nat = Z_of_nat.
+Proof using. reflexivity. Qed. *)
 
-Global Opaque nat_to_Z.
+(* Global Opaque Z_of_nat. *)
 
-Coercion nat_to_Z : nat >-> Z.
+Coercion Z_of_nat : nat >-> Z.
 
 (* --TODO: check this coercion is actually the one in use *)
 
@@ -207,6 +207,15 @@ Ltac generalize_arith :=
     | true => change (E -> False) with (~ E) in H
     | false => clear H
     end
+  | H: ?E1 \/ ?E2 |- _ => 
+    match is_arith E1 with 
+    | true =>
+      match is_arith E2 with 
+      | true => generalize H; clear H (* --todo: revert H? *)
+      | _ => clear H
+      end
+    | _            => clear H 
+    end
   | H:?E |- _ =>
     match is_arith E with
     | true => generalize H; clear H (* --todo: revert H? *)
@@ -244,7 +253,7 @@ Proof using. intros. rewrite <- Z_of_nat_S. fequals~. Qed.
 (** [rew_maths] rewrite any lemma in the base [rew_maths].
     The goal should not contain any evar, otherwise tactic might loop. *)
 
-Hint Rewrite nat_to_Z_eq_Z_of_nat Z_of_nat_O Z_of_nat_S Z_of_nat_plus1 : rew_maths.
+Hint Rewrite Z_of_nat_O Z_of_nat_S Z_of_nat_plus1 : rew_maths.
 
 Ltac rew_maths :=
   autorewrite with rew_maths in *.
@@ -261,6 +270,7 @@ Ltac rew_maths :=
 Ltac math_setup_goal_step tt :=
   match goal with
   | |- _ -> _ => intro
+  | |- not _ => intro
   | |- _ <-> _ => iff
   | |- forall _, _  => intro
   | |- _ /\ _ => split
@@ -591,16 +601,16 @@ Proof using. math. Qed.
 Lemma plus_nat_eq_plus_int : forall (n m:nat),
   (n+m)%nat = (n:int) + (m:int) :> int.
 Proof using.
-  Transparent nat_to_Z.
-  intros. unfold nat_to_Z. applys Nat2Z.inj_add.
+  Transparent Z_of_nat.
+  intros. unfold Z_of_nat. applys Nat2Z.inj_add.
 Qed.
 
 Lemma minus_nat_eq_minus_int : forall (n m:nat),
   (n >= m)%nat ->
   (n-m)%nat = (n:int) - (m:int) :> int.
 Proof using.
-  Transparent nat_to_Z.
-  intros. unfold nat_to_Z. applys Nat2Z.inj_sub. math.
+  Transparent Z_of_nat.
+  intros. unfold Z_of_nat. applys Nat2Z.inj_sub. math.
 Qed.
 
 (* -- LATER: tactic for lifting all operators and comparisons into Z *)
@@ -634,6 +644,14 @@ Lemma abs_nat : forall (n:nat),
 Proof using. exact Zabs_nat_Z_of_nat. Qed.
 
 Lemma abs_nonneg : forall (x:int),
+  (x >= 0)%Z ->
+  abs x = x :> int.
+Proof using.
+  intros. rewrite inj_Zabs_nat.
+  rewrite Z.abs_eq. math. math.
+Qed.
+
+Lemma abs_nonneg' : forall (x:int),
   x >= 0 ->
   abs x = x :> int.
 Proof using.
@@ -661,7 +679,7 @@ Qed.
 Lemma abs_to_int : forall (n : int),
   0 <= n ->
   Z_of_nat (abs n) = n.
-Proof using. intros. rewrite~ abs_nonneg. Qed.
+Proof using. intros. rewrite~ abs_nonneg'. Qed.
 
 Lemma abs_le_nat_le : forall (x:int) (y:nat),
   (0 <= x) ->
@@ -711,7 +729,7 @@ Lemma abs_nat_plus_nonneg : forall (n:nat) (x:int),
 Proof using.
   introv N. applys eq_nat_of_eq_int.
   rewrite plus_nat_eq_plus_int.
-  do 2 (rewrite abs_nonneg; [|math]). auto.
+  do 2 (rewrite abs_nonneg'; [|math]). auto.
 Qed.
 
 Lemma abs_gt_minus_nat : forall (n:nat) (x:int),
@@ -720,8 +738,8 @@ Lemma abs_gt_minus_nat : forall (n:nat) (x:int),
 Proof using.
   introv N. applys eq_nat_of_eq_int.
   rewrite minus_nat_eq_minus_int.
-  do 2 (rewrite abs_nonneg; [|math]). auto.
-  applys ge_nat_of_ge_int. rewrite abs_nonneg; math.
+  do 2 (rewrite abs_nonneg'; [|math]). auto.
+  applys ge_nat_of_ge_int. rewrite abs_nonneg'; math.
 Qed.
 
 Lemma succ_abs_eq_abs_one_plus : forall (x:int),
@@ -737,14 +755,14 @@ Lemma abs_eq_succ_abs_minus_one : forall (x:int),
   abs x = S (abs (x - 1)) :> nat.
 Proof using.
   intros. apply eq_nat_of_eq_int.
-  rewrite abs_nonneg; try math.
+  rewrite abs_nonneg'; try math.
 Qed.
 
 (* ---------------------------------------------------------------------- *)
 (** ** Tactic [rew_abs_nonneg] to normalize expressions involving [abs]
        issuing side-conditions that arguments are nonnegative *)
 
-Hint Rewrite abs_nat abs_0 abs_1 abs_plus abs_nonneg : rew_abs_nonneg.
+Hint Rewrite abs_nat abs_0 abs_1 abs_plus abs_nonneg' : rew_abs_nonneg.
 
 Tactic Notation "rew_abs_nonneg" :=
   autorewrite with rew_abs_nonneg.

@@ -4,6 +4,8 @@ From SLF Require Import LibSepReference LibSepTLCbuffer Struct Loops.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
+Open Scope Z_scope.
+
 (* Module NatDom : Domain with Definition type := nat.
 Definition type := nat.
 End NatDom.
@@ -336,7 +338,7 @@ Proof.
     rewrite -> IIL_L_first. simpl. rewrite -> intervalgt; try math.
     by rewrite -> Union0.
   }
-  { assert (i = (nat_to_Z n) + 1) as -> by math.
+  { assert (i = (Z_of_nat n) + 1) as -> by math.
     rewrite -> intervalUr; try math.
     rewrite -> Union_upd_fset, -> IH; try math.
     unfold ind_seg. 
@@ -458,13 +460,11 @@ Proof with fold_search.
     symmetry in EE.
     rewrite -> Z.leb_gt in EE.
     eapply search_unify with (L:=L) (j:=k); auto.
-    math.
   }
   { intros j. xsimpl*.
     intros (Hj & Hleb & EE).
     symmetry in EE.
     rewrite -> Z.leb_le in EE.
-    rewrite lt_zarith.
     destruct (Z.leb a j) eqn:EE2.
     2: now apply Z.leb_gt in EE2.
     apply Z.leb_le in EE2. 
@@ -483,7 +483,7 @@ Proof with fold_search.
       xwp; xapp whilecond_spec...
       intros r Er...
       destruct Hka as (_ & Hka).
-      rewrite lt_zarith -Z.leb_gt in Hka.
+      rewrite -Z.leb_gt in Hka.
       rewrite -> Hka in Er.
       rewrite Er.
       xwp. xif. 1: intros; by false.

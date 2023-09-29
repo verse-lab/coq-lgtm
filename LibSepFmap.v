@@ -2,7 +2,9 @@
 Set Implicit Arguments.
 From SLF Require Import LibCore.
 
-From mathcomp Require Import ssreflect ssrfun.
+From mathcomp Require Import ssreflect ssrfun zify.
+
+Open Scope Z_scope.
 
 Ltac eqsolve := solve [ intuition congruence | intuition discriminate ].
 
@@ -1370,7 +1372,7 @@ Definition fresh (null:nat) (h:fmap nat B) (l:nat) : Prop :=
   ~ indom h l /\ l <> null.
 
 Definition smallest_fresh (null:nat) (h:fmap nat B) (l:nat) : Prop :=
-  fresh null h l /\ (forall l', l' < l -> ~ fresh null h l').
+  fresh null h l /\ (forall (l' : nat), (l' < l) -> ~ fresh null h l').
 
 Lemma exists_smallest_fresh : forall null h,
   exists l, smallest_fresh null h l.
@@ -1378,13 +1380,13 @@ Proof using.
   intros.
   cuts M: (forall l0, fresh null h l0 ->
             exists l, fresh null h l
-                   /\ (forall l', l' < l -> ~ fresh null h l')).
+                   /\ (forall l' : nat, l' < l -> ~ fresh null h l')).
   { lets (l0&F&N): exists_fresh null h. applys M l0. split*. }
   intros l0. induction_wf IH: wf_lt l0. intros F.
-  tests C: (forall l', l' < l0 -> ~ fresh null h l').
+  tests C: (forall l' : nat, l' < l0 -> ~ fresh null h l').
   { exists* l0. }
   { destruct C as (l0'&K). rew_logic in K. destruct K as (L&F').
-    applys* IH l0'. }
+    applys* IH l0'. math_3. lia. }
 Qed.
 
 (* ================================================================= *)
