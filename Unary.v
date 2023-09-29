@@ -212,3 +212,328 @@ Qed.
 
 End index.
 
+Class IncreasingIntList (L : list int) := {
+  IIL_L_first : List.nth 0%nat L 0 = 0;
+  IIL_L_notnil : (0 < length L)%nat;
+  IIL_L_inc : forall (i j : nat), 
+    (0 <= i < length L)%nat -> 
+    (0 <= i < length L)%nat -> 
+    (i < j)%nat -> 
+    (List.nth i L 0 < List.nth j L 0)%Z
+}.
+
+Section search_pure_facts.
+
+Context (L : list int) {H : IncreasingIntList L}.
+
+Fact IIL_L_inc' : forall (i j : nat), 
+  (0 <= i < length L)%nat -> 
+  (0 <= j < length L)%nat -> 
+  (i <= j)%nat -> 
+  (List.nth i L 0 <= List.nth j L 0)%Z.
+Proof.
+  intros. destruct (Nat.eqb i j) eqn:E.
+  { rewrite -> Nat.eqb_eq in E. subst i. reflexivity. }
+  { rewrite -> Nat.eqb_neq in E. assert (i < j)%nat by math.
+    match goal with |- (?a <= ?b)%Z => enough (a < b)%Z; try math end. 
+    apply IIL_L_inc; math.
+  }
+Qed.
+
+Variable (N : int).
+Hypothesis H_L_last : List.nth (length L - 1)%nat L 0 = N.
+
+Fact IIL_zero_le_N : (0 <= N)%Z.
+Proof.
+  rewrite <- IIL_L_first, <- H_L_last.
+  replace 0%nat with (abs 0) at 1 by math.
+  pose proof IIL_L_notnil.
+  apply IIL_L_inc'; math.
+Qed.
+
+Fact search_exists j (Hj : (0 <= j < N)%Z) :
+  sig (fun a => (0 <= a < (length L - 1)%nat)%Z /\ (List.nth (abs a) L 0 <= j < List.nth (abs (a + 1)) L 0)%Z).
+Proof.
+  destruct (Nat.leb (length L) 1) eqn:Ej.
+  1:{ 
+    apply Nat.leb_le in Ej. 
+    pose proof IIL_L_notnil.
+    assert (length L = 1)%nat as E by math.
+    pose proof H_L_last as HH.
+    rewrite E IIL_L_first in HH.
+    math.
+  }
+  apply Nat.leb_gt in Ej.
+  remember (abs j) as n eqn:En.
+  revert j Hj En.
+  induction n; intros.
+  { assert (j = 0) as -> by math.
+    exists 0. split; try math.
+    replace (abs 0) with 0%nat by math.
+    split. 1: now rewrite IIL_L_first.
+    rewrite <- IIL_L_first at 1.
+    apply IIL_L_inc; math.
+  }
+  { assert (n = abs (j - 1)) as H1 by math.
+    assert (0 <= j - 1 < N)%Z as H2 by math.
+    specialize (IHn _ H2 H1).
+    destruct IHn as (a & Ha1 & Ha2).
+    (* TODO relation with the imperative program? *)
+    destruct (Z.leb (List.nth (abs (a + 1)) L 0) j) eqn:E.
+    { apply Z.leb_le in E.
+      assert (a + 1 < (length L - 1)%nat) as Hlt.
+      { destruct (Z.leb (length L - 1)%nat (a + 1)) eqn:E'.
+        2: apply Z.leb_gt in E'; math.
+        apply Z.leb_le in E'.
+        assert (abs (a + 1) = (length L - 1)%nat) as EE by math.
+        rewrite EE in E.
+        math.
+      }
+      assert (j = List.nth (abs (a + 1)) L 0) as -> by math.
+      exists (a+1).
+      split; [ math | split; [ math | apply IIL_L_inc; math ] ].
+    }
+    { apply Z.leb_gt in E.
+      exists a.
+      split; [ assumption | math ].
+    }
+  }
+Qed.
+
+Fact search_unify j (Hj : (0 <= j < N)%Z)
+  a (Ha1 : (0 <= a < (length L - 1)%nat)%Z) (Ha2 : (List.nth (abs a) L 0 <= j < List.nth (abs (a + 1)) L 0)%Z)
+  a' (Ha1' : (0 <= a' < (length L - 1)%nat)%Z) (Ha2' : (List.nth (abs a') L 0 <= j < List.nth (abs (a' + 1)) L 0)%Z) :
+  a = a'.
+Proof.
+  destruct (Z.leb (a'+1) a) eqn:Eu.
+  { rewrite -> Z.leb_le in Eu.
+    enough (List.nth (abs (a' + 1)) L 0 <= List.nth (abs a) L 0)%Z by math.
+    apply IIL_L_inc'; math.
+  }
+  { destruct (Z.leb (a+1) a') eqn:Eu'.
+    { rewrite -> Z.leb_le in Eu'.
+      enough (List.nth (abs (a + 1)) L 0 <= List.nth (abs a') L 0)%Z by math.
+      apply IIL_L_inc'; math.
+    }
+    { rewrite -> Z.leb_gt in Eu, Eu'. math. }
+  }
+Qed.
+
+Section segmentation.
+
+Definition ind_seg (i : int) := 
+  interval (List.nth (abs i) L 0) (List.nth (abs (i + 1)) L 0).
+
+Lemma interval_segmentation_pre i :
+  (0 <= i < (length L)%nat)%Z -> 
+  Union (interval 0 i) ind_seg = interval 0 (List.nth (abs i) L 0).
+Proof. 
+  remember (to_nat i) as n.
+  revert i Heqn.
+  induction n as [ | n IH ]; intros.
+  { assert (i = 0) as -> by math. 
+    replace (abs 0) with O by math. 
+    rewrite -> IIL_L_first. simpl. rewrite -> intervalgt; try math.
+    by rewrite -> Union0.
+  }
+  { assert (i = (nat_to_Z n) + 1) as -> by math.
+    rewrite -> intervalUr; try math.
+    rewrite -> Union_upd_fset, -> IH; try math.
+    unfold ind_seg. 
+    replace ((abs n)) with n by math.
+    replace (abs (n + 1)) with (S n) by math.
+    rewrite <- interval_union with (x:=0) (y:=(List.nth n L 0))
+      (z:=(List.nth (S n) L 0)); try math.
+    2:{
+      rewrite <- IIL_L_first at 1. 
+      destruct n; try math. 
+      apply IIL_L_inc'; math. 
+    }
+    2: apply IIL_L_inc'; math. 
+    rewrite -> union_comm_of_disjoint. 1: reflexivity.
+    apply disjoint_of_not_indom_both.
+    intros. rewrite -> indom_interval in *. math.
+  }
+Qed.
+
+Lemma ind_seg_disjoint (i j : int) (Hi : indom (interval 0 (length L - 1)%nat) i)
+  (Hj : indom (interval 0 (length L - 1)%nat) j) (Hn : i <> j) : disjoint (ind_seg i) (ind_seg j).
+Proof.
+  unfold ind_seg. 
+  rewrite -> indom_interval in Hi, Hj.
+  destruct Hi as (Hi1 & Hi2), Hj as (Hj1 & Hj2).
+  apply disjoint_of_not_indom_both.
+  intros x Hi Hj. rewrite -> indom_interval in Hi, Hj.
+  destruct (Z.leb (i + 1) j) eqn:E.
+  { rewrite -> Z.leb_le in E.
+    apply Zabs2Nat.inj_le, IIL_L_inc' in E; try math.
+  }
+  { destruct (Z.leb (j + 1) i) eqn:E'.
+    { rewrite -> Z.leb_le in E'.
+      apply Zabs2Nat.inj_le, IIL_L_inc' in E'; try math.
+    }
+    rewrite -> Z.leb_gt in E, E'.
+    math.
+  }
+Qed.
+
+Lemma interval_segmentation :
+  Union (interval 0 (length L - 1)%nat) ind_seg = interval 0 N.
+Proof.
+  rewrite -> interval_segmentation_pre with (i:=(length L - 1)%nat). 2: pose proof IIL_L_notnil; math.
+  subst N. do 2 f_equal. pose proof IIL_L_notnil; math.
+Qed.
+
+End segmentation.
+
+End search_pure_facts.
+
+Module search.
+
+Definition whilecond (p_arr : trm) (pj : trm) (i : trm) :=
+  (<{ let "tmp1" = ! pj in
+      let "tmp2" = "tmp1" + 1 in
+      let "tmp3" = read_array p_arr "tmp2" in
+      let "cnd" = "tmp3" <= i in 
+      "cnd" }>).
+
+Definition func :=
+  let loop := While (whilecond "p_arr" "j" "i") <{ ++ "j" }> in
+  <{ fun "i" "p_arr" => let "j" = ref 0 in 
+      loop ; 
+      let "tmp" = ! "j" in 
+      free "j";
+      "tmp"
+  }>.
+
+Section search_proof.
+
+Context (L : list int) {H : IncreasingIntList L}.
+Context {HDInhabit : Inhab D}.
+
+Lemma whilecond_spec (j k : int) (pj p_arr : loc) (d : D) :
+  htriple (single d tt)
+    (fun=> whilecond p_arr pj k)
+    (pj ~(d)~> j \* harray_int L p_arr d)
+    (fun hv => \[hv d = (Z.leb (List.nth (abs (j+1)) L 0) k)]
+      \* pj ~(d)~> j \* harray_int L p_arr d).
+Proof.
+  intros. apply wp_equiv; do 4 (xwp; xapp).
+  xwp; xval; xsimpl.
+  f_equal.
+  rewrite -> isTrue_eq_if.
+  case_if; symmetry; [ apply Z.leb_le | apply Z.leb_gt ]; math.
+Qed.
+
+Local Tactic Notation "fold_search" := 
+  rewrite ?wp_single
+    -/(whilecond _ _ _) 
+    -/(incr1.func _) 
+    -/(While_aux _ _) 
+    -/(While _ _) //.
+
+Lemma spec : forall (d : D) (p_arr : loc) (k : int)
+  (Hk : (0 <= k < List.nth (length L - 1)%nat L 0)%Z)
+  (a : int) (Ha : (0 <= a < (length L - 1)%nat)%Z) 
+  (Hka : (List.nth (abs a) L 0 <= k < List.nth (abs (a + 1)) L 0)%Z), 
+  htriple (single d tt) 
+    (fun=> func k p_arr)
+    (harray_int L p_arr d)
+    (fun hv => \[hv d = val_int a] \* harray_int L p_arr d).
+Proof with fold_search.
+  intros.
+  apply wp_equiv.
+  xwp; xapp=> pj /=...
+  remember (pj d) as pj0.
+  xwp; xwhile1 0 a (negb (ssrbool.is_left (Z.eq_dec 0 a)))
+    (fun b j => \[(0 <= j < (length L - 1)%nat)%Z /\
+      (List.nth (abs j) L 0 <= k)%Z /\ b = Z.leb (List.nth (abs (j+1)) L 0) k] 
+      \* pj0 ~(d)~> j \* harray_int L p_arr d).
+  { intros b j. xsimpl. intros (H1 & H2 & ->).
+    xapp whilecond_spec; auto.
+    intros ? ->. xsimpl*.
+  }
+  { intros j. xsimpl*.
+    intros (Hj & Hleb & EE).
+    symmetry in EE.
+    rewrite -> Z.leb_gt in EE.
+    eapply search_unify with (L:=L) (j:=k); auto.
+  }
+  { intros j. xsimpl*.
+    intros (Hj & Hleb & EE).
+    symmetry in EE.
+    rewrite -> Z.leb_le in EE.
+    destruct (Z.leb a j) eqn:EE2.
+    2: now apply Z.leb_gt in EE2.
+    apply Z.leb_le in EE2. 
+    assert (a + 1 <= j + 1)%Z as EE2' by math.
+    apply Zabs2Nat.inj_le, IIL_L_inc' with (L:=L) in EE2'; auto; try math.
+  }
+  { intros j (Hj1 & Hj2) IH.
+    xsimpl. intros (_ & H1 & H2).
+    apply eq_sym, Z.leb_le in H2.
+    xwp. xapp incr1.spec.
+    destruct (Z.leb (a-1) j) eqn:Ef.
+    { (* check if it is the end *)
+      rewrite -> Z.leb_le in Ef.
+      assert (j = a - 1) as -> by math.
+      replace (a - 1 + 1) with a in * by math.
+      xwp; xapp whilecond_spec...
+      intros r Er...
+      destruct Hka as (_ & Hka).
+      rewrite <- Z.leb_gt in Hka.
+      rewrite -> Hka in Er.
+      rewrite Er.
+      xwp. xif. 1: intros; by false.
+      intros _. 
+      xwp. xval.
+      xsimpl. split; auto. eqsolve.
+    }
+    { (* use IH *)
+      rewrite -> Z.leb_gt in Ef. clear Hj2.
+      assert (j + 1 <= a)%Z as Hj2 by math.
+      assert (j < j + 1)%Z as Hj3 by math.
+      specialize (IH (j+1) true).
+      destruct Hka as (Hka1 & Hka2).
+      xapp IH; try math.
+      2: intros; xsimpl*.
+      { split; try math. split; try assumption. 
+        symmetry. apply Z.leb_le.
+        transitivity (List.nth (abs a) L 0); try assumption. 
+        destruct (Z.leb a (j+1+1)) eqn:EE.
+        { rewrite -> Z.leb_le in EE.
+          assert (j+1+1 = a) as -> by math.
+          reflexivity.
+        }
+        { rewrite -> Z.leb_gt in EE.
+          match goal with |- (?a <= ?b)%Z => enough (a < b)%Z; try math end.
+          apply IIL_L_inc; math.
+        }
+      }
+    }
+  }
+  { (* pre *)
+    xsimpl. split; try math. destruct Hka as (Hka1 & Hka2). split.
+    { transitivity (List.nth (abs a) L 0); try assumption.
+      apply IIL_L_inc'; auto; try math.
+    }
+    { destruct (Z.eq_dec 0 a) as [ <- | ]; simpl.
+      { now apply eq_sym, Z.leb_gt. }
+      { apply eq_sym, Z.leb_le.
+        transitivity (List.nth (abs a) L 0); try assumption.
+        apply IIL_L_inc'; auto; math.
+      }
+    }
+  }
+  { (* post *)
+    xsimpl. intros _ (_ & H1 & H2).
+    symmetry in H2. rewrite -> Z.leb_gt in H2.
+    xwp. xapp. xwp. xapp. xwp. xval.
+    xsimpl*.
+  }
+Qed.
+
+End search_proof.
+
+End search. 
+
