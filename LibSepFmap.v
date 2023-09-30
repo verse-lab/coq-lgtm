@@ -372,6 +372,11 @@ Proof using. intros [f1 F1] [f2 F2] M. simpls. applys~ make_eq. Qed.
 (* ================================================================= *)
 (** ** Domain *)
 
+Lemma fmapNone (fm : fmap A B) x :
+  ~indom fm x ->
+  fmap_data fm x = None.
+Proof. by move/not_not_inv. Qed.
+
 Lemma indom_single_eq : forall x y v,
   indom (single x v) y = (x = y).
 Proof using.
@@ -469,6 +474,14 @@ Lemma disjoint_single_of_not_indom : forall h x v,
 Proof using.
   introv N. unfolds disjoint, map_disjoint. unfolds single, indom, map_indom.
   simpl. rew_logic in N. intros l'. case_if; subst; autos*.
+Qed.
+
+Lemma disjoint_single_of_not_indom' : forall h x v,
+  (~ indom h x) = disjoint (single x v) h.
+Proof using.
+  intros. extens. split. 1: apply disjoint_single_of_not_indom.
+  unfolds disjoint, map_disjoint; unfolds single, indom, map_indom.
+  simpl. intros H. specializes H x. case_if; eqsolve.
 Qed.
 
 (** Note that the reciprocal of the above lemma is a special instance of
@@ -1614,6 +1627,9 @@ Qed.
 Definition fmap_exact_dom [A B : Type] (h : fmap A B) :=
   @fmap_exact_dom_pre A B (fmap_data h) (fmap_finite h).
 
+Definition fmap_dom_size [A B : Type] (h : fmap A B) :=
+  List.length (projT1 (fmap_exact_dom h)).
+
 Fact supp_empty (A B : Type) : is_map_supp (@empty A B) nil.
 Proof.
   hnf. split. 2: split.
@@ -1763,6 +1779,18 @@ Proof.
   }
 Qed.
 
+Corollary is_map_supp_lengtheq [A B : Type] (h : fmap A B) (l1 l2 : list (A * B)) :
+  is_map_supp h l1 -> 
+  is_map_supp h l2 ->
+  List.length l1 = List.length l2.
+Proof.
+  intros. 
+  unfold is_map_supp in *.
+  rewrite <- ! length_List_length, <- ! length_map with (f:=fst), -> ! length_List_length.
+  apply Permutation_length, noduplicates_Permutation; try tauto.
+  now apply fmap_iso_3_fst with (h:=h).
+Qed.
+
 Corollary fmap_exact_dom_empty (A B : Type) : projT1 (fmap_exact_dom (@empty A B)) = nil.
 Proof.
   destruct (fmap_exact_dom (@empty A B)) as (l & H).
@@ -1774,6 +1802,20 @@ Proof.
 Qed.
 
 End Supp.
+
+Fact agree_fset {T} (fs1 fs2 : fset T) : agree fs1 fs2.
+Proof. hnf. intros. now destruct v1, v2. Qed.
+
+Lemma fset_extens {A} (fs fs' : fset A) : 
+  fs = fs' <->
+  forall x, indom fs x <-> indom fs' x.
+Proof.
+  split=> [->|] //.
+  move=> fsE; apply/fmap_extens=> x.
+  case: (prop_inv (indom fs x))=> [/[dup]/fsE|?].
+  { by rewrite /indom /map_indom; do ? case: (fmap_data _ _)=> // -[].  }
+  by rewrite ?fmapNone // -fsE.
+Qed.
 
 Definition fset_fold [A P : Type] (p : P) (f : A -> P -> P) (h : fset A) : P :=
   (fold_right f p (LibList.map fst (projT1 (fmap_exact_dom h)))).
@@ -2015,11 +2057,6 @@ Lemma fmapU_nin1 {A B : Type} (fm1 fm2 : fmap A B) x :
 Proof.
   by move/not_not_inv=> E; rewrite /= /map_union E.
 Qed.
-
-Lemma fmapNone {A B : Type} (fm : fmap A B) x :
-  ~indom fm x ->
-  fmap_data fm x = None.
-Proof. by move/not_not_inv. Qed.
 
 Lemma fsubst_valid_indom  {A B C : Type} (f : A -> C) (fm : fmap A B) (x : C) :
     indom (fsubst fm f) x = 
@@ -2423,6 +2460,37 @@ Proof.
   }
 Qed.
 
+Lemma interval_exact_dom (x y : int) (H : x <= y) : 
+  exists l, List.length l = abs (y - x) /\ is_map_supp (interval x y) l.
+Proof.
+  remember (abs (y - x)) as n.
+  revert x y H Heqn. induction n; intros.
+  { assert (x = y) as -> by math.
+    rewrite -> intervalgt; try math.
+    exists (@nil (int * unit)). split; [ auto | apply supp_empty ].
+  }
+  { rewrite intervalU; try math.
+    assert (n = abs (y - (x + 1))) as H1 by math.
+    assert (x + 1 <= y) as H2 by math.
+    specialize (IHn _ _ H2 H1).
+    destruct IHn as (l & <- & HH).
+    exists ((x, tt) :: l).
+    split; [ auto | apply supp_update; auto ].
+    rewrite indom_interval. math.
+  }
+Qed.
+
+Corollary interval_size x y (H : x <= y) : fmap_dom_size (interval x y) = abs (y - x).
+Proof.
+  pose proof (interval_exact_dom H) as (l & Hlen & HH).
+  unfold fmap_dom_size.
+  destruct (fmap_exact_dom _) as (l' & HH').
+  erewrite is_map_supp_lengtheq.
+  1: apply Hlen.
+  2: apply HH.
+  assumption.
+Qed.
+
 Lemma Union0 {T A B} (fsi : T -> fmap A B) : Union empty fsi = empty.
 Proof. 
   unfold Union. unfolds fset_fold. rewrite -> fmap_exact_dom_empty, -> fold_right_nil. auto.
@@ -2530,6 +2598,16 @@ Proof.
     introv N IN1 IN2; apply/H=> //; move: IN1 IN2; rewrite ?indom_update_eq ?indom_remove_eq; autos*.
   }
   { apply Union_upd_pre; auto. }
+Qed.
+
+Lemma Union_upd_fset {T A} (x : T) (fs : fset T) (fsi : T -> fset A) : 
+  Union (update fs x tt) fsi = fsi x \+ Union fs fsi.
+Proof.
+  apply/fset_extens=> ?; rewrite indom_union_eq ?indom_Union; split.
+  { case=> y[]; rewrite indom_update_eq=> -[->|]; eauto. }
+  case.
+  { exists x; rewrite* indom_update_eq. }
+  case=> y[]; exists y; rewrite* indom_update_eq.
 Qed.
 
 Fact UnionN0 [T D S : Type] (fs : fset T) : Union fs (fun=> @empty D S) = empty.
@@ -2672,17 +2750,6 @@ Qed.
 Definition intr {A : Type} (fs : fset A) (b : A -> Prop) : fset A := (filter (fun x _ => b x) fs).
 Infix "∩" := intr (at level 30).
 Notation "fs '∖' p" := (intr fs (not \o p)) (at level 30).
-
-Lemma fset_extens {A} (fs fs' : fset A) : 
-  fs = fs' <->
-  forall x, indom fs x <-> indom fs' x.
-Proof.
-  split=> [->|] //.
-  move=> fsE; apply/fmap_extens=> x.
-  case: (prop_inv (indom fs x))=> [/[dup]/fsE|?].
-  { by rewrite /indom /map_indom; do ? case: (fmap_data _ _)=> // -[].  }
-  by rewrite ?fmapNone // -fsE.
-Qed.
 
 Lemma fs_pred_part {A : Type} (fs : fset A) (p : A -> Prop) : 
   fs ∩ p \+ fs ∖ p = fs.

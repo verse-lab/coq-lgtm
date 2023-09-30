@@ -470,7 +470,13 @@ Tactic Notation "xfor_sum" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(
     intros i j; 
     autorewrite with disjointE; try math
   | let hvE := fresh "hvE" in
-  intros ??? hvE; try setoid_rewrite hvE; [eauto|autorewrite with indomE; try math]
+    let someindom := fresh "someindom" in
+    intros ??? hvE; rewrite ?/op;
+    match goal with 
+    | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ? someindom; extens; intros 
+    | _ => idtac
+    end; try setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
+      (first [ apply someindom | idtac ])]
   |
   |
   |
@@ -479,8 +485,8 @@ Tactic Notation "xfor_sum" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(
   |
   |
   |
-  | rewrite /Inv /R; rewrite -> ?hbig_fset_hstar; xsimpl
-  | intros ?; xsimpl
+  | rewrite ?/Inv ?/R; rewrite -> ?hbig_fset_hstar; xsimpl
+  | intros ?; rewrite ?/Inv ?/R' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl
   ]=> //; autos*.
 
 Lemma disjoint_single {T} (x y : T) : 

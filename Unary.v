@@ -259,6 +259,21 @@ Proof.
   apply IIL_L_inc'; math.
 Qed.
 
+Fact IIL_L_bounded_impl (i a : int) 
+  (Ha1 : (0 <= a < (length L - 1))) (Ha2 : (List.nth (abs a) L 0 <= i < List.nth (abs (a + 1)) L 0)) :
+  0 <= i < N.
+Proof.
+  split.
+  { transitivity (nth (abs a) L 0); try math.
+    rewrite <- IIL_L_first at 1.
+    apply IIL_L_inc'; math.
+  }
+  { enough (nth (abs (a + 1)) L 0 <= N) by math.
+    subst N.
+    apply IIL_L_inc'; math.
+  }
+Qed.
+
 Fact search_exists j (Hj : (0 <= j < N)) :
   sig (fun a => (0 <= a < (length L - 1)) /\ (List.nth (abs a) L 0 <= j < List.nth (abs (a + 1)) L 0)).
 Proof.

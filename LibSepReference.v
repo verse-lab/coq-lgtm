@@ -7481,16 +7481,6 @@ Qed.
 
 (* Open Scope Z_scope. *)
 
-Lemma Union_upd_fset {T A} (x : T) (fs : fset T) (fsi : T -> fset A) : 
-  Union (update fs x tt) fsi = fsi x \u Union fs fsi.
-Proof.
-  apply/fset_extens=> ?; rewrite indom_union_eq ?indom_Union; split.
-  { case=> y[]; rewrite indom_update_eq=> -[->|]; eauto. }
-  case.
-  { exists x; rewrite* indom_update_eq. }
-  case=> y[]; exists y; rewrite* indom_update_eq.
-Qed.
-
 Lemma label_union {T : Type} (fs1 fs2 : fset T) l : 
   label (Lab l (fs1 \u fs2)) = label (Lab l fs1) \u label (Lab l fs2).
 Proof using.
