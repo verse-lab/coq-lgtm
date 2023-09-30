@@ -612,6 +612,8 @@ Global Hint Resolve lhtriple_array_read : lhtriple.
 
 Global Hint Resolve htriple_array_read : htriple.
 
+Global Notation "x '[' i ']'" := (read_array x i) (in custom trm at level 50, format "x [ i ]") : trm_scope.
+
 Definition val_array_set : val :=
   <{ fun 'p 'i 'v =>
        let 'j = 'i + 1 in
