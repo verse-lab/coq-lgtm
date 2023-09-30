@@ -26,9 +26,9 @@ Lemma fset_of_list_in {A : Type} (l : list A) :
   (fun x => List.In x l) = indom (fset_of_list l).
 Admitted.
 
-Lemma fset_of_list_nodup (l : list int) : 
+Lemma fset_of_list_nodup {A : Type} a (l : list A) : 
   List.NoDup l ->
-  l = \U_(i <- interval 0 (length l)) `{l[i]} :> fset _.
+  l = \U_(i <- interval 0 (length l)) `{List.nth (abs i) l a} :> fset _.
 Admitted.
 
 Lemma Sum0 {A} : @Sum A empty = fun=> 0.
@@ -62,9 +62,9 @@ Qed.
 
 
 
-Lemma SumList (l : list int) F :
+Lemma SumList {A : Type} a (l : list A) F :
   NoDup l ->
-  Σ_(i <- l) F i = Σ_(i <- `[0, length l]) F l[i] .
+  Σ_(i <- l) F i = Σ_(i <- `[0, length l]) F (nth (abs i) l a) .
 Proof.
 Admitted.
 

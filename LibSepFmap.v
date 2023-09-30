@@ -2774,5 +2774,29 @@ Reserved Notation "'\U_' ( i <- r ) F"
 Notation "'\U_' ( i <- r ) F" :=
   (Union r (fun i => F)).
 
+Section cartesian_product.
+
+Context {A B : Type}.
+
+Definition prod (fs1 : fset A) (fs2 : fset B) : fset (A * B) :=
+  \U_(i <- fs1) \U_(j <- fs2) single (i,j) tt.
+
+Notation "A \x B" := (prod A B) (at level 50, left associativity).
+
+Lemma indom_prod fs1 fs2 : indom (fs1 \x fs2) = (fun x => indom fs1 x.1 /\ indom fs2 x.2).
+Proof.
+  extens=> -[a b]; split; rewrite /prod.
+  { rewrite indom_Union=> -[?][?]/[!@indom_Union]-[?][?].
+    by rewrite indom_single_eq=><-. }
+  case=> /= ??; do 2 (rewrite indom_Union; eexists _; splits* ).
+  by rewrite indom_single_eq.
+Qed.
+
+End cartesian_product.
+
+Notation "A \x B" := (prod A B) (at level 50, left associativity).
+
+
+
 
 (* 2023-03-25 11:36 *)
