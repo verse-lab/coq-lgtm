@@ -47,7 +47,7 @@ Proof.
   rewrite indom_interval; intros ?; math.
 Qed.
 
-Lemma SumEq F G (fs : fset int) :
+Lemma SumEq {A : Type} F G (fs : fset A) :
   (forall x, indom fs x -> F x = G x) -> Sum fs F = Sum fs G.
 Proof.
   intros.
@@ -61,11 +61,6 @@ Proof.
 Qed.
 
 
-Lemma SumIf {A : Type} (P : A -> Prop) fs F G : 
-  (Σ_(i <- fs) If P i then F i else G i) = 
-  Σ_(i <- fs ∩ P) F i + Σ_(i <- fs ∖ P) G i.
-Proof using.
-Admitted.
 
 Lemma SumList (l : list int) F :
   NoDup l ->
@@ -128,6 +123,15 @@ Proof.
     }
     rewrite <- update_eq_union_single, -> SumUpdate; auto; try math.
   }
+Qed.
+
+Corollary SumIf {A : Type} (P : A -> Prop) fs F G : 
+  (Σ_(i <- fs) If P i then F i else G i) = 
+  Σ_(i <- fs ∩ P) F i + Σ_(i <- fs ∖ P) G i.
+Proof using.
+  rewrite <- fs_pred_part with (p:=P) at 1.
+  rewrite SumUnion. 2: apply fs_pred_part_disj.
+  f_equal; eapply SumEq; intros ? Hin; rewrite filter_indom in Hin; case_if; eqsolve.
 Qed.
 
 Lemma SumCascade {A B : Type} (F : B -> int) (fs : fset A) (fsi : A -> fset B)

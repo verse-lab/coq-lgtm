@@ -187,7 +187,7 @@ Proof with fold'.
     move/NoDup_nthZ: nodup_xind; apply; autos*; math. }
   { rewrite -len_xind; math. }
   xapp; xsimpl.
-  under (@SumEq _ _ `[0,M]).
+  under (@SumEq int _ _ `[0,M]).
   { move=>*; rewrite to_int_if; over. }
   rewrite SumIf E SumList // len_xind Sum0s; math.
 Qed.
@@ -253,7 +253,7 @@ Proof with fold'.
     move/NoDup_nthZ: nodup_xind; apply; autos*; math. }
   { rewrite -len_xind; math. }
   xapp; xsimpl.
-  under (@SumEq _ _ `[0,M]).
+  under (@SumEq int _ _ `[0,M]).
   { move=>*; rewrite to_int_if; over. }
   rewrite (SumIf (fun=> Z.mul^~ _)) E SumList // len_xind Sum0s; math.
 Qed.
