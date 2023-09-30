@@ -391,7 +391,6 @@ Definition sum :=
 
 Ltac fold' := 
   rewrite ?label_single ?wp_single
-    (* -/(incr _)  *)
     -/(For_aux _ _) 
     -/(For _ _ _) //=.
 
@@ -445,7 +444,10 @@ Proof with fold'.
   xapp; xsimpl.
   under (@SumEq _ _ _ (`[0, Nrow] \x `[0, Ncol])).
   { move=>*; rewrite to_int_if; over. }
-  rewrite SumIf E. (SumList 0). // len_xind Sum0s; math.
+  rewrite SumIf E (SumList (0,0)) // lE Sum0s.
+  under (@SumEq _ _ _ `[0,N]).
+  { move=> ?; rewrite -combine_nth; last lia. over. }
+  math.
 Qed.
 
 End coo.
