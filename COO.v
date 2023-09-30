@@ -200,9 +200,9 @@ Definition dotprod :=
   fun xind xval dvec =>
   let s = ref 0 in
   for i <- [0, N] {
-    let x = read_array xval i in 
-    let i = read_array xind i in 
-    let v = read_array dvec i in 
+    let x = xval[i] in 
+    let i = xind[i] in 
+    let v = dvec[i] in 
     let x = x * v in
     s += x
   };
@@ -255,9 +255,9 @@ Proof with fold'.
   xapp; xsimpl.
   under (@SumEq _ _ `[0,M]).
   { move=>*; rewrite to_int_if; over. }
-  rewrite (SumIf (fun c i => i * dvec[c])) E SumList // len_xind Sum0s; math.
+  rewrite (SumIf (fun=> Z.mul^~ _)) E SumList // len_xind Sum0s; math.
 Qed.
-  
+
 End coo_vec.
 
 
