@@ -4,24 +4,15 @@ From SLF Require Import Fun LabType Sum.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
-Module NatDom : Domain with Definition type := nat.
-Definition type := nat.
-End NatDom.
-
-Module IntDom : Domain with Definition type := int.
-Definition type := int.
-End IntDom.
-
 Import List.
 
 Open Scope Z_scope.
 
-Module Export AD := WithArray(IntDom).
+Module WithLoops (Dom : Domain).
 
-Global Instance Inhab_D : Inhab D. 
-Proof Build_Inhab (ex_intro (fun=> True) (Lab (0, 0) 0) I).
+Module Export AD := WithArray(Dom).
 
-Lemma wp_while_unary  fs' (Inv : bool -> int -> hhprop) Z N T C s b0 (P : hhprop) Q :
+Lemma wp_while_unary `{Inhab D} fs' (Inv : bool -> int -> hhprop) Z N T C s b0 (P : hhprop) Q :
   (forall (b : bool) (x : int),
     Inv b x ==>
       wp 
@@ -70,10 +61,10 @@ Ltac xwhile1 Z N b Inv :=
   eapply (wp_while_unary Inv b (Z := Z) (N := N)); autos*.
 
 
-Lemma xfor_big_op_lemma_aux Inv (R R' : IntDom.type -> hhprop) 
+Lemma xfor_big_op_lemma_aux `{INH: Inhab D} Inv (R R' : Dom.type -> hhprop) 
   (op : (D -> val) -> int -> int) p 
   s fsi1 vr
-  Z N (C1 : IntDom.type -> trm) (i j : int) (C : trm)
+  Z N (C1 : Dom.type -> trm) (i j : int) (C : trm)
   Pre Post: 
   (forall (l : int) (x : int), 
     Z <= l < N ->
@@ -218,11 +209,11 @@ Proof.
   by case=> l d; rewrite indom_label_eq /= /htrm_of; case: classicT.
 Qed.
 
-Lemma xfor_specialized_lemma (Inv : int -> hhprop) (R R' : IntDom.type -> hhprop) 
+Lemma xfor_specialized_lemma `{INH: Inhab D} (Inv : int -> hhprop) (R R' : Dom.type -> hhprop) 
   s fsi1 vr
-  Z N (C1 : IntDom.type -> trm) (i j : int) (C : trm)
+  Z N (C1 : Dom.type -> trm) (i j : int) (C : trm)
   Pre Post
-  (p : int -> loc) : 
+  (p : Dom.type -> loc) : 
   (forall (l : int),
     Z <= l < N ->
     {{ Inv l \* 
@@ -381,10 +372,10 @@ Lemma lab_eqbE l1 l2:
   (lab_eqb l1 l2) = (l1 = l2) :> Prop.
 Proof. by extens; split=> [/lab_eqbP|->]// /[! eqbxx]. Qed.
 
-Lemma xfor_big_op_lemma Inv (R R' : IntDom.type -> hhprop) 
+Lemma xfor_big_op_lemma `{Inhab D} Inv (R R' : Dom.type -> hhprop) 
   (op : (D -> val) -> int -> int) p 
   s fsi1 vr
-  Z N (C1 : IntDom.type -> trm) (i j : int) (C : trm) C'
+  Z N (C1 : Dom.type -> trm) (i j : int) (C : trm) C'
   Pre Post: 
   (forall (l : int) (x : int), 
     Z <= l < N ->
@@ -448,7 +439,7 @@ Proof.
   simpl.
   apply/xfor_big_op_lemma_aux; eauto.
   move=> hv. apply: himpl_trans; [|apply/wp_hv].
-  move: (H11 hv); rewrite wp_equiv=> ?.
+  move: (H12 hv); rewrite wp_equiv=> ?.
   xapp=> hv'. rewrite -/(lab_fun_upd _ _ _).
   xsimpl (lab_fun_upd hv' hv (i, 0))=> ?.
   apply: applys_eq_init; fequals; apply/fun_ext_1=> /=.
@@ -460,7 +451,7 @@ Proof.
 Qed.
 
 Tactic Notation "xfor_sum" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(s) :=
-  eapply (@xfor_big_op_lemma Inv R R' op s); 
+  eapply (@xfor_big_op_lemma _ Inv R R' op s); 
   [ let L := fresh in 
     intros ?? L;
     xnsimpl
@@ -537,3 +528,5 @@ Qed.
 
 Global Hint Rewrite @disjoint_single disjoint_interval disjoint_single_interval 
   disjoint_interval_single @disjoint_eq_label @disjoint_label : disjointE.
+
+End WithLoops.

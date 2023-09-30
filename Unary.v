@@ -6,6 +6,21 @@ Hint Rewrite conseq_cons' : rew_listx.
 
 Open Scope Z_scope.
 
+Module NatDom : Domain with Definition type := nat.
+Definition type := nat.
+End NatDom.
+
+Module IntDom : Domain with Definition type := int.
+Definition type := int.
+End IntDom.
+
+Module Export AD := WithLoops(IntDom).
+
+Global Instance Inhab_D : Inhab D.
+rewrite /D/HD.type.
+by split; exists (Lab (0,0) 0).
+Qed.
+
 (* Module NatDom : Domain with Definition type := nat.
 Definition type := nat.
 End NatDom.
@@ -188,7 +203,7 @@ Proof with fold'.
     k d ~(d)~> x \* harray_int xind x_ind d
     ).
   xwp; xwhile1 0 (index i xind) (cond 0) Inv; rewrite /Inv.
-  { xsimpl=> ??->??. 
+  { xsimpl=> ??->??.
     do 5 (xwp; xapp); xapp=> ?->; xsimpl*.
     rewrite /cond. bool_rew... }
   { move=> x; rewrite /cond; xsimpl*.
