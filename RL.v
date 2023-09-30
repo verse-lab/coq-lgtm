@@ -4,6 +4,8 @@ From SLF Require Import LibSepReference LibSepTLCbuffer Struct Unary Loops.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
+Module Export AD := WithUnary(IntDom).
+
 Open Scope Z_scope.
 
 (* TODO possibly, move to_int to some common place *)

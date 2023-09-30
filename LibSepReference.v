@@ -6863,6 +6863,24 @@ Notation "'fun' x1 x2 x3 '=>' t" :=
     x1, x2, x3 at level 0,
     format "'fun'  x1  x2  x3  '=>'  t") : val_scope.
 
+Notation "'fun' x1 x2 x3 x4 '=>' t" :=
+  (val_fun x1 (trm_fun x2 (trm_fun x3 (trm_fun x4 t))))
+  (in custom trm at level 69,
+    x1, x2, x3, x4 at level 0,
+    format "'fun'  x1  x2  x3  x4  '=>'  t") : val_scope.
+
+Notation "'fun' x1 x2 x3 x4 x5 '=>' t" :=
+  (val_fun x1 (trm_fun x2 (trm_fun x3 (trm_fun x4 (trm_fun x5 t)))))
+  (in custom trm at level 69,
+    x1, x2, x3, x4, x5 at level 0,
+    format "'fun'  x1  x2  x3  x4  x5  '=>'  t") : val_scope.
+
+  (* Notation "'fun' x1 x2 x3 x4 x5 x6 '=>' t" :=
+  (val_fun x1 (trm_fun x2 (trm_fun x3 (trm_fun x4 (trm_fun x5 (trm_fun x6 t))))))
+  (in custom trm at level 69,
+    x1, x2, x3, x5, x6 at level 0,
+    format "'fun'  x1  x2  x3  x4  x5  x6  '=>'  t") : val_scope. *)
+
 Notation "'fix' f x1 x2 x3 '=>' t" :=
   (val_fix f x1 (trm_fun x2 (trm_fun x3 t)))
   (in custom trm at level 69,
@@ -6873,6 +6891,17 @@ Notation "'fun_' x1 x2 x3 '=>' t" :=
   (trm_fun x1 (trm_fun x2 (trm_fun x3 t)))
   (in custom trm at level 69,
     x1, x2, x3 at level 0, format "'fun_'  x1  x2  x3  '=>'  t") : trm_scope.
+
+Notation "'fun_' x1 x2 x3 x4 '=>' t" :=
+  (trm_fun x1 (trm_fun x2 (trm_fun x3 (trm_fun x4 t))))
+  (in custom trm at level 69,
+    x1, x2, x3, x4 at level 0, format "'fun_'  x1  x2  x3  x4  '=>'  t") : trm_scope.
+
+Notation "'fun_' x1 x2 x3 x4 x5 '=>' t" :=
+  (trm_fun x1 (trm_fun x2 (trm_fun x3 (trm_fun x4 (trm_fun x5 t)))))
+  (in custom trm at level 69,
+    x1, x2, x3, x4, x5 at level 0,
+    format "'fun_'  x1  x2  x3  x4  x5  '=>'  t") : val_scope.
 
 Notation "'fix_' f x1 x2 x3 '=>' t" :=
   (trm_fix f x1 (trm_fun x2 (trm_fun x3 t)))
@@ -7060,6 +7089,46 @@ Lemma xwp_lemma_fun3 : forall v0 v1 v2 v3 x1 x2 x3 t H Q fs,
 Proof using.
 Admitted.
 
+Lemma xwp_lemma_fun4 : forall v0 v1 v2 v3 v4 x1 x2 x3 x4 t H Q fs,
+  (v0 = fun d => val_fun (x1 d) (trm_fun (x2 d) (trm_fun (x3 d) (trm_fun (x4 d) (t d))))) ->
+  (forall d, 
+    var_eq (x1 d) (x2 d) = false /\ 
+    var_eq (x1 d) (x3 d) = false /\ 
+    var_eq (x1 d) (x4 d) = false /\ 
+    var_eq (x2 d) (x3 d) = false /\ 
+    var_eq (x2 d) (x4 d) = false /\ 
+    var_eq (x3 d) (x4 d) = false
+    ) ->
+  H ==> wpgen fs (fun d => subst (x4 d) (v4 d) (subst (x3 d) (v3 d) (subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t d))))) Q ->
+  htriple fs (fun d => (v0 d) (v1 d) (v2 d) (v3 d) (v4 d)) H Q.
+Proof using.
+Admitted.
+
+Lemma xwp_lemma_fun5 : forall v0 v1 v2 v3 v4 v5 x1 x2 x3 x4 x5 t H Q fs,
+  (v0 = fun d => val_fun (x1 d) (trm_fun (x2 d) (trm_fun (x3 d) (trm_fun (x4 d) (trm_fun (x5 d) (t d)))))) ->
+  (forall d, 
+    var_eq (x1 d) (x2 d) = false /\ 
+    var_eq (x1 d) (x3 d) = false /\ 
+    var_eq (x1 d) (x4 d) = false /\ 
+    var_eq (x1 d) (x5 d) = false /\ 
+    var_eq (x2 d) (x3 d) = false /\ 
+    var_eq (x2 d) (x4 d) = false /\ 
+    var_eq (x2 d) (x5 d) = false /\ 
+    var_eq (x3 d) (x4 d) = false /\
+    var_eq (x3 d) (x5 d) = false /\ 
+    var_eq (x4 d) (x5 d) = false
+    ) ->
+  H ==> wpgen fs (fun d => 
+    subst (x5 d) (v5 d) (
+      subst (x4 d) (v4 d) (
+        subst (x3 d) (v3 d) (
+          subst (x2 d) (v2 d) (
+            subst (x1 d) (v1 d) 
+            (t d)))))) Q ->
+  htriple fs (fun d => (v0 d) (v1 d) (v2 d) (v3 d) (v4 d) (v5 d)) H Q.
+Proof using.
+Admitted.
+
 Lemma xwp_lemma_wp_fun3 : forall v0 v1 v2 v3 x1 x2 x3 t H Q fs,
   (v0 = fun d => val_fun (x1 d) (trm_fun (x2 d) (trm_fun (x3 d) (t d)))) ->
   (forall d, var_eq (x1 d) (x2 d) = false /\ var_eq (x1 d) (x3 d) = false /\ var_eq (x2 d) (x3 d) = false) ->
@@ -7067,6 +7136,47 @@ Lemma xwp_lemma_wp_fun3 : forall v0 v1 v2 v3 x1 x2 x3 t H Q fs,
   H ==> wp fs (fun d => (v0 d) (v1 d) (v2 d) (v3 d)) Q.
 Proof using.
 Admitted.
+
+Lemma xwp_lemma_wp_fun4 : forall v0 v1 v2 v3 v4 x1 x2 x3 x4 t H Q fs,
+  (v0 = fun d => val_fun (x1 d) (trm_fun (x2 d) (trm_fun (x3 d) (trm_fun (x4 d) (t d))))) ->
+  (forall d, 
+    var_eq (x1 d) (x2 d) = false /\ 
+    var_eq (x1 d) (x3 d) = false /\ 
+    var_eq (x1 d) (x4 d) = false /\ 
+    var_eq (x2 d) (x3 d) = false /\ 
+    var_eq (x2 d) (x4 d) = false /\ 
+    var_eq (x3 d) (x4 d) = false
+    ) ->
+  H ==> wpgen fs (fun d => subst (x4 d) (v4 d) (subst (x3 d) (v3 d) (subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t d))))) Q ->
+  H ==> wp fs (fun d => (v0 d) (v1 d) (v2 d) (v3 d) (v4 d)) Q.
+Proof using.
+Admitted.
+
+Lemma xwp_lemma_wp_fun5 : forall v0 v1 v2 v3 v4 v5 x1 x2 x3 x4 x5 t H Q fs,
+  (v0 = fun d => val_fun (x1 d) (trm_fun (x2 d) (trm_fun (x3 d) (trm_fun (x4 d) (trm_fun (x5 d) (t d)))))) ->
+  (forall d, 
+    var_eq (x1 d) (x2 d) = false /\ 
+    var_eq (x1 d) (x3 d) = false /\ 
+    var_eq (x1 d) (x4 d) = false /\ 
+    var_eq (x1 d) (x5 d) = false /\ 
+    var_eq (x2 d) (x3 d) = false /\ 
+    var_eq (x2 d) (x4 d) = false /\ 
+    var_eq (x2 d) (x5 d) = false /\ 
+    var_eq (x3 d) (x4 d) = false /\
+    var_eq (x3 d) (x5 d) = false /\ 
+    var_eq (x4 d) (x5 d) = false
+    ) ->
+  H ==> wpgen fs (fun d => 
+    subst (x5 d) (v5 d) (
+      subst (x4 d) (v4 d) (
+        subst (x3 d) (v3 d) (
+          subst (x2 d) (v2 d) (
+            subst (x1 d) (v1 d) 
+            (t d)))))) Q ->
+  H ==> wp fs (fun d => (v0 d) (v1 d) (v2 d) (v3 d) (v4 d) (v5 d)) Q.
+Proof using.
+Admitted.
+
 (*
 
 
@@ -7107,13 +7217,12 @@ Tactic Notation "xwp" :=
         | applys xwp_lemma_wp_fix;  [ reflexivity | ]
         | applys xwp_lemma_fun2;    [ reflexivity | reflexivity | ]
         | applys xwp_lemma_wp_fun2; [ reflexivity | reflexivity | ]
-        (* | applys xwp_lemma_fix2;    [ reflexivity | reflexivity | ]
-        | applys xwp_lemma_fun2;    [ reflexivity | reflexivity | ]
-        | applys xwp_lemma_fix2;    [ reflexivity | (do ? split); reflexivity | ]
-        | applys xwp_lemma_fix3;    [ reflexivity | (do ? split); reflexivity | ]
-        | applys xwp_lemma_wp_fix2; [ reflexivity | (do ? split); reflexivity | ]*)
         | applys xwp_lemma_fun3;    [ reflexivity | (do ? split); reflexivity | ]
         | applys xwp_lemma_wp_fun3; [ reflexivity | (do ? split); reflexivity | ]
+        | applys xwp_lemma_fun4;    [ reflexivity | (do ? split); reflexivity | ]
+        | applys xwp_lemma_wp_fun4; [ reflexivity | (do ? split); reflexivity | ]
+        | applys xwp_lemma_fun5;    [ reflexivity | (do ? split); reflexivity | ]
+        | applys xwp_lemma_wp_fun5; [ reflexivity | (do ? split); reflexivity | ]
         (* | applys xwp_lemma_wp_fix3; [ reflexivity | (do ? split); reflexivity | ] *)
         | applys wp_of_wpgen
         | fail 1 "xwp only applies to functions defined using [val_fun] or [val_fix], with at most 3 arguments" ];
