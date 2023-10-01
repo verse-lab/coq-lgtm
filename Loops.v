@@ -12,6 +12,193 @@ Module WithLoops (Dom : Domain).
 
 Module Export AD := WithArray(Dom).
 
+Arguments disjoint_inv_not_indom_both {_ _ _ _ _}.
+
+
+(* Definition is_bool (v : val) := 
+  if v is val_bool _ then true else false. *)
+
+Lemma wp_Q_eq Q2 fs H Q1 : (forall hv, Q1 hv = Q2 hv) -> wp fs H Q1 = wp fs H Q2.
+Proof. move=> ?; f_equal; exact/fun_ext_1. Qed.
+
+Lemma wp_while_aux_false `{INH: Inhab D} i fs ht (H : int -> (D -> val) -> hhprop) Z N fsi hv0 :
+  (forall j hv, Z <= j < N ->
+    H j hv ==> 
+      wp
+        (fsi j) 
+        ht 
+        (fun hr => H (j+1) (hv \u_(Union (interval Z j) fsi) hr))) ->
+  (Z <= i <= N) ->
+  (forall j hv1 hv2, (forall x, indom (Union (interval Z j) fsi) x -> hv1 x = hv2 x) -> H j hv1 = H j hv2) ->
+  (forall i j, i <> j -> Z <= i < N -> Z <= j < N -> disjoint (fsi i) (fsi j)) ->
+  fs = Union (interval i N) fsi ->
+  H i hv0 ==> 
+    wp
+      fs
+      ht 
+      (fun hr => H N (hv0 \u_(Union (interval Z i) fsi) hr)).
+Proof with autos*.
+  move=> Step + hP Dj ->.
+  move: hv0.
+  induction_wf IH: (upto N) i; rewrite /upto le_zarith lt_zarith in IH.
+  move=> hv0 ?.
+  case: (classicT (i = N))=> [->|?].
+  { rewrite intervalgt ?Union0 ?wp0_dep; last lia; xsimpl hv0.
+    move=> ?; apply:applys_eq_init; fequal; extens=> ?.
+    rewrite /uni; by case: classicT. }  
+  rewrite intervalU ?Union_upd; last lia; first last.
+  { introv Neq. rewrite ?indom_union_eq ?indom_interval ?indom_single_eq.
+    case=> [?[?|]|]; first by subst.
+    { subst=> ?; apply/Dj=> //; lia. }
+    move=> ? [?|?]; subst; apply/Dj; lia. }
+  rewrite -wp_union; first last.
+  { rewrite disjoint_Union=> ? /[! indom_interval]?; apply/Dj; lia. }
+  apply/xapp_lemma; [rewrite -wp_equiv;apply/(Step _ hv0); lia|].
+  xsimpl; unfold protect=> hv.
+  apply/xapp_lemma; unfold protect.
+  { rewrite -wp_equiv. apply/(IH _ _ ((hv0 \u_ (\U_(i <- `[Z, i]) fsi i)) hv)); lia. }
+  xsimpl=> ?. erewrite hP; first exact: himpl_refl.
+  move=> ? IN. rewrite {1 3}/uni intervalUr ?Union_upd ?indom_union_eq; last lia.
+  { case: classicT=> [[]|].
+    { case: classicT.
+      { by rewrite /uni; case: classicT. }
+      by rewrite /uni; do ? case: classicT. }
+    { do ? (rewrite /uni; case: classicT=> //). }
+    rewrite /uni. do ? case: classicT... }
+  introv Neq. rewrite ?indom_union_eq ?indom_interval ?indom_single_eq.
+  case=> [?[?|]|]; first by subst.
+  { subst=> ?; apply/Dj=> //; lia. }
+  move=> ? [?|?]; subst; apply/Dj; lia.
+Qed.
+
+Lemma wp_while_aux `{INH: Inhab D} i fs fs' ht (H : bool -> int -> (D -> val) -> hhprop) Z N T C fsi s hv0 b0 :
+  (Z <= i <= N) ->
+  (forall j b hv1 hv2, (forall x, indom (Union (interval Z j) fsi) x -> hv1 x = hv2 x) -> H b j hv1 = H b j hv2) ->
+  (forall i j, i <> j -> Z <= i < N -> Z <= j < N -> disjoint (fsi i) (fsi j)) ->
+  fs = Union (interval i N) fsi ->
+  fs' = `{s} ->
+  (forall t, subst "while" t T = T) ->
+  (forall t, subst "cond" t T = T) ->
+  (forall t, subst "tt" t T = T) ->
+  (forall t, subst "while" t C = C) ->
+  (forall t, subst "cond" t C = C) ->
+  (forall t, subst "tt" t C = C) ->
+  (forall j, (i <= j < N) -> ~ indom (fsi j) s) ->
+  (ht s = While C T) ->
+  (forall hv i b, 
+      htriple fs' (fun=> C) (H b i hv) (fun vb => \[vb s = b] \* H b i hv)) ->
+  (forall hv b, H b N hv ==> \[b = false] \* H b N hv) ->
+  (forall j hv, Z <= j < N ->
+    H true j hv ==> 
+      wp
+        (fs' \u (fsi j)) 
+        (upd ht s T) 
+        (fun hr => \exists b', H b' (j+1) (hv \u_(Union (interval Z j) fsi) hr))) ->
+  (forall j hv, Z <= j < N ->
+    H false j hv ==> 
+      wp
+        (fsi j) 
+        ht 
+        (fun hr => H false (j+1) (hv \u_(Union (interval Z j) fsi) hr))) ->
+  H b0 i hv0 ==> 
+    wp
+      (fs' \u fs)
+      ht 
+      (fun hr => H false N (hv0 \u_(Union (interval Z i) fsi) hr)).
+Proof with autos*.
+  move=> + hP Dj ->-> swhile scond stt cw cc ct ++ HNC HF.
+  move: ht hv0 b0.
+  induction_wf IH: (upto N) i; rewrite /upto le_zarith lt_zarith in IH.
+  move=> ht hv0 b lN dj htE StepT StepF.
+  have ?: disjoint (`{s}) (\U_(i <- `[i, N]) fsi i).
+  { rewrite disjoint_Union=> ? /[! indom_interval]/dj?.
+    rewrite disjoint_comm; applys* disjoint_single_of_not_indom. }
+  rewrite -wp_union // wp_single htE /While /While_aux.
+  rewrite wp_fix_app2.
+  Opaque subst.
+  xwp.
+  Transparent subst.
+  rewrite /= ?swhile stt cw ct.
+  xapp=> cond; rewrite wp_single scond=>->.
+  case: (classicT (i = N))=> [|?].
+  { move=>->; eapply himpl_trans; eauto; xsimpl=>->.
+    xwp; xif=> // _; xwp; xval.
+    rewrite intervalgt ?Union0 ?wp0_dep; last lia; xsimpl hv0.
+    by erewrite hP; autos*=> ??; rewrite uni_in. }
+  xwp; xif; case: b=> // _.
+  { rewrite intervalU ?Union_upd; last lia; first last.
+    { introv Neq. rewrite ?indom_union_eq ?indom_interval ?indom_single_eq.
+      case=> [?[?|]|]; first by subst.
+      { subst=> ?; apply/Dj=> //; lia. }
+      move=> ? [?|?]; subst; apply/Dj; lia. }
+    have ?: forall t (d : D), indom (fsi i) d -> upd ht s t d = ht d.
+    { move=> ???; rewrite upd_neq // => ?; subst.
+      apply/dj; eauto; lia. }
+    set (t := <{_ ; _}>).
+    rewrite wp_equiv; apply/htriple_conseq; [|eauto|]; first last.
+    { move=> ?; rewrite -wp_union.
+      { rewrite (wp_ht_eq _ (upd ht s t)); last symmetry...
+        rewrite wp_equiv. apply/htriple_conseq; [|exact: himpl_refl|]; first last.
+        { move=> v.
+          rewrite wp_equiv; apply/htriple_conseq; [|exact: himpl_refl|]; first last.
+          { move=> v'. rewrite (uniA _ _ _ v); exact: himpl_refl. }
+          rewrite -wp_equiv; exact: himpl_refl. }
+        rewrite -wp_equiv; exact: himpl_refl. }
+      rewrite disjoint_Union=> ? /[!indom_interval]?; apply/Dj; lia. }
+    rewrite -wp_equiv.
+    rewrite (wp_ht_eq _ (upd ht s t)); first last.
+    { move=> ?; rewrite indom_single_eq=>->; by rewrite upd_eq. }
+    set (f := uni _ hv0). 
+    set (Wp := wp (Union _ _) _).
+    set (h := H false N).
+    set (st := _ \u _).
+    rewrite (wp_union (fun v => Wp (fun v' => h (f (uni st v v'))))); first last.
+    { apply/disjoint_single_of_not_indom/dj; lia. }
+    rewrite {}/f{}/Wp{}/h{}/st.
+    rewrite wp_equiv. apply/(htriple_sequ2 _ _ (fun=> T) ht (htpre := upd ht s T)).
+    { apply/disjoint_single_of_not_indom/dj; lia. }
+    { move=> ?. rewrite indom_single_eq=>-> /[! upd_eq] //. }
+    { eauto. }
+    { rewrite -wp_equiv; apply/StepT; lia. }
+    { move=> ?. rewrite indom_single_eq=>-> /[! upd_eq]; reflexivity. }
+    { eauto. }
+    move=> hv1. rewrite -wp_equiv -wp_fix_app2; xsimpl=> ?.
+    rewrite -/(While_aux _ _) -/(While _ _).
+    { rewrite (wp_ht_eq _ ht); first last.
+      { move=> ?; rewrite indom_single_eq=><-... }
+      under wp_Q_eq.
+      { move=> hv'. set (f := uni _ hv0).
+        rewrite (wp_Q_eq (fun hv => H false N (f hv1 \u_(\U_(i <- `[Z, i+1]) fsi i) (hv' \u_(`{s}) hv)))).
+        { over. }
+        move=> ?. f_equal; rewrite /f; extens=> ?.
+        rewrite /uni intervalUr; last lia. 
+        rewrite Union_upd ?indom_union_eq.
+        { do ? case: classicT... case=> //; rewrite indom_single_eq.
+          move=> /[swap]<- /dj. case; lia. }
+        introv Neq. rewrite ?indom_union_eq ?indom_interval ?indom_single_eq.
+        case=> [?[?|]|]; first by subst.
+        { subst=> ?; apply/Dj=> //; lia. }
+        move=> ? [?|?]; subst; apply/Dj; lia. } 
+      rewrite (wp_union (fun v => H _ _ (_ \u_ _ v))); first last.
+      { rewrite disjoint_Union=> ?/[!indom_interval] ?.
+        rewrite disjoint_comm; apply/disjoint_single_of_not_indom/dj; lia. }
+      apply/IH; (try lia)...
+      move=> ??; apply/dj; lia. } 
+      move=> hv1 hv2 hvE; erewrite wp_Q_eq; first exact: himpl_refl.
+      do 3 (f_equal=> > /=); extens=> ?. 
+      rewrite /uni; case: classicT... }
+  xwp; xval=> ?.
+  pose proof wp_while_aux_false; move: H0 StepF=> /[apply]/[apply] HH.
+  apply/wp_conseq; last apply/HH...
+  move=> ?. erewrite hP; first exact: himpl_refl.
+  move=> ?.
+  rewrite /uni; do ? case: classicT...
+  rewrite indom_single_eq=> <- IN /[!@indom_Union]-[]y.
+  rewrite indom_interval=> -[]?/[dup]?/dj-[].
+  apply:not_not_inv=> ?; apply/IN; rewrite indom_Union. 
+  exists y; split=> //; rewrite indom_interval; lia.
+Qed.
+
 Lemma wp_while_unary `{Inhab D} fs' (Inv : bool -> int -> hhprop) Z N T C s b0 (P : hhprop) Q :
   (forall (b : bool) (x : int),
     Inv b x ==>
