@@ -24,7 +24,7 @@ Section pure_facts.
 Import List.
 
 Lemma NoDup_nthZ {A : Type} i j l (z : A): 
-  NoDup l <->
+  NoDup l ->
   ((0<= i < Datatypes.length l) ->
   (0<= j < Datatypes.length l) -> nth (abs i) l z = nth (abs j) l z -> i = j).
 Admitted.
