@@ -171,10 +171,10 @@ Definition whilecond N (i x_ind k : trm) :=
   }>.
 
 
-Definition func (N : int) := 
-  let loop := While (whilecond N "i" "x_ind" "k") <{++"k"}> in
+Definition func := 
+  let loop := While (whilecond "N" "i" "x_ind" "k") <{++"k"}> in
   <{
-    fun "i" "x_ind" =>
+    fun "N" "i" "x_ind" =>
       let 'k = ref 0 in 
       loop;
       let "ans" = ! 'k in
@@ -199,7 +199,7 @@ Ltac bool_rew :=
   rewrite ?false_eq_isTrue_eq ?true_eq_isTrue_eq -?(isTrue_and, isTrue_not, isTrue_or).
 
 
-Lemma spec `{Inhab D} d N (i : int) (xind : list int) (x_ind : loc) : 
+Lemma spec `{Inhab D} d (N : int) (i : int) (xind : list int) (x_ind : loc) : 
   htriple (single d tt) 
     (fun=> func N i x_ind)
     (harray_int xind x_ind d \* \[length xind = N :> int] \* \[List.NoDup xind])

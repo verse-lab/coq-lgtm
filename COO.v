@@ -57,18 +57,18 @@ Hypothesis len_xval : length xval = N :> int.
 Hypothesis nodup_xind : NoDup xind.
 Hypothesis xind_leq : forall x, In x xind -> 0 <= x < M.
 
-Definition indexf := index.func N.
+(* Definition indexf := index.func N. *)
 
 Definition get := 
   <{
-  fun i xind xval =>
-    let k = indexf i xind in 
+  fun "N" i xind xval =>
+    let k = index.func "N" i xind in 
     read_array xval k
 }>.
 
 Lemma get_spec_in `{Inhab D} (x_ind x_val : loc) i d : 
   htriple (single d tt) 
-    (fun=> get (List.nth (abs i) xind 0) x_ind x_val)
+    (fun=> get N (List.nth (abs i) xind 0) x_ind x_val)
     (\[0 <= i < N] \*
       harray_int xind x_ind d \* 
       harray_int xval x_val d)
@@ -84,7 +84,7 @@ Qed.
 
 Lemma get_spec_out_unary `{Inhab D} (x_ind x_val : loc) (i : int) d : 
   htriple (single d tt) 
-    (fun=> get i x_ind x_val)
+    (fun=> get N i x_ind x_val)
     (\[~ In i xind] \*
       harray_int xind x_ind d \* 
       harray_int xval x_val d)
@@ -101,7 +101,7 @@ Qed.
 
 Lemma get_spec_out `{Inhab D} fs (x_ind x_val : loc) : 
   htriple  fs
-    (fun i => get (eld i) x_ind x_val)
+    (fun i => get N (eld i) x_ind x_val)
     (\[forall d, indom fs d -> ~ In (eld d) xind] \*
       (\*_(d <- fs) harray_int xind x_ind d) \* 
        \*_(d <- fs) harray_int xval x_val d)
@@ -148,7 +148,7 @@ Lemma sum_spec `{Inhab D} (x_ind x_val : loc) :
      (\*_(i <- `[0, M]) arr(x_val, xval)⟨2, i⟩) }}
   [{
     [1| ld in `{0}   => sum x_ind x_val];
-    [2| ld in `[0,M] => get ld x_ind x_val]
+    [2| ld in `[0,M] => get N ld x_ind x_val]
   }]
   {{ hv, \[hv[`1](0) = Σ_(i <- `[0,M]) hv[`2](i)] \* \Top}}.
 Proof with fold'.
@@ -210,7 +210,7 @@ Lemma dotprod_spec `{Inhab D} (x_ind x_val d_vec : loc) :
      (\*_(i <- `[0, M]) arr(d_vec, dvec)⟨2, i⟩) }}
   [{
     [1| ld in `{0}   => dotprod x_ind x_val d_vec];
-    [2| ld in `[0,M] => get ld x_ind x_val]
+    [2| ld in `[0,M] => get N ld x_ind x_val]
   }]
   {{ hv, \[hv[`1](0) = Σ_(i <- `[0,M]) (hv[`2](i) * dvec[i])] \* \Top}}.
 Proof with fold'.
