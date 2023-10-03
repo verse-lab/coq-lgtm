@@ -7701,9 +7701,9 @@ Lemma htriple_sequ2 (fs fs' : fset D) H Q' Q ht ht1 ht2 htpre ht'
   (Htppre : htriple (fs \u fs') htpre H Q') (* hv? *)
   (Hht : forall d, indom fs d -> ht d = trm_seq (ht1 d) (ht2 d))
   (Hht' : forall d, indom fs' d -> ht d = ht' d)
-  (Htp2 : forall hv, htriple fs ht2 (Q' hv) (fun hr => Q (uni fs hr hv)))
-  (Hcong : forall hv1 hv2, (forall d, indom (fs \u fs') d -> hv1 d = hv2 d) -> 
-    Q hv1 ==> Q hv2) :
+  (Htp2 : forall hv, htriple fs ht2 (Q' hv) (fun hr => Q (uni fs' hv hr))) :
+  (* (Hcong : forall hv1 hv2, (forall d, indom (fs \u fs') d -> hv1 d = hv2 d) -> 
+    Q hv1 ==> Q hv2) : *)
   htriple (fs \u fs') ht H Q.
 Proof using.
   apply wp_equiv.
@@ -7741,15 +7741,10 @@ Proof using.
   1: apply Htppre.
   apply wp_conseq.
   hnf. intros. apply wp_conseq.
-  hnf. intros. apply wp_equiv. 
-  eapply htriple_conseq.
-  1: apply Htp2.
-  1: xsimpl.
-  hnf. intros. apply Hcong.
-  intros d Hu. rewrite -> indom_union_eq in Hu. unfold uni. 
-  repeat case_if; try eqsolve.
-  exfalso. revert C C0. apply disjoint_inv_not_indom_both. 
-  apply Hdj.
+  hnf. intros. 
+  xapp=> hv.
+  move=> ?; apply:applys_eq_init; f_equal; extens=> ?; rewrite /uni.
+  do? case:classicT=> //.
 Qed.
 
 Lemma wp_for_aux  i fs fs' ht (H : int -> (D -> val) -> hhprop) Z N C fsi hv0 vr:
@@ -10057,7 +10052,7 @@ Notation "'⟨' l ',' x '⟩'" := (label (Lab l%Z x%fs)) (at level 5, right asso
 
 Definition ntriple H fs_hts Q := H ==> nwp fs_hts Q.
 
-Lemma ntriple_sequ2 (fs fs' : fset _) H Q' Q
+(* Lemma ntriple_sequ2 (fs fs' : fset _) H Q' Q
   (ht' ht1 ht2 : _ -> trm) (i j : int) (Hij : i <> j)
   (Htppre : 
     ntriple H
@@ -10110,7 +10105,6 @@ Proof using.
     1:{ destruct d as (ll, d). apply indom_label in H0, C. eqsolve. }
     case_if; try contradiction. reflexivity.
   }
-  3: apply Hcong.
   3:{
     intros. destruct d as (ll, d).
     rewrite -> indom_union_eq, -> ! indom_label_eq in H0.
@@ -10134,7 +10128,7 @@ Proof using.
   intros. destruct d as (ll, d).
   rewrite -> indom_union_eq, -> ! indom_label_eq in H0. 
   unfold htrm_of, uni. rewrite ! indom_label_eq. simpl. repeat case_if; try eqsolve.
-Qed.
+Qed. *)
 
 Lemma xfocus_lemma (l : labType) fs_hts (Q : (HD.type -> val) -> hhprop) H : 
   let fs_ht := lookup' fs_hts l in
