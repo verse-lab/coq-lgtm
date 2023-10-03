@@ -1457,6 +1457,14 @@ Proof.
   rewrite IH //; xsimpl.
 Qed.
 
+Lemma hbig_fset_part {A : Type} (fs : fset A) (P : A -> Prop) : 
+  hbig_fset hstar fs = 
+  fun H => hbig_fset hstar (fs ∩ P) H \* hbig_fset hstar (fs ∖ P) H.
+Proof.
+  apply/fun_ext_1=> ?; rewrite -hbig_fset_union // ?fs_pred_part //.
+  exact/fs_pred_part_disj.
+Qed.
+
 Lemma hbig_fset_eq {A} hop (fs : fset A) (f1 f2 : A -> hhprop) :
   (forall d, indom fs d -> f1 d = f2 d) ->
   hbig_fset hop fs f1 = hbig_fset hop fs f2.
@@ -9669,7 +9677,11 @@ End WP_for.
 
 End For_loop.
 
-
+Notation "'for' i <- '[' Z ',' N ']' '{' t '}'"  :=
+  (For Z N (trm_fun i t))
+  (in custom trm at level 69,
+    Z, N, i at level 0,
+    format "'[' for  i  <-  [ Z ','  N ] ']'  '{' '/   ' '[' t  '}' ']'") : trm_scope.
 
 End Reasoning.
 

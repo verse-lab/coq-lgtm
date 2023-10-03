@@ -24,7 +24,7 @@ Section pure_facts.
 Import List.
 
 Lemma NoDup_nthZ {A : Type} i j l (z : A): 
-  NoDup l ->
+  NoDup l <->
   ((0<= i < Datatypes.length l) ->
   (0<= j < Datatypes.length l) -> nth (abs i) l z = nth (abs j) l z -> i = j).
 Admitted.
@@ -39,23 +39,8 @@ Module coo_vec.
 
 Module Export AD := WithUnary(IntDom).
 
-Lemma hbig_fset_part {A : Type} (fs : fset A) (P : A -> Prop) : 
-  hbig_fset hstar fs = 
-  fun H => hbig_fset hstar (fs ∩ P) H \* hbig_fset hstar (fs ∖ P) H.
-Proof.
-  apply/fun_ext_1=> ?; rewrite -hbig_fset_union // ?fs_pred_part //.
-  exact/fs_pred_part_disj.
-Qed.
-
 Notation "H1 '\\*' H2" := (hstar H1 H2)
   (at level 42, right associativity, format "H1  \\* '//' H2") : hprop_scope.
-
-
-Notation "'for' i <- '[' Z ',' N ']' '{' t '}'"  :=
-  (For Z N <{ fun_ i => t }>)
-  (in custom trm at level 69,
-    Z, N, i at level 0,
-    format "'[' for  i  <-  [ Z ','  N ] ']'  '{' '/   ' '[' t  '}' ']'") : trm_scope.
 
 Section coo_vec.
 

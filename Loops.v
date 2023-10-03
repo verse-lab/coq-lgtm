@@ -214,29 +214,25 @@ Proof with autos*.
     { eauto. }
     move=> hv1. rewrite -wp_equiv -wp_fix_app2; xsimpl=> ?.
     rewrite -/(While_aux _ _) -/(While _ _).
-    { rewrite (wp_ht_eq _ ht); first last.
-      { move=> ?; rewrite indom_single_eq=><-... }
-      under wp_Q_eq.
-      { move=> hv'. set (f := uni _ hv0).
-        rewrite (wp_Q_eq (fun hv => H false N (f hv1 \u_(\U_(i <- `[Z, i+1]) fsi i) (hv' \u_(`{s}) hv)))).
-        { over. }
-        move=> ?. f_equal; rewrite /f; extens=> ?.
-        rewrite /uni intervalUr; last lia. 
-        rewrite Union_upd ?indom_union_eq.
-        { do ? case: classicT... case=> //; rewrite indom_single_eq.
-          move=> /[swap]<- /dj. case; lia. }
-        introv Neq. rewrite ?indom_union_eq ?indom_interval ?indom_single_eq.
-        case=> [?[?|]|]; first by subst.
-        { subst=> ?; apply/Dj=> //; lia. }
-        move=> ? [?|?]; subst; apply/Dj; lia. } 
-      rewrite (wp_union (fun v => H _ _ (_ \u_ _ v))); first last.
-      { rewrite disjoint_Union=> ?/[!indom_interval] ?.
-        rewrite disjoint_comm; apply/disjoint_single_of_not_indom/dj; lia. }
-      apply/IH; (try lia)...
-      move=> ??; apply/dj; lia. } 
-      move=> hv1 hv2 hvE; erewrite wp_Q_eq; first exact: himpl_refl.
-      do 3 (f_equal=> > /=); extens=> ?. 
-      rewrite /uni; case: classicT... }
+    rewrite (wp_ht_eq _ ht); first last.
+    { move=> ?; rewrite indom_single_eq=><-... }
+    under wp_Q_eq.
+    { move=> hv'. set (f := uni _ hv0).
+      rewrite (wp_Q_eq (fun hv => H false N (f hv1 \u_(\U_(i <- `[Z, i+1]) fsi i) (hv' \u_(`{s}) hv)))).
+      { over. }
+      move=> ?. f_equal; rewrite /f; extens=> ?.
+      rewrite /uni intervalUr; last lia. 
+      rewrite Union_upd ?indom_union_eq.
+      { do ? case: classicT... }
+      introv Neq. rewrite ?indom_union_eq ?indom_interval ?indom_single_eq.
+      case=> [?[?|]|]; first by subst.
+      { subst=> ?; apply/Dj=> //; lia. }
+      move=> ? [?|?]; subst; apply/Dj; lia. } 
+    rewrite (wp_union (fun v => H _ _ (_ \u_ _ v))); first last.
+    { rewrite disjoint_Union=> ?/[!indom_interval] ?.
+      rewrite disjoint_comm; apply/disjoint_single_of_not_indom/dj; lia. }
+    apply/IH; (try lia)...
+    move=> ??; apply/dj; lia. } 
   xwp; xval=> ?.
   pose proof wp_while_aux_false; move: H0 StepF=> /[apply]/[apply] HH.
   apply/wp_conseq; last apply/HH...
