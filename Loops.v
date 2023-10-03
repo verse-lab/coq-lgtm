@@ -477,26 +477,6 @@ Proof.
   apply/Dj; lia.
 Qed.
 
-Lemma Union_union {T A B} (fs : fset T) (fsi1 fsi2 : T -> fmap A B) :
-  (forall i j, i <> j -> indom fs i -> indom fs j -> disjoint (fsi1 i) (fsi1 j)) ->
-  (forall i j, i <> j -> indom fs i -> indom fs j -> disjoint (fsi2 i) (fsi2 j)) ->
-  (forall i j, i <> j -> indom fs i -> indom fs j -> disjoint (fsi1 i) (fsi2 j)) ->
-  Union fs fsi1 \u Union fs fsi2 = Union fs (fun t => fsi1 t \u fsi2 t).
-Proof.
-  elim/fset_ind: fs=> [|fs x IHfs ?] in fsi1 fsi2 *.
-  { by rewrite ?Union0 union_empty_l. }
-  move=> Dj11 Dj22 Dj12.
-  rewrite ?Union_upd //; first last.
-  { move=> *; rewrite ?disjoint_union_eq_l; splits*. }
-  rewrite -IHfs.
-  { rewrite -union_assoc. rewrite [(_ \u _) \u fsi2 _]union_assoc. rewrite [Union _ _ \u _]union_comm_of_disjoint.
-    { by rewrite ?union_assoc. }
-    rewrite disjoint_Union=> *; apply/Dj12; first by move=>?;subst.
-    all: rewrite* indom_update_eq. }
-  all: move=>*; (apply/Dj11||apply/Dj12||apply/Dj22)=> //; rewrite* indom_update_eq.
-Qed.
-
-
 Lemma xwhile_big_op_lemma_aux2 `{INH: Inhab D} Inv (R1 R2 R1' R2' : Dom.type -> hhprop) 
   (op : (D -> val) -> int -> int) p 
   s fsi1 fsi2
@@ -1104,12 +1084,7 @@ Lemma ntriple_sequ2_gen (fs : fset _) H Q' Q fsht
     Q')
   (Htp2 : forall hv, 
     htriple (label (Lab (pair i 0) fs)) (fun d => ht2 (eld d)) 
-      (Q' hv) (fun hr => Q (uni (label (Lab (pair i 0) fs)) hr hv)))
-  (Hcong : forall hv1 hv2, 
-    (forall d, 
-      indom ((label (Lab (pair i 0) fs)) \u (fset_of fsht)) d -> 
-      hv1 d = hv2 d) -> 
-    Q hv1 ==> Q hv2)
+      (Q' hv) (fun hr => Q (uni (fset_of fsht) hv hr)))
   :
   ~ has_lab fsht (i,0) ->
   ntriple H
@@ -1142,7 +1117,6 @@ Proof using.
   2:{ move=> ?; rewrite (hasnt_lab _ _ HNL) /uni; case: classicT=> //.
     move=>/disjoint_inv_not_indom_both/[apply]-[].
     exact/fset_htrm_label_remove_disj. }
-  3: apply Hcong.
   3:{ case=> *; by rewrite /uni /= indom_label_eq. }
   2: apply Htp2.
   unfold ntriple, nwp in Htppre.
@@ -1154,6 +1128,103 @@ Proof using.
   intros. destruct d as (ll, d).
   rewrite -> indom_union_eq, -> ! indom_label_eq in H0. 
   unfold htrm_of, uni. rewrite ! indom_label_eq. simpl. repeat case_if; try eqsolve.
+Qed.
+
+Lemma xwhile_big_op_lemma2 `{INH: Inhab D} Inv (R1 R2 R1' R2' : Dom.type -> hhprop) 
+  (op : (D -> val) -> int -> int) p 
+  s fsi1 fsi2
+  Z N (C1 C2 : Dom.type -> trm) (i j k : int) (C C' T : trm) b0
+  Pre Post: 
+  (forall (l : int) (x : int), 
+    Z <= l < N ->
+    {{ Inv true l \* 
+       (\*_(d <- ⟨(j, 0%Z), fsi1 l⟩) R1 d) \* 
+       (\*_(d <- ⟨(k, 0%Z), fsi2 l⟩) R2 d) \* 
+       p ~⟨(i, 0%Z), s⟩~> (val_int x) }}
+      [{
+        {i| _  in `{s}  => T};
+        {j| ld in fsi1 l       => C1 ld};
+        {k| ld in fsi2 l       => C2 ld}
+      }]
+    {{ hv, \exists b,
+        Inv b (l + 1) \* 
+        (\*_(d <- ⟨(j, 0%Z), fsi1 l⟩) R1' d) \*
+        (\*_(d <- ⟨(k, 0%Z), fsi2 l⟩) R2' d) \* 
+        p ~⟨(i, 0%Z), s⟩~> (val_int (x + (op hv l))) }}) ->
+  (forall (l : int) (x : int), 
+    Z <= l < N ->
+    {{ Inv false l \* 
+       (\*_(d <- ⟨(j, 0%Z), fsi1 l⟩) R1 d) \*
+        \*_(d <- ⟨(k, 0%Z), fsi2 l⟩) R2 d }}
+      [{
+        {j| ld in fsi1 l       => C1 ld};
+        {k| ld in fsi2 l       => C2 ld}
+      }]
+    {{ hv, \[op hv l = 0] \*
+        Inv false (l + 1) \* 
+        (\*_(d <- ⟨(j, 0%Z), fsi1 l⟩) R1' d) \* 
+         \*_(d <- ⟨(k, 0%Z), fsi2 l⟩) R2' d}}) ->
+  (forall (l : int) (b : bool), 
+    Z <= l <= N ->
+    {{ Inv b l }}
+      [{
+        {i| _  in `{s}  => C}
+      }]
+    {{ hv, \[hv[`i](s) = b] \* Inv b l }}) ->
+  (forall b, Inv b N ==> \[b = false] \* Inv b N) ->
+  (forall i j : int, i <> j -> Z <= i < N -> Z <= j < N -> disjoint (fsi1 i) (fsi1 j)) ->
+  (forall i j : int, i <> j -> Z <= i < N -> Z <= j < N -> disjoint (fsi2 i) (fsi2 j)) ->
+  (forall (hv hv' : D -> val) m,
+    (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
+    (forall i, indom (fsi2 m) i -> hv[`k](i) = hv'[`k](i)) ->
+    op hv m = op hv' m) ->
+  (i <> j) -> (j <> k) -> (k <> i) ->
+  (Z <= N)%Z ->
+  (forall t, subst "while" t T = T) ->
+  (forall t, subst "cond" t T = T) ->
+  (forall t, subst "tt" t T = T) ->
+  (forall t, subst "while" t C = C) ->
+  (forall t, subst "cond" t C = C) ->
+  (forall t, subst "tt" t C = C) ->
+  (Pre ==> 
+    Inv b0 Z \* 
+    (\*_(d <- Union `[Z,N] fsi1) R1 d) \*
+    (\*_(d <- Union `[Z,N] fsi2) R2 d) \*
+    p ~⟨(i, 0%Z), s⟩~> val_int 0) ->
+  (forall hv, 
+    Inv false N \* 
+    (\*_(d <- Union `[Z,N] fsi1) R1' d) \*
+    (\*_(d <- Union `[Z,N] fsi2) R2' d) \* 
+    p ~⟨(i, 0%Z), s⟩~> val_int (Σ_(i <- interval Z N) (op hv i)) ==>
+      wp ⟨(i,0), `{s}⟩ (fun=> C') (fun hr => Post (lab_fun_upd hr hv (i,0)))) -> 
+  {{ Pre }}
+    [{
+      {i| _  in single s tt => trm_seq (While C T) C'};
+      {j| ld in Union `[Z,N] fsi1 => C1 ld};
+      {k| ld in Union `[Z,N] fsi2 => C2 ld}
+    }]
+  {{ hv, Post hv }}.
+Proof.
+  move=> ?????????????????? PostH.
+  eapply ntriple_sequ2_gen with (Q' := fun hv=> Inv false N \*
+    (\*_(d <- \U_(i <- `[Z, N]) fsi1 i) R1' d) \*
+    (\*_(d <- \U_(i <- `[Z, N]) fsi2 i) R2' d) \*
+    p ~⟨(i, 0%Z), s⟩~> (Σ_(i <- `[Z, N]) op hv i)); autos*=> /=.
+  { apply/xwhile_big_op_lemma_aux2; try eassumption; xsimpl*. }
+  { move=> v; rewrite -wp_equiv; apply: himpl_trans_r.
+    apply/wp_hv; apply: wp_conseq Hwp=> hr ? Qh.
+    setoid_rewrite wp_equiv in PostH; xapp=> hr.
+    xsimpl (lab_fun_upd hr v (i, 0))=> ?; apply:applys_eq_init; f_equal; extens=> -[??].
+    rewrite /uni; case: classicT.
+    { rewrite union_empty_r indom_union_eq ?indom_label_eq.
+      case: ssrbool.ifP=> //. 
+      rewrite /is_true bool_eq_true_eq lab_eqbE /==>->[][][]; eqsolve. } 
+    rewrite indom_label_eq indom_single_eq. 
+    by case: classicT=> // -[]<-<-/= /[! eqbxx]. }
+  rewrite Bool.orb_false_r.
+  case E: (lab_eqb _ _); move: E=> /=.
+  { move<-. rewrite lab_eqbE. eqsolve. }
+  rewrite lab_eqbE. eqsolve.
 Qed.
 
 Lemma xfor_big_op_lemma `{Inhab D} Inv (R R' : Dom.type -> hhprop) 

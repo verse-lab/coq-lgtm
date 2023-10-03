@@ -2495,24 +2495,7 @@ Lemma Union0 {T A B} (fsi : T -> fmap A B) : Union empty fsi = empty.
 Proof. 
   unfold Union. unfolds fset_fold. rewrite -> fmap_exact_dom_empty, -> fold_right_nil. auto.
 Qed.
-(*
-Lemma Union_union {T A B} (fs : fset T) (fsi1 fsi2 : T -> fmap A B) :
-  Union fs fsi1 \+ Union fs fsi2 = Union fs (fun t => fsi1 t \+ fsi2 t).
-Proof.
-  unfold Union. unfolds fset_fold. 
-  destruct (fmap_exact_dom fs) as (l & HH). simpl.
-  destruct HH as (HH & _ & _).
-  remember (LibList.map fst l) as lf. clear Heqlf.
-  induction lf as [ | x lf IH ]. 
-  { rewrite -> ! fold_right_nil. rewrite -> union_empty_l. auto. }
-  { inversion HH; subst. specializes IH H2.
-    rewrite -> ! fold_right_cons. 
-    admit.
-    (* ... *)
-    (* need disjoint to swap *)
-  }
-Admitted.
-*)
+
 Lemma indom_Union {T A B} (fs : fset T) (fsi : T -> fmap A B) x : 
   indom (Union fs fsi) x = exists f, indom fs f /\ indom (fsi f) x.
 Proof.
@@ -2598,6 +2581,25 @@ Proof.
     introv N IN1 IN2; apply/H=> //; move: IN1 IN2; rewrite ?indom_update_eq ?indom_remove_eq; autos*.
   }
   { apply Union_upd_pre; auto. }
+Qed.
+
+Lemma Union_union {T A B} (fs : fset T) (fsi1 fsi2 : T -> fmap A B) :
+  (forall i j, i <> j -> indom fs i -> indom fs j -> disjoint (fsi1 i) (fsi1 j)) ->
+  (forall i j, i <> j -> indom fs i -> indom fs j -> disjoint (fsi2 i) (fsi2 j)) ->
+  (forall i j, i <> j -> indom fs i -> indom fs j -> disjoint (fsi1 i) (fsi2 j)) ->
+  Union fs fsi1 \+ Union fs fsi2 = Union fs (fun t => fsi1 t \+ fsi2 t).
+Proof.
+  elim/fset_ind: fs=> [|fs x IHfs ?] in fsi1 fsi2 *.
+  { by rewrite ?Union0 union_empty_l. }
+  move=> Dj11 Dj22 Dj12.
+  rewrite ?Union_upd //; first last.
+  { move=> *; rewrite ?disjoint_union_eq_l; splits*. }
+  rewrite -IHfs.
+  { rewrite -union_assoc [(_ \+ _) \+ fsi2 _]union_assoc [Union _ _ \+ _]union_comm_of_disjoint.
+    { by rewrite ?union_assoc. }
+    rewrite disjoint_Union=> *; apply/Dj12; first by move=>?;subst.
+    all: rewrite* indom_update_eq. }
+  all: move=>*; (apply/Dj11||apply/Dj12||apply/Dj22)=> //; rewrite* indom_update_eq.
 Qed.
 
 Lemma Union_upd_fset {T A} (x : T) (fs : fset T) (fsi : T -> fset A) : 
