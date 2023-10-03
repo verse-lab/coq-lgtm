@@ -263,15 +263,13 @@ Lemma xwhile_big_op_lemma_aux `{INH: Inhab D} Inv (R R' : Dom.type -> hhprop)
   (forall (l : int) (x : int), 
     Z <= l < N ->
     {{ Inv false l \* 
-       (\*_(d <- ⟨(j, 0%Z), fsi1 l⟩) R d) \* 
-       p ~⟨(i, 0%Z), s⟩~> (val_int x) }}
+       \*_(d <- ⟨(j, 0%Z), fsi1 l⟩) R d}}
       [{
         {j| ld in fsi1 l       => C1 ld}
       }]
-    {{ hv,
+    {{ hv, \[op hv l = 0] \*
         Inv false (l + 1) \* 
-        (\*_(d <- ⟨(j, 0%Z), fsi1 l⟩) R' d) \* 
-        p ~⟨(i, 0%Z), s⟩~> (val_int (x + (op hv l))) }}) ->
+        \*_(d <- ⟨(j, 0%Z), fsi1 l⟩) R' d}}) ->
   (forall (l : int) (b : bool), 
     Z <= l <= N ->
     {{ Inv b l }}
@@ -420,9 +418,11 @@ Proof.
     rewrite indom_Union. exists l. rewrite indom_interval.
     split; try math; auto. }
   xapp=> {}hr; xsimpl.
+  move=> E0 ?; apply:applys_eq_init. 
   rewrite <- intervalUr; try math. rewrite SumxSx; try math.
-  move=> ?; apply:applys_eq_init. 
-  do 3 f_equal; [apply/SumEq=> ??|]; apply/opP=> ? IN*; 
+  Search (_ + 0).
+  do 2 f_equal; rewrite (opP _ hr) ?E0
+  [apply/SumEq=> ??|]; apply/opP=> ? IN*; 
   rewrite /uni indom_Union; case: classicT=> //.
   { case; eexists; splits*; rewrite indom_label_eq; autos*. }
   case=> l' []/[!@indom_label_eq]/[!indom_interval]=> ?.
