@@ -92,8 +92,7 @@ Proof.
   rewrite -wp_equiv wp_single. 
   simpl.
   xapp (@rli_spec_unary H x_ind x_val (Lab l d) d k Hk Hin)=> r Er.
-  rewrite Er.
-  xsimpl*.
+  by rewrite Er.
 Qed.
 
 End rli.

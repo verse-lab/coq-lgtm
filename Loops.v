@@ -305,7 +305,7 @@ Lemma xwhile_big_op_lemma_aux `{INH: Inhab D} Inv (R R' : Dom.type -> hhprop)
         Inv b (l + 1) \* 
         (\*_(d <- ⟨(j, 0%Z), fsi1 l⟩) R' d) \* 
         p ~⟨(i, 0%Z), s⟩~> (val_int (x + (op hv l))) }}) ->
-  (forall (l : int) (x : int), 
+  (forall (l : int), 
     Z <= l < N ->
     {{ Inv false l \* 
        \*_(d <- ⟨(j, 0%Z), fsi1 l⟩) R d}}
@@ -494,7 +494,7 @@ Lemma xwhile_big_op_lemma_aux2 `{INH: Inhab D} Inv (R1 R2 R1' R2' : Dom.type -> 
         (\*_(d <- ⟨(j, 0%Z), fsi1 l⟩) R1' d) \*
         (\*_(d <- ⟨(k, 0%Z), fsi2 l⟩) R2' d) \* 
         p ~⟨(i, 0%Z), s⟩~> (val_int (x + (op hv l))) }}) ->
-  (forall (l : int) (x : int), 
+  (forall (l : int), 
     Z <= l < N ->
     {{ Inv false l \* 
        (\*_(d <- ⟨(j, 0%Z), fsi1 l⟩) R1 d) \*
@@ -1147,7 +1147,7 @@ Lemma xwhile_big_op_lemma2 `{INH: Inhab D} Inv (R1 R2 R1' R2' : Dom.type -> hhpr
         (\*_(d <- ⟨(j, 0%Z), fsi1 l⟩) R1' d) \*
         (\*_(d <- ⟨(k, 0%Z), fsi2 l⟩) R2' d) \* 
         p ~⟨(i, 0%Z), s⟩~> (val_int (x + (op hv l))) }}) ->
-  (forall (l : int) (x : int), 
+  (forall (l : int), 
     Z <= l < N ->
     {{ Inv false l \* 
        (\*_(d <- ⟨(j, 0%Z), fsi1 l⟩) R1 d) \*

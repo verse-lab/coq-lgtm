@@ -6430,9 +6430,12 @@ Tactic Notation "xapp_pre" :=
     need to be first instantiated. This instantiation is achieved by means of
     the tactic [forwards_nounfold_then] offered by the TLC library. *)
 
+Hint Rewrite @hbig_fset_empty : hstar_fset.
+
 Tactic Notation "xapp_nosubst" constr(E) :=
   xapp_pre;
-  forwards_nounfold_then E ltac:(fun K => applys xapp_lemma' K=>//; xapp_simpl).
+  forwards_nounfold_then E ltac:(fun K => applys xapp_lemma' K=>//; xapp_simpl);
+  autorewrite with hstar_fset; do 2? xsimpl.
 
 (** [xapp_apply_spec] implements the heart of [xapp], when called without
     argument. If finds out the specification htriple, either in the hint data

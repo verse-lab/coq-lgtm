@@ -589,7 +589,6 @@ Proof with fold_search.
       \* pj0 ~(d)~> j \* harray_int L p_arr d).
   { intros b j. xsimpl. intros (H1 & H2 & ->).
     xapp whilecond_spec; auto.
-    intros ? ->. xsimpl*.
   }
   { intros j. xsimpl*.
     intros (Hj & Hleb & EE).
@@ -633,8 +632,7 @@ Proof with fold_search.
       assert (j < j + 1) as Hj3 by math.
       specialize (IH (j+1) true).
       destruct Hka as (Hka1 & Hka2).
-      xapp IH; try math.
-      2: intros; xsimpl*.
+      xapp IH; try math; auto.
       { split; try math. split; try assumption. 
         symmetry. apply Z.leb_le.
         transitivity (List.nth (abs a) L 0); try assumption. 

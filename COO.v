@@ -98,6 +98,20 @@ Proof.
   xapp; xsimpl*; rewrite memNindex // nth_overflow //; math.
 Qed.
 
+Lemma get_spec `{Inhab D} (x_ind x_val : loc) d (l : int): 
+  htriple (single d tt) 
+    (fun=> get N l x_ind x_val)
+    (harray_int xind x_ind d \* 
+      harray_int xval x_val d)
+    (fun hr => 
+      harray_int xind x_ind d \* 
+      harray_int xval x_val d).
+Proof.
+  rewrite -wp_equiv; xsimpl.
+  xwp; xapp index.spec=> //.
+  xapp; xsimpl*.
+Qed.
+
 
 Lemma get_spec_out `{Inhab D} fs (x_ind x_val : loc) : 
   htriple  fs
@@ -114,8 +128,7 @@ Proof.
   [|eauto|move=> ?]; rewrite -hstar_fset_pure -?hbig_fset_hstar; first last.
   { move=> ?; apply: applys_eq_init; reflexivity. }
   apply/htriple_union_pointwise=> [> -> //|??]. 
-  rewrite -wp_equiv wp_single; xapp get_spec_out_unary=> // ??->.
-  xsimpl*.
+  by rewrite -wp_equiv wp_single; xapp get_spec_out_unary=> // ??->.
 Qed.
 
 
@@ -353,8 +366,7 @@ Proof.
   { move=> ?; apply: applys_eq_init; reflexivity. }
   apply/htriple_union_pointwise=> [> -> //|[?][??]?]. 
   rewrite -wp_equiv wp_single. 
-  xapp get_spec_out_unary=> //= ??->.
-  xsimpl*.
+  by xapp get_spec_out_unary=> //= ??->.
 Qed.
 
 (* Lemma SumIf {A : Type} {P : A -> Prop} {fs F G} (C : A -> int -> int) : 
