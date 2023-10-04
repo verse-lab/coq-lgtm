@@ -386,6 +386,11 @@ Proof with fold'.
     rewrite /H2/H1 ?E (fset_of_list_nodup 0) // /R1 /R2.
     rewrite -> ?hbig_fset_hstar; xsimpl*. }
   simpl=> v. xapp; xsimpl; rewrite /op.
+  rewrite (@SumEq _ _
+    (fun i => If ind i then v[`2](i) *  v[`3](i) else 0) 
+    `[0, M]).
+  { rewrite (SumIf (fun=> id)) E (SumList 0) // Sum0s; math. }
+  by move=> ?; case: classicT.
 Admitted.
 
 End sparse_vec.
