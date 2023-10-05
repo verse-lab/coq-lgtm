@@ -87,6 +87,46 @@ Lemma In_le_0 l x :
   sorted l -> In x l -> x >= l[0].
 Admitted.
 
+Lemma search (x : int) (l : list int) : int.
+Admitted. (*find 0 (> x)*)
+
+Lemma search_lt_nth l i x : 
+  sorted l -> 
+  0 <= i < length l ->
+    (forall y, In y l -> y < l[i] -> y <= x) ->
+    x < l[i] ->
+    search x l = l[i].
+Admitted.
+
+Lemma search_nth l i : 
+  sorted l -> 
+  0 < i + 1 < length l ->
+    search l[i] l = l[i + 1].
+Admitted.
+
+Lemma merge_nthS l1 l2 i :
+  sorted l1 -> sorted l2 ->
+  0 < i + 1 < length (merge l1 l2) ->
+    (merge l1 l2)[i+1] = Z.min (search (merge l1 l2)[i] l1) (search (merge l1 l2)[i] l2).
+Admitted.
+
+Lemma merge_nth0 l1 l2 :
+  length l1 > 0 ->
+  length l2 > 0 ->
+  (merge l1 l2)[0] = Z.min l1[0] l2[0].
+Admitted.
+
+(*Lemma nth_merge_lt l1 l2 i1 i2 i :
+  sorted l1 -> sorted l2 ->
+  0 <= i1 < length l1 - 1 -> 
+  0 <= i2 < length l2 - 1 -> 
+  0 <= i < length (merge l1 l2) ->
+    l1[i1] < l2[i2] ->
+    (merge l1 l2)[i] = l1[i1] ->
+    (merge l1 l2)[i+1] = Z.min l1[i1+1] l2[i].
+Admitted. *)
+
+
 End pure_facts.
 
 Module sparse_vec.
@@ -198,7 +238,7 @@ Proof with fold'.
   set (ind := merge xind yind).
   have?: NoDup xind by exact/sorted_nodup.
   have?: NoDup yind by exact/sorted_nodup.
-  have?: NoDup ind by exact/sorted_nodup/sorted_merge.
+  have ndind: NoDup ind by exact/sorted_nodup/sorted_merge.
   xfocus (2,0) (ind).
   rewrite {1 2}(hbig_fset_part `[0, M] ind).
   xapp (@get_spec_out xind xval); eauto.
@@ -238,10 +278,7 @@ Proof with fold'.
   set (op hv i := hv[`2](ind[i]) * hv[`3](ind[i])).
   set (R1 i := arr(y_ind, yind)⟨3,i⟩ \* arr(y_val, yval)⟨3,i⟩).
   set (R2 i := arr(x_ind, xind)⟨2,i⟩ \* arr(x_val, xval)⟨2,i⟩).
-  eapply xwhile_big_op_lemma2 with 
-    (Inv := Inv) (op := op) 
-    (R1 := R1) (R2 := R2) 
-    (R1' := fun=> \Top) (R2':= fun=> \Top) (p := ans)=> //; try eassumption.
+  xwhile_sum Inv R1 R2 (fun=> \Top) (fun=> \Top) op ans=> //.
   { move=> l s ?.
     rewrite {1}/Inv; xnsimpl=> ix iy[?][?][?][LM1][LM2][].
     rewrite /cond. bool_rew=> -[??]/(_ eq_refl)-[]indlE[L1 L2].
@@ -255,11 +292,12 @@ Proof with fold'.
       rewrite /R1 indlE C Z.min_id...
       xapp get_spec_in; eauto.
       rewrite /Heap /Inv /arr1/cond.
-      have SlE: l + 1 = size ind -> ~ isTrue (ix + 1 < Nx /\ iy + 1 < Ny). 
+      have SlE: l + 1 = size ind -> ~ (ix + 1 < Nx /\ iy + 1 < Ny). 
       { move: C indlE=>-> /[! Z.min_id]/[swap]/sorted_max_size->; bool_rew.
         have: max ind >= max yind by apply/max_sublist=>?; rewrite In_merge; right.
         move=>/[swap]->/nth_le_max-> //; lia. }
       xsimpl (ix + 1) (iy + 1); splits; [|lia|lia| | |autos*|]...
+      { by bool_rew. }
       { move=> ?; rewrite max_takeS; last lia. 
         suff: ind[l] < ind[l+1] by lia.
         apply/sorted_le; autos*; try lia.
@@ -269,7 +307,9 @@ Proof with fold'.
         apply/sorted_le; autos*; try lia.
         exact/sorted_merge. }
       bool_rew=> -[]??; splits*.
-      { admit. }
+      { rewrite merge_nthS // -/ind; try lia.
+        rewrite indlE {2}C -{1}C ?Z.min_id ?search_nth //.
+        all: move: (size_merge xind yind); rewrite -/ind; lia. }
       { move=> x ??; move: (@sorted_le iy (iy+1) yind sorted_yind).
         suff: (x <= xind[ix]) by lia.
         apply/In_lt... lia. }
@@ -285,12 +325,14 @@ Proof with fold'.
       rewrite /R1; xapp get_spec_out_unary; eauto.
       { move/L2/(_ L); lia. }
       rewrite Z.mul_0_r Z.add_0_r.
-      rewrite /Heap /Inv /arr1/cond. 
-      xsimpl (ix + 1) (iy); splits; [|lia|lia| | |autos*|].
+      rewrite /Heap /Inv /arr1/cond.
+      have SlE: l + 1 = size ind -> ~ (ix + 1 < Nx /\ iy < Ny). 
       { move: indlE=> /[!Z.min_l] //; last lia. 
         move=>/[swap]/sorted_max_size->; bool_rew.
         have: max ind >= max xind by apply/max_sublist=>?; rewrite In_merge; left.
         move=>/[swap]->/nth_le_max-> //; lia. }
+      xsimpl (ix + 1) (iy); splits; [|lia|lia| | |autos*|].
+      { by bool_rew. }
       { move=> ?; rewrite max_takeS; last lia. 
         suff: ind[l] < ind[l+1] by lia.
         apply/sorted_le; autos*; try lia.
@@ -299,7 +341,10 @@ Proof with fold'.
         apply/sorted_le; autos*; try lia.
         exact/sorted_merge. }
       bool_rew=> -[]??; splits*.
-      { admit. }
+      { rewrite merge_nthS // -/ind ?indlE 1?(Z.min_l (_[_])); try lia.
+        rewrite search_nth //; try lia.
+        erewrite search_lt_nth; eauto; try lia.
+        move=> ? /L2; lia. }
       { move=> x ??; move: (@sorted_le ix (ix+1) xind sorted_xind)=> ?.
         suff: (x <= xind[ix]) by lia.
         apply/In_lt... lia. }
@@ -312,11 +357,14 @@ Proof with fold'.
     rewrite /R2; xapp get_spec_out_unary; eauto.
     { move/L1. rewrite val_int_eq in C; lia. }
     rewrite Z.mul_0_l Z.add_0_r.
-    rewrite /Heap /Inv /arr1/cond; xsimpl (ix) (iy+1); splits; [|lia|lia| | |autos*|].
+    have SlE: l + 1 = size ind -> ~ (ix < Nx /\ iy + 1 < Ny). 
     { move: indlE=> /[!Z.min_r] //; last lia. 
       move=>/[swap]/sorted_max_size->; bool_rew.
       have: max ind >= max yind by apply/max_sublist=>?; rewrite In_merge; right.
       move=>/[swap]->/nth_le_max-> //; lia. }
+    rewrite val_int_eq in C.
+    rewrite /Heap /Inv /arr1/cond; xsimpl (ix) (iy+1); splits; [|lia|lia| | |autos*|].
+    { by bool_rew. }
     { move=> ?. suff: ind[l] < ind[l+1] by lia.
       apply/sorted_le; autos*; try lia.
       exact/sorted_merge. }
@@ -325,10 +373,12 @@ Proof with fold'.
       apply/sorted_le; autos*; try lia.
       exact/sorted_merge. }
     bool_rew=> -[]??; splits*.
-    { admit. }
+    { rewrite merge_nthS // -/ind ?indlE 1?(Z.min_r (_[_])); try lia.
+      rewrite search_nth //; try lia.
+      erewrite search_lt_nth; eauto; try lia.
+      move=> ? /L1; lia. }
     { move=> ? /L1/[apply].
       move: (@sorted_le iy (iy+1) yind sorted_yind); lia. }
-    rewrite val_int_eq in C.
     move=> x ??; move: (@sorted_le iy (iy+1) yind sorted_yind)=> ?.
     suff: (x <= yind[iy]) by lia.
     apply/In_lt... lia. }
@@ -365,11 +415,9 @@ Proof with fold'.
     rewrite /Inv; xpull=> ix iy C.
     do ? (xwp; xapp). xapp and.spec=> //.
     by move=> ?->; bool_rew; case: C=> ? [?][?][?][?][]->. }
-  { move=> b; rewrite /Inv; xsimpl*=> ?? []/(_ eq_refl); by case: b. }
-  { admit. }
-  { admit. }
-  { admit. }
-  { lia. }
+  { move=> ?? []/(_ eq_refl); by case: b. }
+  { move=> *. move/NoDup_nthZ: ndind=> /[apply]; lia. }
+  { move=> *. move/NoDup_nthZ: ndind=> /[apply]; lia. }
   { rewrite /arr1 /Inv/arrs/arr1; xsimpl 0 0.
     { splits; [|lia|lia| | |autos*|].
       { rewrite /cond/ind; bool_rew; move: (size_merge xind yind); lia. }
@@ -379,8 +427,8 @@ Proof with fold'.
         { rewrite abs_0 /= max0=> ?.
           have: (In (nth 0 ind 0) ind) by apply/nth_In; lia.
           rewrite In_merge=> -[/xind_leq|/yind_leq]; lia. }
-        do ? split.
-        { admit. }
+        rewrite /cond; bool_rew; do ? split.
+        { rewrite merge_nth0; lia. }
         { move=> ?/(In_le_0 _ sorted_xind); lia. }
         move=> ?/(In_le_0 _ sorted_yind); lia. }
     rewrite /H2/H1 ?E (fset_of_list_nodup 0) // /R1 /R2.
@@ -391,7 +439,7 @@ Proof with fold'.
     `[0, M]).
   { rewrite (SumIf (fun=> id)) E (SumList 0) // Sum0s; math. }
   by move=> ?; case: classicT.
-Admitted.
+Qed.
 
 End sparse_vec.
 

@@ -1331,4 +1331,40 @@ Tactic Notation "xfor_sum" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(
   | intros ?; rewrite ?/Inv ?/R' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl
   ]=> //; autos*.
 
+Tactic Notation "xwhile_sum" 
+    constr(Inv) 
+    constr(R1) constr(R2) 
+    uconstr(R1') uconstr(R2') 
+    constr(op) constr(s) :=
+  eapply (@xwhile_big_op_lemma2  _
+    Inv R1 R2 R1' R2' op s)=> //;
+  [
+  |
+  |
+  | intro; rewrite ?/Inv; xsimpl*
+  | let Neq := fresh in
+    let i   := fresh "i" in
+    let j   := fresh "j" in 
+    intros i j; 
+    autorewrite with disjointE; try lia
+  | let Neq := fresh in
+    let i   := fresh "i" in
+    let j   := fresh "j" in 
+    intros i j; 
+    autorewrite with disjointE; try lia
+  | let hvE1 := fresh "hvE1" in
+    let hvE2 := fresh "hvE2" in
+    let someindom := fresh "someindom" in
+    intros ??? hvE1 hvE2; rewrite ?/op;
+    match goal with 
+    | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ? someindom; extens; intros 
+    | _ => idtac
+    end; try setoid_rewrite hvE1; try setoid_rewrite hvE2 
+    (**; [eauto|autorewrite with indomE; try math; 
+    (first [ apply someindom | idtac ])]*)
+  | try lia
+  |
+  |
+  ].
+
 End WithLoops.
