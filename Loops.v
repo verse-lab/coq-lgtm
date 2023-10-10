@@ -1331,4 +1331,419 @@ Tactic Notation "xfor_sum" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(
   | intros ?; rewrite ?/Inv ?/R' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl
   ]=> //; autos*.
 
+
+Lemma xfor_lemma2_hbig_op `{ID : Inhab D}
+  Inv 
+  (R1 R1' R2 R2' : Dom.type -> hhprop)
+  m (H : int -> hhprop) (H' : int -> (D -> val) -> hhprop)
+  s fsi1 fsi2 vr
+  (N: Z) (C1 C2 : Dom.type -> trm) (C : trm)
+  (i j k : Z)
+  Pre Post: 
+  (forall (l : int) Q, 
+    (0 <= l < N) ->
+    {{ Inv l \* 
+        (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R1 d) \* 
+        (\*_(d <- ⟨(k,0)%Z, fsi2 l⟩) R2 d) \* 
+        Q \(m) H l }}
+      [{
+        {i| _  in single s tt  => subst vr l C};
+        {j| ld in fsi1 l       => C1 ld};
+        {k| ld in fsi2 l       => C2 ld}
+      }]
+    {{ v, 
+        Inv (l + 1) \* 
+        (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R1' d) \* 
+        (\*_(d <- ⟨(j,0)%Z, fsi2 l⟩) R2' d) \* 
+        Q \(m) H' l v }}) ->
+  (forall j : int, hlocal (Inv j) ⟨(i,0%Z), single s tt⟩) ->
+  (forall j : int, hlocal (H j) ⟨(i,0%Z), single s tt⟩) ->
+  (forall (j : int) (v : D -> val), hlocal (H' j v) ⟨(i,0%Z), single s tt⟩) ->
+  (forall i : D, hlocal (R1 i) (single i tt)) ->
+  (forall i : D, hlocal (R1' i) (single i tt)) ->
+  (forall i : D, hlocal (R2 i) (single i tt)) ->
+  (forall i : D, hlocal (R2' i) (single i tt)) ->
+  (forall (hv hv' : D -> val) m,
+    (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
+    (forall i, indom (fsi2 m) i -> hv[`k](i) = hv'[`k](i)) ->
+    H' m hv = H' m hv') ->
+  comm m -> assoc m ->
+  (i <> j)%Z ->
+  (j <> k)%Z ->
+  (k <> i)%Z ->
+  0 <= N ->
+  (forall t : val, subst "for" t C = C) -> 
+  (forall t : val, subst "cnt" t C = C) ->
+  (forall t : val, subst "cond" t C = C) ->
+  var_eq vr "cnt" = false ->
+  var_eq vr "for" = false ->
+  var_eq vr "cond" = false ->
+  (Pre ==> 
+    Inv 0 \* 
+    (\*_(d <- Union `[0,N] fsi1) R1 d) \*
+    (\*_(d <- Union `[0,N] fsi2) R2 d) \*
+    \(m)_(i <- `[0,N]) H i) ->
+  (forall hv, 
+    Inv N \* 
+    (\*_(d <- Union `[0,N] fsi1) R1' d) \* 
+    (\*_(d <- Union `[0,N] fsi2) R2' d) \* 
+    (\(m)_(i <- `[0,N]) H' i hv) ==>
+    Post hv) -> 
+  {{ Pre }}
+    [{
+      {i| _  in single s tt => For 0 N (trm_fun vr C)};
+      {j| ld in Union `[0,N] fsi1 => C1 ld};
+      {k| ld in Union `[0,N] fsi2 => C2 ld}
+    }]
+  {{ v, Post v }}. 
+Proof.
+  move=> IH lI lH lH' lR1 lR1' lR2 lR2' opP CM AS iNj jNk kNi N0 ? ??? ?? PreH PostH.
+  rewrite /ntriple /nwp ?fset_of_cons /= union_empty_r.
+  set (f := (fun '(Lab (p, q) x) => Lab 
+    (If p = j then 
+      If  0 <= q < N /\ indom (fsi1 q) x then (j,0)%Z else (p, 2 * (q + N) + 1)
+    else If p = k then 
+      If  0 <= q < N /\ indom (fsi2 q) x then (k,0)%Z else (p, 2 * (q + N) + 1)
+    else (p, q)) 
+    x) : D -> D).
+  set (g := (fun '(Lab (p, q) x) => Lab 
+    (If p = j then 
+      If q = 0 /\ indom (Union (interval 0 N) fsi1) x then
+        (j, Get 0 N fsi1 x)
+      else (j, -1)
+    else If p = k then 
+      If q = 0 /\ indom (Union (interval 0 N) fsi2) x then
+        (k, Get 0 N fsi2 x)
+      else (k, -1)
+    else (p, q)) x)).
+  set (fi (i : int) := (fun '(Lab (p, q) x) => If p = j \/ p = k then Lab (p, q - i) x else Lab (p, q) x) : D -> D).
+  set (gi (i : int) := (fun '(Lab (p, q) x) => If p = j \/ p = k then Lab (p, q + i) x else Lab (p, q) x) : D -> D).
+  set (fsi' (i : int) := ⟨(j, i), fsi1 i⟩ \u ⟨(k, i), fsi2 i⟩).
+  have H'E :forall hv, 
+    \(m)_(i <- `[0,N]) H' i hv = \(m)_(i <- `[0,N]) H' i (hv \o f \o set2 i).
+  { move=> hv; apply/hbig_fset_eq=> d ?.
+    apply/opP=> x ? /=; case: classicT=> // ; try lia.
+    { by case: classicT=> // -[]; split=> //; rewrite -indom_interval. }
+    case: classicT=> // _ ?; case: classicT=> // -[].
+    by split=> //; rewrite -indom_interval. }
+  apply/(
+    wp_for_hbig_op_na_bis Inv 
+      (fun d => If lab d = (j,0) then R1  d else R2  d)
+      (fun d => If lab d = (j,0) then R1' d else R2' d)
+      H (fun i hv => H' i (hv \o set2 i))  
+      (fun d => ⟨(j,0%Z), fsi1 d⟩ \u ⟨(k,0%Z), fsi2 d⟩) Post fsi' fi gi g
+      (fs' := ⟨(i, 0), single s tt⟩)
+      (fs := ⟨(j, 0), \U_(i <- `[0, N]) fsi1 i⟩ \u ⟨(k, 0), \U_(i <- `[0, N]) fsi2 i⟩)
+      (f := f)
+      (* (fsi' := fsi') *)
+  ); try eassumption.
+  { rewrite -Union_union_fset hbig_fset_union //.
+      { rewrite -?Union_label ?hstar_fset_Lab /=. 
+        do ? case: classicT=> *; subst=> //; xsimpl*. }
+      do 2 rewrite disjoint_Union=> ??. 
+      rewrite disjoint_label. left=> -[]. lia. }
+  { by rewrite -Union_union_fset ?Union_label. }
+  { by case=> l d; rewrite indom_label_eq /= /htrm_of; case: classicT. }
+  { by move=> *. }
+  { by move=> ?; case: classicT. }
+  { by move=> ?; case: classicT. }
+  { clear. move=> ? [][??]?; rewrite /gi /fi.
+    (do ? case: classicT=> //)=> -[]-> _; do ? fequals; lia. }
+  { clear. move=> ? [][??]?; rewrite /gi /fi.
+    (do ? case: classicT=> //)=> -[]-> _; do ? fequals; lia. }
+  { clear. move=> i; rewrite /fi /fsi'; clear.
+    apply/fset_extens=> -[][] l1 l2 x.
+    rewrite indom_fsubst; split; rewrite ?indom_union_eq ?indom_label_eq.
+    { case=> -[][]m1 m2 y; rewrite ?indom_union_eq ?indom_label_eq.
+      case: classicT=> [[]->|/[swap] ] [][]-><-->[][][]; do ? move->.
+      all: try (left; split=> //; fequals; lia).
+      all: right; split=> //; fequals; lia. }
+    case=> -[][]-><- ?.
+    all: exists (Lab (l1, i) x); case: classicT=> //; rewrite ?indom_union_eq ?indom_label_eq.
+    all: try lia.
+    all: move=> ?; split; try (do ? fequals; lia).
+    { by left. }
+    by right. }
+  { rewrite /fsi' /f /fi; clear -iNj jNk kNi.
+     move=> ? [][]l1 l2 x; rewrite ?indom_union_eq ?indom_label_eq.
+    rewrite indom_interval=> /[swap]; case=> -[][]<-->??.
+    all: case: classicT=> // ?; try lia.
+    2: case: classicT=> // _.
+    all: case: classicT=> // [|[] ] // _.
+    all: case: classicT=> ?; try lia.
+    all: do ? fequals; lia. }
+  { rewrite /f /fsi' /Fs; clear -N0 iNj jNk kNi=> -[][]l1 l2 x[][]m1 m2 y ?.
+    have ?: (~ (l1 = m1 /\ l2 = m2 /\ x = y)).
+    { case=> ?[]??; by subst. }
+    do ? case:classicT=> //.
+    { case=> ??->[]??->[]?. rewrite -Union_union_fset ?indom_union_eq ?indom_Union.
+      split; [left; exists l2|left; exists m2]; by rewrite indom_interval indom_label_eq. }
+    all: try (move=> ????? []; lia).
+    all: try (move=> ???? []; lia).
+    { move=> ???? []*; subst. have?: l2 = m2 by (lia). by subst. }
+    { case=> ??->?[]??->?[]?. rewrite -Union_union_fset ?indom_union_eq ?indom_Union.
+      split; [right; exists l2|right; exists m2]; by rewrite indom_interval indom_label_eq. }
+    all: try (move=> ?????? []*; subst; lia).
+    move=> ?????? []*; have?: l2 = m2 by (lia). by subst. }
+  { case=> -[]l1 l2 x; clear -iNj jNk kNi.
+    split.
+    { rewrite indom_fsubst=> -[][][]m1 m2 y[] /[swap].
+      rewrite indom_union_eq=> -[].
+      { rewrite indom_label_eq indom_single_eq=> -[][]<-<-<-.
+        rewrite /f. do 2 case: classicT=> //; try lia. 
+        move=> ?? []<-<-<-.
+        rewrite /g; do 2 case: classicT=> // _.
+        rewrite indom_union_eq indom_label_eq indom_single_eq; by left. }
+      rewrite /Fs indom_Union /fsi'=> -[r][]. 
+      rewrite ?indom_union_eq ?indom_label_eq ?indom_interval=> I [][][].
+      { move=> <- <- ind; rewrite /f; case: classicT=> //.
+        case: classicT=> [|[] ] // _ _ []<-<-<-.
+        case: classicT=> //.
+        rewrite indom_single_eq; right.
+        rewrite /g; case: classicT=> //.
+        case: classicT.
+        { move=> _ _; rewrite indom_Union; exists (Get 0 N fsi1 y).
+          rewrite indom_union_eq ?indom_label_eq.
+          case: (Get_in _ I ind); do ? split=> //; by left. }
+        case; split=> //; rewrite indom_Union; exists r.
+        split=> //; by rewrite indom_interval. }
+      move=> <- <- ind; rewrite /f; case: classicT=> //; try lia.
+      case: classicT=> // ??.
+      case: classicT=> [|[] ] // _ []<-<-<-.
+      case: classicT=> //.
+      rewrite indom_single_eq; right.
+      rewrite /g; case: classicT=> //.
+      case: classicT=> //.
+      move=> _ _; rewrite indom_Union; exists (Get 0 N fsi2 y).
+      rewrite indom_union_eq ?indom_label_eq.
+      case: classicT=> [|[] ]; last split=> //.
+      { case: (Get_in _ I ind); do ? split=> //; by right. }
+      rewrite indom_Union; exists r; by rewrite indom_interval. }
+    rewrite indom_union_eq=> -[].
+    { rewrite /g; (do ? case: classicT)=> [??|??|???|???|]; rewrite indom_label_eq.
+      1-4: move=> -[][]; lia.
+      move=> ?? [][]<-<- ?.
+      rewrite indom_fsubst; exists (⟨(i, 0), x⟩)%arr; split.
+      { rewrite /f; do 2 case: classicT=> //; lia. }
+      by rewrite indom_union_eq; left; rewrite indom_label_eq. }
+    rewrite /Fs indom_Union=> -[]r[]/[dup]?.
+    rewrite indom_interval=> ?.
+    rewrite /fsi' /g; case: classicT=> [->|].
+    { case: classicT.
+      { case=> -> ?.
+        rewrite indom_union_eq ?indom_label_eq=> -[][][]; last lia.
+        move=> ??.
+        rewrite indom_fsubst; exists (Lab (j, r) x); split.
+        { rewrite /f; case: classicT=> // _.
+          case: classicT=> // -[] //. }
+        rewrite indom_union_eq indom_Union; right.
+        exists r; rewrite indom_union_eq ?indom_label_eq; split=>//.
+        by left. }
+      move=> _; rewrite indom_union_eq ?indom_label_eq=> -[][][]; lia. }
+    move=> ?; rewrite indom_union_eq ?indom_label_eq=> -[][].
+    { do ? case: classicT.
+      { case=> -> ? -> []; lia. }
+      { move=> ?? []; lia. }
+      move=> ? []; lia. }
+    do ? case: classicT.
+    { case=> -> ? -> [] ??.
+      rewrite indom_fsubst; exists (Lab (k, r) x); split.
+      { rewrite /f; case: classicT=> //; first lia.
+        case: classicT=> // ??.
+        by case: classicT=> // -[]. }
+      rewrite indom_union_eq indom_Union; right.
+      exists r; rewrite indom_union_eq ?indom_label_eq; split=>//.
+      by right. }
+    { move=> ?? []; lia. }
+    move=> ? []; lia. }
+  { case=> -[]l1 l2 x; clear -iNj jNk kNi.
+    rewrite ?indom_union_eq=> -[]; rewrite ?indom_label_eq=> -[][][]<-<-.
+    { rewrite indom_single_eq=><-. 
+      rewrite /f /g; do ? case: classicT=> //; try lia. }
+    all: move=> /[dup] ?.
+    all: rewrite indom_Union=> -[]r[]/[dup]?.
+    all: rewrite indom_interval /g=> ??.
+    all: do ? (case: classicT=> //); try lia.
+    all: try by case.
+    all: rewrite /f; do ? case: classicT=> //=.
+    all: case.
+    { case: (@Get_in _ 0 N r x fsi1)=> //.
+      rewrite indom_interval //. }
+    case: (@Get_in _ 0 N r x fsi2)=> //.
+    rewrite indom_interval //. }
+  { rewrite /f; clear -iNj jNk kNi.
+    case=> -[]l1 l2 x. rewrite ?indom_label_eq indom_single_eq=> -[][]<-<-<-.
+    by do ? (case: classicT; try lia). }
+  { rewrite /gi; clear -iNj jNk kNi.
+    case=> -[]l1 l2 x ?. rewrite ?indom_label_eq indom_single_eq=> -[][]<-<-<-.
+    by do ? (case: classicT; try lia). }
+  { rewrite /fsi'=> ? _; clear -iNj jNk kNi.
+    apply/disjoint_of_not_indom_both=> -[][]???.
+    rewrite indom_union_eq=> -[].
+    all: by rewrite ?indom_label_eq=> -[][]<- _ _ [][]; lia. }
+  { rewrite /fsi'=> ? _; clear -iNj jNk kNi.
+    apply/disjoint_of_not_indom_both=> -[][]???.
+    rewrite indom_union_eq=> -[].
+    all: by rewrite ?indom_label_eq=> -[][]<- _ _ [][]; lia. }
+  { move=> ??; rewrite /fsi'; clear -iNj jNk kNi => ?.
+    rewrite ?disjoint_union_eq_l ?disjoint_label; do ? split; left=> -[]; lia. }
+  { move=> ?. 
+    rewrite -Union_union_fset hbig_fset_union //.
+    { rewrite -?Union_label ?hstar_fset_Lab /=. 
+      do ? case: classicT=> *; subst=> //; xsimpl*.
+      apply: himpl_trans; last exact/PostH; xsimpl.
+      by rewrite H'E. }
+      do 2 rewrite disjoint_Union=> ??. 
+      rewrite disjoint_label. left=> -[]. lia. } 
+  { move=> > hvP; apply/opP=> * /=; apply/hvP.
+    all: rewrite indom_union_eq ?indom_label_eq; autos*. }
+  move=> l Q ?; move: (IH l Q).
+  rewrite /ntriple /nwp ?fset_of_cons /= ?fset_of_nil.
+  rewrite union_empty_r => {}IH.
+  have->: 
+    (fun hr : D -> val =>
+      Inv (l + 1) \*
+      (\*_(d <- ⟨(j, 0), fsi1 l⟩ \u ⟨(k, 0), fsi2 l⟩)
+          (If lab d = (j, 0) then R1' d else R2' d)) \*
+      Q \(m) H' l ((hr \o f) \o set2 l)) = 
+    (fun v : D -> val => Inv (l + 1) \* (\*_(d <- ⟨(j, 0), fsi1 l⟩) R1' d) \* (\*_(d <- ⟨(j, 0), fsi2 l⟩) R2' d) \* Q \(m) H' l v).
+  { apply/fun_ext_1=> ?. 
+    rewrite hbig_fset_union // .
+    { rewrite -?Union_label ?hstar_fset_Lab /=.
+      do ? case: classicT=> *; subst=> //.
+      { xsimpl*. }
+      rewrite ?hstar_assoc; do 4 fequals.
+      apply/opP=> x ? /=; case: classicT=> // ?; try lia.
+      { case: classicT=> // -[]; split=> //; lia. }
+      case: classicT=> //.
+      case: classicT=> // -[]. split=> //; lia. }
+    do 2 rewrite disjoint_Union=> ??. 
+    rewrite disjoint_single /= => -[]; lia. }
+  rewrite hbig_fset_union //; first last.
+  { do 2 rewrite disjoint_Union=> ??. 
+    rewrite disjoint_single /= => -[]; lia. }
+  rewrite -?Union_label ?hstar_fset_Lab /=.
+  case: classicT=> // ?; case: classicT=> // [[]|?]; first lia.
+  rewrite hstar_assoc.
+  rewrite ?hstar_fset_Lab /= in IH.
+  erewrite wp_ht_eq; first (apply/IH; lia).
+  case=> l' ?; rewrite ?indom_union_eq ?indom_label_eq=> -[][][]??; subst.
+  { rewrite uni_in ?indom_label_eq //= /htrm_of.
+    case: classicT=> //; autos*. }
+  { have?: (i, 0) <> (j, 0) by case.
+    rewrite uni_nin ?indom_label_eq /= /htrm_of; autos*.
+    do ? (case: classicT=> //=; autos* ).
+    move=> [_]??[]; split=> //.
+    rewrite indom_Union; setoid_rewrite indom_interval; do ? (eexists; eauto). }
+  have?: (i, 0) <> (k, 0) by case; lia.
+  have?: (j, 0) <> (k, 0) by case; lia.
+  rewrite uni_nin ?indom_label_eq /= /htrm_of; autos*.
+  do ? (case: classicT=> //=; autos* ).
+  move=> [_]??[]; split=> //.
+  rewrite indom_Union; setoid_rewrite indom_interval; do ? (eexists; eauto).
+Qed.
+
+Lemma ntriple_conseq_frame2 H2 H1 Q1 H Q fs_ht : 
+  ntriple H1 fs_ht Q1 ->
+  H ==> H1 \* H2 ->
+  Q1 \*+ H2 ===> Q -> ntriple H fs_ht Q.
+Proof.
+  rewrite /ntriple /nwp ?wp_equiv=> *.
+  apply/htriple_conseq_frame; eauto.
+Qed.
+
+Lemma ntriple_conseq H1 Q1 H Q fs_ht : 
+  ntriple H1 fs_ht Q1 ->
+  H ==> H1 ->
+  Q1 ===> Q -> ntriple H fs_ht Q.
+Proof.
+  rewrite /ntriple /nwp ?wp_equiv=> *.
+  apply/htriple_conseq; eauto.
+Qed.
+
+
+
+(* Lemma xfor_lemma_gen2_array `{ID : Inhab D}
+  Inv 
+  (R1 R1' R2 R2' : Dom.type -> hhprop)
+  s fsi1 fsi2 vr (arrl : loc) (arr1 : list int) arr2
+  (N: Z) (C1 C2 : Dom.type -> trm) (C : trm)
+  (i j k : Z)
+  Pre Post: 
+  (forall v, length arr1 = length (arr2 v)) ->
+  (forall (l : int), 
+    (0 <= l < N) ->
+    {{ Inv l \* 
+        (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R1 d) \* 
+        (\*_(d <- ⟨(k,0)%Z, fsi2 l⟩) R2 d) \* 
+        (arrl + abs (l + 1))%nat ~⟨(i,0)%Z, s⟩~> arr1[l] }}
+      [{
+        {i| _  in single s tt  => subst vr l C};
+        {j| ld in fsi1 l       => C1 ld};
+        {k| ld in fsi2 l       => C2 ld}
+      }]
+    {{ v, 
+        Inv (l + 1) \* 
+        (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R1' d) \* 
+        (\*_(d <- ⟨(j,0)%Z, fsi2 l⟩) R2' d) \* 
+        (arrl + abs (l + 1))%nat ~⟨(i,0)%Z, s⟩~> (arr2 v)[l] }}) ->
+  (forall j : int, hlocal (Inv j) ⟨(i,0%Z), single s tt⟩) ->
+  (forall i : D, hlocal (R1 i) (single i tt)) ->
+  (forall i : D, hlocal (R1' i) (single i tt)) ->
+  (forall i : D, hlocal (R2 i) (single i tt)) ->
+  (forall i : D, hlocal (R2' i) (single i tt)) ->
+  (forall (hv hv' : D -> val) m,
+    (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
+    (forall i, indom (fsi2 m) i -> hv[`k](i) = hv'[`k](i)) ->
+    (arr2 hv)[m] = (arr2 hv')[m]) ->
+  (i <> j)%Z ->
+  (j <> k)%Z ->
+  (k <> i)%Z ->
+  0 <= N ->
+  (forall t : val, subst "for" t C = C) -> 
+  (forall t : val, subst "cnt" t C = C) ->
+  (forall t : val, subst "cond" t C = C) ->
+  var_eq vr "cnt" = false ->
+  var_eq vr "for" = false ->
+  var_eq vr "cond" = false ->
+  (Pre ==> 
+    Inv 0 \* 
+    (\*_(d <- Union `[0,N] fsi1) R1 d) \*
+    (\*_(d <- Union `[0,N] fsi2) R2 d) \*
+    harray_int arr1 arrl (Lab (i,0) s)) ->
+  (forall hv, 
+    Inv N \* 
+    (\*_(d <- Union `[0,N] fsi1) R1' d) \* 
+    (\*_(d <- Union `[0,N] fsi2) R2' d) \* 
+    harray_int (arr2 hv) arrl (Lab (i,0) s) ==>
+    Post hv) -> 
+  {{ Pre }}
+    [{
+      {i| _  in single s tt => For 0 N (trm_fun vr C)};
+      {j| ld in Union `[0,N] fsi1 => C1 ld};
+      {k| ld in Union `[0,N] fsi2 => C2 ld}
+    }]
+  {{ v, Post v }}. 
+Proof.
+  move=> AL ????????????????? PreH PostH.
+  apply/ntriple_conseq; last exact/PostH; eauto.
+  apply/(@ntriple_conseq_frame2 
+  (arrl ~⟨(i,0)%Z, s⟩~> val_header (length arr1) \* 
+  \[(arrl, (⟨(i, 0), s⟩)%arr) <> null (⟨(i, 0), s⟩)%arr])); first last.
+  { move=> ?; rewrite /harray_int/harray/hheader length_map length_List_length -AL.
+    rewrite hstar_comm. 
+    apply:himpl_hwand_r_inv. xsimpl. }
+  { rewrite /harray_int/harray/hheader length_map length_List_length.
+    rewrite (hstar_comm _ (hcells _ _ _)).
+    rewrite -3?hstar_assoc hstar_comm.
+    apply:himpl_hwand_r_inv.
+    rewrite (hstar_comm _ (_ \* _)).
+    xsimpl*. }
+  rewrite hcellsE.
+  apply/ntriple_conseq; [|exact:himpl_refl|move=> ?; rewrite hcellsE; exact:himpl_refl].
+  eapply xfor_lemma2_hbig_op with 
+    (m := fun _ _ => )
+    (R1 := R1); try eassumption.
+Qed. *)
+
 End WithLoops.

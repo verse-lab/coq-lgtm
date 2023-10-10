@@ -2566,6 +2566,23 @@ Proof.
   { eqsolve. }
 Qed.
 
+Lemma Union_upd_pre_fset {T A} (x : T) (fs : fset T) (fsi : T -> fset A) : 
+  ~ indom fs x ->
+  Union (update fs x tt) fsi = fsi x \+ Union fs fsi.
+Proof.
+  intros.
+  unfold Union.
+  rewrite -> (snd (@fset_foldE _ _ _ _)).
+  { rewrite -> union_comm_of_agree; auto.
+    by move=> ? [][]. }
+  { intros. destruct (classicT (a = b)) as [ -> | Hneq ]; auto.
+    rewrite -> union_assoc, -> union_comm_of_agree with (h1:=fsi b).
+    2: by move=> ?[][].
+    rewrite <- union_assoc. auto.
+  }
+  { eqsolve. }
+Qed.
+
 Lemma Union_upd {T A B} (x : T) (fs : fset T) (fsi : T -> fmap A B) : 
   (forall i j, i <> j -> indom (update fs x tt) i -> indom (update fs x tt) j -> disjoint (fsi i) (fsi j)) ->
   Union (update fs x tt) fsi = fsi x \+ Union fs fsi.
@@ -2582,6 +2599,22 @@ Proof.
   }
   { apply Union_upd_pre; auto. }
 Qed.
+
+Lemma Union_upd_fset {T A} (x : T) (fs : fset T) (fsi : T -> fset A) : 
+  Union (update fs x tt) fsi = fsi x \+ Union fs fsi.
+Proof.
+  intros.
+  destruct (fmap_data fs x) eqn:E.
+  { destruct u.
+    pose proof (@remove_update_self _ _ _ _ _ E) as Eh. 
+    rewrite -> Eh, -> update_updatexx.
+    rewrite -> ! Union_upd_pre_fset; auto.
+    2:{ rewrite -> indom_remove_eq. eqsolve. }
+    { rewrite <- union_assoc, -> union_self. reflexivity. }
+  }
+  { apply Union_upd_pre_fset; auto. }
+Qed.
+
 
 Lemma Union_union {T A B} (fs : fset T) (fsi1 fsi2 : T -> fmap A B) :
   (forall i j, i <> j -> indom fs i -> indom fs j -> disjoint (fsi1 i) (fsi1 j)) ->
@@ -2602,6 +2635,18 @@ Proof.
   all: move=>*; (apply/Dj11||apply/Dj12||apply/Dj22)=> //; rewrite* indom_update_eq.
 Qed.
 
+Lemma Union_union_fset {T A} (fs : fset T) (fsi1 fsi2 : T -> fset A) :
+  Union fs fsi1 \+ Union fs fsi2 = Union fs (fun t => fsi1 t \+ fsi2 t).
+Proof.
+  elim/fset_ind: fs=> [|fs x IHfs ?] in fsi1 fsi2 *.
+  { by rewrite ?Union0 union_empty_l. }
+  rewrite ?Union_upd_fset //; first last.
+  rewrite -IHfs.
+  rewrite -union_assoc [(_ \+ _) \+ fsi2 _]union_assoc [Union _ _ \+ _]union_comm_of_agree.
+  { by rewrite ?union_assoc. }
+  by move=> ?[][].
+Qed.
+(* 
 Lemma Union_upd_fset {T A} (x : T) (fs : fset T) (fsi : T -> fset A) : 
   Union (update fs x tt) fsi = fsi x \+ Union fs fsi.
 Proof.
@@ -2610,7 +2655,7 @@ Proof.
   case.
   { exists x; rewrite* indom_update_eq. }
   case=> y[]; exists y; rewrite* indom_update_eq.
-Qed.
+Qed. *)
 
 Fact UnionN0 [T D S : Type] (fs : fset T) : Union fs (fun=> @empty D S) = empty.
 Proof using.

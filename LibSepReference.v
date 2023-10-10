@@ -7539,7 +7539,7 @@ Section For_loop.
 
 Import ProgramSyntax.
 
-Definition For_aux (N : int) (body : trm) : trm :=
+Definition For_aux (N : val) (body : trm) : trm :=
   trm_fix "for" "cnt"
     <{ let "cond" = ("cnt" < N) in 
       if "cond" then 
@@ -7557,7 +7557,7 @@ Definition While_aux (cond : trm) (body : trm) : trm :=
         "while" "tt"
       else 0 }>.
 
-Definition For_aux' (N : int) (body : trm) : trm :=
+Definition For_aux' (N : val) (body : trm) : trm :=
   val_fix "for" "cnt"
     <{ let "cond" = ("cnt" < N) in 
       if "cond" then 
@@ -7567,7 +7567,7 @@ Definition For_aux' (N : int) (body : trm) : trm :=
         "for" "cnt"
       else 0 }>.
 
-Definition For (Z : int) (N : int) (body : trm) : trm :=
+Definition For (Z : val) (N : val) (body : trm) : trm :=
   let f := For_aux N body in <{ f Z }>.
 
 Definition While (cond : trm) (body : trm) : trm :=
@@ -7755,7 +7755,7 @@ Proof using.
   do? case:classicT=> //.
 Qed.
 
-Lemma wp_for_aux  i fs fs' ht (H : int -> (D -> val) -> hhprop) Z N C fsi hv0 vr:
+Lemma wp_for_aux  i fs fs' ht (H : int -> (D -> val) -> hhprop) (Z N : int) C fsi hv0 vr:
   (Z <= i <= N) ->
   (* (forall x y z hv1 hv2, x <= y <= z -> H x y hv1 \* H y z hv2 ==> \exists hv, H x z hv) -> *)
   (* (forall k Z i hv, exists k', forall j, H k' i j hv = H k Z j hv) -> *)
@@ -7871,7 +7871,7 @@ Lemma upd_upd_eq {A B} (f : A -> B) x y y' :
   upd (upd f x y) x y' = upd f x y'.
 Proof. by extens=> ?; rewrite /upd; do ? case: classicT. Qed.
 
-Lemma wp_while_aux i fs fs' ht (H : bool -> int -> (D -> val) -> hhprop) Z N T C fsi s b0 hv0 :
+Lemma wp_while_aux i fs fs' ht (H : bool -> int -> (D -> val) -> hhprop) (Z N : int) T C fsi s b0 hv0 :
   (forall j b hv1 hv2, (forall x, indom (Union (interval Z j) fsi) x -> hv1 x = hv2 x) -> H b j hv1 = H b j hv2) ->
   fs = Union (interval i N) fsi ->
   fs' = single s tt ->

@@ -252,6 +252,36 @@ Proof using.
     xsimpl. }
 Qed.
 
+Arguments List.nth : simpl nomatch.
+
+Lemma hcellsE_gen (L : list int) p z : 
+  hcells (LibList.map val_int L) (p + z)%nat d = \*_(i <- `[z, z + List.length L]) (p + (abs i))%nat ~(d)~> List.nth (abs (i - z)) L 0.
+Proof.
+  elim: L p z=> [??|? l/= IHl p z].
+  { rewrite /= intervalgt // ?hbig_fset_empty //; lia. }
+  have->: z + Z.pos (Pos.of_succ_nat (Datatypes.length l)) = 
+   (z + 1) + List.length l by lia.
+  rewrite intervalU ?hbig_fset_update // ?indom_interval ?map_cons /=; try lia.
+  have-> /=: z - z = 0 by lia.
+  have<-: z = abs z by lia.
+  have->: (p + z + 1)%nat = (p + (z + 1))%nat by lia.
+  rewrite IHl. 
+  have <-: z + 1 = (z + 1)%nat by lia.
+  erewrite hbig_fset_eq; first reflexivity.
+  move=> x; rewrite indom_interval=> ?. 
+  by have<- /=: S (abs (x - (z + 1))) = (abs (x - z)) by lia.
+Qed.
+
+Lemma hcellsE (L : list int) p: 
+  hcells (LibList.map val_int L) p d = \*_(i <- `[0, List.length L]) (p + (abs i))%nat ~(d)~> List.nth (abs i) L 0.
+Proof.
+  move: (hcellsE_gen L p 0%nat)=> /=.
+  have->: (p + 0)%nat = p by lia.
+  have->: 0 + List.length L = List.length L by lia.
+  apply:applys_eq_init; do ? fequals.
+  apply/fun_ext_1=> ?; do ? fequals; lia.
+Qed.
+
 Lemma hcells_focus : forall k p L,
   k < length L ->
   hcells L p d ==>
