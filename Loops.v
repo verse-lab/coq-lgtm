@@ -1698,6 +1698,130 @@ Ltac xlocal :=
   | |- hlocal (hpure _) _ => apply hlocal_hpure
   end).
 
+Lemma ntriple_frame X H Q fs_ht H' Q' : 
+  (H = H' X) ->
+  (forall v, Q v = Q' X v) ->
+  (H' X ==> (H' \[]) \* X) ->
+  ((Q' \[]) \*+ X ===> Q' X) ->
+  H' \[] ==> N-WP fs_ht {{ v, Q' \[] v }} ->
+  {{ H }} fs_ht {{ v, Q v }}.
+Proof.
+Admitted.
+
+Lemma hstar0E : hstar \[] = id.
+Proof. apply/fun_ext_1; xsimpl. Qed.
+
+Global Arguments ntriple_frame _ {_}.
+  
+Tactic Notation "xframe2" uconstr(QH) := 
+  (try (xframe QH; [ ]));
+  try (
+    let Q := fresh "Q" in 
+    let HEQ := fresh "Q" in 
+    remember QH as Q eqn: HEQ;
+    rewrite -?HEQ;
+    eapply (@ntriple_frame Q); 
+    [ let h := fresh "h" in 
+      let f := fresh "h" in 
+      match goal with |- ?x = ?y => set (h := x) end;
+      pattern Q in h;
+      set (f := fun _ => _) in h;
+      simpl in h;
+      rewrite /h;
+      reflexivity
+    | let h := fresh "h" in 
+      let f := fresh "h" in 
+      let v := fresh "h" in 
+      intros v; 
+      match goal with |- ?x = ?y => set (h := x) end;
+      pattern Q, v in h;
+      set (f := fun _ _ => _) in h;
+      simpl in h;
+      rewrite /h;
+      reflexivity
+    | simpl; try rewrite HEQ; xsimpl*
+    | simpl=> ?;
+      try (have->: forall f, (fun x : hheap _ => f x) = f by []);
+      try (have->: forall f, (fun x : hheap D => f x) = f by []);
+      try rewrite HEQ;
+      xsimpl*
+    | simpl; rewrite -> ?hstar0E
+    ]; clear Q HEQ
+  ).
+
+Lemma xfor_lemma_gen2_bigstr `{ID : Inhab D}
+  Inv 
+  (R1 R1' R2 R2' : Dom.type -> hhprop)
+  s fsi1 fsi2 vr H H'
+  (N: Z) (C1 C2 : Dom.type -> trm) (C : trm)
+  (i j k : Z)
+  Pre Post: 
+  (forall (l : int), 
+    (0 <= l < N) ->
+    {{ Inv l \* 
+        (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R1 d) \* 
+        (\*_(d <- ⟨(k,0)%Z, fsi2 l⟩) R2 d) \* 
+        H l }}
+      [{
+        {i| _  in single s tt  => subst vr l C};
+        {j| ld in fsi1 l       => C1 ld};
+        {k| ld in fsi2 l       => C2 ld}
+      }]
+    {{ v, 
+        Inv (l + 1) \* 
+        (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R1' d) \* 
+        (\*_(d <- ⟨(j,0)%Z, fsi2 l⟩) R2' d) \* 
+        H' l v }}) ->
+  (forall j : int, hlocal (Inv j) ⟨(i,0%Z), single s tt⟩) ->
+  (forall j : int, hlocal (H j) ⟨(i,0%Z), single s tt⟩) ->
+  (forall (j : int) (v : D -> val), hlocal (H' j v) ⟨(i,0%Z), single s tt⟩) ->
+  (forall i : D, hlocal (R1 i) (single i tt)) ->
+  (forall i : D, hlocal (R1' i) (single i tt)) ->
+  (forall i : D, hlocal (R2 i) (single i tt)) ->
+  (forall i : D, hlocal (R2' i) (single i tt)) ->
+  (forall (hv hv' : D -> val) m,
+    (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
+    (forall i, indom (fsi2 m) i -> hv[`k](i) = hv'[`k](i)) ->
+    H' m hv = H' m hv') ->
+  (i <> j)%Z ->
+  (j <> k)%Z ->
+  (k <> i)%Z ->
+  0 <= N ->
+  (forall t : val, subst "for" t C = C) -> 
+  (forall t : val, subst "cnt" t C = C) ->
+  (forall t : val, subst "cond" t C = C) ->
+  var_eq vr "cnt" = false ->
+  var_eq vr "for" = false ->
+  var_eq vr "cond" = false ->
+  (Pre ==> 
+    Inv 0 \* 
+    (\*_(d <- Union `[0,N] fsi1) R1 d) \*
+    (\*_(d <- Union `[0,N] fsi2) R2 d) \*
+    \*_(i <- `[0,N]) H i) ->
+  (forall hv, 
+    Inv N \* 
+    (\*_(d <- Union `[0,N] fsi1) R1' d) \* 
+    (\*_(d <- Union `[0,N] fsi2) R2' d) \* 
+    (\*_(i <- `[0,N]) H' i hv) ==>
+    Post hv) -> 
+  {{ Pre }}
+    [{
+      {i| _  in single s tt => For 0 N (trm_fun vr C)};
+      {j| ld in Union `[0,N] fsi1 => C1 ld};
+      {k| ld in Union `[0,N] fsi2 => C2 ld}
+    }]
+  {{ v, Post v }}. 
+Proof.
+  move=> IH *; eapply xfor_lemma2_hbig_op with 
+  (m := fun _ _ => 0)
+  (Inv := Inv)
+  (vd := fun=> False)
+  (R1 := R1) (R2 := R2) (R2' := R2') (R1' := R1'); try eassumption; autos*=> //.
+  all: rewrite -hmerge_hstar //.
+  move=> ? Q ?.
+  xframe2 Q. exact/IH.
+Qed.
+
 Lemma xfor_lemma_gen2_array `{ID : Inhab D}
   Inv 
   (R1 R1' R2 R2' : Dom.type -> hhprop)
@@ -1765,33 +1889,22 @@ Proof.
   have AL : forall hv, Datatypes.length arr1 = Datatypes.length (arr2 hv).
   { move=> v; move: (AL1 v). lia. }
   apply/ntriple_conseq; last exact/PostH; eauto.
-  apply/(@ntriple_conseq_frame2 
-  (arrl ~⟨(i,0)%Z, s⟩~> val_header (length arr1) \* 
-  \[(arrl, (⟨(i, 0), s⟩)%arr) <> null (⟨(i, 0), s⟩)%arr])); first last.
-  { move=> ?; rewrite /harray_int/harray/hheader length_map length_List_length -AL.
-    rewrite hstar_comm. 
-    apply:himpl_hwand_r_inv. xsimpl. }
-  { rewrite /harray_int/harray/hheader length_map length_List_length.
-    rewrite (hstar_comm _ (hcells _ _ _)).
-    rewrite -3?hstar_assoc hstar_comm.
-    apply:himpl_hwand_r_inv.
-    rewrite (hstar_comm _ (_ \* _)).
-    xsimpl*. }
-  rewrite hcellsE.
-  apply/ntriple_conseq; [|exact:himpl_refl|move=> ?; rewrite hcellsE; exact:himpl_refl].
-  eapply xfor_lemma2_hbig_op with 
-    (m := fun _ _ => 0)
-    (vd := fun=> False)
-    (H := fun l => (arrl + 1 + abs l)%nat ~⟨(i, 0%Z), s⟩~> arr1[l])
-    (H' := fun l v => (arrl + 1 + abs l)%nat ~⟨(i, 0%Z), s⟩~> (arr2 v)[l])
-    (R1 := R1) (R2 := R2) (R2' := R2') (R1' := R1'); try eassumption; autos*=> //.
-  { move=> ? Q {}/IH IH. rewrite -hmerge_hstar.
-    apply/(@ntriple_conseq_frame2 Q); eauto; xsimpl*. }
+  rewrite /harray_int/harray/hheader ?length_map ?length_List_length.
+  apply/(ntriple_conseq); [|exact: himpl_trans|move=> ?]; first last.
+  { rewrite /harray_int/harray/hheader ?length_map ?length_List_length -AL.
+    move=> ?; apply:applys_eq_init; reflexivity. }
+  xframe2 (arrl ~⟨(i, 0%Z), s⟩~> val_header (length arr1)).
+  xframe2 \[(arrl, (⟨(i, 0), s⟩)%arr) <> null (⟨(i, 0), s⟩)%arr].
+  rewrite ?hcellsE.  
+  eapply xfor_lemma_gen2_bigstr with 
+  (H := fun l => (arrl + 1 + abs l)%nat ~⟨(i, 0%Z), s⟩~> arr1[l])
+  (H' := fun l v => (arrl + 1 + abs l)%nat ~⟨(i, 0%Z), s⟩~> (arr2 v)[l])
+  (R1 := R1) (R2 := R2) (R2' := R2') (R1' := R1'); try eassumption; autos*=> //.
   { xlocal. }
   { xlocal. }
   { move=> ??? hvE1 hvE2; erewrite hvE; eauto. }
-  { rewrite -hmerge_hstar AL2. xsimpl. }
-  move=> ?. rewrite -hmerge_hstar AL1. xsimpl*.
+  { rewrite AL2. xsimpl. }
+  move=> ?. rewrite hcellsE AL1. xsimpl*.
 Qed.
 
 End WithLoops.
