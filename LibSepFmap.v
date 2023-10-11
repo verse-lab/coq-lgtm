@@ -313,8 +313,8 @@ Definition agree A B (h1 h2:fmap A B) :=
 Definition disjoint A B (h1 h2 : fmap A B) : Prop :=
   map_disjoint h1 h2.
 
-Definition valid_intersect {A B} `{Inhab B} (m : B -> B -> option A) (h1 h2 : fmap A B) : Prop :=
-  forall x, indom h1 x -> indom h2 x -> m (read h1 x) (read h2 x) <> None.
+Definition valid_intersect {A B} `{Inhab B} (m : B -> Prop) (h1 h2 : fmap A B) : Prop :=
+  forall x, indom h1 x -> indom h2 x -> m (read h1 x) /\ m (read h2 x).
 
 (** Three disjoint fmaps (not needed for basic separation logic) *)
 
@@ -444,8 +444,8 @@ Lemma disjoint_eq : forall h1 h2,
 Proof using. intros [f1 F1] [f2 F2]. apply map_disjoint_eq. Qed.
 
 Lemma disjoint_valid_subst h1 h2 `{Inhab B} : 
-  disjoint h1 h2 = valid_intersect (fun _ _ => None) h1 h2.
-Proof. rewrite disjoint_eq. by extens; split=> v ? /v/[apply]. Qed.
+  disjoint h1 h2 = valid_intersect (fun=> False) h1 h2.
+Proof. rewrite disjoint_eq. extens; split=> v ? /v/[apply]; autos*. Qed.
 
 
 Lemma disjoint_eq' : forall h1 h2,
@@ -496,14 +496,12 @@ Lemma disjoint_sym : forall h1 h2,
 Proof using. intros [f1 F1] [f2 F2]. apply map_disjoint_sym. Qed.
 
 Lemma valid_intersect_sym `{Inhab B} m : forall h1 h2,
-  (forall a b, m a b = m b a) -> 
   valid_intersect m h1 h2 ->
   valid_intersect m h2 h1.
-Proof using. move=> h1 h2 pP v ? /v/[apply]; by rewrite pP. Qed.
+Proof using. move=> h1 h2 v ? /v/[apply]; autos*. Qed.
 
 
 Lemma valid_intersect_comm `{Inhab B} p : forall h1 h2,
-  (forall a b, p a b = p b a) -> 
   valid_intersect p h1 h2 = valid_intersect p h2 h1.
 Proof using. lets: valid_intersect_sym. extens*. Qed.
 
@@ -544,18 +542,32 @@ Proof using.
    destruct (f2 x); intuition.
 Qed.
 
-(* Lemma disjoint_union_eq_r m : forall h1 h2 h3,
-  valid_intersect  h1 (h2 \[[m]] h3) =
-  (valid_intersect m h1 h2 /\ valid_intersect m h1 h3).
+Lemma valind_intersect_union_eq_r `{Inhab B} m (p : B -> Prop) : forall h1 h2 h3,
+  (forall (x y : B), (p x /\ p y) <-> p (m x y)) ->
+  valid_intersect p h1 (h2 \[[m]] h3) =
+  (valid_intersect p h1 h2 /\ valid_intersect p h1 h3).
 Proof using.
-  intros [f1 F1] [f2 F2] [f3 F3].
-  unfolds disjoint, union. simpls.
-  unfolds map_disjoint, map_union. extens. iff M [M1 M2].
-  split; intros x; specializes M x;
-   destruct (f2 x); intuition; tryfalse.
-  intros x. specializes M1 x. specializes M2 x.
-   destruct (f2 x); intuition.
-Qed. *)
+  intros [f1 F1] [f2 F2] [f3 F3] pP.
+  rewrite /valid_intersect /merge /indom /read. simpls.
+  rewrite /map_merge /=; extens; split=> IN.
+  { split=> ? /IN /=; rewrite /map_indom.
+    { case: (f2 _)=> // ?.
+      case: (f3 _)=> // ? [] //? /pP[]; autos*. }
+    case: (f2 _)=> // ?.
+    case: (f3 _)=> // ? [] //? /pP[]; autos*. }
+  move=> ?/[dup]; case: IN=> {}IN/[apply]/[swap]/IN.
+  rewrite /map_indom.
+  case: (f2 _)=> // ?; case: (f3 _)=> // ? []// ??[]//?? _.
+  splits*; exact/pP.
+Qed.
+
+Lemma valind_intersect_union_eq_l `{Inhab B} m (p : B -> Prop) : forall h1 h2 h3,
+  (forall (x y : B), (p x /\ p y) <-> p (m x y)) ->
+  valid_intersect p (h2 \[[m]] h3) h1 =
+  (valid_intersect p h1 h2 /\ valid_intersect p h1 h3).
+Proof using.
+  by move=> *; rewrite valid_intersect_comm valind_intersect_union_eq_r.
+Qed.
 
 Lemma disjoint_merge_eq_r m : forall h1 h2 h3,
   \# h1 (h2 \[[m]] h3) =
@@ -2566,6 +2578,23 @@ Proof.
   { eqsolve. }
 Qed.
 
+Lemma Union_upd_pre_fset {T A} (x : T) (fs : fset T) (fsi : T -> fset A) : 
+  ~ indom fs x ->
+  Union (update fs x tt) fsi = fsi x \+ Union fs fsi.
+Proof.
+  intros.
+  unfold Union.
+  rewrite -> (snd (@fset_foldE _ _ _ _)).
+  { rewrite -> union_comm_of_agree; auto.
+    by move=> ? [][]. }
+  { intros. destruct (classicT (a = b)) as [ -> | Hneq ]; auto.
+    rewrite -> union_assoc, -> union_comm_of_agree with (h1:=fsi b).
+    2: by move=> ?[][].
+    rewrite <- union_assoc. auto.
+  }
+  { eqsolve. }
+Qed.
+
 Lemma Union_upd {T A B} (x : T) (fs : fset T) (fsi : T -> fmap A B) : 
   (forall i j, i <> j -> indom (update fs x tt) i -> indom (update fs x tt) j -> disjoint (fsi i) (fsi j)) ->
   Union (update fs x tt) fsi = fsi x \+ Union fs fsi.
@@ -2582,6 +2611,22 @@ Proof.
   }
   { apply Union_upd_pre; auto. }
 Qed.
+
+Lemma Union_upd_fset {T A} (x : T) (fs : fset T) (fsi : T -> fset A) : 
+  Union (update fs x tt) fsi = fsi x \+ Union fs fsi.
+Proof.
+  intros.
+  destruct (fmap_data fs x) eqn:E.
+  { destruct u.
+    pose proof (@remove_update_self _ _ _ _ _ E) as Eh. 
+    rewrite -> Eh, -> update_updatexx.
+    rewrite -> ! Union_upd_pre_fset; auto.
+    2:{ rewrite -> indom_remove_eq. eqsolve. }
+    { rewrite <- union_assoc, -> union_self. reflexivity. }
+  }
+  { apply Union_upd_pre_fset; auto. }
+Qed.
+
 
 Lemma Union_union {T A B} (fs : fset T) (fsi1 fsi2 : T -> fmap A B) :
   (forall i j, i <> j -> indom fs i -> indom fs j -> disjoint (fsi1 i) (fsi1 j)) ->
@@ -2602,6 +2647,18 @@ Proof.
   all: move=>*; (apply/Dj11||apply/Dj12||apply/Dj22)=> //; rewrite* indom_update_eq.
 Qed.
 
+Lemma Union_union_fset {T A} (fs : fset T) (fsi1 fsi2 : T -> fset A) :
+  Union fs fsi1 \+ Union fs fsi2 = Union fs (fun t => fsi1 t \+ fsi2 t).
+Proof.
+  elim/fset_ind: fs=> [|fs x IHfs ?] in fsi1 fsi2 *.
+  { by rewrite ?Union0 union_empty_l. }
+  rewrite ?Union_upd_fset //; first last.
+  rewrite -IHfs.
+  rewrite -union_assoc [(_ \+ _) \+ fsi2 _]union_assoc [Union _ _ \+ _]union_comm_of_agree.
+  { by rewrite ?union_assoc. }
+  by move=> ?[][].
+Qed.
+(* 
 Lemma Union_upd_fset {T A} (x : T) (fs : fset T) (fsi : T -> fset A) : 
   Union (update fs x tt) fsi = fsi x \+ Union fs fsi.
 Proof.
@@ -2610,7 +2667,7 @@ Proof.
   case.
   { exists x; rewrite* indom_update_eq. }
   case=> y[]; exists y; rewrite* indom_update_eq.
-Qed.
+Qed. *)
 
 Fact UnionN0 [T D S : Type] (fs : fset T) : Union fs (fun=> @empty D S) = empty.
 Proof using.
