@@ -1335,7 +1335,7 @@ Tactic Notation "xfor_sum" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(
 Lemma xfor_lemma2_hbig_op `{ID : Inhab D}
   Inv 
   (R1 R1' R2 R2' : Dom.type -> hhprop)
-  m (H : int -> hhprop) (H' : int -> (D -> val) -> hhprop)
+  m vd (H : int -> hhprop) (H' : int -> (D -> val) -> hhprop)
   s fsi1 fsi2 vr
   (N: Z) (C1 C2 : Dom.type -> trm) (C : trm)
   (i j k : Z)
@@ -1345,7 +1345,7 @@ Lemma xfor_lemma2_hbig_op `{ID : Inhab D}
     {{ Inv l \* 
         (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R1 d) \* 
         (\*_(d <- ⟨(k,0)%Z, fsi2 l⟩) R2 d) \* 
-        Q \(m) H l }}
+        Q \(m, vd) H l }}
       [{
         {i| _  in single s tt  => subst vr l C};
         {j| ld in fsi1 l       => C1 ld};
@@ -1355,7 +1355,7 @@ Lemma xfor_lemma2_hbig_op `{ID : Inhab D}
         Inv (l + 1) \* 
         (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R1' d) \* 
         (\*_(d <- ⟨(j,0)%Z, fsi2 l⟩) R2' d) \* 
-        Q \(m) H' l v }}) ->
+        Q \(m, vd) H' l v }}) ->
   (forall j : int, hlocal (Inv j) ⟨(i,0%Z), single s tt⟩) ->
   (forall j : int, hlocal (H j) ⟨(i,0%Z), single s tt⟩) ->
   (forall (j : int) (v : D -> val), hlocal (H' j v) ⟨(i,0%Z), single s tt⟩) ->
@@ -1367,7 +1367,7 @@ Lemma xfor_lemma2_hbig_op `{ID : Inhab D}
     (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
     (forall i, indom (fsi2 m) i -> hv[`k](i) = hv'[`k](i)) ->
     H' m hv = H' m hv') ->
-  comm m -> assoc m ->
+  comm m -> assoc m -> (forall x y, (vd x /\ vd y) <-> vd (m x y)) ->
   (i <> j)%Z ->
   (j <> k)%Z ->
   (k <> i)%Z ->
@@ -1382,12 +1382,12 @@ Lemma xfor_lemma2_hbig_op `{ID : Inhab D}
     Inv 0 \* 
     (\*_(d <- Union `[0,N] fsi1) R1 d) \*
     (\*_(d <- Union `[0,N] fsi2) R2 d) \*
-    \(m)_(i <- `[0,N]) H i) ->
+    \(m, vd)_(i <- `[0,N]) H i) ->
   (forall hv, 
     Inv N \* 
     (\*_(d <- Union `[0,N] fsi1) R1' d) \* 
     (\*_(d <- Union `[0,N] fsi2) R2' d) \* 
-    (\(m)_(i <- `[0,N]) H' i hv) ==>
+    (\(m, vd)_(i <- `[0,N]) H' i hv) ==>
     Post hv) -> 
   {{ Pre }}
     [{
@@ -1397,7 +1397,7 @@ Lemma xfor_lemma2_hbig_op `{ID : Inhab D}
     }]
   {{ v, Post v }}. 
 Proof.
-  move=> IH lI lH lH' lR1 lR1' lR2 lR2' opP CM AS iNj jNk kNi N0 ? ??? ?? PreH PostH.
+  move=> IH lI lH lH' lR1 lR1' lR2 lR2' opP CM AS VM iNj jNk kNi N0 ? ??? ?? PreH PostH.
   rewrite /ntriple /nwp ?fset_of_cons /= union_empty_r.
   set (f := (fun '(Lab (p, q) x) => Lab 
     (If p = j then 
@@ -1420,7 +1420,7 @@ Proof.
   set (gi (i : int) := (fun '(Lab (p, q) x) => If p = j \/ p = k then Lab (p, q + i) x else Lab (p, q) x) : D -> D).
   set (fsi' (i : int) := ⟨(j, i), fsi1 i⟩ \u ⟨(k, i), fsi2 i⟩).
   have H'E :forall hv, 
-    \(m)_(i <- `[0,N]) H' i hv = \(m)_(i <- `[0,N]) H' i (hv \o f \o set2 i).
+    \(m, vd)_(i <- `[0,N]) H' i hv = \(m, vd)_(i <- `[0,N]) H' i (hv \o f \o set2 i).
   { move=> hv; apply/hbig_fset_eq=> d ?.
     apply/opP=> x ? /=; case: classicT=> // ; try lia.
     { by case: classicT=> // -[]; split=> //; rewrite -indom_interval. }
@@ -1605,8 +1605,8 @@ Proof.
       Inv (l + 1) \*
       (\*_(d <- ⟨(j, 0), fsi1 l⟩ \u ⟨(k, 0), fsi2 l⟩)
           (If lab d = (j, 0) then R1' d else R2' d)) \*
-      Q \(m) H' l ((hr \o f) \o set2 l)) = 
-    (fun v : D -> val => Inv (l + 1) \* (\*_(d <- ⟨(j, 0), fsi1 l⟩) R1' d) \* (\*_(d <- ⟨(j, 0), fsi2 l⟩) R2' d) \* Q \(m) H' l v).
+      Q \(m, vd) H' l ((hr \o f) \o set2 l)) = 
+    (fun v : D -> val => Inv (l + 1) \* (\*_(d <- ⟨(j, 0), fsi1 l⟩) R1' d) \* (\*_(d <- ⟨(j, 0), fsi2 l⟩) R2' d) \* Q \(m, vd) H' l v).
   { apply/fun_ext_1=> ?. 
     rewrite hbig_fset_union // .
     { rewrite -?Union_label ?hstar_fset_Lab /=.
@@ -1661,22 +1661,58 @@ Proof.
   apply/htriple_conseq; eauto.
 Qed.
 
+Lemma union_merge (h1 h2 : hheap D): 
+  disjoint h1 h2 ->
+  h1 \u h2 = Fmap.merge (fun=> (fun=> 0 : val)) h1 h2.
+Proof.
+  case: h1 h2=> h1 ? []h2 ?.
+  rewrite /disjoint /union /merge /map_disjoint /map_union /map_merge /=.
+  move=> Dj. apply/make_eq=> x; move: (Dj x).
+  by case=>->.
+Qed.
 
 
-(* Lemma xfor_lemma_gen2_array `{ID : Inhab D}
+Lemma hmerge_hstar : 
+  hstar = hmerge (fun _ _ => 0) (fun=> False).
+Proof.
+  apply/fun_ext_2=> ??; extens=> ?; splits.
+  { case/hstar_inv=> h1 [h2][?][?][?]->.
+    exists h1 h2; splits*.
+    { by rewrite -disjoint_valid_subst. }
+    by rewrite union_merge. }
+  rewrite /hmerge=> -[]h1[]h2[?][?][?]->.
+  exists h1 h2; splits*.
+  { by rewrite disjoint_valid_subst. }
+  by rewrite union_merge // disjoint_valid_subst.
+Qed.
+
+Ltac xlocal := 
+  repeat (intros; 
+  match goal with 
+  | |- hlocal (_ \* _) _ => apply hlocal_hstar
+  | |- hlocal \[] _    => apply hlocal_hempty
+  | |- hlocal (hexists _) _ => apply hlocal_hexists
+  | |- hlocal (hsingle _ _ _) (single _ _) => apply hlocal_hsingle_single
+  | |- hlocal (hsingle _ _ _) (label (Lab _ (single _ _))) => 
+    rewrite label_single; apply hlocal_hsingle_single
+  | |- hlocal (hpure _) _ => apply hlocal_hpure
+  end).
+
+Lemma xfor_lemma_gen2_array `{ID : Inhab D}
   Inv 
   (R1 R1' R2 R2' : Dom.type -> hhprop)
   s fsi1 fsi2 vr (arrl : loc) (arr1 : list int) arr2
   (N: Z) (C1 C2 : Dom.type -> trm) (C : trm)
   (i j k : Z)
   Pre Post: 
-  (forall v, length arr1 = length (arr2 v)) ->
+  (forall v, length (arr2 v) = N :> int) ->
+  length arr1 = N :> int ->
   (forall (l : int), 
     (0 <= l < N) ->
     {{ Inv l \* 
         (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R1 d) \* 
         (\*_(d <- ⟨(k,0)%Z, fsi2 l⟩) R2 d) \* 
-        (arrl + abs (l + 1))%nat ~⟨(i,0)%Z, s⟩~> arr1[l] }}
+        (arrl + 1 + abs l)%nat ~⟨(i,0)%Z, s⟩~> arr1[l] }}
       [{
         {i| _  in single s tt  => subst vr l C};
         {j| ld in fsi1 l       => C1 ld};
@@ -1686,7 +1722,7 @@ Qed.
         Inv (l + 1) \* 
         (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R1' d) \* 
         (\*_(d <- ⟨(j,0)%Z, fsi2 l⟩) R2' d) \* 
-        (arrl + abs (l + 1))%nat ~⟨(i,0)%Z, s⟩~> (arr2 v)[l] }}) ->
+        (arrl + 1 + abs l)%nat ~⟨(i,0)%Z, s⟩~> (arr2 v)[l] }}) ->
   (forall j : int, hlocal (Inv j) ⟨(i,0%Z), single s tt⟩) ->
   (forall i : D, hlocal (R1 i) (single i tt)) ->
   (forall i : D, hlocal (R1' i) (single i tt)) ->
@@ -1725,7 +1761,9 @@ Qed.
     }]
   {{ v, Post v }}. 
 Proof.
-  move=> AL ????????????????? PreH PostH.
+  move=> AL1 AL2 IH ????? hvE ?????????? PreH PostH.
+  have AL : forall hv, Datatypes.length arr1 = Datatypes.length (arr2 hv).
+  { move=> v; move: (AL1 v). lia. }
   apply/ntriple_conseq; last exact/PostH; eauto.
   apply/(@ntriple_conseq_frame2 
   (arrl ~⟨(i,0)%Z, s⟩~> val_header (length arr1) \* 
@@ -1742,8 +1780,18 @@ Proof.
   rewrite hcellsE.
   apply/ntriple_conseq; [|exact:himpl_refl|move=> ?; rewrite hcellsE; exact:himpl_refl].
   eapply xfor_lemma2_hbig_op with 
-    (m := fun _ _ => )
-    (R1 := R1); try eassumption.
-Qed. *)
+    (m := fun _ _ => 0)
+    (vd := fun=> False)
+    (H := fun l => (arrl + 1 + abs l)%nat ~⟨(i, 0%Z), s⟩~> arr1[l])
+    (H' := fun l v => (arrl + 1 + abs l)%nat ~⟨(i, 0%Z), s⟩~> (arr2 v)[l])
+    (R1 := R1) (R2 := R2) (R2' := R2') (R1' := R1'); try eassumption; autos*=> //.
+  { move=> ? Q {}/IH IH. rewrite -hmerge_hstar.
+    apply/(@ntriple_conseq_frame2 Q); eauto; xsimpl*. }
+  { xlocal. }
+  { xlocal. }
+  { move=> ??? hvE1 hvE2; erewrite hvE; eauto. }
+  { rewrite -hmerge_hstar AL2. xsimpl. }
+  move=> ?. rewrite -hmerge_hstar AL1. xsimpl*.
+Qed.
 
 End WithLoops.
