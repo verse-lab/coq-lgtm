@@ -7552,7 +7552,7 @@ Section For_loop.
 
 Import ProgramSyntax.
 
-Definition For_aux (N : val) (body : trm) : trm :=
+Definition For_aux (N : trm) (body : trm) : trm :=
   trm_fix "for" "cnt"
     <{ let "cond" = ("cnt" < N) in 
       if "cond" then 
@@ -7570,7 +7570,7 @@ Definition While_aux (cond : trm) (body : trm) : trm :=
         "while" "tt"
       else 0 }>.
 
-Definition For_aux' (N : val) (body : trm) : trm :=
+Definition For_aux' (N : trm) (body : trm) : trm :=
   val_fix "for" "cnt"
     <{ let "cond" = ("cnt" < N) in 
       if "cond" then 
@@ -7580,7 +7580,7 @@ Definition For_aux' (N : val) (body : trm) : trm :=
         "for" "cnt"
       else 0 }>.
 
-Definition For (Z : val) (N : val) (body : trm) : trm :=
+Definition For (Z : trm) (N : trm) (body : trm) : trm :=
   let f := For_aux N body in <{ f Z }>.
 
 Definition While (cond : trm) (body : trm) : trm :=
@@ -7599,7 +7599,7 @@ Definition incr (p : loc) (t : trm)  :=
      p := "_v_";
      "_t_" }>.
 
-Fact For_subst ZZ NN t x v : 
+(* Fact For_subst (ZZ NN : int) t x v : 
   x <> "cond" -> 
   x <> "for" ->
   x <> "cnt" -> 
@@ -7607,7 +7607,7 @@ Fact For_subst ZZ NN t x v :
   subst x v (For ZZ NN t) = For ZZ NN (subst x v t).
 Proof using.
   intros. unfold For, For_aux. simpl; case_var; eqsolve.
-Qed.
+Qed. *)
 
 (* Open Scope Z_scope. *)
 
