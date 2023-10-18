@@ -781,6 +781,8 @@ Lemma xfor_big_op_lemma_aux `{INH: Inhab D} Inv (R R' : Dom.type -> hhprop)
   (forall i0 j0 : int, i0 <> j0 -> Z <= i0 < N -> Z <= j0 < N -> disjoint (fsi1 i0) (fsi1 j0)) ->
   (forall (hv hv' : D -> val) m,
     (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
+    (* Qiyuan: maybe add something like the following line? also, maybe for the other lemmas, either aux or not aux *)
+    (* Z <= m < N -> *)
     op hv m = op hv' m) ->
   (i <> j) ->
   (Z <= N)%Z ->

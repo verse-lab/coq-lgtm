@@ -154,30 +154,6 @@ Ltac fold' :=
     -/(For_aux _ _) 
     -/(For _ _ _) //=.
 
-(* temporary here *)
-Fact map_nth_special : forall [A B : Type] (da : A) (db : B) (f : A -> B) (l : list A) (n : nat)
-  (H : n < length l),
-  nth n (map f l) db = f (nth n l da).
-Proof using. clear. 
-  intros. revert l0 H. induction n0 as [ | n IH ]; intros.
-  { destruct l0; simpl in H; try lia; auto. }
-  { destruct l0; simpl in H; try lia; auto.
-    simpl. apply IH. lia. }
-Qed.
-
-(* TODO this should be more generalized? instead of working on intervals, 
-    this should be true over bijections. *)
-Fact Union_interval_change : forall [A : Type] (f : int -> fset A) (a b c : int),
-  Union (interval a b) f = Union (interval (a + c) (b + c)) (fun i => f (i - c)).
-Proof using. clear.
-  intros.
-  apply fset_extens=> x. rewrite ! indom_Union.
-  repeat setoid_rewrite indom_interval.
-  split; intros (i & HH & Hin).
-  { exists (i + c0). split; try math. now replace (i + _ - _) with i by math. }
-  { exists (i - c0). split; try math; auto. }
-Qed.
-
 Lemma sum_spec `{Inhab D} (x_ind x_val : loc) (s : int) : 
   {{ arr(x_ind, xind)⟨1, (0, 0)⟩ \*
      arr(x_val, xval)⟨1, (0, 0)⟩ \\* 
@@ -185,11 +161,12 @@ Lemma sum_spec `{Inhab D} (x_ind x_val : loc) (s : int) :
      (\*_(i <- `{s} \x `[0, M]) arr(x_val, xval)⟨2, i⟩) }}
   [{
     [1| ld in `{(0,0)}         => sum x_ind x_val lb rb];
-    (* TODO maybe remove this single element prod in the future? *)
+    (* maybe remove this single element prod in the future? *)
     {2| ld in `{s} \x `[0, M] => get ld.2 x_ind x_val lb rb}
   }]
-  {{ hv, \[hv[`1]((0, 0)) = Σ_(i <- `{s} \x `[0, M]) hv[`2](i)] \* \Top}}.
-  (* {{ hv, \[hv[`1]((0, 0)) = Σ_(i <- `[0, M]) hv[`2]((s, i))] \* \Top}}. *)
+  {{ hv, (\[hv[`1]((0, 0)) = Σ_(i <- `{s} \x `[0, M]) hv[`2](i)] \* 
+      arr(x_ind, xind)⟨1, (0, 0)⟩ \*
+      arr(x_val, xval)⟨1, (0, 0)⟩) \\* \Top}}.
 Proof with fold'.
   xfocus (2,0) (map (fun x => (s, x)) (list_interval (abs lb) (abs rb) xind)).
   rewrite (hbig_fset_part (`{s} \x `[0, M]) (map (fun x => (s, x)) (list_interval (abs lb) (abs rb) xind))). (* TODO: move to xfocus *)
@@ -201,53 +178,61 @@ Proof with fold'.
   set (H1 := hbig_fset hstar (_ ∖ _) _); set (H2 := hbig_fset hstar (_ ∖ _) _).
   xframe (H1 \* H2); clear H1 H2.
   xin (1,0) : xwp; xapp=> q...
+  have Hl : length (list_interval (abs lb) (abs rb) xind) = rb - lb :> int.
+  1: rewrite -> list_interval_length; try math.
+  (* this alignment is tedious *)
   have E : (`{s} \x `[0, M]) ∩ (map (fun x => (s, x)) (list_interval (abs lb) (abs rb) xind)) = 
-    map (fun x => (s, x)) (list_interval (abs lb) (abs rb) xind).
-  { apply/fset_extens=> x; rewrite /intr filter_indom -fset_of_list_in 
-      /Sum.mem indom_prod indom_interval indom_single_eq in_map_iff; splits*.
-    intros (y & <- & Hin). split; eauto. }
-  (* now becomes tedious, since need to align by making Z = lb and N = rb *)
-  rewrite E (fset_of_list_nodup (0,0)) //.
-  2: apply FinFun.Injective_map_NoDup; auto.
-  2: hnf; intros; congruence.
-  rewrite map_length list_interval_length; auto.
+    Union (interval 0 (rb - lb)) (fun i => single (s, nth (abs i) (list_interval (abs lb) (abs rb) xind) 0) tt).
+  { apply fset_extens. intros (r, c). 
+    rewrite /intr filter_indom /Sum.mem indom_prod indom_interval indom_single_eq
+      indom_Union in_map_iff.
+    setoid_rewrite indom_interval.
+    setoid_rewrite indom_single_eq.
+    simpl. split.
+    { intros ((-> & Hc) & (x & E & Hin)). inversion E. subst x.
+      exists (index c (list_interval (abs lb) (abs rb) xind)).
+      rewrite nth_index; try assumption.
+      rewrite <- index_mem, -> Hl in Hin.
+      split; [ split; [ apply indexG0 | assumption ] | reflexivity ]. }
+    { intros (f & Hf & E). inversion E. subst r c.
+      set (xx := nth _ _ _).
+      assert (In xx (list_interval (abs lb) (abs rb) xind)) as Hin by (subst xx; apply nth_In; math).
+      split; eauto. }
+  }
+  rewrite E.
   rewrite -> ! Union_interval_change with (a:=0) (c:=lb).
   replace (0 + lb) with lb by math. replace (rb - _ + _) with rb by math.
-  erewrite Union_eq_fset. 
-  2: intros x0 HH; rewrite indom_interval in HH.
-  2: rewrite -> map_nth_special with (da:=0); [ | rewrite -> list_interval_length; math ].
-  2: rewrite <- list_interval_nth with (l:=xind); try math.
-  2: replace (lb + (x0 - lb)) with x0 by math; reflexivity.
-
   set (R (i : int * int) := arr(x_ind, xind)⟨2, i⟩ \* arr(x_val, xval)⟨2, i⟩).
   set (Inv (i : int) := arr(x_ind, xind)⟨1, (0,0)⟩ \* arr(x_val, xval)⟨1, (0,0)⟩).
   xfor_sum Inv R (fun=> \Top) (fun hv i => hv[`2]((s, xind[i]))) q.
   { rewrite /Inv.
     (xin (1,0): (xwp; xapp; xapp incr.spec=> y))...
-    assert (0 <= l0 - lb < N) by (subst N; math).
-    replace l0 with (lb + (l0 - lb)) by math.
-    rewrite -> ! list_interval_nth with (rb:=rb); try math.
-    xapp get_spec_in=> //. xsimpl*. }
-  { move=> Neq ?? EE; apply/Neq.
-    inversion EE.
-    enough (i0 - lb = j0 - lb) by math. 
-    move/NoDup_nthZ: nodup_xind; apply; auto.
-    1-2: rewrite list_interval_length; math.
-    rewrite <- ! list_interval_nth; try math. 
-    replace (lb + (i0 - lb)) with i0 by math.
-    replace (lb + (j0 - lb)) with j0 by math. eauto. }
-  xapp; xsimpl.
-  (* ... *)
-  (* unfold prod.
-  rewrite <- SumCascade. 1: rewrite update_empty SumUpdate. 1: rewrite Sum0.
-  
-  Sum Union *)
-  under (@SumEq _ _ _ `[0,M]).
+    xapp get_spec_in=> //; try math. xsimpl*.
+    rewrite <- list_interval_nth with (l:=xval); try math.
+    replace (lb + (l0 - lb)) with l0 by math. xsimpl*. }
+  { intros Hneq Hi Hj Hq. inversion Hq. apply Hneq. 
+    enough (abs (i0 - lb) = abs (j0 - lb) :> nat) by math.
+    eapply NoDup_nth. 4: apply H1. all: try math; try assumption. }  
+  { (* currently cannot be proved since m0 is under constrained *)
+    admit. }
+  xapp. xsimpl*.
+  under (@SumEq _ _ _ (`{s} \x `[0, M])).
   { move=>*; rewrite to_int_if; over. }
-  rewrite SumIf E (SumList 0) // len_xind Sum0s; math.
-Qed.
-*)
-
+  rewrite SumIf E Sum0s -SumCascade.
+  { rewrite Z.add_0_r.
+    erewrite SumEq with (fs:=`[0, rb - lb]).
+    2: intros; rewrite update_empty SumUpdate; [ rewrite Sum0 Z.add_0_l; reflexivity | auto ].
+    rewrite -> Sum_interval_change with (a:=0) (c:=lb).
+    replace (0 + lb) with lb by math. replace (rb - _ + _) with rb by math.
+    erewrite SumEq. 1: reflexivity.
+    simpl. intros x0 HH. rewrite indom_interval in HH. rewrite <- list_interval_nth; try math.
+    do 5 f_equal. math. }
+  { intros i0 j0. rewrite ! indom_interval disjoint_single.
+    (* repeating the proof above *)
+    intros Hneq Hi Hj Hq. inversion Hq. apply Hneq.
+    enough (abs i0 = abs j0 :> nat) by math. 
+    eapply NoDup_nth. 4: apply H1. all: try math; try assumption. }
+Abort.
 
 (*
 Context (dvec : list int).

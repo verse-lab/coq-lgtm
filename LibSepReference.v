@@ -8835,6 +8835,17 @@ Proof.
   move=> *; apply/fmiE; rewrite* indom_update_eq.
 Qed.
 
+Lemma Union_eq_fset {A B} (fs : fset A) (fsi1 fsi2 : A -> fset B) : 
+  (forall x, indom fs x -> fsi1 x = fsi2 x) -> 
+  Union fs fsi1 = Union fs fsi2.
+Proof.
+  elim/fset_ind: fs.
+  { by rewrite ?Union0. }
+  move=> fs x IHfs ? fsiE. rewrite ?Union_upd_fset //; autos*; rewrite IHfs.
+  { fequal; apply/fsiE; rewrite* indom_update_eq. }
+  move=> *; apply/fsiE; rewrite* indom_update_eq.
+Qed.
+
 Fact interval_point_segmentation i j :
   Union (interval i j) (fun i => single i tt) = interval i j.
 Proof.
