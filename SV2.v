@@ -37,7 +37,7 @@ End pure_facts.
 
 Module sv.
 
-Module Export AD := WithUnary(IntDom).
+Module Export AD := WithUnary(Int2Dom). (* need to use this for CSR *)
 
 Notation "H1 '\\*' H2" := (hstar H1 H2)
   (at level 42, right associativity, format "H1  \\* '//' H2") : hprop_scope.
@@ -47,8 +47,9 @@ Section sv.
 Notation "'xind'" := ("x_ind":var) (in custom trm at level 0) : trm_scope.
 Notation "'xval'" := ("x_val":var) (in custom trm at level 0) : trm_scope.
 Notation "'dvec'" := ("d_vec":var) (in custom trm at level 0) : trm_scope.
-Notation "'lb'" := ("l_b":var) (in custom trm at level 0) : trm_scope.
-Notation "'rb'" := ("r_b":var) (in custom trm at level 0) : trm_scope.
+(* sometimes Coq cannot tell whether lb is a variable or an int, so avoid using the same name lb here *)
+Notation "'xlb'" := ("l_b":var) (in custom trm at level 0) : trm_scope.
+Notation "'xrb'" := ("r_b":var) (in custom trm at level 0) : trm_scope.
 
 Import List Vars.
 
@@ -56,7 +57,8 @@ Context (xind xval : list int).
 Context (N M : int).
 Context (lb rb : int).
 Hypothesis (len : rb - lb = N).
-Hypothesis (bounds: 0 <= lb <= rb).
+(* Hypothesis (bounds: 0 <= lb <= rb). *) (* TODO generalize_arith will loop if bounds is present *)
+Hypotheses (bounds_l: 0 <= lb) (bounds_r: lb <= rb).
 Hypothesis len_xind : rb <= length xind.
 Hypothesis len_xval : rb <= length xval.
 Hypothesis nodup_xind : NoDup (list_interval (abs lb) (abs rb) xind).
@@ -66,34 +68,38 @@ Definition indexf := index_bounded.func.
 
 Definition get := 
   <{
-  fun i xind xval lb rb =>
-    let k = indexf lb rb i xind in 
-    let "k < rb" = k < rb in
+  fun i xind xval xlb xrb =>
+    let k = indexf xlb xrb i xind in 
+    let "k < rb" = k < xrb in
     if "k < rb" then
       read_array xval k
     else 0
 }>.
 
-(* Lemma get_spec_in `{Inhab D} (x_ind x_val : loc) i d : 
+Lemma get_spec_in `{Inhab D} (x_ind x_val : loc) i d : 
   htriple (single d tt) 
-    (fun=> get (List.nth (abs i) xind 0) x_ind x_val)
+    (fun=> get (List.nth (abs i) (list_interval (abs lb) (abs rb) xind) 0) x_ind x_val lb rb)
     (\[0 <= i < N] \*
       harray_int xind x_ind d \* 
       harray_int xval x_val d)
     (fun hr => 
-     \[hr = fun=> List.nth (abs i) xval 0] \* 
+     \[hr = fun=> List.nth (abs i) (list_interval (abs lb) (abs rb) xval) 0] \* 
       harray_int xind x_ind d \* 
       harray_int xval x_val d).
 Proof.
   rewrite -wp_equiv; xsimpl=> ?.
-  xwp; xapp index.spec=> //.
-  xapp; xsimpl*; rewrite index_nodup //; math. 
-Qed.*)
+  xwp; xapp index_bounded.spec=> //.
+  xwp; xapp.
+  rewrite index_nodup; auto.
+  2: rewrite list_interval_length; subst; auto.
+  xwp; xif=> ?; subst; try math.
+  xapp; xsimpl*. rewrite -> list_interval_nth with (rb:=rb); try math; auto.
+Qed.
 
-(* Lemma get_spec_out_unary `{Inhab D} (x_ind x_val : loc) (i : int) d : 
+Lemma get_spec_out_unary `{Inhab D} (x_ind x_val : loc) (i : int) d : 
   htriple (single d tt) 
-    (fun=> get i x_ind x_val)
-    (\[~ In i xind] \*
+    (fun=> get i x_ind x_val lb rb)
+    (\[~ In i (list_interval (abs lb) (abs rb) xind)] \*
       harray_int xind x_ind d \* 
       harray_int xval x_val d)
     (fun hr => 
@@ -102,15 +108,15 @@ Qed.*)
       harray_int xval x_val d).
 Proof.
   rewrite -wp_equiv; xsimpl=> ?.
-  xwp; xapp index.spec=> //.
-  xapp; xsimpl*; rewrite memNindex // nth_overflow //; math.
-Qed. *)
+  xwp; xapp index_bounded.spec=> //...
+  rewrite memNindex // list_interval_length //.
+  xwp; xapp. xwp; xif=> ?; try math. xwp; xval. xsimpl*.
+Qed.
 
-
-(* Lemma get_spec_out `{Inhab D} fs (x_ind x_val : loc) : 
+Lemma get_spec_out `{Inhab D} fs (x_ind x_val : loc) : 
   htriple  fs
-    (fun i => get (eld i) x_ind x_val)
-    (\[forall d, indom fs d -> ~ In (eld d) xind] \*
+    (fun i => get (eld i).2 x_ind x_val lb rb)
+    (\[forall d, indom fs d -> ~ In (eld d).2 (list_interval (abs lb) (abs rb) xind)] \*
       (\*_(d <- fs) harray_int xind x_ind d) \* 
        \*_(d <- fs) harray_int xval x_val d)
     (fun hr => 
@@ -124,15 +130,13 @@ Proof.
   apply/htriple_union_pointwise=> [> -> //|??]. 
   rewrite -wp_equiv wp_single; xapp get_spec_out_unary=> // ??->.
   xsimpl*.
-Qed. *)
-
-Print val.
+Qed.
 
 Definition sum := 
   <{
-  fun xind xval lb rb =>
+  fun xind xval xlb xrb =>
   let s = ref 0 in
-  for i <- [lb, rb] {
+  for i <- [xlb, xrb] {
     let x = read_array xval i in 
     s += x
   };
@@ -150,43 +154,102 @@ Ltac fold' :=
     -/(For_aux _ _) 
     -/(For _ _ _) //=.
 
+(* temporary here *)
+Fact map_nth_special : forall [A B : Type] (da : A) (db : B) (f : A -> B) (l : list A) (n : nat)
+  (H : n < length l),
+  nth n (map f l) db = f (nth n l da).
+Proof using. clear. 
+  intros. revert l0 H. induction n0 as [ | n IH ]; intros.
+  { destruct l0; simpl in H; try lia; auto. }
+  { destruct l0; simpl in H; try lia; auto.
+    simpl. apply IH. lia. }
+Qed.
+
+(* TODO this should be more generalized? instead of working on intervals, 
+    this should be true over bijections. *)
+Fact Union_interval_change : forall [A : Type] (f : int -> fset A) (a b c : int),
+  Union (interval a b) f = Union (interval (a + c) (b + c)) (fun i => f (i - c)).
+Proof using. clear.
+  intros.
+  apply fset_extens=> x. rewrite ! indom_Union.
+  repeat setoid_rewrite indom_interval.
+  split; intros (i & HH & Hin).
+  { exists (i + c0). split; try math. now replace (i + _ - _) with i by math. }
+  { exists (i - c0). split; try math; auto. }
+Qed.
+
 Lemma sum_spec `{Inhab D} (x_ind x_val : loc) (s : int) : 
-  {{ arr(x_ind, xind)⟨1, 0⟩ \*
-     arr(x_val, xval)⟨1, 0⟩ \\* 
-     (\*_(i <- `[lb, rb]) arr(x_ind, xind)⟨2, i⟩) \\*
-     (\*_(i <- `[lb, rb]) arr(x_val, xval)⟨2, i⟩) }}
+  {{ arr(x_ind, xind)⟨1, (0, 0)⟩ \*
+     arr(x_val, xval)⟨1, (0, 0)⟩ \\* 
+     (\*_(i <- `{s} \x `[0, M]) arr(x_ind, xind)⟨2, i⟩) \\*
+     (\*_(i <- `{s} \x `[0, M]) arr(x_val, xval)⟨2, i⟩) }}
   [{
     [1| ld in `{(0,0)}         => sum x_ind x_val lb rb];
-    [2| ld in `{s} \x `[lb,rb] => get ld.2 x_ind x_val lb rb]
+    (* TODO maybe remove this single element prod in the future? *)
+    {2| ld in `{s} \x `[0, M] => get ld.2 x_ind x_val lb rb}
   }]
-  {{ hv, \[hv[`1](0) = Σ_(i <- `[lb,rb]) hv[`2](i)] \* \Top}}.
+  {{ hv, \[hv[`1]((0, 0)) = Σ_(i <- `{s} \x `[0, M]) hv[`2](i)] \* \Top}}.
+  (* {{ hv, \[hv[`1]((0, 0)) = Σ_(i <- `[0, M]) hv[`2]((s, i))] \* \Top}}. *)
 Proof with fold'.
-  xfocus (2,0) xind.
-  rewrite (hbig_fset_part `[0, M] xind). (* TODO: move to xfocus *)
+  xfocus (2,0) (map (fun x => (s, x)) (list_interval (abs lb) (abs rb) xind)).
+  rewrite (hbig_fset_part (`{s} \x `[0, M]) (map (fun x => (s, x)) (list_interval (abs lb) (abs rb) xind))). (* TODO: move to xfocus *)
   xapp get_spec_out=> //.
-  { case=> ?? /[! @indom_label_eq]-[_]/=; rewrite /intr filter_indom; autos*. }
+  { case=> ? d0 /[! @indom_label_eq]-[_]/=. 
+    rewrite /intr filter_indom indom_prod indom_interval indom_single_eq /Sum.mem //=.
+    rewrite in_map_iff=> Hq ?. false (proj2 Hq). exists d0.2. 
+    split; [ destruct d0; simpl in *; intuition congruence | auto ]. }
   set (H1 := hbig_fset hstar (_ ∖ _) _); set (H2 := hbig_fset hstar (_ ∖ _) _).
   xframe (H1 \* H2); clear H1 H2.
-  xin (1,0) : xwp; xapp=> s...
-  have E : `[0,M] ∩ xind = xind.
-  { apply/fset_extens=> x; rewrite /intr filter_indom -fset_of_list_in; splits*.
-    move=> ?; splits*; rewrite* indom_interval. }
-  rewrite E (fset_of_list_nodup 0) // len_xind.
-  set (R i := arr(x_ind, xind)⟨2, i⟩ \* arr(x_val, xval)⟨2, i⟩).
-  set (Inv (i : int) := arr(x_ind, xind)⟨1, 0⟩ \* arr(x_val, xval)⟨1, 0⟩).
-  xfor_sum Inv R (fun=> \Top) (fun hv i => hv[`2](xind[i])) s.
+  xin (1,0) : xwp; xapp=> q...
+  have E : (`{s} \x `[0, M]) ∩ (map (fun x => (s, x)) (list_interval (abs lb) (abs rb) xind)) = 
+    map (fun x => (s, x)) (list_interval (abs lb) (abs rb) xind).
+  { apply/fset_extens=> x; rewrite /intr filter_indom -fset_of_list_in 
+      /Sum.mem indom_prod indom_interval indom_single_eq in_map_iff; splits*.
+    intros (y & <- & Hin). split; eauto. }
+  (* now becomes tedious, since need to align by making Z = lb and N = rb *)
+  rewrite E (fset_of_list_nodup (0,0)) //.
+  2: apply FinFun.Injective_map_NoDup; auto.
+  2: hnf; intros; congruence.
+  rewrite map_length list_interval_length; auto.
+  rewrite -> ! Union_interval_change with (a:=0) (c:=lb).
+  replace (0 + lb) with lb by math. replace (rb - _ + _) with rb by math.
+  erewrite Union_eq_fset. 
+  2: intros x0 HH; rewrite indom_interval in HH.
+  2: rewrite -> map_nth_special with (da:=0); [ | rewrite -> list_interval_length; math ].
+  2: rewrite <- list_interval_nth with (l:=xind); try math.
+  2: replace (lb + (x0 - lb)) with x0 by math; reflexivity.
+
+  set (R (i : int * int) := arr(x_ind, xind)⟨2, i⟩ \* arr(x_val, xval)⟨2, i⟩).
+  set (Inv (i : int) := arr(x_ind, xind)⟨1, (0,0)⟩ \* arr(x_val, xval)⟨1, (0,0)⟩).
+  xfor_sum Inv R (fun=> \Top) (fun hv i => hv[`2]((s, xind[i]))) q.
   { rewrite /Inv.
     (xin (1,0): (xwp; xapp; xapp incr.spec=> y))...
-    xapp get_spec_in=> //; xsimpl*. }
-  { move=> Neq ???; apply/Neq. 
-    move/NoDup_nthZ: nodup_xind; apply; autos*; math. }
-  { rewrite -len_xind; math. }
+    assert (0 <= l0 - lb < N) by (subst N; math).
+    replace l0 with (lb + (l0 - lb)) by math.
+    rewrite -> ! list_interval_nth with (rb:=rb); try math.
+    xapp get_spec_in=> //. xsimpl*. }
+  { move=> Neq ?? EE; apply/Neq.
+    inversion EE.
+    enough (i0 - lb = j0 - lb) by math. 
+    move/NoDup_nthZ: nodup_xind; apply; auto.
+    1-2: rewrite list_interval_length; math.
+    rewrite <- ! list_interval_nth; try math. 
+    replace (lb + (i0 - lb)) with i0 by math.
+    replace (lb + (j0 - lb)) with j0 by math. eauto. }
   xapp; xsimpl.
+  (* ... *)
+  (* unfold prod.
+  rewrite <- SumCascade. 1: rewrite update_empty SumUpdate. 1: rewrite Sum0.
+  
+  Sum Union *)
   under (@SumEq _ _ _ `[0,M]).
   { move=>*; rewrite to_int_if; over. }
   rewrite SumIf E (SumList 0) // len_xind Sum0s; math.
 Qed.
+*)
 
+
+(*
 Context (dvec : list int).
 Context (dvec_len : length dvec = M :> int).
 
@@ -250,13 +313,13 @@ Proof with fold'.
   { move=>*; rewrite to_int_if; over. }
   rewrite (SumIf (fun=> Z.mul^~ _)) E (SumList 0) // len_xind Sum0s; math.
 Qed.
-
+*)
 End sv.
 
 
 End sv.
 
-
+(*
 
 Module coo. 
 
@@ -449,3 +512,4 @@ End coo.
 End coo.
 
 
+*)

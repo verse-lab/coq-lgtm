@@ -1718,7 +1718,7 @@ Tactic Notation "xframe2" uconstr(QH) :=
   try (
     let Q := fresh "Q" in 
     let HEQ := fresh "Q" in 
-    remember QH as Q eqn: HEQ;
+    remember QH as Q eqn: HEQ in |- *;
     rewrite -?HEQ;
     eapply (@ntriple_frame Q); 
     [ let h := fresh "h" in 
