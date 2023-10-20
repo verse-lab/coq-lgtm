@@ -247,8 +247,7 @@ Proof with fold'.
     intros Hneq Hi Hj Hq. inversion Hq. apply Hneq.
     enough (abs i0 = abs j0 :> nat) by math. 
     eapply NoDup_nth. 4: apply H1. all: try math; try assumption. }
-Abort.
-
+Qed.
 (*
 Context (dvec : list int).
 Context (dvec_len : length dvec = M :> int).
