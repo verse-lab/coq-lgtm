@@ -147,12 +147,35 @@ Definition sum :=
   let n := constr:(S1) in
   xfocus n; tac; try(
   first [xunfocus | xcleanup n]; simpl; try apply xnwp0_lemma). *)
+Lemma val_int_eq i j : 
+  (val_int i = val_int j) = (i = j).
+Proof. by extens; split=> [[]|]->. Qed.
 
 Ltac fold' := 
-  rewrite ?label_single ?wp_single
+  rewrite ?label_single ?wp_single ?val_int_eq
     (* -/(incr _)  *)
     -/(For_aux _ _) 
     -/(For _ _ _) //=.
+
+Fact Union_interval_change2 [A : Type] (f : int -> fset A) (a b : int) :
+  Union (interval 0 (b - a)) f = Union (interval a b) (fun i => f (i - a)).
+Proof. 
+  rewrite -> Union_interval_change with (c := a).
+  do ? f_equal; lia.
+Qed.
+
+Fact Sum_interval_change2 (f : int -> int) (a b : int) :
+  Sum (interval 0 (b - a)) f = Sum (interval a b) (fun i => f (i - a)).
+Proof.
+  rewrite -> Sum_interval_change with (c := a).
+  do ? f_equal; lia.
+Qed.
+
+Fact Sum1 {A : Type} (s : A) (f : A -> int) : 
+  Sum (`{s}) f = f s.
+Proof.
+  rewrite update_empty SumUpdate; [ rewrite Sum0 Z.add_0_l; reflexivity | auto ].
+Qed.
 
 Lemma sum_spec `{Inhab D} (x_ind x_val : loc) (s : int) : 
   {{ arr(x_ind, xind)⟨1, (0, 0)⟩ \*
@@ -182,7 +205,7 @@ Proof with fold'.
   1: rewrite -> list_interval_length; try math.
   (* this alignment is tedious *)
   have E : (`{s} \x `[0, M]) ∩ (map (fun x => (s, x)) (list_interval (abs lb) (abs rb) xind)) = 
-    Union (interval 0 (rb - lb)) (fun i => single (s, nth (abs i) (list_interval (abs lb) (abs rb) xind) 0) tt).
+    \U_(i <-  `[0, rb - lb]) `{(s, (list_interval (abs lb) (abs rb) xind)[i])}.
   { apply fset_extens. intros (r, c). 
     rewrite /intr filter_indom /Sum.mem indom_prod indom_interval indom_single_eq
       indom_Union in_map_iff.
@@ -200,8 +223,7 @@ Proof with fold'.
       split; eauto. }
   }
   rewrite E.
-  rewrite -> ! Union_interval_change with (a:=0) (c:=lb).
-  replace (0 + lb) with lb by math. replace (rb - _ + _) with rb by math.
+  rewrite -> ! Union_interval_change2.
   set (R (i : int * int) := arr(x_ind, xind)⟨2, i⟩ \* arr(x_val, xval)⟨2, i⟩).
   set (Inv (i : int) := arr(x_ind, xind)⟨1, (0,0)⟩ \* arr(x_val, xval)⟨1, (0,0)⟩).
   xfor_sum Inv R (fun=> \Top) (fun hv i => hv[`2]((s, xind[i]))) q.
@@ -213,20 +235,13 @@ Proof with fold'.
   { intros Hneq Hi Hj Hq. inversion Hq. apply Hneq. 
     enough (abs (i0 - lb) = abs (j0 - lb) :> nat) by math.
     eapply NoDup_nth. 4: apply H1. all: try math; try assumption. }  
-  { (* currently cannot be proved since m0 is under constrained *)
-    admit. }
+  { f_equal. rewrite -list_interval_nth; try f_equal; lia. }
   xapp. xsimpl*.
   under (@SumEq _ _ _ (`{s} \x `[0, M])).
   { move=>*; rewrite to_int_if; over. }
-  rewrite SumIf E Sum0s -SumCascade.
-  { rewrite Z.add_0_r.
-    erewrite SumEq with (fs:=`[0, rb - lb]).
-    2: intros; rewrite update_empty SumUpdate; [ rewrite Sum0 Z.add_0_l; reflexivity | auto ].
-    rewrite -> Sum_interval_change with (a:=0) (c:=lb).
-    replace (0 + lb) with lb by math. replace (rb - _ + _) with rb by math.
-    erewrite SumEq. 1: reflexivity.
-    simpl. intros x0 HH. rewrite indom_interval in HH. rewrite <- list_interval_nth; try math.
-    do 5 f_equal. math. }
+  rewrite SumIf E Sum0s -SumCascade...
+   { rewrite Z.add_0_r Sum_interval_change2; apply/SumEq=> ? /[! indom_interval]?.
+     rewrite ?Sum1 -list_interval_nth //; do ? fequal; lia. }
   { intros i0 j0. rewrite ! indom_interval disjoint_single.
     (* repeating the proof above *)
     intros Hneq Hi Hj Hq. inversion Hq. apply Hneq.

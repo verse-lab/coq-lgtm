@@ -7772,7 +7772,7 @@ Lemma wp_for_aux  i fs fs' ht (H : int -> (D -> val) -> hhprop) (Z N : int) C fs
   (Z <= i <= N) ->
   (* (forall x y z hv1 hv2, x <= y <= z -> H x y hv1 \* H y z hv2 ==> \exists hv, H x z hv) -> *)
   (* (forall k Z i hv, exists k', forall j, H k' i j hv = H k Z j hv) -> *)
-  (forall j hv1 hv2, (forall x, indom (Union (interval Z j) fsi) x -> hv1 x = hv2 x) -> H j hv1 = H j hv2) ->
+  (forall j hv1 hv2, i <= j <= N -> (forall x, indom (Union (interval Z j) fsi) x -> hv1 x = hv2 x) -> H j hv1 = H j hv2) ->
   (forall i j, i <> j -> Z <= i < N -> Z <= j < N -> disjoint (fsi i) (fsi j)) ->
   fs = Union (interval i N) fsi ->
   (forall t, subst "for" t C = C) ->
@@ -7795,9 +7795,9 @@ Lemma wp_for_aux  i fs fs' ht (H : int -> (D -> val) -> hhprop) (Z N : int) C fs
       (fun hr => H N (hv0 \u_(Union (interval Z i) fsi) hr)).
 Proof. 
   move=> + hP Dj -> sfor scnt scond vcnt vfor vcond  + +.
-  move: ht hv0.
+  move: ht hv0 hP.
   induction_wf IH: (upto N) i; rewrite /upto le_zarith lt_zarith in IH.
-  move=> ht hv0 lN dj htE.
+  move=> ht hv0 hP lN dj htE.
   rewrite -wp_union // (wp_ht_eq _ _ _ htE) /For /For_aux.
   rewrite wp_fix_app2.
   Opaque subst.
@@ -7864,6 +7864,7 @@ Proof.
     { move: dj; rewrite ?disjoint_Union; setoid_rewrite indom_interval.
       move=> dj *; apply/dj; lia. }
     apply IH; try lia.
+    { move=> *; apply/hP; eauto; lia. }
     { move: dj; rewrite ?disjoint_Union; setoid_rewrite indom_interval.
       move=> dj *; apply/dj; lia. }
     { by move=> *; rewrite uni_in. }
@@ -7876,7 +7877,7 @@ Proof.
     xwp; xval.
     rewrite intervalgt ?Union0; last lia.
     rewrite wp0_dep. xsimpl hv0.
-    erewrite hP; eauto.
+    erewrite hP; eauto. lia.
     by move=> ??; rewrite uni_in. 
 Qed.
 
@@ -8116,7 +8117,7 @@ Qed.
 Lemma wp_for fs fs' ht 
   (H : int -> (D -> val) -> hhprop) Z N (C : trm) fsi hv0 (P : hhprop) Q vr :
   (forall j hv, Z <= j < N -> H j hv ==> wp (fs' \u fsi j) ((fun=> subst vr j C) \u_fs' ht) (fun hr => H (j + 1) (hr \u_(fsi j) hv))) ->
-  (forall j hv1 hv2, (forall x, indom (Union (interval Z j) fsi) x -> hv1 x = hv2 x) -> H j hv1 = H j hv2) ->
+  (forall j hv1 hv2, Z <= j <= N -> (forall x, indom (Union (interval Z j) fsi) x -> hv1 x = hv2 x) -> H j hv1 = H j hv2) ->
   (P ==> H Z hv0) -> 
   (H N ===> Q) ->
   (forall i j, i <> j -> Z <= i < N -> Z <= j < N -> disjoint (fsi i) (fsi j)) ->
@@ -8140,7 +8141,7 @@ Proof.
   { apply/(@wp_for_aux Z); eauto; first lia.
     clear -Hwp Heq Dj=> i hv lP.
     move=> ? // /Hwp -/(_ lP). apply/wp_conseq=> hr.
-    erewrite Heq; eauto=> ?.
+    erewrite Heq; try lia; eauto=> ?.
     rewrite intervalUr ?Union_upd // ?indom_union_eq; last lia; first last.
     { introv Neq. rewrite ?indom_union_eq ?indom_interval ?indom_single_eq.
       case=> [?[?|]|]; first by subst.
@@ -8262,6 +8263,7 @@ Lemma wp_for_hbig_op fs fs' ht fs''
             (\*_(d <- fsi l) R' d) \* 
             Q \(m, vd) H' l hr)) ->
   (forall (hv hv' : D -> val) m,
+    Z <= m < N ->
     (forall i, indom (fsi m) i -> hv(i) = hv'(i)) ->
     H' m hv = H' m hv') ->
   comm m -> assoc m -> (forall x y, (vd x /\ vd y) <-> vd (m x y)) ->
@@ -8324,20 +8326,21 @@ Proof.
       fequal. rewrite intervalUr ?hbig_fset_update //; eauto; last lia.
       { rewrite hmerge_comm; eauto. fequal.
         { apply/hbig_fset_eq=> ? +; rewrite indom_interval=> ?. 
-          apply/Heq=> ? ind; rewrite uni_nin //.
+          (apply/Heq; try lia)=> ? ind; rewrite uni_nin //.
           move: ind=> /[swap]; apply/disjoint_inv_not_indom_both/Dj; lia. }
-        apply/Heq=> *; by rewrite uni_in. }
+        apply/Heq=> *; try lia; by rewrite uni_in. }
       rewrite indom_interval not_and_eq; right. lia. }
       rewrite /Q hmerge_assoc // [_ \(m, vd) H _]hmerge_comm //.
       rewrite hbig_fset_update ?indom_interval; eauto.
       rewrite not_and_eq; left.
       lia. }
-  { move=> q hv hv' hvE.
+  { move=> q hv hv' ? hvE.
     suff->:
       (\(m, vd)_(i0 <- interval Z q) H' i0 hv') = 
       (\(m, vd)_(i0 <- interval Z q) H' i0 hv) by [].
-    apply/hbig_fset_eq=> ??; apply/Heq=> *; apply/eq_sym/hvE.
-    rewrite indom_Union; eexists; autos*. }
+    apply/hbig_fset_eq=> ?; rewrite indom_interval=> ?. 
+    apply/Heq=> *; try lia. apply/eq_sym/hvE.
+    rewrite indom_Union; eexists; rewrite indom_interval; autos*. }
   { rewrite [_ Z Z]intervalgt; last lia.
     rewrite Union0 ?hbig_fset_empty hmerge_hempty_l; xsimpl. }
   { move=> ?.
@@ -9374,7 +9377,8 @@ Hypotheses Qimpl :
     (\(m, vd)_(i <- interval Z N) H' i (hv \o f)) ==> Q hv.
 
 Hypotheses HE :   
-  forall (hv hv' : D -> val) m,
+  forall (hv hv' : D -> val) m, 
+    Z <= m < N ->
     (forall i, indom (fsi' m) i -> hv(i) = hv'(i)) ->
       H' m hv = H' m hv'.
 Hypothesis IH : (forall l Q, Z <= l < N -> 
@@ -9632,8 +9636,9 @@ Proof.
   rewrite -hsub_P -hsub_Q -fsubst_fs'Ufs.
   rewrite wp_equiv. apply (htriple_hsub g (Q:= fun v => _ \* _ \* \(m, vd)_(i <- _) _ _ v))=> //.
   { move=> ?; rewrite fsubst_fs'Ufs; exact/fC. }
-  { move=> hv hv' hvE. do 2? fequal. apply/hbig_fset_eq=> i ?.
-    apply/HE=> ??; apply/hvE; rewrite indom_union_eq /Fs indom_Union.
+  { move=> hv hv' hvE. do 2? fequal. apply/hbig_fset_eq=> i /[dup]?.
+    rewrite indom_interval=> ?.
+    apply/HE=> // ??; apply/hvE; rewrite indom_union_eq /Fs indom_Union.
     right; by exists i. }
   { move=> > /fGlue/[apply]-[]; rewrite ?indom_union_eq.
     split; by right. }
@@ -9659,7 +9664,7 @@ Proof.
   apply/htriple_conseq; [|eauto|move=> v ?; rewrite {2}(vE v); exact].
   apply (htriple_hsub (fi l) (Q := fun v => _ \* _ \* _ \(m, vd) _ (v \o _))).
   { by move=> *; rewrite C1. }
-  { move=> > hvE; do 3? fequal; apply/HE=> i ind.
+  { move=> > hvE; do 3? fequal; apply/HE=> // i ind.
     apply/hvE; rewrite indom_union_eq -fiIm indom_fsubst; right.
     by exists i. }
   { by move=> ?? /[swap]/(can_inj (C2 _)). }
@@ -9681,7 +9686,7 @@ Proof.
     (fun v => Inv (l + 1) \* (\*_(d <- fsi l) R' d) \* Q' \(m, vd) H' l (v \o fi l)) = 
     fun v => Inv (l + 1) \* (\*_(d <- fsi l) R' d) \* Q' \(m, vd) H' l (v \o f).
   { apply/fun_ext_1=> ?; do 3? fequal.
-    apply/HE=> ? /= /fRestr-> //; rewrite indom_interval.
+    apply/HE=> // ? /= /fRestr-> //; rewrite indom_interval.
     lia. }
   erewrite wp_ht_eq; eauto=> d /=.
   rewrite indom_union_eq=> -[].
@@ -10702,7 +10707,8 @@ Lemma xfor_lemma `{ID : Inhab D}
   (forall (j : int) (v : D -> val), hlocal (H' j v) ⟨(i,0%Z), single s tt⟩) ->
   (forall i : D, hlocal (R i) (single i tt)) ->
   (forall i : D, hlocal (R' i) (single i tt)) ->
-  (forall (hv hv' : D -> val) m,
+  (forall (hv hv' : D -> val) (m : int),
+    (0 <= m < N) ->
     (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
     H' m hv = H' m hv') ->
   comm m -> assoc m ->
@@ -10749,9 +10755,9 @@ Proof.
   set (fsi' (i : int) := ⟨(j, i), fsi1 i⟩).
   have H'E :forall hv, 
     \(m, vd)_(i <- interval 0 N) H' i hv = \(m, vd)_(i <- interval 0 N) H' i (hv \o f \o set2 i).
-  { move=> hv; apply/hbig_fset_eq=> d ?.
-    apply/opP=> x ? /=; case: classicT=> // _.
-    by case: classicT=> // -[]; split=> //; rewrite -indom_interval. }
+  { move=> hv; apply/hbig_fset_eq=> d. rewrite indom_interval=> ?.
+    apply/opP=> // x ? /=; case: classicT=> // _.
+    by case: classicT=> // -[]; split=> //. }
   apply/(
     wp_for_hbig_op_na_bis Inv R R' H (fun i hv => H' i (hv \o set2 i))  
       (fun d => ⟨(j,0%Z), fsi1 d⟩) Post fsi' fi gi g
@@ -10854,7 +10860,7 @@ Proof.
       rewrite ?indom_label_eq=> -[][]_ <-_[][]_ ?; by subst. }
     { move=> ?; rewrite -Union_label hstar_fset_Lab/= -H'E.
       apply/PostH. }
-    { move=> > hvP; apply/opP=> * /=. apply/hvP.
+    { move=> > ? hvP. apply/opP=> // * /=. apply/hvP.
       by rewrite indom_label_eq. }
     move=> l Q ?; move: (IH l Q).
     rewrite /ntriple /nwp ?fset_of_cons /= ?fset_of_nil.
@@ -10863,7 +10869,7 @@ Proof.
       (fun hr : D -> val => Inv (l + 1) \* (\*_(d <- ⟨(j, 0), fsi1 l⟩) R' d) \* Q \(m, vd) H' l ((hr \o f) \o set2 l)) = 
       (fun hr : D -> val => Inv (l + 1) \* (\*_(d <- ⟨(j, 0), fsi1 l⟩) R' d) \* Q \(m, vd) H' l hr).
     { apply/fun_ext_1=> ?; do 3? fequals.
-      apply/opP=> x ? /=; case: classicT=> // _.
+      apply/opP=> // x ? /=; case: classicT=> // _.
       case: classicT=> // -[]; split=> //; lia. } 
     erewrite wp_ht_eq; first (apply/IH; lia).
     case=> l' ?; rewrite indom_union_eq ?indom_label_eq=> -[][??]; subst.
