@@ -154,3 +154,20 @@ Proof.
     all: rewrite indom_update_eq; auto.
   }
 Qed.
+
+Fact Sum_interval_change : forall (f : int -> int) (a b c : int),
+  Sum (interval a b) f = Sum (interval (a + c) (b + c)) (fun i => f (i - c)).
+Proof using. clear.
+  intros.
+  destruct (Z.leb b a) eqn:E.
+  1:{ apply Z.leb_le in E. rewrite !intervalgt; try math. now rewrite Sum0. }
+  apply Z.leb_gt in E. assert (a <= b) as E' by math. clear E.
+  remember (abs (b - a)) as n eqn:E.
+  revert E E'. revert a b. induction n as [ | n IH ]; intros.
+  { rewrite !intervalgt; try math. now rewrite Sum0. }
+  { rewrite -> intervalU with (x:=a); try math.
+    rewrite -> intervalU with (x:=a+c); try math.
+    rewrite !SumUpdate. 2-3: rewrite indom_interval; try math.
+    f_equal. 2: f_equal; math.
+    rewrite IH; try math. do 2 f_equal. math. }
+Qed.

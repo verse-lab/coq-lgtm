@@ -2676,6 +2676,17 @@ Proof using.
   { intros. rewrite -> Union_upd. 2: auto. by rewrite -> H, -> union_empty_l. }
 Qed.
 
+Fact Union_interval_change : forall [A : Type] (f : int -> fset A) (a b c : int),
+  Union (interval a b) f = Union (interval (a + c) (b + c)) (fun i => f (i - c)).
+Proof.
+  intros.
+  apply fset_extens=> x. rewrite ! indom_Union.
+  repeat setoid_rewrite indom_interval.
+  split; intros (i & HH & Hin).
+  { exists (i + c). split; try math. now replace (i + _ - _) with i by math. }
+  { exists (i - c). split; try math; auto. }
+Qed.
+
 Lemma update_union_not_r' [A B : Type] `{Inhab B} (h1 : fmap A B) [h2 : fmap A B] [x : A] (v : B) :
   update (h1 \+ h2) x v = update h1 x v \+ h2.
 Proof.

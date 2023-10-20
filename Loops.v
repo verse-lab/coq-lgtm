@@ -781,6 +781,8 @@ Lemma xfor_big_op_lemma_aux `{INH: Inhab D} Inv (R R' : Dom.type -> hhprop)
   (forall i0 j0 : int, i0 <> j0 -> Z <= i0 < N -> Z <= j0 < N -> disjoint (fsi1 i0) (fsi1 j0)) ->
   (forall (hv hv' : D -> val) m,
     (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
+    (* Qiyuan: maybe add something like the following line? also, maybe for the other lemmas, either aux or not aux *)
+    Z <= m < N ->
     op hv m = op hv' m) ->
   (i <> j) ->
   (Z <= N)%Z ->
@@ -874,15 +876,16 @@ Proof.
       intros. rewrite indom_label_eq. case_if; auto.
       destruct C0 as (_ & H0).
       false @disjoint_inv_not_indom_both. 2: apply H. 2: apply H0.
-      apply Dj; math.
+      apply Dj; math. lia.
     }
-    rewrite -> opP with (hv':=v). 1: apply hsingle_intro.
+    rewrite -> opP with (hv':=v); auto. 1: apply hsingle_intro.
     intros. unfold uni. rewrite indom_label_eq. case_if; eqsolve. }
-  { move=> r hv hv' hvE.
+  { move=> r hv hv' ? hvE.
     suff->:
       Σ_(l <- interval Z r) op hv l = 
       Σ_(l <- interval Z r) op hv' l by xsimpl.
-    apply/SumEq=> *; apply/opP=> *; apply/hvE.
+    apply/SumEq=> ? /[dup]?. rewrite indom_interval=>?. 
+    apply/opP=> // *; try lia. apply/hvE.
     rewrite indom_Union; eexists; rewrite indom_label_eq; autos*. }
   { rewrite [_ Z Z]intervalgt; last math.
     rewrite Union0 hbig_fset_empty Sum0. xsimpl. }
@@ -908,7 +911,7 @@ Proof.
   by case=> l d; rewrite indom_label_eq /= /htrm_of; case: classicT.
 Qed.
 
-Lemma xfor_specialized_lemma `{INH: Inhab D} (Inv : int -> hhprop) (R R' : Dom.type -> hhprop) 
+(* Lemma xfor_specialized_lemma `{INH: Inhab D} (Inv : int -> hhprop) (R R' : Dom.type -> hhprop) 
   s fsi1 vr
   Z N (C1 : Dom.type -> trm) (i j : int) (C : trm)
   Pre Post
@@ -1065,7 +1068,7 @@ Proof.
     rewrite indom_label_eq in H0. eqsolve.
   }
   by case=> l d; rewrite indom_label_eq /= /htrm_of; case: classicT.
-Qed.
+Qed. *)
 
 Lemma lab_eqbE l1 l2: 
   (lab_eqb l1 l2) = (l1 = l2) :> Prop.
@@ -1243,6 +1246,7 @@ Lemma xfor_big_op_lemma `{Inhab D} Inv (R R' : Dom.type -> hhprop)
         p ~⟨(i, 0%Z), s⟩~> (val_int (x + (op hv l))) }}) ->
   (forall i j : int, i <> j -> Z <= i < N -> Z <= j < N -> disjoint (fsi1 i) (fsi1 j)) ->
   (forall (hv hv' : D -> val) m,
+     Z <= m < N ->
     (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
     op hv m = op hv' m) ->
   (i <> j) ->
@@ -1313,7 +1317,7 @@ Tactic Notation "xfor_sum" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(
     autorewrite with disjointE; try math
   | let hvE := fresh "hvE" in
     let someindom := fresh "someindom" in
-    intros ??? hvE; rewrite ?/op;
+    intros ???? hvE; rewrite ?/op;
     match goal with 
     | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ? someindom; extens; intros 
     | _ => idtac
@@ -1364,6 +1368,7 @@ Lemma xfor_lemma2_hbig_op `{ID : Inhab D}
   (forall i : D, hlocal (R2 i) (single i tt)) ->
   (forall i : D, hlocal (R2' i) (single i tt)) ->
   (forall (hv hv' : D -> val) m,
+    0 <= m < N ->
     (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
     (forall i, indom (fsi2 m) i -> hv[`k](i) = hv'[`k](i)) ->
     H' m hv = H' m hv') ->
@@ -1421,8 +1426,8 @@ Proof.
   set (fsi' (i : int) := ⟨(j, i), fsi1 i⟩ \u ⟨(k, i), fsi2 i⟩).
   have H'E :forall hv, 
     \(m, vd)_(i <- `[0,N]) H' i hv = \(m, vd)_(i <- `[0,N]) H' i (hv \o f \o set2 i).
-  { move=> hv; apply/hbig_fset_eq=> d ?.
-    apply/opP=> x ? /=; case: classicT=> // ; try lia.
+  { move=> hv; apply/hbig_fset_eq=> d /[dup]?; rewrite indom_interval=>?.
+    apply/opP=> // x ? /=; case: classicT=> // ; try lia.
     { by case: classicT=> // -[]; split=> //; rewrite -indom_interval. }
     case: classicT=> // _ ?; case: classicT=> // -[].
     by split=> //; rewrite -indom_interval. }
@@ -1595,7 +1600,7 @@ Proof.
       by rewrite H'E. }
       do 2 rewrite disjoint_Union=> ??. 
       rewrite disjoint_label. left=> -[]. lia. } 
-  { move=> > hvP; apply/opP=> * /=; apply/hvP.
+  { move=> > ? hvP; apply/opP=> // * /=; apply/hvP.
     all: rewrite indom_union_eq ?indom_label_eq; autos*. }
   move=> l Q ?; move: (IH l Q).
   rewrite /ntriple /nwp ?fset_of_cons /= ?fset_of_nil.
@@ -1613,7 +1618,7 @@ Proof.
       do ? case: classicT=> *; subst=> //.
       { xsimpl*. }
       rewrite ?hstar_assoc; do 4 fequals.
-      apply/opP=> x ? /=; case: classicT=> // ?; try lia.
+      apply/opP=> // x ? /=; case: classicT=> // ?; try lia.
       { case: classicT=> // -[]; split=> //; lia. }
       case: classicT=> //.
       case: classicT=> // -[]. split=> //; lia. }
@@ -1718,7 +1723,7 @@ Tactic Notation "xframe2" uconstr(QH) :=
   try (
     let Q := fresh "Q" in 
     let HEQ := fresh "Q" in 
-    remember QH as Q eqn: HEQ;
+    remember QH as Q eqn: HEQ in |- *;
     rewrite -?HEQ;
     eapply (@ntriple_frame Q); 
     [ let h := fresh "h" in 
@@ -1780,6 +1785,7 @@ Lemma xfor_lemma_gen2_bigstr `{ID : Inhab D}
   (forall i : D, hlocal (R2 i) (single i tt)) ->
   (forall i : D, hlocal (R2' i) (single i tt)) ->
   (forall (hv hv' : D -> val) m,
+    0 <= m < N ->
     (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
     (forall i, indom (fsi2 m) i -> hv[`k](i) = hv'[`k](i)) ->
     H' m hv = H' m hv') ->
@@ -1853,6 +1859,7 @@ Lemma xfor_lemma_gen2_array `{ID : Inhab D}
   (forall i : D, hlocal (R2 i) (single i tt)) ->
   (forall i : D, hlocal (R2' i) (single i tt)) ->
   (forall (hv hv' : D -> val) m,
+    0 <= m < N ->
     (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
     (forall i, indom (fsi2 m) i -> hv[`k](i) = hv'[`k](i)) ->
     (arr2 hv)[m] = (arr2 hv')[m]) ->
@@ -1902,7 +1909,7 @@ Proof.
   (R1 := R1) (R2 := R2) (R2' := R2') (R1' := R1'); try eassumption; autos*=> //.
   { xlocal. }
   { xlocal. }
-  { move=> ??? hvE1 hvE2; erewrite hvE; eauto. }
+  { move=> ???? hvE1 hvE2; erewrite hvE; eauto. }
   { rewrite AL2. xsimpl. }
   move=> ?. rewrite hcellsE AL1. xsimpl*.
 Qed.
