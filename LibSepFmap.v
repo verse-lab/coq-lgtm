@@ -1995,6 +1995,9 @@ Next Obligation.
   unfolds map_indom. specializes H Hdom. apply mem_map. auto.
 Qed.
 
+Definition fsubst_pred {A B C : Type} (fm : fmap A B) (p : A -> Prop) (f : A -> C) :=
+  fsubst (filter (fun x _ => p x) fm) f.
+
 (* Definition valid_subst {A B C : Type} (fm : fmap A B) (f : A -> C) : Prop :=
   forall x1 x2, 
     indom fm x1 ->
@@ -2005,6 +2008,43 @@ Definition valid_subst {A B C : Type} (fm : fmap A B) (f : A -> C) : Prop :=
   forall x1 x2, 
     f x1 = f x2 -> 
     fmap_data fm x1 = fmap_data fm x2.
+
+(* Definition valid_subst_pred {A B C : Type} (fm : fmap A B) p (f : A -> C) : Prop :=
+  forall x1 x2, 
+    p x1 -> p x2 ->
+    f x1 = f x2 -> 
+    fmap_data fm x1 = fmap_data fm x2. *)
+
+(* Lemma valid_subst_predE {A B C : Type} (fm : fmap A B) p (f : A -> C) fs :
+  local fm fs -> (forall x, indom fs x -> p x) -> 
+  valid_subst_pred fm p f -> valid_subst fm f. 
+
+Lemma valid_subst_not_squash {A B C} (h1 h2 : fmap A B) (f : A -> C) p : 
+  valid_subst_pred (h1 \+ h2) p f ->
+  (forall x y, x <> y -> p x -> p y -> f x <> f y) ->
+    valid_subst_pred h1 p f.
+Proof.
+  move=> v fP l1 l2.
+  move=> /[dup]{}/v v {}/fP fP /[dup]{}/v v {}/fP fP.
+  case=> ? d1[l d2]/= /[dup]-[->]fE ffE.
+  move: (v (l, d1) (l, d2) ffE).
+  case: (prop_inv (indom h1 (l, d1))).
+  { case: (prop_inv (indom h2 (l, d2))).
+    { move=> /l2/fP fN /l1/fN/[! fE].
+      by case: (classicT (d1 = d2))=> [->//|/[swap]/[apply] ]. }
+    move=> ??. by rewrite fmapU_in1 // fmapU_nin2. }
+  case: (prop_inv (indom h1 (l, d2))).
+  { move=> /[dup]/l1 fd ??. 
+    rewrite fmapU_nin1 // fmapU_in1 // =><-.
+    rewrite fmapNone //.
+    case: (prop_inv (indom h2 (l, d1))).
+    { move/l2/(fP _ _ _ fd); rewrite fE.
+      case: (classicT (d2 = d1))=> [?|/[swap]/[apply] ]//.
+      by subst. }
+    by move/(@fmapNone _ _ _ _)->. }
+  by move=> *; rewrite ?fmapNone.
+Qed. *)
+
 
 Lemma valid_subst_union_l {A B C : Type} (fm1 fm2 : fmap A B) (f : A -> C) :
   valid_subst fm1 f ->
