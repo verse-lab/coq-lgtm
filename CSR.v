@@ -1,7 +1,7 @@
 Set Implicit Arguments.
 From SLF Require Import LabType Fun LibSepFmap Sum.
 From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer.
-From SLF Require Import Struct Loops Unary_IndexWithBounds SV2.
+From SLF Require Import Struct Loops Unary_IndexWithBounds SV2 Subst.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
@@ -362,7 +362,91 @@ Proof.
 Admitted.
 Arguments in_interval_list {_ _ _ _ _}.
 
-(* Lemma csrsum_spec `{Inhab D} (x_mval x_colind x_rowptr : loc) : 
+Local Notation Dom := (int * int)%type.
+
+Lemma xntriple2_hsub {Dom' : Type} (f : Dom -> Dom') 
+  Pre Pre' Post (Post' : (labeled Dom' -> val) -> hhprop (labeled Dom')) i j 
+  (C1 : Dom -> trm)
+  (C2 : Dom -> trm) 
+  (C1' : Dom' -> trm)
+  (C2' : Dom' -> trm) 
+  
+  (fs1 fs2 : fset Dom)
+  (F := fun ld => Lab (lab ld) (f (el ld)))
+  (Fs := ⟨(i,0), fs1⟩ \u ⟨(j,0), fs2⟩) :
+  (forall x y , indom Fs x -> indom Fs y -> F x = F y -> x = y) ->
+  (forall x, C1 x = C1' (f x)) ->
+  (forall x, C2 x = C2' (f x)) ->
+  (hsub F Fs Pre = Pre') ->
+  (forall (hv : labeled Dom' -> val), hsub F Fs (Post (hv \o F)) = Post' hv) ->
+  {{ Pre' }}
+    [{
+      {i| ld in (Fmap.fsubst fs1 f) => C1' ld};
+      {j| ld in (Fmap.fsubst fs2 f) => C2' ld}
+    }]
+  {{ hv, Post' hv }} ->
+
+  {{ Pre }}
+    [{
+      {i| ld in fs1 => C1 ld};
+      {j| ld in fs2 => C2 ld}
+    }]
+  {{ hv, Post hv }}.
+Proof.
+Admitted.
+
+Definition eld := @LibWP.eld (int * int)%type.
+
+Coercion eld : D >-> Dom.
+
+Lemma foo {D} H1 H2 H3 H4 : H1 = H2 -> H3 = H4 -> H1 \* H3 = H2 \* H4 :> hhprop D.
+by move=> ->->.
+Qed.
+
+Hint Rewrite @indom_label_eq @indom_union_eq @indom_prod : indomE.
+
+Ltac indomE := autorewrite with indomE.
+
+
+Ltac xsubst_rew H :=
+  do ? match goal with 
+  | |- hsub _ _ (hsingle _ _ _) = _ => erewrite hsingle_hsub; simpl; eauto
+  | |- hsub _ _ (harray_int _ _ _) = _ => rewrite (@harray_hsub _ _ _ _ H); simpl; eauto
+  | |- hsub _ _ (_ \* _) = _ => rewrite (@hstar_hsub _ _ _ _ H); apply/foo
+  | |- hsub _ _ (@hbig_fset _ _ hstar _ _) = _ => 
+    rewrite (@hstar_fset_hsub _ _ _ _ H); eapply hbig_fset_eq; intros ?; indomE=> ?
+  | |- hsub _ _ \[] = _ => rewrite hempty_hsub; eauto
+  | |- hsub _ _ \[_] = _ => rewrite hpure_hsub; eauto
+  end.
+
+
+Tactic Notation "xsubst" uconstr(f) := 
+  match goal with 
+  | |- _ ==> N-WP [{
+    [?i| _ in ?fs1 => _];
+    [?j| _ in ?fs2 => _]
+  }] {{ _ , _}} => 
+    let Inj := fresh in 
+    have Inj : 
+      forall x y, 
+        indom (⟨(i,0), fs1⟩ \u ⟨(j,0), fs2⟩) x -> 
+        indom (⟨(i,0), fs1⟩ \u ⟨(j,0), fs2⟩) y -> 
+        Lab (lab x) (f (el x)) = Lab (lab y) (f (el y)) -> x = y; 
+        [ try (intros [?[??] ][?[??] ]; indomE=> /= + /[swap]=>/[swap]-[]->-> []?[]; eqsolve)
+        | eapply (@xntriple2_hsub _ f); 
+          [ eapply Inj
+          | case=> ??/=; reflexivity
+          | case=> ??/=; reflexivity
+          | xsubst_rew Inj; indomE; autos*
+          | move=> ? /=; xsubst_rew Inj; indomE; autos*
+          |
+          ]
+        ]
+  end; simpl.
+   
+
+
+Lemma csrsum_spec `{Inhab D} (x_mval x_colind x_rowptr : loc) : 
   {{ arr(x_mval, mval)⟨1, (0,0)⟩ \*
      arr(x_colind, colind)⟨1, (0,0)⟩ \*
      arr(x_rowptr, rowptr)⟨1, (0,0)⟩ \*
@@ -391,20 +475,18 @@ Proof with (try seclocal_fold; seclocal_solver).
   set (R i := 
     arr(x_mval, mval)⟨2, i⟩ \*
     arr(x_colind, colind)⟨2, i⟩ \* 
-    arr(x_rowptr, rowptr)⟨2, i⟩).
+    arr(x_rowptr, rowptr)⟨2, i⟩ : hhprop D).
   set (Inv (i : int) := 
     arr(x_mval, mval)⟨1, (0,0)⟩ \* 
     arr(x_colind, colind)⟨1, (0,0)⟩ \* 
-    arr(x_rowptr, rowptr)⟨1, (0,0)⟩ \* \Top).
+    arr(x_rowptr, rowptr)⟨1, (0,0)⟩).
   xfor_sum Inv R (fun d0 => arr(x_rowptr, rowptr)⟨2, d0⟩) (fun hv i => Σ_(j <- `{i} \x `[0, Ncol]) hv[`2](j)) s.
   { rewrite /Inv /R.
     xin (2,0) : rewrite wp_prod_single /=.
     xin (1,0) : do 3 (xwp; xapp)...
     xframe2 (arr(x_rowptr, rowptr)⟨1, (0, 0)⟩).
-  xfocus (2,0).
-    xsubst (2,0) (`{l0} \x `[0, Ncol]) `[0, Ncol]
-      (fun x => if x.snd == l0 then x.fst else x)
-    xnapp sv.sum_spec.
+    xsubst (snd : _ -> int). admit.
+    (* xnapp sv.sum_spec.
     { rewrite -{1}rowptr_first; apply/rowptr_weakly_sorted; lia. }
     { apply/rowptr_weakly_sorted; lia. }
     { rewrite len_colind -{1}rowptr_last; apply/rowptr_weakly_sorted; lia. }
@@ -418,8 +500,8 @@ Proof with (try seclocal_fold; seclocal_solver).
     (* repeating the proof above? *)
     intros i0 j0 Hneq. rewrite ! indom_interval=> ? ?.
     apply disjoint_of_not_indom_both.
-    intros (r, c). rewrite !indom_prod !indom_interval !indom_single_eq /=. math. }
-Abort. *)
+    intros (r, c). rewrite !indom_prod !indom_interval !indom_single_eq /=. math. } *)
+Abort. 
 
 End csr.
 
