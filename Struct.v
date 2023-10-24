@@ -1,16 +1,31 @@
 (** * Struct: Arrays and Records *)
 
 Set Implicit Arguments.
-From SLF Require Import LibSepReference LibSepTLCbuffer.
-From SLF Require Import Fun LabType.
+From SLF Require Import LibSepSimpl LibSepReference LibSepTLCbuffer.
+From SLF Require Import Fun LabType LibSepReference LibWP.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
 Open Scope Z_scope.
+Global Open Scope hprop_scope.
 
-Module WithArray (Dom : Domain).
+Ltac hlocal := 
+  repeat (intros; 
+  match goal with 
+  | |- hlocal (_ \* _) _ => apply hlocal_hstar
+  | |- hlocal \[] _    => apply hlocal_hempty
+  | |- hlocal (hexists _) _ => apply hlocal_hexists
+  | |- hlocal (hsingle _ _ _) (single _ _) => apply hlocal_hsingle_single
+  | |- hlocal (hpure _) _ => apply hlocal_hpure
+  end).
 
-Module Export NS := nReasoning(Dom).
+Hint Extern 1 (hlocal _ _) => hlocal.
+
+Section WithArray.
+
+Context {D : Type}.
+
+Local Notation hhprop := (hhprop D).
 
 Implicit Types P : Prop.
 Implicit Types H : hhprop.
@@ -46,7 +61,7 @@ Notation "'arr(' x ',' y ')⟨' l ',' d '⟩'" :=
 
 Definition val_array_length : val := val_length.
 
-Module Export Realization.
+(* Module Export Realization. *)
 
 Definition least_feasible_array_loc h L p (d : D) :=
   forall p', disjoint (Fmap.hconseq L p' d) h -> (p', d) <> null d -> (p <= p')%Z.
@@ -56,7 +71,7 @@ Lemma hheader_intro : forall p k d,
   (hheader k p d) (Fmap.single (p, d) (val_header k)).
 Proof using.
   introv N. rewrite hheader_def. rewrite hstar_hpure_r.
-  split*. applys hsingle_intro.
+  split*. applys @hsingle_intro.
 Qed.
 
 Lemma hheader_inv: forall h p k d,
@@ -86,9 +101,9 @@ Lemma hcells_intro : forall L p d,
   (hcells L p d) (Fmap.hconseq L p d).
 Proof using.
   intros L. induction L as [|L']; intros; rew_listx; simpl.
-  { applys hempty_intro. }
-  { simpl. applys hstar_intro.
-    { applys* hsingle_intro. }
+  { applys @hempty_intro. }
+  { simpl. applys @hstar_intro.
+    { applys* @hsingle_intro. }
     { replace (p+1)%nat with (S p) by math. applys IHL. }
     { applys Fmap.disjoint_single_hconseq. left. math. } }
 Qed.
@@ -99,9 +114,9 @@ Lemma hcells_inv : forall p L h d,
 Proof using.
   introv N. gen p h. induction L as [|x L'];
    intros; rew_listx; simpls.
-  { applys hempty_inv N. }
-  { lets (h1&h2&N1&N2&N3&->): hstar_inv N. fequal.
-    { applys hsingle_inv N1. }
+  { applys @hempty_inv N. }
+  { lets (h1&h2&N1&N2&N3&->): @hstar_inv N. fequal.
+    { applys @hsingle_inv N1. }
     { replace (p+1)%nat with (S p) in * by math. applys IHL' N2. } }
 Qed.
 
@@ -110,7 +125,7 @@ Lemma harray_intro : forall k p L d,
   (p, d) <> null d ->
   (harray L p d) (Fmap.hconseq (val_header k :: L) p d).
 Proof using.
-  introv E n. unfold harray. rew_listx. applys hstar_intro.
+  introv E n. unfold harray. rew_listx. applys @hstar_intro.
   { subst k. applys* hheader_intro. }
   { replace (p+1)%nat with (S p) in * by math. applys hcells_intro. }
   { applys disjoint_single_hconseq. left. math. }
@@ -121,7 +136,7 @@ Lemma harray_inv : forall p L h d,
   h = (Fmap.hconseq (val_header (length L) :: L) p d) /\ (p, d) <> null d.
 Proof using.
   introv N. unfolds harray. rew_listx.
-  lets (h1&h2&N1&N2&N3&->): hstar_inv (rm N).
+  lets (h1&h2&N1&N2&N3&->): @hstar_inv (rm N).
   replace (p+1)%nat with (S p) in * by math.
   lets (N4&Np): hheader_inv (rm N1).
   lets N2': hcells_inv (rm N2). subst*.
@@ -134,7 +149,7 @@ Proof.
 Qed.
 
 Lemma hlocal_harray (L : list val) p d : hlocal (harray L p d) (single d tt).
-Proof. unfold harray; hlocal. apply hlocal_hheader. apply hlocal_hcells. Qed.
+Proof. unfold harray. hlocal. apply hlocal_hheader. apply hlocal_hcells. Qed.
 
 Lemma hconseq_least_fresh (h : hheap D) L d :
   exists p, 
@@ -157,8 +172,8 @@ Proof using.
   hnf in Hls.
   eexists. exists (val_loc p). split.
   { eapply eval1_alloc. 1-2: reflexivity. all: auto. }
-  { applys~ hstar_intro.
-    exists p. rewrite~ hstar_hpure_l. split~. apply~ harray_intro. by rewrite -> length_make.
+  { applys~ @hstar_intro.
+    exists p. rewrite~ @hstar_hpure_l. split~. apply~ harray_intro. by rewrite -> length_make.
   }
 Qed.
 
@@ -170,7 +185,7 @@ Proof using.
   intros.
   replace H with ((\*_(_ <- fs) \[]) \* H) at 1; last by rewrite hbig_fset_emptys //.
   apply (hhoare_hstar_fset _ (fun d v => \exists p, \[v = _] \* _))=> *; autos~.
-  { apply hlocal_hexists. unfolds hlocal. intros. hnf. intros. rewrite -> hstar_hpure_l in H0.
+  { apply hlocal_hexists. unfolds @hlocal. intros. hnf. intros. rewrite -> hstar_hpure_l in H0.
     destruct H0 as (_ & H0). apply harray_inv in H0. destruct H0 as (-> & ?).
     apply hconseq_local.
   }
@@ -184,7 +199,7 @@ Lemma htriple_alloc_nat : forall fs (k : D -> nat),
     \[]
     (fun hr => (\*_(d <- fs) \exists p, \[hr d = val_loc p] \* harray (LibList.make (k d) val_uninit) p d)).
 Proof using.
-  intros. unfold htriple. intros H'. applys hhoare_conseq hhoare_alloc_nat; xsimpl~.
+  intros. unfold htriple. intros H'. applys @hhoare_conseq @hhoare_alloc_nat; xsimpl~.
 Qed.
 
 Hint Resolve htriple_alloc_nat : htriple.
@@ -210,7 +225,7 @@ Proof using.
   apply/hhoare_conseq=> [||?]; [|eauto|]; first last.
   { rewrite -hstar_fset_pure=> ?. exact. }
   apply (hhoare_hstar_fset _ (fun d v => \[v = _])); autos~.
-  1:{ intros. unfolds hlocal. intros h Hh. 
+  1:{ intros. unfolds @hlocal. intros h Hh. 
     apply harray_inv in Hh. destruct Hh as (-> & ?). apply hconseq_local.
   }
   move=> d ?. 
@@ -222,7 +237,7 @@ Lemma htriple_dealloc : forall fs L (p : D -> loc),
     (\*_(d <- fs) harray L (p d) d)
     (fun hr => \[hr = fun _ => val_unit]).
 Proof using.
-  intros. unfold htriple. intros H'. applys hhoare_conseq hhoare_dealloc; xsimpl~.
+  intros. unfold htriple. intros H'. applys @hhoare_conseq hhoare_dealloc; xsimpl~.
 Qed.
 
 Hint Resolve htriple_dealloc : htriple.
@@ -295,7 +310,7 @@ Proof using.
       rewrite update_zero. rewrite hcells_cons_eq. xsimpl. }
     { forwards R: IHL' (k-1)%nat (p+1)%nat. { math. }
       math_rewrite ((p+1)+(k-1) = p+k)%nat in R. xchange (rm R).
-      xsimpl. intros w. xchange (hforall_specialize w).
+      xsimpl. intros w. xchange (@hforall_specialize D _ w).
       rewrite update_cons_pos; [|math]. rewrite hcells_cons_eq. xsimpl. } }
 Qed.
 
@@ -320,7 +335,7 @@ Lemma harray_focus : forall (d : D) k p L,
     \* (\forall w, ((p+1+k)%nat ~(d)~> w) \-* harray (LibList.update k w L) p d).
 Proof using.
   introv E. unfolds harray. xchanges (>> hcells_focus E). intros w.
-  xchange (hforall_specialize w). xsimpl. rewrite* length_update.
+  xchange (@hforall_specialize D _ w). xsimpl. rewrite* length_update.
 Qed.
 
 Lemma harray_focus_nochange : forall (d : D) k p L,
@@ -331,7 +346,7 @@ Lemma harray_focus_nochange : forall (d : D) k p L,
 Proof using.
   introv E. unfolds harray. eapply himpl_trans. 1: apply harray_focus.
   1: apply E.
-  apply himpl_frame_r. xchange (hforall_specialize (LibList.nth k L)).
+  apply himpl_frame_r. xchange (@hforall_specialize D _ (LibList.nth k L)).
   rewrite -> update_nth_same; math_3=> //; lia.
 Qed.
 
@@ -358,9 +373,9 @@ Lemma hoare_length : forall H k p (d : D),
     (fun r => \[r = val_int k] \* (hheader k p d) \* H).
 Proof using.
   intros. intros s K0. exists s (val_int k). split.
-  { destruct K0 as (s1&s2&P1&P2&D&U). lets (E1&N): hheader_inv P1.
+  { destruct K0 as (s1&s2&P1&P2&D'&U). lets (E1&N): hheader_inv P1.
     subst s1. applys eval1_length_sep U. }
-  { rewrite~ hstar_hpure_l. }
+  { rewrite~ @hstar_hpure_l. }
 Qed.
 
 (* analogous to get operation *)
@@ -374,10 +389,10 @@ Proof using.
   apply/hhoare_conseq=> [||?]; [|eauto|]; first last.
   { rewrite -hstar_assoc -hstar_fset_pure_hstar=> ?. exact. }
   apply (hhoare_hstar_fset _ (fun d v => \[v = _] \* _)); autos~.
-  1:{ intros. unfolds hlocal. intros h Hh. 
+  1:{ intros. unfolds @hlocal. intros h Hh. 
     apply hheader_inv in Hh. destruct Hh as (-> & ?). apply local_single.
   }
-  1:{ intros. unfolds hlocal. intros h Hh. rewrite -> hstar_hpure_l in Hh. 
+  1:{ intros. unfolds @hlocal. intros h Hh. rewrite -> hstar_hpure_l in Hh. 
     destruct Hh as (_ & Hh).
     apply hheader_inv in Hh. destruct Hh as (-> & ?). apply local_single.
   }
@@ -390,12 +405,11 @@ Lemma htriple_length : forall fs (k : D -> nat) (p : D -> loc),
     (\*_(d <- fs) (hheader (k d) (p d) d))
     (fun hr => \[hr = k] \* (\*_(d <- fs) (hheader (k d) (p d) d))).
 Proof using.
-  intros. unfold htriple. intros H'. applys hhoare_conseq hhoare_length; xsimpl~.
+  intros. unfold htriple. intros H'. applys @hhoare_conseq hhoare_length; xsimpl~.
 Qed.
 
 Hint Resolve htriple_length : htriple.
 
-Module Export ArrayAccessDef.
 Import ProgramSyntax.
 Open Scope wp_scope.
 
@@ -426,7 +440,7 @@ Lemma htriple_array_length : forall fs (L : D -> list val) (p : D -> loc),
     (\*_(d <- fs) (harray (L d) (p d) d))
     (fun hr => \[hr = (fun d => length (L d))] \* (\*_(d <- fs) (harray (L d) (p d) d))).
 Proof using.
-  intros. unfold harray. applys htriple_conseq_frame htriple_length.
+  intros. unfold harray. applys @htriple_conseq_frame htriple_length.
   { instantiate (1:=(\*_(d <- fs) hcells (L d) (p d + 1)%nat d)). 
     instantiate (1:=(fun d => length (L d))). xsimpl.
     by rewrite -> hbig_fset_hstar.
@@ -638,11 +652,11 @@ Lemma lhtriple_array_read `{Inhab D} : forall fs (p : loc) (i : D -> int) (L : l
     (fun hr => \[hr = fun d => List.nth (abs (i d)) L 0] \* (\*_(d <- fs) (harray_int L p d))).
 Proof. move=> *; exact/htriple_array_read. Qed.
 
-Global Hint Resolve lhtriple_array_read : lhtriple.
+Hint Resolve lhtriple_array_read : lhtriple.
 
-Global Hint Resolve htriple_array_read : htriple.
+Hint Resolve htriple_array_read : htriple.
 
-Global Notation "x '[' i ']'" := (read_array x i) (in custom trm at level 50, format "x [ i ]") : trm_scope.
+Notation "x '[' i ']'" := (read_array x i) (in custom trm at level 50, format "x [ i ]") : trm_scope.
 
 Definition val_array_set : val :=
   <{ fun 'p 'i 'v =>
@@ -706,12 +720,24 @@ Proof using.
     intros. 
     replace (p d + 1 + abs (i d))%nat with (abs (p d + (i d + 1))).
     2:{ specializes N H. math. }
-    xchange (hforall_specialize (v d)).
+    xchange (@hforall_specialize D _ (v d)).
   }
 Qed.
 
-End ArrayAccessDef.
-
-End Realization.
-
 End WithArray.
+
+
+Global Hint Resolve lhtriple_array_read : lhtriple.
+
+Global Hint Resolve htriple_array_read : htriple.
+
+Global Notation "x '[' i ']'" := (read_array x i) (in custom trm at level 50, format "x [ i ]") : trm_scope.
+
+Global Hint Resolve htriple_length : htriple.
+
+Global Hint Resolve htriple_dealloc : htriple.
+
+Global Hint Resolve htriple_alloc_nat : htriple.
+
+Global Notation "'arr(' x ',' y ')⟨' l ',' d '⟩'" := 
+(harray_int y x (Lab (l,0) d)) (at level 32, format "arr( x ,  y )⟨ l ,  d ⟩") : hprop_scope.

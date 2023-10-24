@@ -1,10 +1,8 @@
 Set Implicit Arguments.
 From SLF Require Import LabType Fun LibSepFmap Sum.
-From SLF Require Import LibSepReference LibSepTLCbuffer Struct Unary Loops.
+From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer Struct Loops Unary.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
-
-Module Export AD := WithUnary(IntDom).
 
 Open Scope Z_scope.
 
@@ -34,6 +32,10 @@ Context (xind xval : list int) {HindIIL : IncreasingIntList xind}.
 Hypothesis H_length_xval : length xval = length xind - 1 :> int.
 Hypothesis H_xval_notnil : 0 < length xval.
 
+Local Notation D := (labeled int).
+
+Implicit Type d : D.
+
 Section rli.
 
 Definition rli := 
@@ -59,7 +61,7 @@ Lemma rli_spec_unary `{Inhab D} (x_ind x_val : loc) d
 Proof.
   apply wp_equiv.
   pose proof (@IIL_L_bounded_impl _ HindIIL _ eq_refl _ _ Ha Hka) as Hk.
-  xwp. xapp (@search.spec xind HindIIL H d x_ind k Hk a Ha Hka). (* FIXME: put all these into precondition *)
+  xwp. xapp (@search.spec xind _ HindIIL H d x_ind k Hk a Ha Hka). (* FIXME: put all these into precondition *)
   intros r Er.
   rewrite wp_single Er. (* TODO why need wp_single here? *)
   xapp; xsimpl*.
@@ -152,7 +154,7 @@ Proof with fold'.
   xin (1,0) : xwp; xapp=> s...
   rewrite <- interval_segmentation with (L:=xind), <- ! EM; auto.
   2: now subst M N.
-  set (R i := arr(x_ind, xind)⟨2, i⟩ \* arr(x_val, xval)⟨2, i⟩).
+  set (R i := arr(x_ind, xind)⟨2, i⟩ \* arr(x_val, xval)⟨2, i⟩ : hhprop D).
   set (Inv (i : int) := arr(x_ind, xind)⟨1, 0⟩ \* arr(x_val, xval)⟨1, 0⟩).
   set (op hv (j : int) := (Σ_(i <- (ind_seg xind j)) hv[`2](i))).
   xfor_sum Inv R R op s.

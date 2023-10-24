@@ -1,6 +1,6 @@
 Set Implicit Arguments.
 From SLF Require Import LabType Fun LibSepFmap Sum.
-From SLF Require Import LibSepReference LibSepTLCbuffer Struct Unary Loops Unary_IndexWithBounds.
+From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer Struct Loops Unary_IndexWithBounds.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
@@ -37,8 +37,6 @@ End pure_facts.
 
 Module sv.
 
-Module Export AD := WithUnary(Int2Dom). (* need to use this for CSR *)
-
 Notation "H1 '\\*' H2" := (hstar H1 H2)
   (at level 42, right associativity, format "H1  \\* '//' H2") : hprop_scope.
 
@@ -62,7 +60,9 @@ Hypotheses (bounds_l: 0 <= lb) (bounds_r: lb <= rb).
 Hypothesis len_xind : rb <= length xind.
 Hypothesis len_xval : rb <= length xval.
 Hypothesis nodup_xind : NoDup (list_interval (abs lb) (abs rb) xind).
-Hypothesis xind_leq : forall x, In x (list_interval (abs lb) (abs rb) xind) -> 0 <= x < M. 
+Hypothesis xind_leq : forall x, In x (list_interval (abs lb) (abs rb) xind) -> 0 <= x < M.
+
+Local Notation D := (labeled (int * int)).
 
 Definition indexf := index_bounded.func.
 
@@ -77,7 +77,7 @@ Definition get :=
 }>.
 
 Lemma get_spec_in `{Inhab D} (x_ind x_val : loc) i d : 
-  htriple (single d tt) 
+  @htriple D (single d tt) 
     (fun=> get (List.nth (abs i) (list_interval (abs lb) (abs rb) xind) 0) x_ind x_val lb rb)
     (\[0 <= i < N] \*
       harray_int xind x_ind d \* 
@@ -88,7 +88,7 @@ Lemma get_spec_in `{Inhab D} (x_ind x_val : loc) i d :
       harray_int xval x_val d).
 Proof.
   rewrite -wp_equiv; xsimpl=> ?.
-  xwp; xapp index_bounded.spec=> //.
+  xwp; xapp (@index_bounded.spec _ H)=> //.
   xwp; xapp.
   rewrite index_nodup; auto.
   2: rewrite list_interval_length; subst; auto.
@@ -97,7 +97,7 @@ Proof.
 Qed.
 
 Lemma get_spec_out_unary `{Inhab D} (x_ind x_val : loc) (i : int) d : 
-  htriple (single d tt) 
+  @htriple D (single d tt) 
     (fun=> get i x_ind x_val lb rb)
     (\[~ In i (list_interval (abs lb) (abs rb) xind)] \*
       harray_int xind x_ind d \* 
@@ -108,13 +108,13 @@ Lemma get_spec_out_unary `{Inhab D} (x_ind x_val : loc) (i : int) d :
       harray_int xval x_val d).
 Proof.
   rewrite -wp_equiv; xsimpl=> ?.
-  xwp; xapp index_bounded.spec=> //...
+  xwp; xapp (@index_bounded.spec _ H)=> //...
   rewrite memNindex // list_interval_length //.
   xwp; xapp. xwp; xif=> ?; try math. xwp; xval. xsimpl*.
 Qed.
 
 Lemma get_spec_out `{Inhab D} fs (x_ind x_val : loc) : 
-  htriple  fs
+  @htriple D fs
     (fun i => get (eld i).2 x_ind x_val lb rb)
     (\[forall d, indom fs d -> ~ In (eld d).2 (list_interval (abs lb) (abs rb) xind)] \*
       (\*_(d <- fs) harray_int xind x_ind d) \* 
@@ -189,7 +189,7 @@ Lemma sum_spec `{Inhab D} (x_ind x_val : loc) (s : int) :
   }]
   {{ hv, (\[hv[`1]((0, 0)) = Σ_(i <- `{s} \x `[0, M]) hv[`2](i)] \* 
       arr(x_ind, xind)⟨1, (0, 0)⟩ \*
-      arr(x_val, xval)⟨1, (0, 0)⟩) \\* \Top}}.
+      arr(x_val, xval)⟨1, (0, 0)⟩) \* \Top}}.
 Proof with fold'.
   xfocus (2,0) (map (fun x => (s, x)) (list_interval (abs lb) (abs rb) xind)).
   rewrite (hbig_fset_part (`{s} \x `[0, M]) (map (fun x => (s, x)) (list_interval (abs lb) (abs rb) xind))). (* TODO: move to xfocus *)
@@ -228,7 +228,7 @@ Proof with fold'.
   set (Inv (i : int) := arr(x_ind, xind)⟨1, (0,0)⟩ \* arr(x_val, xval)⟨1, (0,0)⟩).
   xfor_sum Inv R (fun=> \Top) (fun hv i => hv[`2]((s, xind[i]))) q.
   { rewrite /Inv.
-    (xin (1,0): (xwp; xapp; xapp incr.spec=> y))...
+    (xin (1,0): (xwp; xapp; xapp (@incr.spec  _ H)=> y))...
     xapp get_spec_in=> //; try math. xsimpl*.
     rewrite <- list_interval_nth with (l:=xval); try math.
     replace (lb + (l0 - lb)) with l0 by math. xsimpl*. }

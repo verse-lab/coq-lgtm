@@ -1,6 +1,6 @@
 Set Implicit Arguments.
 From SLF Require Import LabType Fun LibSepFmap Sum.
-From SLF Require Import LibSepReference LibSepTLCbuffer Struct Unary Loops.
+From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer Struct Loops Unary.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
@@ -36,13 +36,14 @@ Admitted.
 End pure_facts.
 
 Module coo_vec.
-
-Module Export AD := WithUnary(IntDom).
-
 Notation "H1 '\\*' H2" := (hstar H1 H2)
   (at level 42, right associativity, format "H1  \\* '//' H2") : hprop_scope.
 
 Section coo_vec.
+Local Notation D := (labeled int).
+
+Implicit Type d : D.
+
 
 Notation "'xind'" := ("x_ind":var) (in custom trm at level 0) : trm_scope.
 Notation "'xval'" := ("x_val":var) (in custom trm at level 0) : trm_scope.
@@ -78,7 +79,7 @@ Lemma get_spec_in `{Inhab D} (x_ind x_val : loc) i d :
       harray_int xval x_val d).
 Proof.
   rewrite -wp_equiv; xsimpl=> ?.
-  xwp; xapp index.spec=> //.
+  xwp; xapp (@index.spec _ H)=> //.
   xapp; xsimpl*; rewrite index_nodup //; math.
 Qed.
 
@@ -94,13 +95,13 @@ Lemma get_spec_out_unary `{Inhab D} (x_ind x_val : loc) (i : int) d :
       harray_int xval x_val d).
 Proof.
   rewrite -wp_equiv; xsimpl=> ?.
-  xwp; xapp index.spec=> //.
+  xwp; xapp (@index.spec _ H)=> //.
   xapp; xsimpl*; rewrite memNindex // nth_overflow //; math.
 Qed.
 
 
-Lemma get_spec_out `{Inhab D} fs (x_ind x_val : loc) : 
-  htriple  fs
+Lemma get_spec_out `{Inhab D} (fs : fset D) (x_ind x_val : loc) : 
+  htriple fs
     (fun i => get (eld i) x_ind x_val)
     (\[forall d, indom fs d -> ~ In (eld d) xind] \*
       (\*_(d <- fs) harray_int xind x_ind d) \* 
@@ -163,11 +164,11 @@ Proof with fold'.
   { apply/fset_extens=> x; rewrite /intr filter_indom -fset_of_list_in; splits*.
     move=> ?; splits*; rewrite* indom_interval. }
   rewrite E (fset_of_list_nodup 0) // len_xind.
-  set (R i := arr(x_ind, xind)⟨2, i⟩ \* arr(x_val, xval)⟨2, i⟩).
+  set (R i := arr(x_ind, xind)⟨2, i⟩ \* arr(x_val, xval)⟨2, i⟩ : hhprop D).
   set (Inv (i : int) := arr(x_ind, xind)⟨1, 0⟩ \* arr(x_val, xval)⟨1, 0⟩).
   xfor_sum Inv R (fun=> \Top) (fun hv i => hv[`2](xind[i])) s.
   { rewrite /Inv.
-    (xin (1,0): (xwp; xapp; xapp incr.spec=> y))...
+    (xin (1,0): (xwp; xapp; xapp (@incr.spec _ H)=> y))...
     xapp get_spec_in=> //; xsimpl*. }
   { move=> Neq ???; apply/Neq. 
     move/NoDup_nthZ: nodup_xind; apply; autos*; math. }
@@ -175,7 +176,7 @@ Proof with fold'.
   xapp; xsimpl.
   under (@SumEq _ _ _ `[0,M]).
   { move=>*; rewrite to_int_if; over. }
-  rewrite SumIf E (SumList 0) // len_xind Sum0s; math.
+  rewrite SumIf E (SumList 0) // len_xind Sum0s. apply/f_equal; math.
 Qed.
 
 Context (dvec : list int).
@@ -227,11 +228,11 @@ Proof with fold'.
   { apply/fset_extens=> x; rewrite /intr filter_indom -fset_of_list_in; splits*.
     move=> ?; splits*; rewrite* indom_interval. }
   rewrite E (fset_of_list_nodup 0) // len_xind.
-  set (R i := arr(x_ind, xind)⟨2, i⟩ \* arr(x_val, xval)⟨2, i⟩ \* arr(d_vec, dvec)⟨2,i⟩).
+  set (R i := arr(x_ind, xind)⟨2, i⟩ \* arr(x_val, xval)⟨2, i⟩ \* arr(d_vec, dvec)⟨2,i⟩ : hhprop D).
   set (Inv (i : int) := arr(x_ind, xind)⟨1, 0⟩ \* arr(x_val, xval)⟨1, 0⟩ \* arr(d_vec, dvec)⟨1,0⟩).
   xfor_sum Inv R (fun=> \Top) (fun hv i => (hv[`2](xind[i]) * dvec[xind[i] ])) s.
   { rewrite /Inv /R.
-    (xin (1,0): do 4 (xwp; xapp); xapp incr.spec=> y)...
+    (xin (1,0): do 4 (xwp; xapp); xapp (@incr.spec _ H)=> y)...
     xapp get_spec_in=> //; xsimpl*. }
   { move=> Neq ???; apply/Neq. 
     move/NoDup_nthZ: nodup_xind; apply; autos*; math. }
@@ -239,7 +240,7 @@ Proof with fold'.
   xapp; xsimpl.
   under (@SumEq _ _ _ `[0,M]).
   { move=>*; rewrite to_int_if; over. }
-  rewrite (SumIf (fun=> Z.mul^~ _)) E (SumList 0) // len_xind Sum0s; math.
+  rewrite (SumIf (fun=> Z.mul^~ _)) E (SumList 0) // len_xind Sum0s; apply/f_equal; math.
 Qed.
 
 End coo_vec.
@@ -249,13 +250,11 @@ End coo_vec.
 
 
 
+
 Module coo. 
-
-Module Export AD2 := WithUnary(Int2Dom).
-
-Lemma hbig_fset_part {A : Type} (fs : fset A) (P : A -> Prop) : 
-  hbig_fset hstar fs = 
-  fun H => hbig_fset hstar (fs ∩ P) H \* hbig_fset hstar (fs ∖ P) H.
+Lemma hbig_fset_part {D A : Type} (fs : fset A) (P : A -> Prop) : 
+  @hbig_fset D _ hstar fs = 
+  fun H => hbig_fset hstar (fs ∩ P) H \* @hbig_fset D _ hstar (fs ∖ P) H.
 Proof.
   apply/fun_ext_1=> ?; rewrite -hbig_fset_union // ?fs_pred_part //.
   exact/fs_pred_part_disj.
@@ -272,6 +271,9 @@ Notation "'for' i <- '[' Z ',' N ']' '{' t '}'"  :=
     format "'[' for  i  <-  [ Z ','  N ] ']'  '{' '/   ' '[' t  '}' ']'") : trm_scope.
 
 Section coo.
+
+Local Notation D := (labeled (int * int)).
+Implicit Type d : D.
 
 Notation "'dvec'" := ("d_vec":var) (in custom trm at level 0) : trm_scope.
 Notation "'xrow'" := ("x_row":var) (in custom trm at level 0) : trm_scope.
@@ -312,7 +314,7 @@ Lemma get_spec_in `{Inhab D} (x_row x_col x_val : loc) i d :
       harray_int xval x_val d).
 Proof.
   rewrite -wp_equiv; xsimpl=> ?.
-  xwp; xapp index2.spec=> //.
+  xwp; xapp (@index2.spec _ H)=> //.
   xapp; xsimpl*; rewrite -combine_nth; last lia. 
   rewrite index_nodup // combine_length; lia. 
 Qed.
@@ -331,11 +333,11 @@ Lemma get_spec_out_unary `{Inhab D} (x_row x_col x_val : loc) (i j : int) d :
       harray_int xval x_val d).
 Proof.
   rewrite -wp_equiv; xsimpl=> ?.
-  xwp; xapp index2.spec=> //.
+  xwp; xapp (@index2.spec _ H)=> //.
   xapp; xsimpl*; rewrite memNindex // nth_overflow // combine_length; lia.
 Qed.
 
-Lemma get_spec_out `{Inhab D} fs (x_row x_col x_val : loc) : 
+Lemma get_spec_out `{Inhab D} (fs : fset D) (x_row x_col x_val : loc) : 
   htriple fs
     (fun i => get (eld i).1 (eld i).2 x_row x_col x_val)
     (\[forall d, indom fs d -> ~ In (eld d) (combine xrow xcol)] \*
@@ -412,14 +414,14 @@ Proof with fold'.
   set (R i := 
     arr(x_row, xrow)⟨2, i⟩ \*
     arr(x_col, xcol)⟨2, i⟩ \* 
-    arr(x_val, xval)⟨2, i⟩).
+    arr(x_val, xval)⟨2, i⟩ : hhprop D).
   set (Inv (i : int) := 
     arr(x_row, xrow)⟨1, (0,0)⟩ \* 
     arr(x_col, xcol)⟨1, (0,0)⟩ \* 
     arr(x_val, xval)⟨1, (0,0)⟩).
   xfor_sum Inv R (fun=> \Top) (fun hv i => hv[`2]((xrow[i], xcol[i]))) s.
   { rewrite /Inv /R.
-    (xin (1,0): (xwp; xapp; xapp incr.spec=> y))...
+    (xin (1,0): (xwp; xapp; xapp (@incr.spec _ H)=> y))...
     rewrite ?combine_nth /=; try lia.
     xapp get_spec_in=> //; xsimpl*. }
   { move=> Neq ???; apply/Neq. 
@@ -432,7 +434,7 @@ Proof with fold'.
   rewrite SumIf E (SumList (0,0)) // lE Sum0s.
   under (@SumEq _ _ _ `[0,N]).
   { move=> ?; rewrite -combine_nth; last lia. over. }
-  math.
+  apply/f_equal; math.
 Qed.
 
 End coo.

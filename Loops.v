@@ -1,6 +1,7 @@
 Set Implicit Arguments.
-From SLF Require Import LibSepReference LibSepTLCbuffer Struct.
 From SLF Require Import Fun LabType Sum.
+From SLF Require Import LibSepReference  LibWP LibSepSimpl Struct.
+From SLF Require Import LibSepTLCbuffer.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
@@ -8,9 +9,9 @@ Import List.
 
 Open Scope Z_scope.
 
-Module WithLoops (Dom : Domain).
+Section WithLoops.
 
-Module Export AD := WithArray(Dom).
+(* Context {D : Type}. *)
 
 Arguments disjoint_inv_not_indom_both {_ _ _ _ _}.
 
@@ -60,17 +61,17 @@ Proof.
 Qed.
 
 
-Global Hint Rewrite @disjoint_single disjoint_interval disjoint_single_interval 
+Hint Rewrite @disjoint_single disjoint_interval disjoint_single_interval 
   disjoint_interval_single @disjoint_eq_label @disjoint_label : disjointE.
 
 
 (* Definition is_bool (v : val) := 
   if v is val_bool _ then true else false. *)
 
-Lemma wp_Q_eq Q2 fs H Q1 : (forall hv, Q1 hv = Q2 hv) -> wp fs H Q1 = wp fs H Q2.
+Lemma wp_Q_eq {D : Type} Q2 fs H (Q1 : _ -> hhprop D) : (forall hv, Q1 hv = Q2 hv) -> wp fs H Q1 = wp fs H Q2.
 Proof. move=> ?; f_equal; exact/fun_ext_1. Qed.
 
-Lemma wp_while_aux_false `{INH: Inhab D} i fs ht (H : int -> (D -> val) -> hhprop) Z N fsi hv0 :
+Lemma wp_while_aux_false {D : Type} `{INH: Inhab D} i fs ht (H : int -> (D -> val) -> hhprop D) Z N fsi hv0 :
   (forall j hv, Z <= j < N ->
     H j hv ==> 
       wp
@@ -120,7 +121,7 @@ Proof with autos*.
   move=> ? [?|?]; subst; apply/Dj; lia.
 Qed.
 
-Lemma wp_while_aux T `{INH: Inhab D} i fs fs' ht (H : bool -> int -> (D -> val) -> hhprop) Z N C fsi s hv0 b0 :
+Lemma wp_while_aux {D : Type} T `{INH: Inhab D} i fs fs' ht (H : bool -> int -> (D -> val) -> hhprop D) Z N C fsi s hv0 b0 :
   (Z <= i <= N) ->
   (forall j b hv1 hv2, (forall x, indom (Union (interval Z j) fsi) x -> hv1 x = hv2 x) -> H b j hv1 = H b j hv2) ->
   (forall i j, i <> j -> Z <= i < N -> Z <= j < N -> disjoint (fsi i) (fsi j)) ->
@@ -234,7 +235,7 @@ Proof with autos*.
     apply/IH; (try lia)...
     move=> ??; apply/dj; lia. } 
   xwp; xval=> ?.
-  pose proof wp_while_aux_false; move: H0 StepF=> /[apply]/[apply] HH.
+  pose proof @wp_while_aux_false; move: H0 StepF=> /[apply]/[apply] HH.
   apply/wp_conseq; last apply/HH...
   move=> ?. erewrite hP; first exact: himpl_refl.
   move=> ?.
@@ -245,7 +246,7 @@ Proof with autos*.
   exists y; split=> //; rewrite indom_interval; lia.
 Qed.
 
-Lemma wp_while `{INH: Inhab D} fs fs' ht (H : bool -> int -> (D -> val) -> hhprop) Z N T C fsi s hv0 b0 P Q:
+Lemma wp_while {D : Type} `{INH: Inhab D} fs fs' ht (H : bool -> int -> (D -> val) -> hhprop D) Z N T C fsi s hv0 b0 P Q:
   (Z <= N) ->
   (forall j b hv1 hv2, (forall x, indom (Union (interval Z j) fsi) x -> hv1 x = hv2 x) -> H b j hv1 = H b j hv2) ->
   (P ==> H b0 Z hv0) -> 
@@ -282,20 +283,72 @@ Proof with autos*.
   move=> ? hP *. apply: himpl_trans; eauto.
   apply: himpl_trans; [|apply:wp_conseq; eauto].
   apply: himpl_trans.
-  { apply/(@wp_while_aux T); try eassumption; lia. }
+  { apply/(@wp_while_aux D T); try eassumption; lia. }
   apply/wp_conseq=> ?; erewrite hP; first exact: himpl_refl.
   move=> ??; rewrite intervalgt ?Union0 ?uni0 //; lia.
 Qed.
 
-Lemma xwhile_big_op_lemma_aux `{INH: Inhab D} Inv (R R' : Dom.type -> hhprop) 
+Lemma wp_while_unary {D : Type} `{Inhab D} fs' (Inv : bool -> int -> hhprop D) Z N T C s b0 (P : hhprop D) Q :
+  (forall (b : bool) (x : int),
+    Inv b x ==>
+      wp 
+        fs'
+        (fun=> C) 
+        (fun hc => \[hc s = b] \* Inv b x)) -> 
+  (forall x, Inv false x ==> \[(x = N)] \* Inv false x) ->
+  (forall x, Inv true x ==> \[(x < N)] \* Inv true x) ->
+  (forall j, (Z <= j < N) ->
+    (forall j' b', 
+      htriple fs'
+        (fun=> While C T) 
+        (Inv b' j' \* \[j < j' <= N])
+        (fun=> Inv false N)) ->
+    Inv true j ==> 
+        wp
+          fs' 
+          (fun=> trm_seq T (While C T))
+          (fun=> Inv false N)) ->
+  P ==> Inv b0 Z ->
+  (fun=> Inv false N) ===> Q ->
+  (Z <= N) ->
+  fs' = single s tt  ->
+  (forall t, subst "while" t T = T) ->
+  (forall t, subst "cond" t T = T) ->
+  (forall t, subst "tt" t T = T) ->
+  (forall t, subst "while" t C = C) ->
+  (forall t, subst "cond" t C = C) ->
+  (forall t, subst "tt" t C = C) ->
+  P ==> wp fs' (fun=> While C T) Q.
+Proof.
+  move=> HwpC HwpF HwpT HwpT' HP HQ *.
+  apply: himpl_trans; first exact/HP.
+  apply: himpl_trans; first last.
+  { apply: wp_conseq; exact/HQ. }
+  apply: himpl_trans.
+  { apply/(wp_while_aux_unary (Z := Z) (i := Z) _ (T := T)); eauto. math. }
+  by [].
+Qed.
+
+Context {Dom : Type}.
+
+Local Notation D := (labeled Dom).
+Local Notation hhprop := (hhprop D).
+
+(* Definition eld : D -> Dom := el. *)
+
+Definition eld := (@eld Dom).
+
+Local Coercion eld : D >-> Dom.
+
+Lemma xwhile_big_op_lemma_aux `{INH: Inhab D} Inv (R R' : Dom -> hhprop) 
   (op : (D -> val) -> int -> int) p 
   s fsi1
-  Z N (C1 : Dom.type -> trm) (i j : int) (C T : trm) b0
+  Z N (C1 : Dom -> trm) (i j : int) (C T : trm) b0
   Pre Post: 
   (forall (l : int) (x : int), 
     Z <= l < N ->
     {{ Inv true l \* 
-       (\*_(d <- ⟨(j, 0%Z), fsi1 l⟩) R d) \* 
+       (\*_(d <- ⟨(j, 0%Z), fsi1 l⟩) R (el d)) \* 
        p ~⟨(i, 0%Z), s⟩~> (val_int x) }}
       [{
         {i| _  in `{s}  => T};
@@ -303,7 +356,7 @@ Lemma xwhile_big_op_lemma_aux `{INH: Inhab D} Inv (R R' : Dom.type -> hhprop)
       }]
     {{ hv, \exists b,
         Inv b (l + 1) \* 
-        (\*_(d <- ⟨(j, 0%Z), fsi1 l⟩) R' d) \* 
+        (\*_(d <- ⟨(j, 0%Z), fsi1 l⟩) R' (el d)) \* 
         p ~⟨(i, 0%Z), s⟩~> (val_int (x + (op hv l))) }}) ->
   (forall (l : int) (x : int), 
     Z <= l < N ->
@@ -473,10 +526,10 @@ Proof.
   apply/Dj; lia.
 Qed.
 
-Lemma xwhile_big_op_lemma_aux2 `{INH: Inhab D} Inv (R1 R2 R1' R2' : Dom.type -> hhprop) 
+Lemma xwhile_big_op_lemma_aux2 `{INH: Inhab D} Inv (R1 R2 R1' R2' : Dom -> hhprop) 
   (op : (D -> val) -> int -> int) p 
   s fsi1 fsi2
-  Z N (C1 C2 : Dom.type -> trm) (i j k : int) (C T : trm) b0
+  Z N (C1 C2 : Dom -> trm) (i j k : int) (C T : trm) b0
   Pre Post: 
   (forall (l : int) (x : int), 
     Z <= l < N ->
@@ -711,59 +764,10 @@ Proof.
   apply/Dj2; lia.
 Qed.
 
-Lemma wp_while_unary `{Inhab D} fs' (Inv : bool -> int -> hhprop) Z N T C s b0 (P : hhprop) Q :
-  (forall (b : bool) (x : int),
-    Inv b x ==>
-      wp 
-        fs'
-        (fun=> C) 
-        (fun hc => \[hc s = b] \* Inv b x)) -> 
-  (forall x, Inv false x ==> \[(x = N)] \* Inv false x) ->
-  (forall x, Inv true x ==> \[(x < N)] \* Inv true x) ->
-  (forall j, (Z <= j < N) ->
-    (forall j' b', 
-      htriple fs'
-        (fun=> While C T) 
-        (Inv b' j' \* \[j < j' <= N])
-        (fun=> Inv false N)) ->
-    Inv true j ==> 
-        wp
-          fs' 
-          (fun=> trm_seq T (While C T))
-          (fun=> Inv false N)) ->
-  P ==> Inv b0 Z ->
-  (fun=> Inv false N) ===> Q ->
-  (Z <= N) ->
-  fs' = single s tt  ->
-  (forall t, subst "while" t T = T) ->
-  (forall t, subst "cond" t T = T) ->
-  (forall t, subst "tt" t T = T) ->
-  (forall t, subst "while" t C = C) ->
-  (forall t, subst "cond" t C = C) ->
-  (forall t, subst "tt" t C = C) ->
-  P ==> wp fs' (fun=> While C T) Q.
-Proof.
-  move=> HwpC HwpF HwpT HwpT' HP HQ *.
-  apply: himpl_trans; first exact/HP.
-  apply: himpl_trans; first last.
-  { apply: wp_conseq; exact/HQ. }
-  apply: himpl_trans.
-  { apply/(wp_while_aux_unary (Z := Z) (i := Z) _ (T := T)); eauto. math. }
-  by [].
-Qed.
-
-Ltac xwhile1 Z N b Inv := 
-  let N := constr:(N) in
-  let Z := constr:(Z) in 
-  let Inv' := constr:(Inv) in
-  xseq_xlet_if_needed; xstruct_if_needed;
-  eapply (wp_while_unary Inv b (Z := Z) (N := N)); autos*.
-
-
-Lemma xfor_big_op_lemma_aux `{INH: Inhab D} Inv (R R' : Dom.type -> hhprop) 
+Lemma xfor_big_op_lemma_aux `{INH: Inhab D} Inv (R R' : Dom -> hhprop) 
   (op : (D -> val) -> int -> int) p 
   s fsi1 vr
-  Z N (C1 : Dom.type -> trm) (i j : int) (C : trm)
+  Z N (C1 : Dom -> trm) (i j : int) (C : trm)
   Pre Post: 
   (forall (l : int) (x : int), 
     Z <= l < N ->
@@ -902,20 +906,19 @@ Proof.
   { rewrite disjoint_Union=> ??. 
     apply disjoint_of_not_indom_both. 
     intros. destruct x as (?, x).
-    simpl in H. rewrite indom_single_eq in H.  
-    injection H as <-.
-    rewrite -> indom_Union in H0.
-    destruct H0 as (? & ? & H0).
-    rewrite indom_label_eq in H0. eqsolve.
+    simpl in H. rewrite indom_label_eq indom_single_eq in H0.  
+    destruct H0; subst.
+    rewrite indom_label_eq in H.
+    eqsolve.
   }
   by case=> l d; rewrite indom_label_eq /= /htrm_of; case: classicT.
 Qed.
 
-(* Lemma xfor_specialized_lemma `{INH: Inhab D} (Inv : int -> hhprop) (R R' : Dom.type -> hhprop) 
+(* Lemma xfor_specialized_lemma `{INH: Inhab D} (Inv : int -> hhprop) (R R' : Dom -> hhprop) 
   s fsi1 vr
-  Z N (C1 : Dom.type -> trm) (i j : int) (C : trm)
+  Z N (C1 : Dom -> trm) (i j : int) (C : trm)
   Pre Post
-  (p : Dom.type -> loc) : 
+  (p : Dom -> loc) : 
   (forall (l : int),
     Z <= l < N ->
     {{ Inv l \* 
@@ -1129,10 +1132,10 @@ Proof using.
   unfold htrm_of, uni. rewrite ! indom_label_eq. simpl. repeat case_if; try eqsolve.
 Qed.
 
-Lemma xwhile_big_op_lemma2 `{INH: Inhab D} Inv (R1 R2 R1' R2' : Dom.type -> hhprop) 
+Lemma xwhile_big_op_lemma2 `{INH: Inhab D} Inv (R1 R2 R1' R2' : Dom -> hhprop) 
   (op : (D -> val) -> int -> int) p 
   s fsi1 fsi2
-  Z N (C1 C2 : Dom.type -> trm) (i j k : int) (C C' T : trm) b0
+  Z N (C1 C2 : Dom -> trm) (i j k : int) (C C' T : trm) b0
   Pre Post: 
   (forall (l : int) (x : int), 
     Z <= l < N ->
@@ -1226,10 +1229,10 @@ Proof.
   rewrite lab_eqbE. eqsolve.
 Qed.
 
-Lemma xfor_big_op_lemma `{Inhab D} Inv (R R' : Dom.type -> hhprop) 
+Lemma xfor_big_op_lemma `{Inhab D} Inv (R R' : Dom -> hhprop) 
   (op : (D -> val) -> int -> int) p 
   s fsi1 vr
-  Z N (C1 : Dom.type -> trm) (i j : int) (C : trm) C'
+  Z N (C1 : Dom -> trm) (i j : int) (C : trm) C'
   Pre Post: 
   (forall (l : int) (x : int), 
     Z <= l < N ->
@@ -1282,7 +1285,7 @@ Proof.
   { move=> ?. apply/wp_seq. }
   rewrite (xnwp1_lemma (FH (single s tt) (fun=> For Z N <{ fun_ {vr} => {C} }>)) ((i,0))).
   rewrite -wp_equiv.
-  apply/(xunfocus_lemma (fun hr => WP [ _ in ⟨(i, 0), single s tt⟩  => C' ]
+  apply/(@xunfocus_lemma _ (fun hr => WP [ _ in ⟨(i, 0), single s tt⟩  => C' ]
   { hr'0, Post ((hr \u_ ⟨(j, 0), Union (interval Z N) fsi1⟩) hr'0) }))=> /=; autos*.
   { by rewrite E. }
   move=> ??; fequals; apply/fun_ext_1=> ?. fequals.
@@ -1305,43 +1308,12 @@ Proof.
   case=> <- /=; rewrite eqbxx //.
 Qed.
 
-Tactic Notation "xfor_sum" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(s) :=
-  eapply (@xfor_big_op_lemma _ Inv R R' op s); 
-  [ let L := fresh in 
-    intros ?? L;
-    xnsimpl
-  | let Neq := fresh in
-    let i   := fresh "i" in
-    let j   := fresh "j" in 
-    intros i j; 
-    autorewrite with disjointE; try math
-  | let hvE := fresh "hvE" in
-    let someindom := fresh "someindom" in
-    intros ???? hvE; rewrite ?/op;
-    match goal with 
-    | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ? someindom; extens; intros 
-    | _ => idtac
-    end; try setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
-      (first [ apply someindom | idtac ])]
-  |
-  |
-  |
-  |
-  |
-  |
-  |
-  |
-  | rewrite ?/Inv ?/R; rewrite -> ?hbig_fset_hstar; xsimpl
-  | intros ?; rewrite ?/Inv ?/R' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl
-  ]=> //; autos*.
-
-
 Lemma xfor_lemma2_hbig_op `{ID : Inhab D}
   Inv 
-  (R1 R1' R2 R2' : Dom.type -> hhprop)
+  (R1 R1' R2 R2' : Dom -> hhprop)
   m vd (H : int -> hhprop) (H' : int -> (D -> val) -> hhprop)
   s fsi1 fsi2 vr
-  (N: Z) (C1 C2 : Dom.type -> trm) (C : trm)
+  (N: Z) (C1 C2 : Dom -> trm) (C : trm)
   (i j k : Z)
   Pre Post: 
   (forall (l : int) Q, 
@@ -1648,17 +1620,17 @@ Proof.
   rewrite indom_Union; setoid_rewrite indom_interval; do ? (eexists; eauto).
 Qed.
 
-Lemma ntriple_conseq_frame2 H2 H1 Q1 H Q fs_ht : 
+Lemma ntriple_conseq_frame2 {DD : Type} H2 H1 Q1 H Q fs_ht : 
   ntriple H1 fs_ht Q1 ->
   H ==> H1 \* H2 ->
-  Q1 \*+ H2 ===> Q -> ntriple H fs_ht Q.
+  Q1 \*+ H2 ===> Q -> @ntriple DD H fs_ht Q.
 Proof.
   rewrite /ntriple /nwp ?wp_equiv=> *.
   apply/htriple_conseq_frame; eauto.
 Qed.
 
-Lemma ntriple_conseq H1 Q1 H Q fs_ht : 
-  ntriple H1 fs_ht Q1 ->
+Lemma ntriple_conseq {DD : Type} H1 Q1 H Q fs_ht : 
+  @ntriple DD H1 fs_ht Q1 ->
   H ==> H1 ->
   Q1 ===> Q -> ntriple H fs_ht Q.
 Proof.
@@ -1666,7 +1638,7 @@ Proof.
   apply/htriple_conseq; eauto.
 Qed.
 
-Lemma union_merge (h1 h2 : hheap D): 
+Lemma union_merge {DD : Type} (h1 h2 : hheap DD): 
   disjoint h1 h2 ->
   h1 \u h2 = Fmap.merge (fun=> (fun=> 0 : val)) h1 h2.
 Proof.
@@ -1677,8 +1649,8 @@ Proof.
 Qed.
 
 
-Lemma hmerge_hstar : 
-  hstar = hmerge (fun _ _ => 0) (fun=> False).
+Lemma hmerge_hstar {DD : Type} : 
+  @hstar DD = hmerge (fun _ _ => 0) (fun=> False).
 Proof.
   apply/fun_ext_2=> ??; extens=> ?; splits.
   { case/hstar_inv=> h1 [h2][?][?][?]->.
@@ -1706,14 +1678,14 @@ Ltac xlocal :=
 Lemma ntriple_frame X H Q fs_ht H' Q' : 
   (H = H' X) ->
   (forall v, Q v = Q' X v) ->
-  (H' X ==> (H' \[]) \* X) ->
+  (H' X ==> (H' (@hempty D)) \* X) ->
   ((Q' \[]) \*+ X ===> Q' X) ->
   H' \[] ==> N-WP fs_ht {{ v, Q' \[] v }} ->
   {{ H }} fs_ht {{ v, Q v }}.
 Proof.
 Admitted.
 
-Lemma hstar0E : hstar \[] = id.
+Lemma hstar0E {DD : Type} : @hstar DD \[] = id.
 Proof. apply/fun_ext_1; xsimpl. Qed.
 
 Global Arguments ntriple_frame _ {_}.
@@ -1756,9 +1728,9 @@ Tactic Notation "xframe2" uconstr(QH) :=
 
 Lemma xfor_lemma_gen2_bigstr `{ID : Inhab D}
   Inv 
-  (R1 R1' R2 R2' : Dom.type -> hhprop)
+  (R1 R1' R2 R2' : Dom -> hhprop)
   s fsi1 fsi2 vr H H'
-  (N: Z) (C1 C2 : Dom.type -> trm) (C : trm)
+  (N: Z) (C1 C2 : Dom -> trm) (C : trm)
   (i j k : Z)
   Pre Post: 
   (forall (l : int), 
@@ -1830,9 +1802,9 @@ Qed.
 
 Lemma xfor_lemma_gen2_array `{ID : Inhab D}
   Inv 
-  (R1 R1' R2 R2' : Dom.type -> hhprop)
+  (R1 R1' R2 R2' : Dom -> hhprop)
   s fsi1 fsi2 vr (arrl : loc) (arr1 : list int) arr2
-  (N: Z) (C1 C2 : Dom.type -> trm) (C : trm)
+  (N: Z) (C1 C2 : Dom -> trm) (C : trm)
   (i j k : Z)
   Pre Post: 
   (forall v, length (arr2 v) = N :> int) ->
@@ -1915,3 +1887,91 @@ Proof.
 Qed.
 
 End WithLoops.
+
+Global Hint Rewrite @disjoint_single disjoint_interval disjoint_single_interval 
+  disjoint_interval_single @disjoint_eq_label @disjoint_label : disjointE.
+
+Tactic Notation "xfor_sum" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(s) :=
+  eapply (@xfor_big_op_lemma _ _ Inv R R' op s); 
+  [ let L := fresh in 
+    intros ?? L;
+    xnsimpl
+  | let Neq := fresh in
+    let i   := fresh "i" in
+    let j   := fresh "j" in 
+    intros i j; 
+    autorewrite with disjointE; try math
+  | let hvE := fresh "hvE" in
+    let someindom := fresh "someindom" in
+    intros ???? hvE; rewrite ?/op;
+    match goal with 
+    | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ? someindom; extens; intros 
+    | _ => idtac
+    end; try setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
+      (first [ apply someindom | idtac ])]
+  |
+  |
+  |
+  |
+  |
+  |
+  |
+  |
+  | rewrite ?/Inv ?/R; rewrite -> ?hbig_fset_hstar; xsimpl
+  | intros ?; rewrite ?/Inv ?/R' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl
+  ]=> //; autos*.
+
+Tactic Notation "xframe2" uconstr(QH) := 
+  (try (xframe QH; [ ]));
+  try (
+    let Q := fresh "Q" in 
+    let HEQ := fresh "Q" in 
+    remember QH as Q eqn: HEQ in |- *;
+    rewrite -?HEQ;
+    eapply (@ntriple_frame _ Q); 
+    [ let h := fresh "h" in 
+      let f := fresh "h" in 
+      match goal with |- ?x = ?y => set (h := x) end;
+      pattern Q in h;
+      set (f := fun _ => _) in h;
+      simpl in h;
+      rewrite /h;
+      reflexivity
+    | let h := fresh "h" in 
+      let f := fresh "h" in 
+      let v := fresh "h" in 
+      intros v; 
+      match goal with |- ?x = ?y => set (h := x) end;
+      pattern Q, v in h;
+      set (f := fun _ _ => _) in h;
+      simpl in h;
+      rewrite /h;
+      reflexivity
+    | simpl; try rewrite HEQ; xsimpl*
+    | simpl=> ?;
+      try (have->: forall f, (fun x : hheap _ => f x) = f by []);
+      try (have->: forall f, (fun x : hheap D => f x) = f by []);
+      try rewrite HEQ;
+      xsimpl*
+    | simpl; rewrite -> ?hstar0E
+    ]; clear Q HEQ
+  ).
+
+Ltac xlocal := 
+  repeat (intros; 
+  match goal with 
+  | |- hlocal (_ \* _) _ => apply hlocal_hstar
+  | |- hlocal \[] _    => apply hlocal_hempty
+  | |- hlocal (hexists _) _ => apply hlocal_hexists
+  | |- hlocal (hsingle _ _ _) (single _ _) => apply hlocal_hsingle_single
+  | |- hlocal (hsingle _ _ _) (label (Lab _ (single _ _))) => 
+    rewrite label_single; apply hlocal_hsingle_single
+  | |- hlocal (hpure _) _ => apply hlocal_hpure
+  end).
+
+Ltac xwhile1 Z N b Inv := 
+  let N := constr:(N) in
+  let Z := constr:(Z) in 
+  let Inv' := constr:(Inv) in
+  xseq_xlet_if_needed; xstruct_if_needed;
+  eapply (wp_while_unary Inv b (Z := Z) (N := N)); autos*.

@@ -1,29 +1,16 @@
 Set Implicit Arguments.
 From SLF Require Import Fun LabType.
-From SLF Require Import LibSepReference LibSepTLCbuffer Struct Loops.
+From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer Struct Loops.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
 Open Scope Z_scope.
 
-Module NatDom : Domain with Definition type := nat.
-Definition type := nat.
-End NatDom.
 
-Module IntDom : Domain with Definition type := int.
-Definition type := int.
-End IntDom.
-
-Module Int2Dom : Domain with Definition type := (int * int)%type.
-Definition type := (int * int)%type.
-End Int2Dom.
+(* Module WithUnary (Dom : Domain). *)
 
 
-
-Module WithUnary (Dom : Domain).
-
-
-Module Export AD := WithLoops(Dom).
+(* Module Export AD := WithLoops(Dom). *)
 
 (* Context `{Inhab D}. *)
 
@@ -102,6 +89,9 @@ Admitted.
 End pure_facts.
 
 Module and.
+Section and.
+
+Context {D : Type}.
 
 Definition func :=
   <{fun 'b 'c =>
@@ -110,7 +100,7 @@ Definition func :=
   }>.
 
 Lemma spec `{Inhab D} (b c : bool) d : 
-  htriple (single d tt) 
+  @htriple D (single d tt) 
     (fun=> func b c)
     \[]
     (fun hr => \[hr d = b && c]).
@@ -118,7 +108,7 @@ Proof.
   xwp; xif=> bp; xwp; xval; xsimpl.
   all: by case: c b bp=> -[].
 Qed.
-
+End and.
 End and.
 
 Notation "t1 && t2" :=
@@ -135,7 +125,7 @@ Definition func :=
       let "tmp2" = "tmp1" + 1 in
       "real_j" := "tmp2" }>).
 
-Lemma spec `{Inhab D} (pj0 : loc) (d : D) (j : int) :
+Lemma spec {D} `{Inhab D} (pj0 : loc) (d : D) (j : int) :
   htriple (single d tt)
   (fun=> func pj0) 
   (pj0 ~(d)~> j)
@@ -156,7 +146,7 @@ Definition func :=
       let "tmp2" = "tmp1" + "x" in
       "real_j" := "tmp2" }>).
 
-Lemma spec `{Inhab D} (pj0 : loc) (d : D) (j x : int) :
+Lemma spec {D} `{Inhab D} (pj0 : loc) (d : D) (j x : int) :
   htriple (single d tt)
   (fun=> func pj0 x) 
   (pj0 ~(d)~> j)
@@ -209,8 +199,8 @@ Import List.
 Ltac bool_rew := 
   rewrite ?false_eq_isTrue_eq ?true_eq_isTrue_eq -?(isTrue_and, isTrue_not, isTrue_or).
 
-Lemma spec `{Inhab D} d N (lb rb i : int) (xind : list int) (x_ind : loc) : 
-  htriple (single d tt) 
+Lemma spec {D} `{Inhab D} d N (lb rb i : int) (xind : list int) (x_ind : loc) : 
+  @htriple D (single d tt) 
     (fun=> func lb rb i x_ind)
     (harray_int xind x_ind d \* \[length xind = N :> int] 
       \* \[List.NoDup (list_interval (abs lb) (abs rb) xind)] 
@@ -248,7 +238,7 @@ Proof with fold'.
     suff: (index i xind_sub <> k) by math.
     move=> E; apply/xindN; rewrite -E nth_index // -index_mem; eauto; math. }
   { move=> j ? IH; rewrite /cond; bool_rew.
-    xsimpl=> -?? T. xwp; xapp incr1.spec. 
+    xsimpl=> -?? T. xwp; xapp (@incr1.spec _ H).  
     replace (lb + j + 1) with (lb + (j + 1)) by math. (* otherwise xapp will fail to instantiate j' *)
     xapp; try math.
     { eauto. }
@@ -262,4 +252,3 @@ Qed.
 
 End index_bounded.
 
-End WithUnary.

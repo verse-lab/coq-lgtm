@@ -1,12 +1,12 @@
 Set Implicit Arguments.
 From SLF Require Import Fun LabType.
-From SLF Require Import LibSepReference LibSepTLCbuffer Struct Loops.
+From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer Struct Loops.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
 Open Scope Z_scope.
 
-Module NatDom : Domain with Definition type := nat.
+(* Module NatDom : Domain with Definition type := nat.
 Definition type := nat.
 End NatDom.
 
@@ -16,14 +16,11 @@ End IntDom.
 
 Module Int2Dom : Domain with Definition type := (int * int)%type.
 Definition type := (int * int)%type.
-End Int2Dom.
+End Int2Dom. *)
 
 
 
-Module WithUnary (Dom : Domain).
-
-
-Module Export AD := WithLoops(Dom).
+(* Section WithUnary. *)
 
 (* Context `{Inhab D}. *)
 
@@ -92,6 +89,12 @@ End pure_facts.
 
 Module and.
 
+Section and.
+
+Context {D : Type}.
+
+Implicit Type d : D.
+
 Definition func :=
   <{fun 'b 'c =>
     if 'b then 'c 
@@ -110,6 +113,8 @@ Qed.
 
 End and.
 
+End and.
+
 Notation "t1 && t2" :=
   (and.func t1 t2)
   (in custom trm at level 58) : trm_scope.
@@ -118,13 +123,17 @@ Hint Resolve and.spec : htriple.
 
 Module incr1.
 
+Section incr1. 
+
+Context {D : Type} `{Inhab D}.
+
 Definition func :=
   (<{ fun "real_j" =>
       let "tmp1" = ! "real_j" in
       let "tmp2" = "tmp1" + 1 in
       "real_j" := "tmp2" }>).
 
-Lemma spec `{Inhab D} (pj0 : loc) (d : D) (j : int) :
+Lemma spec (pj0 : loc) (d : D) (j : int) :
   htriple (single d tt)
   (fun=> func pj0) 
   (pj0 ~(d)~> j)
@@ -132,12 +141,17 @@ Lemma spec `{Inhab D} (pj0 : loc) (d : D) (j : int) :
 Proof. by do 3 (xwp; xapp). Qed.
 
 End incr1.
+End incr1.
 
 Notation "'++' k" :=
   (incr1.func k)
   (in custom trm at level 58, format "++ k") : trm_scope.
 
 Module incr.
+
+Section incr. 
+
+Context {D : Type}.
 
 Definition func :=
   (<{ fun "real_j" "x" =>
@@ -153,12 +167,16 @@ Lemma spec `{Inhab D} (pj0 : loc) (d : D) (j x : int) :
 Proof. by do 3 (xwp; xapp). Qed.
 
 End incr.
+End incr.
 
 Notation "k '+=' x" :=
   (incr.func k x)
   (in custom trm at level 58, format "k  +=  x") : trm_scope.
 
 Module index.
+Section index.
+
+Context {D : Type}.
 
 Definition whilecond N (i x_ind k : trm) :=
   <{
@@ -198,8 +216,11 @@ Import List.
 Ltac bool_rew := 
   rewrite ?false_eq_isTrue_eq ?true_eq_isTrue_eq -?(isTrue_and, isTrue_not, isTrue_or).
 
+Implicit Type d : D.
 
-Lemma spec `{Inhab D} d N (i : int) (xind : list int) (x_ind : loc) : 
+Context `{Inhab D}.
+
+Lemma spec  d N (i : int) (xind : list int) (x_ind : loc) : 
   htriple (single d tt) 
     (fun=> func N i x_ind)
     (harray_int xind x_ind d \* \[length xind = N :> int] \* \[List.NoDup xind])
@@ -228,7 +249,7 @@ Proof with fold'.
     suff: (index i xind <> k) by math.
     move=> E; apply/xindN; rewrite -E nth_index // -index_mem; eauto; math. }
   { move=> j ? IH; rewrite /cond; bool_rew.
-    xsimpl=> -?? T. xwp; xapp incr1.spec; xapp; try math. 
+    xsimpl=> -?? T. xwp; xapp (@incr1.spec _ H); xapp; try math. 
     { eauto. }
     { move: T; rewrite ?in_take; eauto; math. }
     rewrite /cond; bool_rew. xsimpl*. }
@@ -238,8 +259,13 @@ Proof with fold'.
 Qed.
 
 End index.
+End index.
 
 Module index2.
+
+Section index2. 
+
+Context {D : Type} `{Inhab D}.
 
 Definition whilecond N (i j x y k : trm) :=
   <{
@@ -251,7 +277,7 @@ Definition whilecond N (i j x y k : trm) :=
     let "x[k] = i && y[k] = j" = "x[k] = i" && "y[k] = j" in
     let "!(x[k] = i && y[k] = j)" = not "x[k] = i && y[k] = j" in
     let "k < N" = 'k < N in 
-    "!(x[k] = i && y[k] = j)" && "k < N"
+      "!(x[k] = i && y[k] = j)" && "k < N"
   }>.
 
 Definition func (N : int) := 
@@ -283,7 +309,9 @@ Ltac bool_rew :=
 
 Hint Resolve and.spec : htriple.
 
-Lemma spec `{Inhab D} d N (i j : int) (xind yind : list int) (x_ind y_ind : loc) : 
+Implicit Type d : D.
+
+Lemma spec d N (i j : int) (xind yind : list int) (x_ind y_ind : loc) : 
   htriple (single d tt) 
     (fun=> func N i j x_ind y_ind)
     (harray_int xind x_ind d \*
@@ -319,7 +347,7 @@ xwp; xwhile1 0 (index (i,j) (combine xind yind)) (cond 0) Inv; rewrite /Inv.
   suff: (index (i, j) (combine xind yind) <> k) by lia.
   move=> E; apply/xindN; rewrite -E nth_index // -index_mem; eauto; math. }
 { move=> ?? IH; rewrite /cond; bool_rew...
-  xsimpl=> -?? T. xwp; xapp incr1.spec; xapp; try math. 
+  xsimpl=> -?? T. xwp; xapp (@incr1.spec _ H); xapp; try math. 
   { eauto. }
   { move: T; rewrite ?in_take; eauto; math. }
   rewrite /cond; bool_rew. xsimpl*. }
@@ -328,6 +356,7 @@ xwp; xwhile1 0 (index (i,j) (combine xind yind)) (cond 0) Inv; rewrite /Inv.
 exact/indexG0.
 Qed.
 
+End index2.
 End index2.
 
 
@@ -525,6 +554,7 @@ End segmentation.
 End search_pure_facts.
 
 Module search.
+Section search.
 
 Definition whilecond (p_arr : trm) (pj : trm) (i : trm) :=
   (<{ let "tmp1" = ! pj in
@@ -544,7 +574,7 @@ Definition func :=
 
 Section search_proof.
 
-Context (L : list int) {H : IncreasingIntList L}.
+Context (L : list int) {D :Type} {H : IncreasingIntList L}.
 Context {HDInhabit : Inhab D}.
 
 Import List.
@@ -610,7 +640,7 @@ Proof with fold_search.
   { intros j (Hj1 & Hj2) IH.
     xsimpl. intros (_ & H1 & H2).
     apply eq_sym, Z.leb_le in H2.
-    xwp. xapp incr1.spec.
+    xwp. xapp (@incr1.spec _ HDInhabit).
     destruct (Z.leb (a-1) j) eqn:Ef.
     { (* check if it is the end *)
       rewrite -> Z.leb_le in Ef.
@@ -674,5 +704,5 @@ Qed.
 End search_proof.
 
 End search. 
+End search. 
 
-End WithUnary.

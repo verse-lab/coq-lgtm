@@ -1,6 +1,7 @@
 Set Implicit Arguments.
 From SLF Require Import LabType Fun LibSepFmap Sum.
-From SLF Require Import LibSepReference LibSepTLCbuffer Struct Unary_IndexWithBounds Loops SV2.
+From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer.
+From SLF Require Import Struct Loops Unary_IndexWithBounds SV2.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
@@ -85,8 +86,10 @@ Definition csrij :=
     sv.get j colind mval "lb" "rb"
 }>.
 
+Local Notation D := (labeled (int * int)).
+
 Lemma csrij_spec_in `{Inhab D} (x_mval x_colind x_rowptr : loc) (i j : int) d : 
-  htriple (single d tt) 
+  @htriple D (single d tt) 
     (fun=> csrij x_mval x_colind x_rowptr i (nth (abs j) (colind_seg i) 0))
     (\[0 <= i < Nrow] \*
       \[0 <= j < (nth (abs (i + 1)) rowptr 0) - (nth (abs i) rowptr 0)] \*
@@ -107,7 +110,7 @@ Proof with seclocal_solver.
 Qed.
 
 Lemma csrij_spec_out_unary `{Inhab D} (x_mval x_colind x_rowptr : loc) (i j : int) d :
-  htriple (single d tt) 
+  @htriple D (single d tt) 
     (fun=> csrij x_mval x_colind x_rowptr i j)
     (\[0 <= i < Nrow /\ ~ In j (colind_seg i)] \*
       harray_int mval x_mval d \* 
@@ -128,7 +131,7 @@ Qed.
 
 (* here lb and rb are not fixed, so cannot directly apply get_spec_out *)
 Lemma csrij_spec_out `{Inhab D} fs (x_mval x_colind x_rowptr : loc) : 
-  htriple fs
+  @htriple D fs
     (fun d => csrij x_mval x_colind x_rowptr (eld d).1 (eld d).2)
     (\[forall d, indom fs d -> 0 <= (eld d).1 < Nrow /\ ~ In (eld d).2 (colind_seg (eld d).1)] \*
       (\*_(d <- fs) harray_int mval x_mval d) \* 
@@ -175,7 +178,7 @@ Tactic Notation "seclocal_fold" :=
     -/(For _ _ _) //=.
 
 
-Lemma htriple_letu2 (fs fs' : fset _) H Q' Q ht ht1 ht2 htpre ht' x
+Lemma htriple_letu2 {D : Type} (fs fs' : fset _) H Q' Q ht ht1 ht2 htpre ht' x
   (Hdj : disjoint fs fs')
   (Hhtpre : forall d, indom fs d -> htpre d = ht1 d)
   (Hhtpre' : forall d, indom fs' d -> htpre d = ht' d)
@@ -185,7 +188,7 @@ Lemma htriple_letu2 (fs fs' : fset _) H Q' Q ht ht1 ht2 htpre ht' x
   (Htp2 : forall hv, htriple fs (fun d => subst (x d) (hv d) (ht2 d)) (Q' hv) (fun hr => Q (uni fs' hv hr))) :
   (* (Hcong : forall hv1 hv2, (forall d, indom (fs \u fs') d -> hv1 d = hv2 d) -> 
     Q hv1 ==> Q hv2) : *)
-  htriple (fs \u fs') ht H Q.
+  @htriple D (fs \u fs') ht H Q.
 Proof using All.
   apply wp_equiv.
   rewrite -> union_comm_of_disjoint. 2: apply Hdj.
@@ -239,7 +242,7 @@ Proof using All.
     move=> ?; apply:applys_eq_init; f_equal; extens=> ?; rewrite /uni.
     do? case:classicT=> //. } 
   move=> ? IN /=. 
-  rewrite /uni; case: classicT=> // /disjoint_inv_not_indom_both/(_ IN).
+  rewrite /uni; case: classicT=> // /(disjoint_inv_not_indom_both _ IN).
   case; autos*.
 Qed.
 
@@ -255,7 +258,7 @@ Lemma ntriple_letu2 (s : _) H Q' Q fsht x
       (Q' hv) (fun hr => Q (uni (fset_of fsht) hv hr)))
   :
   ~ has_lab fsht (i,0) ->
-  ntriple H
+  @ntriple D H
     (Lab (pair i 0) (FH (`{s}) (fun d => trm_let x t1 t2)) :: 
     fsht)
     Q.
@@ -277,13 +280,13 @@ Proof using All.
   { rewrite (hasnt_lab _ _ HNL); exact/fset_htrm_label_remove_disj. }
   { intros. unfold uni. case_if; try reflexivity. contradiction. }
   { move=> ?; rewrite (hasnt_lab _ _ HNL) /uni; case: classicT=> //.
-    move=>/disjoint_inv_not_indom_both/[apply]-[].
+    move=>/(@disjoint_inv_not_indom_both _ _ _ _ _)/[apply]-[].
     exact/fset_htrm_label_remove_disj. }
   2:{
     intros. unfold uni. case_if; try reflexivity. contradiction.
   }
   2:{ move=> ?; rewrite (hasnt_lab _ _ HNL) /uni; case: classicT=> //.
-    move=>/disjoint_inv_not_indom_both/[apply]-[].
+    move=>/(@disjoint_inv_not_indom_both _ _ _ _ _)/[apply]-[].
     exact/fset_htrm_label_remove_disj. }
   3:{ case=> *; by rewrite /uni /= indom_label_eq. }
   2: { move=> hr /=. 
@@ -312,7 +315,7 @@ Lemma xletu2 (s : _) H Q' Q fsht x
       (Q' hv) (fun hr => Q (lab_fun_upd hr hv (i,0))))
   :
   ~ has_lab fsht (i,0) ->
-  ntriple H
+  @ntriple D H
     (Lab (pair i 0) (FH (`{s}) (fun d => trm_let x t1 t2)) :: 
     fsht)
     Q.
@@ -323,7 +326,7 @@ Proof.
   rewrite -xnwp1_lemma/=; apply:himpl_trans; last exact/wp_hv.
   xapp=> hr. xsimpl (lab_fun_upd hr hv (i,0))=> ?; apply:applys_eq_init; f_equal.
   extens=> -[??] /=; rewrite /uni; case: classicT.
-  { erewrite (hasnt_lab fsht); eauto=> /indom_remove=> lN.
+  { erewrite (hasnt_lab fsht); eauto=> /(@indom_remove _ _ _ _ _)=> lN.
     case E: (lab_eqb _ _)=> //; move: lN; rewrite -lab_eqbE E //. }
   case: classicT=> //; rewrite indom_label_eq indom_single_eq=> -[]->.
   by rewrite eqbxx.
@@ -332,7 +335,7 @@ Qed.
 Lemma xnapp_lemma' : forall fs_ht Q1 H1 H Q,
   ntriple H1 fs_ht Q1 ->
   H ==> H1 \* (Q1 \--* protect Q) ->
-  ntriple H fs_ht Q.
+  @ntriple D H fs_ht Q.
 Proof using.
   introv tE M W.
   apply/xapp_lemma; autos*.
@@ -340,7 +343,7 @@ Proof using.
 Qed.
 
 Lemma wp_prod_single s fs Q ht (l : labType):
-  wp (label (Lab l (`{s} \x fs))) ht Q = wp (label (Lab l (`{s} \x fs))) (fun ld => ht(Lab l (s, (eld ld).2))) Q.
+  wp (label (Lab l (`{s} \x fs))) ht Q = @wp D (label (Lab l (`{s} \x fs))) (fun ld => ht(Lab l (s, (eld ld).2))) Q.
 Proof.
 Admitted.
 
@@ -359,7 +362,7 @@ Proof.
 Admitted.
 Arguments in_interval_list {_ _ _ _ _}.
 
-Lemma csrsum_spec `{Inhab D} (x_mval x_colind x_rowptr : loc) : 
+(* Lemma csrsum_spec `{Inhab D} (x_mval x_colind x_rowptr : loc) : 
   {{ arr(x_mval, mval)⟨1, (0,0)⟩ \*
      arr(x_colind, colind)⟨1, (0,0)⟩ \*
      arr(x_rowptr, rowptr)⟨1, (0,0)⟩ \*
@@ -397,7 +400,10 @@ Proof with (try seclocal_fold; seclocal_solver).
   { rewrite /Inv /R.
     xin (2,0) : rewrite wp_prod_single /=.
     xin (1,0) : do 3 (xwp; xapp)...
-    xframe2 (arr(x_rowptr, rowptr)⟨1, (0, 0)⟩). xsimpl.
+    xframe2 (arr(x_rowptr, rowptr)⟨1, (0, 0)⟩).
+  xfocus (2,0).
+    xsubst (2,0) (`{l0} \x `[0, Ncol]) `[0, Ncol]
+      (fun x => if x.snd == l0 then x.fst else x)
     xnapp sv.sum_spec.
     { rewrite -{1}rowptr_first; apply/rowptr_weakly_sorted; lia. }
     { apply/rowptr_weakly_sorted; lia. }
@@ -413,7 +419,7 @@ Proof with (try seclocal_fold; seclocal_solver).
     intros i0 j0 Hneq. rewrite ! indom_interval=> ? ?.
     apply disjoint_of_not_indom_both.
     intros (r, c). rewrite !indom_prod !indom_interval !indom_single_eq /=. math. }
-Abort.
+Abort. *)
 
 End csr.
 
