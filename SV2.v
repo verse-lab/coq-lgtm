@@ -179,6 +179,17 @@ Proof.
   rewrite update_empty SumUpdate; [ rewrite Sum0 Z.add_0_l; reflexivity | auto ].
 Qed.
 
+Fact Sum_list_interval  (f : int -> int) (a b : int) l:
+  NoDup (list_interval (abs a) (abs b) l) ->
+  Sum (list_interval (abs a) (abs b) l) f = 
+  Sum `[a, b] (fun i => f l[i]).
+Admitted.
+
+Fact intr_list (a b : int) (l: list int) : 
+  (forall x, In x l -> a <= x < b) ->
+  `[a, b] ∩ l = l.
+Admitted.
+
 Lemma lhtriple_free : forall (p : loc) (v : val) fs,
   @htriple D fs (fun d => val_free p)
     (\*_(d <- fs) p ~(d)~> v)
@@ -186,6 +197,8 @@ Lemma lhtriple_free : forall (p : loc) (v : val) fs,
 Proof using. intros. apply htriple_free. Qed.
 
 Hint Resolve lhtriple_free : lhtriple.
+
+Notation "l '[[' i '--' j ']]' " := (list_interval (abs i) (abs j) l) (at level 5).
 
 Lemma sum_spec `{Inhab D} (x_ind x_val : loc) (s : int) : 
   {{ arr(x_ind, xind)⟨1, 0⟩ \*
@@ -202,18 +215,18 @@ Lemma sum_spec `{Inhab D} (x_ind x_val : loc) (s : int) :
       (\*_(i <- `[0, M]) arr(x_ind, xind)⟨2, i⟩) \\*
       (\*_(i <- `[0, M]) arr(x_val, xval)⟨2, i⟩)}}.
 Proof with fold'.
-  xfocus (2,0) (list_interval (abs lb) (abs rb) xind).
-  rewrite (hbig_fset_part (`[0, M]) (list_interval (abs lb) (abs rb) xind)). (* TODO: move to xfocus *)
+  xfocus (2,0) xind[[lb -- rb]].
+  rewrite (hbig_fset_part (`[0, M]) xind[[lb -- rb]]). (* TODO: move to xfocus *)
   xapp get_spec_out=> //.
   { case=> ? d0 /[! @indom_label_eq]-[_]/=.
     rewrite /intr filter_indom indom_interval /Sum.mem //=. tauto. }
   set (H1 := hbig_fset hstar (_ ∖ _) _); set (H2 := hbig_fset hstar (_ ∖ _) _).
   xframe2 H1. xframe2 H2. xsimpl.
   xin (1,0) : xwp; xapp=> q...
-  have Hl : length (list_interval (abs lb) (abs rb) xind) = rb - lb :> int.
+  have Hl : length xind[[lb -- rb]] = rb - lb :> int.
   1: rewrite -> list_interval_length; try math.
   (* this alignment is tedious *)
-  have E : (`[0, M]) ∩ (list_interval (abs lb) (abs rb) xind) = 
+  (* have E : (`[0, M]) ∩ (list_interval (abs lb) (abs rb) xind) = 
     \U_(i <-  `[0, rb - lb]) `{(list_interval (abs lb) (abs rb) xind)[i]}.
   { apply fset_extens. intros c.
     rewrite /intr filter_indom /Sum.mem indom_interval indom_Union.
@@ -227,9 +240,8 @@ Proof with fold'.
       split; [ split; [ apply indexG0 | assumption ] | reflexivity ]. }
     { intros (f & Hf & E). subst c.
       apply conj_dup_r; eauto. apply nth_In; math. }
-  }
-  rewrite E.
-  rewrite -> ! Union_interval_change2.
+  } *)
+  rewrite intr_list ?(fset_of_list_nodup 0) ?Hl ?Union_interval_change2 //.
   set (R (i : int) := arr(x_ind, xind)⟨2, i⟩ \* arr(x_val, xval)⟨2, i⟩).
   set (Inv (i : int) := arr(x_ind, xind)⟨1, 0⟩ \* arr(x_val, xval)⟨1, 0⟩).
   xfor_sum Inv R R (fun hv i => hv[`2](xind[i])) q.
@@ -243,17 +255,9 @@ Proof with fold'.
     eapply NoDup_nth. 4: apply Hq. all: try math; try assumption. }  
   { rewrite -list_interval_nth; try f_equal; lia. }
   xwp; xapp... xwp; xapp. xwp; xval. xsimpl*.
-  f_equal.
-  under (@SumEq _ _ _ (`[0, M])).
+  f_equal; under (@SumEq _ _ _ (`[0, M])).
   { move=>*; rewrite to_int_if; over. }
-  rewrite SumIf E Sum0s -SumCascade...
-   { rewrite Z.add_0_r Sum_interval_change2; apply/SumEq=> ? /[! indom_interval]?.
-     rewrite ?Sum1 -list_interval_nth //; do ? fequal; lia. }
-  { intros i0 j0. rewrite ! indom_interval disjoint_single.
-    (* repeating the proof above *)
-    intros Hneq Hi Hj Hq. apply Hneq.
-    enough (abs i0 = abs j0 :> nat) by math. 
-    eapply NoDup_nth. 4: apply Hq. all: try math; try assumption. }
+  rewrite SumIf intr_list // Sum0s Sum_list_interval //; math.
 Qed.
 (*
 Context (dvec : list int).
