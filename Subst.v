@@ -63,7 +63,7 @@ Proof.
 Qed.
 
 Lemma filter_id (h : hheap D1) : 
-  (forall x l, indom h (x, l) -> indom fs l) ->
+   local fs h ->
   filter (fun x _ => indom fs x.2) h = h.
 Proof.
   move=> IN. 
@@ -111,11 +111,49 @@ Proof.
 move=> ?. *)
 
 
+Lemma eval1_eq (d : D2) (d' : D1) h h' s s' t v : 
+  eval1 d (proj h d) t (proj h' d) v ->
+  (forall l, fmap_data s (l, d') = fmap_data h (l, d)) -> 
+  (forall l, fmap_data s' (l, d') = fmap_data h' (l, d)) ->
+    eval1 d' (proj s d') t (proj s' d') v.
+Proof.
+  set (f x := If x = d' then d else If x = d then d' else x).
+  have c: cancel f f.
+  { move=> x; rewrite /f; do ? case: classicT=> //.
+    by move<-. }
+  move=> ev sE s'E.
+  have->: proj s' d' = fsubst (proj h' d) (fun '(x, d) => (x, f d)).
+  { apply/fmap_extens=> -[l' e].
+    rewrite -{2}[e]c (fsubst_valid_eq (l', f e))=> [|[]??[]??[]->/(can_inj c)->]//.
+    rewrite /f; case: classicT=> [->|]/=; rewrite /map_filter.
+    { rewrite s'E; by do ? case:classicT. }
+    do ? case: classicT=> //; try by (do ? case: (fmap_data _ _ )).
+    by move=>->. }
+  apply/(eval1_fsubst (fun=>t) (f := f) (g := f))=> //.
+  have<-: proj h d = fsubst (proj s d') (fun '(x, d) => (x, f d)).
+  { apply/fmap_extens=> -[l' e].
+    rewrite -{2}[e]c (fsubst_valid_eq (l', f e))=> [|[]??[]??[]->/(can_inj c)->]//.
+    rewrite /f. case: (classicT (e = d))=> [->|]/=; rewrite /map_filter.
+    { rewrite -sE. (do ? case:classicT=> //). by move->. }
+    do ? case: classicT=> //; try by (do ? case: (fmap_data _ _ )).
+    by move=>->. }
+  rewrite /f; by case: classicT.
+Qed.
+
+
 Lemma eval_fsubst h h' h1 ht hv: 
-  (forall x, indom fs x -> indom fs x) ->
+  local fs h -> 
+  local fs h1 -> 
+  local fs h' ->
   eval (Fmap.fsubst fs f) (hfsubst (h \u h')) ht (hfsubst (h1 \u h')) hv ->
   eval fs (h \u h') (ht \o f) (h1 \u h') (hv \o f).
 Proof.
+  move=> lh lh1 lh' [IN OUT].
+  split=> d ind /=.
+  { have: indom (Fmap.fsubst fs f) (f d).
+    { rewrite fsubst_valid_indom; exists*. }
+    move/IN; rewrite /hfsubst/fsubst ?filter_id ?local_union //.
+    move/(@eval1_eq _ _ _)=> H. apply H. }
 Admitted.
 
 
