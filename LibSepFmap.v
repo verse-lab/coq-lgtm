@@ -2009,6 +2009,38 @@ Definition valid_subst {A B C : Type} (fm : fmap A B) (f : A -> C) : Prop :=
     f x1 = f x2 -> 
     fmap_data fm x1 = fmap_data fm x2.
 
+Definition valid_subst_restr {A B C : Type} (fm : fmap A B) (f : A -> C) : Prop :=
+  forall x1 x2, 
+    indom fm x1 -> indom fm x2 ->
+    f x1 = f x2 -> 
+    fmap_data fm x1 = fmap_data fm x2.
+
+Definition injective_restr {A B C : Type} (fm : fmap A B) (f : A -> C) : Prop :=
+  forall x1 x2, 
+    indom fm x1 -> indom fm x2 -> f x1 = f x2 -> x1 = x2.
+
+Definition cancel_restr {A B C : Type} (f : B -> A) (g : A -> B) (fm : fmap B C) : Prop :=
+  forall x, indom fm x -> g (f x) = x.
+
+Fact inj_restr_update {A B C : Type} (fm : fmap A B) (f : A -> C) x y : 
+  injective_restr (update fm x y) f -> injective_restr fm f.
+Proof. intros H. hnf in H |- *. intros ? ? ? ?. apply H; rewrite indom_update_eq; tauto. Qed.
+
+Fact inj_to_valid_subst_restr {A B C : Type} (fm : fmap A B) (f : A -> C) : 
+  injective_restr fm f -> valid_subst_restr fm f.
+Proof.
+  intros H. hnf in H |- *. intros ? ? ? ? ?. enough (x1 = x2) by now f_equal.
+  eapply H; eauto.
+Qed.
+
+Fact cancel_to_inj_restr {A B C : Type} (f : B -> A) (g : A -> B) (fm : fmap B C) :
+  cancel_restr f g fm -> injective_restr fm f.
+Proof.
+  intros H. hnf in H |- *. intros ? ? ? ? ?. 
+  pose proof (H _ H0). pose proof (H _ H1).
+  enough (g (f x1) = g (f x2)); congruence.
+Qed.
+
 (* Definition valid_subst_pred {A B C : Type} (fm : fmap A B) p (f : A -> C) : Prop :=
   forall x1 x2, 
     p x1 -> p x2 ->
@@ -2056,6 +2088,18 @@ Proof.
   rewrite /union /= /map_union=> /[dup]+->.
   case: (dj x2)=> [->|] // .
   by case: (dj x1)=> [->?<-|-> ->].
+Qed.
+
+Lemma fsubst_valid_eq_restr {A B C : Type} (f : A -> C) (fm : fmap A B) (x : A) :
+  valid_subst_restr fm f -> 
+  forall r, fmap_data fm x = Some r -> fmap_data (fsubst fm f) (f x) = Some r.
+Proof.
+  move=> v r E.
+  rewrite /fsubst /= /map_fsubst.
+  case: classicT=> pf.
+  { case: (indefinite_description _)=> xx [] H1 H2; clear pf.
+    rewrite -E. apply v; try eqsolve. }
+  false pf. exists x. eqsolve.
 Qed.
 
 Lemma fsubst_valid_eq {A B C : Type} (f : A -> C) (fm : fmap A B) (x : A) :
@@ -2121,10 +2165,48 @@ Proof.
   by extens.
 Qed.
 
+Lemma fsubst_update_valid_restr {A B C : Type} (f : A -> C) (fm : fmap A B) x y:
+  injective_restr (update fm x y) f ->
+  fsubst (update fm x y) f = update (fsubst fm f) (f x) y.
+Proof.
+  intros H.
+  have Hv : valid_subst_restr (update fm x y) f by apply inj_to_valid_subst_restr.
+  apply/fmap_extens=> z.
+  destruct (fmap_data (update (fsubst fm f) (f x) y) z) as [ xx | ] eqn:E.
+  { rewrite /update /= /map_union in E. case_if.
+    { injection E as <-. subst z. apply fsubst_valid_eq_restr; try assumption.
+      rewrite /update /union /map_union /=. by case_if. }
+    { rewrite /fsubst /map_fsubst in E |- *. cbn delta [fmap_data] beta iota.
+      destruct classicT as [ N | N ] in |- *.
+      { destruct (indefinite_description _) as (x0 & (E' & Htmp)).
+        pose proof (indom_update_eq fm x y x0) as Htmp2.
+        rewrite /indom in Htmp2. rewrite Htmp2 in Htmp.
+        destruct Htmp as [ | Htmp ]; try congruence.
+        destruct classicT as [ | N2 ]. 2: false N2; eauto.
+        destruct (indefinite_description _) as (x1 & (E'' & Htmp3)).
+        rewrite -E. replace (fmap_data fm x1) with (fmap_data (update fm x y) x1).
+        2: rewrite /update /union /map_union /=; by case_if.
+        apply Hv; rewrite ?indom_update_eq /indom; eqsolve. }
+      { destruct classicT as [ N2 | ]; try discriminate.
+        false N. clear E. destruct N2 as (x0 & (E' & Htmp)).
+        exists x0. split; try assumption. 
+        pose proof (indom_update_eq fm x y x0) as Htmp2.
+        rewrite /indom in Htmp2. rewrite Htmp2. tauto. } } }
+  { have HH : ~ indom (update (fsubst fm f) (f x) y) z by eqsolve.
+    rewrite indom_update_eq in HH; clear E.
+    apply fmapNone. rewrite fsubst_valid_indom=> Hq.
+    destruct Hq as (xx & <- & Hin).
+    rewrite indom_update_eq in Hin. apply HH. rewrite fsubst_valid_indom.
+    destruct Hin as [ <- | ]; [ now left | right; now exists xx ]. }
+Qed.
+
 Lemma fsubst_update_valid {A B C : Type} (f : A -> C) (fm : fmap A B) x y: 
   injective f ->
   fsubst (update fm x y) f = update (fsubst fm f) (f x) y.
 Proof.
+  move=> H. eapply fsubst_update_valid_restr.
+  hnf in H |- *. move=> x1 x2 _ _. apply H.
+  (*
   move=> inj.
   have?: forall h : fmap A B, valid_subst h f by move=> > /inj->.
   apply/fmap_extens=> z.
@@ -2139,6 +2221,7 @@ Proof.
   rewrite fsubst_valid_indom=> ind'.
   rewrite ?fmapNone // fsubst_valid_indom=> -[w][?]?; subst; apply:ind'. 
   exists w; split=> //; rewrite indom_update_eq; eauto.
+  *)
 Qed.
 
 Lemma fsubst_update {A B C : Type} (f : A -> C) (g : C -> A) (fm : fmap A B) x y: 
@@ -2900,6 +2983,25 @@ Proof.
     by rewrite indom_single_eq=><-. }
   case=> /= ??; do 2 (rewrite indom_Union; eexists _; splits* ).
   by rewrite indom_single_eq.
+Qed.
+
+Fact prod_fsubst_snd (fs1 : fset A) (fs2 : fset B) a (H : indom fs1 a) :
+  fsubst (fs1 \x fs2) snd = fs2.
+Proof.
+  apply fset_extens=> x.
+  rewrite fsubst_valid_indom. split.
+  { intros ((? & y) & <- & Hin). now rewrite indom_prod in Hin. }
+  { intros HH. exists (a, x). now rewrite indom_prod. }
+Qed.
+
+Fact prod_cascade (fs1 : fset A) (fs2 : fset B) :
+  fs1 \x fs2 = \U_(i <- fs1) (`{i} \x fs2).
+Proof.
+  apply fset_extens. intros (x, y).
+  rewrite indom_prod indom_Union /=. split.
+  { intros (H1 & H2). exists x. by rewrite indom_prod indom_single_eq. }
+  { intros (x' & H1 & Htmp). rewrite indom_prod indom_single_eq /= in Htmp.
+    eqsolve. }
 Qed.
 
 End cartesian_product.
