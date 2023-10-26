@@ -762,8 +762,8 @@ Tactic Notation "xsubst" uconstr(f) :=
         indom (⟨(i,0), fs1⟩ \u ⟨(j,0), fs2⟩) y -> 
         Lab (lab x) (f (el x)) = Lab (lab y) (f (el y)) -> x = y; 
         [ try (intros [?[??] ][?[??] ]; indomE=> /= + /[swap]=>/[swap]-[]->-> []?[]; eqsolve)
-        | eapply (@xntriple2_hsub _ f); 
-          [ eauto
+        | eapply (@xntriple2_hsub _ _ f); 
+          [ by []
           | eapply Inj
           | xlocal 
           | xlocal
