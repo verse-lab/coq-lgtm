@@ -198,6 +198,35 @@ Definition spmv :=
   s
 }>.
 
+(* TODO possibly, reuse some parts from xfor_sum? *)
+Tactic Notation "xfor_specialized" constr(Inv) constr(R) uconstr(R') uconstr(op) uconstr(f) constr(s) :=
+  eapply (@xfor_lemma_gen_array_fun _ _ Inv R R' _ _ _ s f op);
+  [ try math
+  | intros ??; rewrite ?/Inv ?/R ?/R';
+    xnsimpl
+  | 
+  |
+  |
+  | let hvE := fresh "hvE" in
+    let someindom := fresh "someindom" in
+    intros ???? hvE; rewrite ?/op; indomE;
+    match goal with 
+    | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
+    | _ => idtac
+    end; try setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
+      (first [ apply someindom | idtac ])]
+  |
+  |
+  |
+  |
+  |
+  |
+  |
+  |
+  | rewrite ?/Inv ?/R; rewrite -> ?hbig_fset_hstar; xsimpl
+  | intros ?; rewrite ?/Inv ?/R' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl
+  ]=> //; try (solve [ rewrite ?/Inv ?/R ?/R' /=; xlocal ]); autos*.
+
 Lemma spmv_spec `{Inhab D} (x_mval x_colind x_rowptr x_dvec : loc) : 
   {{ arr(x_mval, mval)⟨1, (0,0)⟩ \*
      arr(x_colind, colind)⟨1, (0,0)⟩ \*
@@ -232,20 +261,8 @@ Proof with (try seclocal_fold; seclocal_solver).
     arr(x_colind, colind)⟨1, (0,0)⟩ \* 
     arr(x_rowptr, rowptr)⟨1, (0,0)⟩ \*
     arr(x_dvec, dvec)⟨1, (0,0)⟩).
-  eapply (@xfor_lemma_gen_array_fun _ _ Inv R R _ _ _ s (fun=> 0)
-    (fun hv i => Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * dvec[j.2]))); auto; try math.
-  2-4: rewrite /Inv /R /=; xlocal. 
-  (* for now, just copy/paste things from "xfor_sum" *)
-  2: let hvE := fresh "hvE" in
-     let someindom := fresh "someindom" in
-     intros ???? hvE; indomE;
-     match goal with 
-     | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
-     | _ => idtac
-     end; try setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
-       (first [ apply someindom | idtac ])].
-  { intros l0 Hl0. simpl subst. rewrite /Inv /R.
-    xin (2,0) : rewrite wp_prod_single /=.
+  xfor_specialized Inv R R (fun hv i => Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * dvec[j.2])) (fun=> 0) s.
+  { xin (2,0) : rewrite wp_prod_single /=.
     xin (1,0) : do 3 (xwp; xapp)...
     xframe2 (arr(x_rowptr, rowptr)⟨1, (0, 0)⟩).
     xsubst (snd : _ -> int).
@@ -256,9 +273,7 @@ Proof with (try seclocal_fold; seclocal_solver).
     unfold prod; rewrite -SumCascade ?Sum1 -?SumCascade; try by disjointE.
     erewrite SumEq with (fs:=`[0, Ncol]). 1: xsimpl*.
     move=>* /=; by rewrite Sum1. }
-  { rewrite ?/Inv ?/R; rewrite -> ?hbig_fset_hstar; xsimpl. }
-  { intros ?; rewrite ?/Inv ?/R' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl. 
-    xwp; xval. xsimpl*. 
+  { xwp; xval. xsimpl*. 
     (* just by funext *)
     replace (fun i0 : int => Σ_(j0 <- `{i0} \x `[0, Ncol]) hv[`2](j0) * dvec[j0.2]) with
       (fun i0 : int => Σ_(j0 <- `[0, Ncol]) hv[`2]((i0, j0)) * dvec[j0]).
