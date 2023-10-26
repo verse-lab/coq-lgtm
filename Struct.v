@@ -699,12 +699,11 @@ Qed.
 
 Corollary htriple_array_set : forall fs (p : D -> loc) (i : D -> int) (v : D -> val) (L : D -> list val),
   (forall d, indom fs d -> 0 <= (i d) < length (L d)) ->
-  (forall d, indom fs d -> LibList.nth (abs (i d)) (L d) = v d) ->
   htriple fs (fun d => val_array_set (p d) (i d) (v d))
     (\*_(d <- fs) (harray (L d) (p d) d))
     (fun=>(\*_(d <- fs) (harray (LibList.update (abs (i d)) (v d) (L d)) (p d) d))).
 Proof using.
-  introv N E. 
+  introv N. 
   eapply htriple_conseq. 3: xsimpl.
   2:{ apply hbig_fset_himpl.
     intros. apply harray_focus with (k:=abs (i d)).
