@@ -1828,6 +1828,69 @@ Proof.
   xframe2 Q. exact/IH.
 Qed.
 
+Lemma xfor_lemma_gen_bigstr `{ID : Inhab D}
+  Inv 
+  (R R' : Dom -> hhprop)
+  s fsi1 vr H H'
+  (N: Z) (C1 : Dom -> trm) (C : trm)
+  (i j : Z)
+  Pre Post: 
+  (forall (l : int), 
+    (0 <= l < N) ->
+    {{ Inv l \* 
+        (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R d) \* 
+        H l }}
+      [{
+        {i| _  in single s tt  => subst vr l C};
+        {j| ld in fsi1 l       => C1 ld}
+      }]
+    {{ v, 
+        Inv (l + 1) \* 
+        (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R' d) \* 
+        H' l v }}) ->
+  (forall j : int, hlocal (Inv j) ⟨(i,0%Z), single s tt⟩) ->
+  (forall j : int, hlocal (H j) ⟨(i,0%Z), single s tt⟩) ->
+  (forall (j : int) (v : D -> val), hlocal (H' j v) ⟨(i,0%Z), single s tt⟩) ->
+  (forall i : D, hlocal (R i) (single i tt)) ->
+  (forall i : D, hlocal (R' i) (single i tt)) ->
+  (forall (hv hv' : D -> val) m,
+    0 <= m < N ->
+    (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
+    H' m hv = H' m hv') ->
+  (i <> j)%Z ->
+  0 <= N ->
+  (forall t : val, subst "for" t C = C) -> 
+  (forall t : val, subst "cnt" t C = C) ->
+  (forall t : val, subst "cond" t C = C) ->
+  var_eq vr "cnt" = false ->
+  var_eq vr "for" = false ->
+  var_eq vr "cond" = false ->
+  (Pre ==> 
+    Inv 0 \* 
+    (\*_(d <- Union `[0,N] fsi1) R d) \*
+    \*_(i <- `[0,N]) H i) ->
+  (forall hv, 
+    Inv N \* 
+    (\*_(d <- Union `[0,N] fsi1) R' d) \* 
+    (\*_(i <- `[0,N]) H' i hv) ==>
+    Post hv) -> 
+  {{ Pre }}
+    [{
+      {i| _  in single s tt => For 0 N (trm_fun vr C)};
+      {j| ld in Union `[0,N] fsi1 => C1 ld}
+    }]
+  {{ v, Post v }}. 
+Proof.
+  move=> IH *; eapply xfor_lemma with 
+  (m := fun _ _ => 0)
+  (Inv := Inv)
+  (vd := fun=> False)
+  (R := R) (R' := R'); try eassumption; autos*=> //.
+  all: rewrite -hmerge_hstar //.
+  move=> ? Q ?.
+  xframe2 Q. exact/IH.
+Qed.
+
 Lemma xfor_lemma_gen2_array `{ID : Inhab D}
   Inv 
   (R1 R1' R2 R2' : Dom -> hhprop)
@@ -1910,6 +1973,81 @@ Proof.
   { xlocal. }
   { xlocal. }
   { move=> ???? hvE1 hvE2; erewrite hvE; eauto. }
+  { rewrite AL2. xsimpl. }
+  move=> ?. rewrite hcellsE AL1. xsimpl*.
+Qed.
+
+Lemma xfor_lemma_gen_array `{ID : Inhab D}
+  Inv 
+  (R R' : Dom -> hhprop)
+  s fsi1 vr (arrl : loc) (arr1 : list int) arr2
+  (N: Z) (C1 : Dom -> trm) (C : trm)
+  (i j : Z)
+  Pre Post: 
+  (forall v, length (arr2 v) = N :> int) ->
+  length arr1 = N :> int ->
+  (forall (l : int), 
+    (0 <= l < N) ->
+    {{ Inv l \* 
+        (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R d) \* 
+        (arrl + 1 + abs l)%nat ~⟨(i,0)%Z, s⟩~> arr1[l] }}
+      [{
+        {i| _  in single s tt  => subst vr l C};
+        {j| ld in fsi1 l       => C1 ld}
+      }]
+    {{ v, 
+        Inv (l + 1) \* 
+        (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R' d) \* 
+        (arrl + 1 + abs l)%nat ~⟨(i,0)%Z, s⟩~> (arr2 v)[l] }}) ->
+  (forall j : int, hlocal (Inv j) ⟨(i,0%Z), single s tt⟩) ->
+  (forall i : D, hlocal (R i) (single i tt)) ->
+  (forall i : D, hlocal (R' i) (single i tt)) ->
+  (forall (hv hv' : D -> val) m,
+    0 <= m < N ->
+    (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
+    (arr2 hv)[m] = (arr2 hv')[m]) ->
+  (i <> j)%Z ->
+  0 <= N ->
+  (forall t : val, subst "for" t C = C) -> 
+  (forall t : val, subst "cnt" t C = C) ->
+  (forall t : val, subst "cond" t C = C) ->
+  var_eq vr "cnt" = false ->
+  var_eq vr "for" = false ->
+  var_eq vr "cond" = false ->
+  (Pre ==> 
+    Inv 0 \* 
+    (\*_(d <- Union `[0,N] fsi1) R d) \*
+    harray_int arr1 arrl (Lab (i,0) s)) ->
+  (forall hv, 
+    Inv N \* 
+    (\*_(d <- Union `[0,N] fsi1) R' d) \* 
+    harray_int (arr2 hv) arrl (Lab (i,0) s) ==>
+    Post hv) -> 
+  {{ Pre }}
+    [{
+      {i| _  in single s tt => For 0 N (trm_fun vr C)};
+      {j| ld in Union `[0,N] fsi1 => C1 ld}
+    }]
+  {{ v, Post v }}. 
+Proof.
+  move=> AL1 AL2 IH ??? hvE ???????? PreH PostH.
+  have AL : forall hv, Datatypes.length arr1 = Datatypes.length (arr2 hv).
+  { move=> v; move: (AL1 v). lia. }
+  apply/ntriple_conseq; last exact/PostH; eauto.
+  rewrite /harray_int/harray/hheader ?length_map ?length_List_length.
+  apply/(ntriple_conseq); [|exact: himpl_trans|move=> ?]; first last.
+  { rewrite /harray_int/harray/hheader ?length_map ?length_List_length -AL.
+    move=> ?; apply:applys_eq_init; reflexivity. }
+  xframe2 (arrl ~⟨(i, 0%Z), s⟩~> val_header (length arr1)).
+  xframe2 \[(arrl, (⟨(i, 0), s⟩)%arr) <> null (⟨(i, 0), s⟩)%arr].
+  rewrite ?hcellsE.  
+  eapply xfor_lemma_gen_bigstr with 
+  (H := fun l => (arrl + 1 + abs l)%nat ~⟨(i, 0%Z), s⟩~> arr1[l])
+  (H' := fun l v => (arrl + 1 + abs l)%nat ~⟨(i, 0%Z), s⟩~> (arr2 v)[l])
+  (R := R) (R' := R'); try eassumption; autos*=> //.
+  { xlocal. }
+  { xlocal. }
+  { move=> ???? hvE1; erewrite hvE; eauto. }
   { rewrite AL2. xsimpl. }
   move=> ?. rewrite hcellsE AL1. xsimpl*.
 Qed.
