@@ -976,11 +976,7 @@ Qed.
 
 Lemma indom_fsubst {A B : Type} (fs : fset A) (f : A -> B) x : 
   indom (fsubst fs f) x = exists y, f y = x /\ indom fs y.
-Proof.
-  rewrite /indom /map_indom /= /map_fsubst.
-  case: classicT=> [pf|]; last by extens.
-  case: (indefinite_description _)=> ? [<-]?; extens; by split*.
-Qed.
+Proof. apply fsubst_valid_indom. Qed.
 
 Lemma fmapNone {A B : Type} (fm : fmap A B) x :
   ~indom fm x ->
@@ -7911,6 +7907,20 @@ Proof.
   move=> c; elim/fset_ind: fs=> [|fs x IHfs ?].
   { by rewrite ?hbig_fset_empty hsub_hempty. }
   by rewrite ?hbig_fset_update // (hsub_hstar_can _ _ c) IHfs.
+Qed.
+
+Lemma hstar_fset_eq_restr {A B} (R : B -> hhprop) fs (f : A -> B) : 
+  injective_restr fs f ->
+  \*_(d <- fs) R (f d) = \*_(d <- fsubst fs f) R d.
+Proof.
+  elim/fset_ind: fs=> [|fs x IHfs Hnotin] Hinj.
+  { by rewrite fsubst_empty ?hbig_fset_empty. }
+  replace (fsubst _ _) with (update (fsubst fs f) (f x) tt) 
+    by now rewrite fsubst_update_valid_restr.
+  pose proof Hinj as Hinj'%inj_restr_update.
+  rewrite ?hbig_fset_update // ?IHfs // indom_fsubst=> HH.
+  destruct HH as (y & E & Hin). apply Hnotin.
+  apply Hinj in E; try (rewrite indom_update_eq; tauto). congruence.
 Qed.
 
 Lemma hstar_fset_eq {A B} (R : B -> hhprop) fs (f : A -> B) g : 

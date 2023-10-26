@@ -62,8 +62,6 @@ Hypothesis len_xval : rb <= length xval.
 Hypothesis nodup_xind : NoDup (list_interval (abs lb) (abs rb) xind).
 Hypothesis xind_leq : forall x, In x (list_interval (abs lb) (abs rb) xind) -> 0 <= x < M.
 
-Local Notation D := (labeled (int * int)).
-
 Definition indexf := index_bounded.func.
 
 Definition get := 
@@ -76,7 +74,7 @@ Definition get :=
     else 0
 }>.
 
-Lemma get_spec_in `{Inhab D} (x_ind x_val : loc) i d : 
+Lemma get_spec_in {D : Type} `{Inhab D} (x_ind x_val : loc) i d : 
   @htriple D (single d tt) 
     (fun=> get (List.nth (abs i) (list_interval (abs lb) (abs rb) xind) 0) x_ind x_val lb rb)
     (\[0 <= i < N] \*
@@ -96,7 +94,7 @@ Proof.
   xapp; xsimpl*. rewrite -> list_interval_nth with (rb:=rb); try math; auto.
 Qed.
 
-Lemma get_spec_out_unary `{Inhab D} (x_ind x_val : loc) (i : int) d : 
+Lemma get_spec_out_unary {D : Type} `{Inhab D} (x_ind x_val : loc) (i : int) d : 
   @htriple D (single d tt) 
     (fun=> get i x_ind x_val lb rb)
     (\[~ In i (list_interval (abs lb) (abs rb) xind)] \*
@@ -113,10 +111,12 @@ Proof.
   xwp; xapp. xwp; xif=> ?; try math. xwp; xval. xsimpl*.
 Qed.
 
+Local Notation D := (labeled int).
+
 Lemma get_spec_out `{Inhab D} fs (x_ind x_val : loc) : 
   @htriple D fs
-    (fun i => get (eld i).2 x_ind x_val lb rb)
-    (\[forall d, indom fs d -> ~ In (eld d).2 (list_interval (abs lb) (abs rb) xind)] \*
+    (fun i => get (eld i) x_ind x_val lb rb)
+    (\[forall d, indom fs d -> ~ In (eld d) (list_interval (abs lb) (abs rb) xind)] \*
       (\*_(d <- fs) harray_int xind x_ind d) \* 
        \*_(d <- fs) harray_int xval x_val d)
     (fun hr => 
@@ -128,7 +128,7 @@ Proof.
   [|eauto|move=> ?]; rewrite -hstar_fset_pure -?hbig_fset_hstar; first last.
   { move=> ?; apply: applys_eq_init; reflexivity. }
   apply/htriple_union_pointwise=> [> -> //|??]. 
-  rewrite -wp_equiv wp_single; xapp get_spec_out_unary=> // ??->.
+  rewrite -wp_equiv wp_single; xapp (@get_spec_out_unary D)=> // ??->.
   xsimpl*.
 Qed.
 
@@ -140,7 +140,9 @@ Definition sum :=
     let x = read_array xval i in 
     s += x
   };
-  ! s
+  let "res" = ! s in
+  free s;
+  "res"
 }>.
 
 (* Tactic Notation "xin" constr(S1) ":" tactic(tac) := 
@@ -177,93 +179,103 @@ Proof.
   rewrite update_empty SumUpdate; [ rewrite Sum0 Z.add_0_l; reflexivity | auto ].
 Qed.
 
+Fact Sum_list_interval  (f : int -> int) (a b : int) l:
+  NoDup (list_interval (abs a) (abs b) l) ->
+  Sum (list_interval (abs a) (abs b) l) f = 
+  Sum `[a, b] (fun i => f l[i]).
+Admitted.
+
+Fact intr_list (a b : int) (l: list int) : 
+  (forall x, In x l -> a <= x < b) ->
+  `[a, b] ∩ l = l.
+Admitted.
+
+Lemma lhtriple_free : forall (p : loc) (v : val) fs,
+  @htriple D fs (fun d => val_free p)
+    (\*_(d <- fs) p ~(d)~> v)
+    (fun _ => \[]).
+Proof using. intros. apply htriple_free. Qed.
+
+Hint Resolve lhtriple_free : lhtriple.
+
+Notation "l '[[' i '--' j ']]' " := (list_interval (abs i) (abs j) l) (at level 5).
+
 Lemma sum_spec `{Inhab D} (x_ind x_val : loc) (s : int) : 
-  {{ arr(x_ind, xind)⟨1, (0, 0)⟩ \*
-     arr(x_val, xval)⟨1, (0, 0)⟩ \\* 
-     (\*_(i <- `{s} \x `[0, M]) arr(x_ind, xind)⟨2, i⟩) \\*
-     (\*_(i <- `{s} \x `[0, M]) arr(x_val, xval)⟨2, i⟩) }}
+  {{ arr(x_ind, xind)⟨1, 0⟩ \*
+     arr(x_val, xval)⟨1, 0⟩ \\* 
+     (\*_(i <- `[0, M]) arr(x_ind, xind)⟨2, i⟩) \\*
+     (\*_(i <- `[0, M]) arr(x_val, xval)⟨2, i⟩) }}
   [{
-    [1| ld in `{(0,0)}         => sum x_ind x_val lb rb];
-    (* maybe remove this single element prod in the future? *)
-    {2| ld in `{s} \x `[0, M] => get ld.2 x_ind x_val lb rb}
+    [1| ld in `{0}         => sum x_ind x_val lb rb];
+    {2| ld in `[0, M]          => get ld x_ind x_val lb rb}
   }]
-  {{ hv, (\[hv[`1]((0, 0)) = Σ_(i <- `{s} \x `[0, M]) hv[`2](i)] \* 
-      arr(x_ind, xind)⟨1, (0, 0)⟩ \*
-      arr(x_val, xval)⟨1, (0, 0)⟩) \* \Top}}.
+  {{ hv, (\[hv[`1](0) = Σ_(i <- `[0, M]) hv[`2](i)] \* 
+      arr(x_ind, xind)⟨1, 0⟩ \*
+      arr(x_val, xval)⟨1, 0⟩) \* 
+      (\*_(i <- `[0, M]) arr(x_ind, xind)⟨2, i⟩) \\*
+      (\*_(i <- `[0, M]) arr(x_val, xval)⟨2, i⟩)}}.
 Proof with fold'.
-  xfocus (2,0) (map (fun x => (s, x)) (list_interval (abs lb) (abs rb) xind)).
-  rewrite (hbig_fset_part (`{s} \x `[0, M]) (map (fun x => (s, x)) (list_interval (abs lb) (abs rb) xind))). (* TODO: move to xfocus *)
+  xfocus (2,0) xind[[lb -- rb]].
+  rewrite (hbig_fset_part (`[0, M]) xind[[lb -- rb]]). (* TODO: move to xfocus *)
   xapp get_spec_out=> //.
-  { case=> ? d0 /[! @indom_label_eq]-[_]/=. 
-    rewrite /intr filter_indom indom_prod indom_interval indom_single_eq /Sum.mem //=.
-    rewrite in_map_iff=> Hq ?. false (proj2 Hq). exists d0.2. 
-    split; [ destruct d0; simpl in *; intuition congruence | auto ]. }
+  { case=> ?? /[! @indom_label_eq]-[_]/=; rewrite /intr filter_indom; autos*. }
   set (H1 := hbig_fset hstar (_ ∖ _) _); set (H2 := hbig_fset hstar (_ ∖ _) _).
-  xframe (H1 \* H2); clear H1 H2.
+  xframe2 H1. xframe2 H2. xsimpl.
   xin (1,0) : xwp; xapp=> q...
-  have Hl : length (list_interval (abs lb) (abs rb) xind) = rb - lb :> int.
+  have Hl : length xind[[lb -- rb]] = rb - lb :> int.
   1: rewrite -> list_interval_length; try math.
   (* this alignment is tedious *)
-  have E : (`{s} \x `[0, M]) ∩ (map (fun x => (s, x)) (list_interval (abs lb) (abs rb) xind)) = 
-    \U_(i <-  `[0, rb - lb]) `{(s, (list_interval (abs lb) (abs rb) xind)[i])}.
-  { apply fset_extens. intros (r, c). 
-    rewrite /intr filter_indom /Sum.mem indom_prod indom_interval indom_single_eq
-      indom_Union in_map_iff.
+  (* have E : (`[0, M]) ∩ (list_interval (abs lb) (abs rb) xind) = 
+    \U_(i <-  `[0, rb - lb]) `{(list_interval (abs lb) (abs rb) xind)[i]}.
+  { apply fset_extens. intros c.
+    rewrite /intr filter_indom /Sum.mem indom_interval indom_Union.
     setoid_rewrite indom_interval.
     setoid_rewrite indom_single_eq.
-    simpl. split.
-    { intros ((-> & Hc) & (x & E & Hin)). inversion E. subst x.
+    split.
+    { intros (Hc & Hin).
       exists (index c (list_interval (abs lb) (abs rb) xind)).
       rewrite nth_index; try assumption.
       rewrite <- index_mem, -> Hl in Hin.
       split; [ split; [ apply indexG0 | assumption ] | reflexivity ]. }
-    { intros (f & Hf & E). inversion E. subst r c.
-      set (xx := nth _ _ _).
-      assert (In xx (list_interval (abs lb) (abs rb) xind)) as Hin by (subst xx; apply nth_In; math).
-      split; eauto. }
-  }
-  rewrite E.
-  rewrite -> ! Union_interval_change2.
-  set (R (i : int * int) := arr(x_ind, xind)⟨2, i⟩ \* arr(x_val, xval)⟨2, i⟩).
-  set (Inv (i : int) := arr(x_ind, xind)⟨1, (0,0)⟩ \* arr(x_val, xval)⟨1, (0,0)⟩).
-  xfor_sum Inv R (fun=> \Top) (fun hv i => hv[`2]((s, xind[i]))) q.
+    { intros (f & Hf & E). subst c.
+      apply conj_dup_r; eauto. apply nth_In; math. }
+  } *)
+  rewrite intr_list ?(fset_of_list_nodup 0) ?Hl ?Union_interval_change2 //.
+  set (R (i : int) := arr(x_ind, xind)⟨2, i⟩ \* arr(x_val, xval)⟨2, i⟩).
+  set (Inv (i : int) := arr(x_ind, xind)⟨1, 0⟩ \* arr(x_val, xval)⟨1, 0⟩).
+  xfor_sum Inv R R (fun hv i => hv[`2](xind[i])) q.
   { rewrite /Inv.
     (xin (1,0): (xwp; xapp; xapp (@incr.spec  _ H)=> y))...
-    xapp get_spec_in=> //; try math. xsimpl*.
+    xapp (@get_spec_in D)=> //; try math. xsimpl*.
     rewrite <- list_interval_nth with (l:=xval); try math.
     replace (lb + (l0 - lb)) with l0 by math. xsimpl*. }
-  { intros Hneq Hi Hj Hq. inversion Hq. apply Hneq. 
+  { intros Hneq Hi Hj Hq. apply Hneq. 
     enough (abs (i0 - lb) = abs (j0 - lb) :> nat) by math.
-    eapply NoDup_nth. 4: apply H1. all: try math; try assumption. }  
-  { f_equal. rewrite -list_interval_nth; try f_equal; lia. }
-  xapp. xsimpl*.
-  under (@SumEq _ _ _ (`{s} \x `[0, M])).
+    eapply NoDup_nth. 4: apply Hq. all: try math; try assumption. }  
+  { rewrite -list_interval_nth; try f_equal; lia. }
+  xwp; xapp... xwp; xapp. xwp; xval. xsimpl*.
+  f_equal; under (@SumEq _ _ _ (`[0, M])).
   { move=>*; rewrite to_int_if; over. }
-  rewrite SumIf E Sum0s -SumCascade...
-   { rewrite Z.add_0_r Sum_interval_change2; apply/SumEq=> ? /[! indom_interval]?.
-     rewrite ?Sum1 -list_interval_nth //; do ? fequal; lia. }
-  { intros i0 j0. rewrite ! indom_interval disjoint_single.
-    (* repeating the proof above *)
-    intros Hneq Hi Hj Hq. inversion Hq. apply Hneq.
-    enough (abs i0 = abs j0 :> nat) by math. 
-    eapply NoDup_nth. 4: apply H1. all: try math; try assumption. }
+  rewrite SumIf intr_list // Sum0s Sum_list_interval //; math.
 Qed.
-(*
+
 Context (dvec : list int).
 Context (dvec_len : length dvec = M :> int).
 
 Definition dotprod := 
   <{
-  fun xind xval dvec =>
+  fun xind xval dvec xlb xrb =>
   let s = ref 0 in
-  for i <- [0, N] {
+  for i <- [xlb, xrb] {
     let x = xval[i] in 
     let i = xind[i] in 
     let v = dvec[i] in 
     let x = x * v in
     s += x
   };
-  ! s
+  let "res" = ! s in
+  free s;
+  "res"
 }>.
 
 Lemma SumIf {A : Type} {P : A -> Prop} {fs F G} (C : A -> int -> int) : 
@@ -280,39 +292,44 @@ Lemma dotprod_spec `{Inhab D} (x_ind x_val d_vec : loc) :
      (\*_(i <- `[0, M]) arr(x_val, xval)⟨2, i⟩) \\* 
      (\*_(i <- `[0, M]) arr(d_vec, dvec)⟨2, i⟩) }}
   [{
-    [1| ld in `{0}   => dotprod x_ind x_val d_vec];
-    [2| ld in `[0,M] => get ld x_ind x_val]
+    [1| ld in `{0}   => dotprod x_ind x_val d_vec lb rb];
+    [2| ld in `[0,M] => get ld x_ind x_val lb rb]
   }]
-  {{ hv, \[hv[`1](0) = Σ_(i <- `[0,M]) (hv[`2](i) * dvec[i])] \* \Top}}.
+  {{ hv, \[hv[`1](0) = Σ_(i <- `[0,M]) (hv[`2](i) * dvec[i])] \* 
+     arr(x_ind, xind)⟨1, 0⟩ \\*
+     arr(x_val, xval)⟨1, 0⟩ \\*
+     arr(d_vec, dvec)⟨1, 0⟩ \\* 
+     (\*_(i <- `[0, M]) arr(x_ind, xind)⟨2, i⟩) \\*
+     (\*_(i <- `[0, M]) arr(x_val, xval)⟨2, i⟩) \\* 
+     (\*_(i <- `[0, M]) arr(d_vec, dvec)⟨2, i⟩)}}.
 Proof with fold'.
-  xfocus (2,0) xind.
-  rewrite (hbig_fset_part `[0, M] xind). (* TODO: move to xfocus *)
+  xfocus (2,0) xind[[lb -- rb]].
+  rewrite (hbig_fset_part (`[0, M]) xind[[lb -- rb]]). (* TODO: move to xfocus *)
   xapp get_spec_out=> //.
   { case=> ?? /[! @indom_label_eq]-[_]/=; rewrite /intr filter_indom; autos*. }
-  set (H1 := hbig_fset hstar (_ ∖ _) _); 
-  set (H2 := hbig_fset hstar (_ ∖ _) _).
-  set (H3 := hbig_fset hstar (_ ∖ _) _).
-  xframe (H1 \* H2 \* H3); clear H1 H2 H3.
-  xin (1,0) : xwp; xapp=> s...
-  have E : `[0,M] ∩ xind = xind.
-  { apply/fset_extens=> x; rewrite /intr filter_indom -fset_of_list_in; splits*.
-    move=> ?; splits*; rewrite* indom_interval. }
-  rewrite E (fset_of_list_nodup 0) // len_xind.
-  set (R i := arr(x_ind, xind)⟨2, i⟩ \* arr(x_val, xval)⟨2, i⟩ \* arr(d_vec, dvec)⟨2,i⟩).
+  repeat let HH := fresh "uselessheap" in set (HH := hbig_fset hstar (_ ∖ _) _); xframe2 HH; xsimpl.
+  xin (1,0) : xwp; xapp=> q...
+  have Hl : length xind[[lb -- rb]] = rb - lb :> int.
+  1: rewrite -> list_interval_length; try math.
+  rewrite intr_list ?(fset_of_list_nodup 0) ?Hl ?Union_interval_change2 //.
+  set (R (i : int) := arr(x_ind, xind)⟨2, i⟩ \* arr(x_val, xval)⟨2, i⟩ \* arr(d_vec, dvec)⟨2,i⟩).
   set (Inv (i : int) := arr(x_ind, xind)⟨1, 0⟩ \* arr(x_val, xval)⟨1, 0⟩ \* arr(d_vec, dvec)⟨1,0⟩).
-  xfor_sum Inv R (fun=> \Top) (fun hv i => (hv[`2](xind[i]) * dvec[xind[i] ])) s.
+  xfor_sum Inv R R (fun hv i => (hv[`2](xind[i]) * dvec[xind[i] ])) q.
   { rewrite /Inv /R.
-    (xin (1,0): do 4 (xwp; xapp); xapp incr.spec=> y)...
-    xapp get_spec_in=> //; xsimpl*. }
-  { move=> Neq ???; apply/Neq. 
-    move/NoDup_nthZ: nodup_xind; apply; autos*; math. }
-  { rewrite -len_xind; math. }
-  xapp; xsimpl.
-  under (@SumEq _ _ _ `[0,M]).
+    (xin (1,0): do 4 (xwp; xapp); xapp (@incr.spec _ H)=> y)...
+    xapp (@get_spec_in D)=> //; try math. xsimpl*.
+    rewrite <- list_interval_nth with (l:=xval); try math.
+    replace (lb + (l0 - lb)) with l0 by math. xsimpl*. }
+  { intros Hneq Hi Hj Hq. apply Hneq. 
+    enough (abs (i0 - lb) = abs (j0 - lb) :> nat) by math.
+    eapply NoDup_nth. 4: apply Hq. all: try math; try assumption. }
+  { rewrite -list_interval_nth; try f_equal; lia. }
+  xwp; xapp... xwp; xapp. xwp; xval. xsimpl*.
+  f_equal; under (@SumEq _ _ _ (`[0, M])).
   { move=>*; rewrite to_int_if; over. }
-  rewrite (SumIf (fun=> Z.mul^~ _)) E (SumList 0) // len_xind Sum0s; math.
+  rewrite (SumIf (fun=> Z.mul^~ _)) intr_list // Sum0s Sum_list_interval //; math.
 Qed.
-*)
+
 End sv.
 
 
