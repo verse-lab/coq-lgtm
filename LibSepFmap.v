@@ -2994,6 +2994,10 @@ Proof.
   { intros HH. exists (a, x). now rewrite indom_prod. }
 Qed.
 
+Fact prod_single_fsubst_snd s (fs2 : fset B) :
+  fsubst (`{s} \x fs2) snd = fs2.
+Proof. by rewrite (@prod_fsubst_snd _ _ (s)) // indom_single_eq. Qed.
+
 Fact prod_cascade (fs1 : fset A) (fs2 : fset B) :
   fs1 \x fs2 = \U_(i <- fs1) (`{i} \x fs2).
 Proof.
@@ -3002,6 +3006,24 @@ Proof.
   { intros (H1 & H2). exists x. by rewrite indom_prod indom_single_eq. }
   { intros (x' & H1 & Htmp). rewrite indom_prod indom_single_eq /= in Htmp.
     eqsolve. }
+Qed.
+
+Lemma prod0fs (fs : fset B) : (empty : fset A) \x fs = empty.
+Proof. by rewrite prod_cascade Union0. Qed.
+Lemma prodfs0 (fs : fset A) : fs \x (empty : fset B) = empty.
+Proof. 
+  apply/fset_extens=> -[]??; rewrite indom_prod/=; splits*=>//.
+Qed.
+
+Lemma prodfsS (fs : fset B) (fs' : fset A) x : fs' \x update fs x tt = ((fs' \x `{x}) \+ (fs' \x fs)).
+Proof.
+apply/fset_extens=> -[]??; rewrite ?indom_union_eq ?indom_prod ?indom_update_eq ?indom_single_eq/=; splits*=>//.
+Qed.
+
+Lemma prod11 (a : A) (b : B) : `{a} \x `{b} = `{(a,b)}.
+Proof.
+apply/fset_extens=> -[]??; rewrite ?indom_union_eq ?indom_prod ?indom_update_eq ?indom_single_eq/=; splits*=>//.
+by case.
 Qed.
 
 End cartesian_product.

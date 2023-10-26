@@ -158,7 +158,6 @@ Proof.
   revert p d. induction L as [ | y L IH ]; intros.
   { by rewrite ! hconseq_nil fsubst_empty. }
   { rewrite ! hconseq_cons ?fsubst_union ?fsubst_single ?IH //.
-    Search indom hconseq.
     case=> ?? [] >; rewrite ?indom_union_eq ?indom_single_eq ?hconseq_indom.
     eqsolve. }
 Qed.
@@ -465,8 +464,6 @@ Proof.
   Unshelve. all: exact unit.
 Qed.
 
-Search Fmap.fsubst proj.
-
 Lemma eval1_eq (d : D2) (d' : D1) h h' s s' t v : 
   d = f d' ->
   eval1 d (proj h d) t (proj h' d) v ->
@@ -747,7 +744,9 @@ Ltac xlocal :=
     apply hlocal_hstar_fset; intros ?; indomE; intros
   end).
 
+Global Hint Rewrite @fsubst_single @prod_single_fsubst_snd : fsubstE.
 
+Ltac fsubstE := autorewrite with fsubstE; simpl.
 
 Tactic Notation "xsubst" uconstr(f) := 
   match goal with 
@@ -774,4 +773,4 @@ Tactic Notation "xsubst" uconstr(f) :=
           |
           ]
         ]
-  end; simpl.
+  end; simpl; fsubstE.

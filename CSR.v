@@ -27,6 +27,9 @@ Notation "'mval'" := ("m_val":var) (in custom trm at level 0) : trm_scope.
 Notation "'colind'" := ("col_ind":var) (in custom trm at level 0) : trm_scope.
 Notation "'rowptr'" := ("row_ptr":var) (in custom trm at level 0) : trm_scope.
 Notation "'dvec'" := ("d_vec":var) (in custom trm at level 0) : trm_scope.
+Notation "'lb'" := ("l_b":var) (in custom trm at level 0) : trm_scope.
+Notation "'rb'" := ("r_b":var) (in custom trm at level 0) : trm_scope.
+Notation "'i''" := ("i_'":var) (in custom trm at level 0) : trm_scope.
 
 Notation "'for' i <- '[' Z ',' N ']' '{' t '}'"  :=
   (For Z N <{ fun_ i => t }>)
@@ -72,89 +75,25 @@ Tactic Notation "seclocal_solver" :=
 
 (* Definition indexf := index_bounded.func. *)
 
-Definition csrij := 
+Definition get := 
 <{
   fun mval colind rowptr i j =>
-    let "lb" = read_array rowptr i in
-    let "ii" = i + 1 in
-    let "rb" = read_array rowptr "ii" in
-      sv.get j colind mval "lb" "rb"
+    let lb = read_array rowptr i in
+    let i' = i + 1 in
+    let rb = read_array rowptr i' in
+      sv.get j colind mval lb rb
 }>.
 
-Lemma csrij_spec_in {D : Type} `{Inhab D} (x_mval x_colind x_rowptr : loc) (i j : int) d : 
-  @htriple D (single d tt) 
-    (fun=> csrij x_mval x_colind x_rowptr i (nth (abs j) (colind_seg i) 0))
-    (\[0 <= i < Nrow] \*
-      \[0 <= j < (nth (abs (i + 1)) rowptr 0) - (nth (abs i) rowptr 0)] \*
-      harray_int mval x_mval d \* 
-      harray_int colind x_colind d \* 
-      harray_int rowptr x_rowptr d)
-    (fun hr => 
-     \[hr = fun=> List.nth (abs ((nth (abs i) rowptr 0) + j)) mval 0] \* 
-      harray_int mval x_mval d \* 
-      harray_int colind x_colind d \* 
-      harray_int rowptr x_rowptr d).
-Proof with seclocal_solver.
-  rewrite -wp_equiv; xsimpl=> ??.
-  do 3 (xwp; xapp).
-  rewrite /colind_seg.
-  xapp get_spec_in; eauto... 
-  rewrite <- list_interval_nth... xsimpl*.
-Qed.
-
-Lemma csrij_spec_out_unary {D : Type} `{Inhab D} (x_mval x_colind x_rowptr : loc) (i j : int) d :
-  @htriple D (single d tt) 
-    (fun=> csrij x_mval x_colind x_rowptr i j)
-    (\[0 <= i < Nrow /\ ~ In j (colind_seg i)] \*
-      harray_int mval x_mval d \* 
-      harray_int colind x_colind d \* 
-      harray_int rowptr x_rowptr d)
-    (fun hr => 
-     \[hr = fun=> 0] \* 
-      harray_int mval x_mval d \* 
-      harray_int colind x_colind d \* 
-      harray_int rowptr x_rowptr d).
-Proof with seclocal_solver.
-  rewrite -wp_equiv; xsimpl=> ?.
-  do 3 (xwp; xapp).
-  xapp get_spec_out_unary; eauto...
-  1: now unfold colind_seg in *.
-  xsimpl*.
-Qed.
-
-(* here lb and rb are not fixed, so cannot directly apply get_spec_out *)
-Lemma csrij_spec_out `{Inhab (labeled (int * int))} fs (x_mval x_colind x_rowptr : loc) : 
-  @htriple (labeled (int * int)) fs
-    (fun d => csrij x_mval x_colind x_rowptr (eld d).1 (eld d).2)
-    (\[forall d, indom fs d -> 0 <= (eld d).1 < Nrow /\ ~ In (eld d).2 (colind_seg (eld d).1)] \*
-      (\*_(d <- fs) harray_int mval x_mval d) \* 
-      (\*_(d <- fs) harray_int colind x_colind d) \* 
-       \*_(d <- fs) harray_int rowptr x_rowptr d)
-    (fun hr => 
-     \[hr = fun=> 0] \* 
-      (\*_(d <- fs) harray_int mval x_mval d) \*
-      (\*_(d <- fs) harray_int colind x_colind d) \*  
-       \*_(d <- fs) harray_int rowptr x_rowptr d).
-Proof.
-  apply/htriple_val_eq/htriple_conseq;
-  [|eauto|move=> ?]; rewrite -hstar_fset_pure -?hbig_fset_hstar; first last.
-  { move=> ?; apply: applys_eq_init; reflexivity. }
-  apply/htriple_union_pointwise=> [> -> //|[?][??]?]. 
-  rewrite -wp_equiv wp_single. 
-  xapp (@csrij_spec_out_unary (labeled (int * int)))=> //= ??->.
-  xsimpl*.
-Qed.
-
-Definition csrsum := 
+Definition sum := 
   <{
   fun mval colind rowptr =>
   let s = ref 0 in
   for i <- [0, Nrow] {
-    let "lb" = read_array rowptr i in
-    let "ii" = i + 1 in
-    let "rb" = read_array rowptr "ii" in
-    let x = sv.sum colind mval "lb" "rb" in 
-    s += x
+    let lb = read_array rowptr i in
+    let i' = i + 1 in
+    let rb = read_array rowptr i' in
+    let x = sv.sum colind mval lb rb in 
+      s += x
   };
   ! s
 }>.
@@ -170,12 +109,11 @@ Lemma wp_prod_single {A B : Type} s fs Q ht (l : labType):
 Proof.
 Admitted.
 
-
-
 Lemma in_interval_list {A : Type} (l : list A) lb rb x: 
    In x (list_interval lb rb l) -> In x l.
 Proof.
 Admitted.
+
 Arguments in_interval_list {_ _ _ _ _}.
 
 Local Notation Dom := (int * int)%type.
@@ -183,7 +121,27 @@ Local Notation D := (labeled (int * int)).
 Definition eld := @LibWP.eld (int * int)%type.
 Coercion eld : D >-> Dom.
 
-Lemma csrsum_spec `{Inhab D} (x_mval x_colind x_rowptr : loc) : 
+
+Lemma hstar_fset_prod1fs {A B D : Type} (l : A) (fs : fset B) : 
+  hbig_fset hstar (`{l} \x fs) = 
+  fun Q : _ -> hhprop D => \*_(d <- fs) (Q (l, d)).
+Proof.
+  apply/fun_ext_1=> Q.
+  elim/fset_ind: fs. 
+  { by rewrite prodfs0 ?hbig_fset_empty. }
+  move=> fs x IH ?; rewrite prodfsS hbig_fset_union //.
+  { by rewrite hbig_fset_update // IH prod11 hstar_fset_label_single. }
+  apply/disjoint_of_not_indom_both=> -[]??; rewrite ?indom_prod /= ?indom_single_eq.
+  by case=> ?<-[_].
+Qed.
+
+Global Instance Inhab_lab_int : Inhab (labeled int).
+split. by exists (Lab (0,0) 0). Qed.
+
+Hint Rewrite @hstar_fset_prod1fs : hstar_fset.
+Hint Rewrite @indom_label_eq @indom_union_eq @indom_prod @indom_interval @indom_single_eq : indomE.
+
+Lemma sum_spec `{Inhab D} (x_mval x_colind x_rowptr : loc) : 
   {{ arr(x_mval, mval)⟨1, (0,0)⟩ \*
      arr(x_colind, colind)⟨1, (0,0)⟩ \*
      arr(x_rowptr, rowptr)⟨1, (0,0)⟩ \*
@@ -191,16 +149,14 @@ Lemma csrsum_spec `{Inhab D} (x_mval x_colind x_rowptr : loc) :
      (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_colind, colind)⟨2, i⟩) \*
      (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_rowptr, rowptr)⟨2, i⟩) }}
   [{
-    [1| ld in `{(0,0)}   => csrsum x_mval x_colind x_rowptr];
-    {2| ld in `[0, Nrow] \x `[0, Ncol] => csrij x_mval x_colind x_rowptr ld.1 ld.2}
+    [1| ld in `{(0,0)}   => sum x_mval x_colind x_rowptr];
+    {2| ld in `[0, Nrow] \x `[0, Ncol] => get x_mval x_colind x_rowptr ld.1 ld.2}
   }]
   {{ hv, \[hv[`1]((0,0)) = Σ_(i <- `[0, Nrow] \x `[0, Ncol]) hv[`2](i)] \* \Top}}. (* this \Top can be made concrete, if needed *)
 Proof with (try seclocal_fold; seclocal_solver).
   xin (2,0) : do 3 (xwp; xapp).
   xin (1,0) : xwp; xapp=> s...
-  assert (`[0, Nrow] \x `[0, Ncol] = Union `[0, Nrow] (fun i => `{i} \x `[0, Ncol])) as E
-    by now rewrite prod_cascade.
-  rewrite E.
+  rewrite prod_cascade.
   set (R i := 
     arr(x_mval, mval)⟨2, i⟩ \*
     arr(x_colind, colind)⟨2, i⟩ \* 
@@ -215,55 +171,41 @@ Proof with (try seclocal_fold; seclocal_solver).
     xin (1,0) : do 3 (xwp; xapp)...
     xframe2 (arr(x_rowptr, rowptr)⟨1, (0, 0)⟩).
     xsubst (snd : _ -> int).
-    rewrite fsubst_single /=. rewrite -> prod_fsubst_snd with (a:=l0)...
-    rewrite (@hstar_fset_eq_restr _ _ _ (fun d => arr(x_mval, mval)⟨2, d⟩ \\*
-      arr(x_colind, colind)⟨2, d⟩ \\*
-      arr(x_rowptr, rowptr)⟨2, d⟩) (`{l0} \x `[0, Ncol]) snd).
-    2:{ hnf. intros (?, ?) (?, ?) HH1 HH2. rewrite ?indom_prod ?indom_single_eq /= in HH1, HH2 |- * =>?. eqsolve. }
-    rewrite -> prod_fsubst_snd with (a:=l0)...
     xnapp sv.sum_spec...
     { move=> ?/in_interval_list... }
     move=> ?; rewrite -wp_equiv. xsimpl=>->.
-    (* TODO weird. xapp (@incr.spec _ H) does not work here; try something else first *)
-    assert (Inhab (labeled int)) as H_ by (constructor; now exists (Lab (0,0) 0)).
-    apply wp_equiv. eapply htriple_conseq_frame.
-    1: eapply incr.spec. xsimpl*. xsimpl*.
-    (* weird *)
-    unfold prod. rewrite <- SumCascade, -> Sum1, <- SumCascade.
-    { erewrite SumEq with (fs:=`[0, Ncol]). 1: xsimpl*.
-      intros c Hin. simpl. now rewrite Sum1. } 
-    { intros i0 j0 Hneq _ _. apply disjoint_of_not_indom_both.
-      intros (r, c). rewrite !indom_single_eq /=. congruence. }
-    { intros i0 j0 Hneq Ha Hb. rewrite !indom_single_eq in Ha, Hb. congruence. } }
-  { intros Hneq Hi Hj. 
-    apply disjoint_of_not_indom_both.
-    intros (r, c). rewrite !indom_prod !indom_interval !indom_single_eq /=. math. }
-  { now rewrite !indom_prod !indom_interval !indom_single_eq /= in someindom. }
-  { xapp. xsimpl*. rewrite SumCascade; try reflexivity.
-    (* repeating the proof above? *)
-    intros i0 j0 Hneq. rewrite ! indom_interval=> ? ?.
-    apply disjoint_of_not_indom_both.
-    intros (r, c). rewrite !indom_prod !indom_interval !indom_single_eq /=. math. }
+    xapp @incr.spec.
+    unfold prod; rewrite -SumCascade ?Sum1 -?SumCascade; try by disjointE.
+    erewrite SumEq with (fs:=`[0, Ncol]). 1: xsimpl*.
+    move=>* /=; by rewrite Sum1. }
+  { xapp. xsimpl*. rewrite SumCascade //; disjointE. }
 Qed.
 
 Context (dvec : list int).
 Context (dvec_len : length dvec = Ncol :> int).
+(*  
+  TODO: 
+    - define harray_fun : (int -> int) -> loc -> int -> D -> hhprop D (Q)
+    - alloc0 that allocates a zero harray_fun (??)
+    - adjust xfor_lemma_gen2_array to harray_fun (V)
+    - prove CSR (Q)
+*)
 
-Definition csrspmv := 
+(* Definition spmv := 
   <{
   fun mval colind rowptr dvec =>
-  let s = ref 0 in
+  let s = alloc0 Nrow in
   for i <- [0, Nrow] {
-    let "lb" = read_array rowptr i in
-    let "ii" = i + 1 in
-    let "rb" = read_array rowptr "ii" in
-    let x = sv.dotprod colind mval dvec "lb" "rb" in 
-    s += x
+    let lb = read_array rowptr i in
+    let i' = i + 1 in
+    let rb = read_array rowptr i' in
+    let x = sv.dotprod colind mval dvec lb rb in 
+      s[i] := x
   };
   ! s
 }>.
 
-Lemma csrspmv_spec `{Inhab D} (x_mval x_colind x_rowptr x_dvec : loc) : 
+Lemma spmv_spec `{Inhab D} (x_mval x_colind x_rowptr x_dvec : loc) : 
   {{ arr(x_mval, mval)⟨1, (0,0)⟩ \*
      arr(x_colind, colind)⟨1, (0,0)⟩ \*
      arr(x_rowptr, rowptr)⟨1, (0,0)⟩ \*
@@ -274,10 +216,12 @@ Lemma csrspmv_spec `{Inhab D} (x_mval x_colind x_rowptr x_dvec : loc) :
      (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_dvec, dvec)⟨2, i⟩) }}
   [{
     [1| ld in `{(0,0)}                 => csrspmv x_mval x_colind x_rowptr x_dvec];
-    {2| ld in `[0, Nrow] \x `[0, Ncol] => csrij x_mval x_colind x_rowptr ld.1 ld.2}
+    {2| ld in `[0, Nrow] \x `[0, Ncol] => get x_mval x_colind x_rowptr ld.1 ld.2}
   }]
   (* is this a good way to describe matrix-vector multiplication? *)
-  {{ hv, \[hv[`1]((0,0)) = Σ_(i <- `[0, Nrow] \x `[0, Ncol]) (hv[`2](i) * dvec[i.2])] \* \Top}}. (* this \Top can be made concrete, if needed *)
+  {{ hv, 
+    harray_fun (fun i => Σ_(j <- `[0, Ncol]) hv`[2]((i, j)) * vec[j]) (hv[`1]((0,0)))
+     \* \Top}}. (* this \Top can be made concrete, if needed *)
 Proof with (try seclocal_fold; seclocal_solver).
   xin (2,0) : do 3 (xwp; xapp).
   xin (1,0) : xwp; xapp=> s...
@@ -329,7 +273,7 @@ Proof with (try seclocal_fold; seclocal_solver).
     intros i0 j0 Hneq. rewrite ! indom_interval=> ? ?.
     apply disjoint_of_not_indom_both.
     intros (r, c). rewrite !indom_prod !indom_interval !indom_single_eq /=. math. }
-Qed.
+Qed. *)
 
 End csr.
 

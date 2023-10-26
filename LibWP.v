@@ -5101,7 +5101,7 @@ Tactic Notation "xapp" constr(E) :=
   rewrite ?label_single; (* we need to deal with a situations when the
    unary lemma is formulated for fs := single d tt
    but the goal's is ⟨_, single d tt⟩ *)
-  xapp_nosubst E; xapp_try_subst;
+  xapp_nosubst E; first try typeclasses eauto; xapp_try_subst;
   rewrite -?label_single.
 
 Tactic Notation "xapp" :=

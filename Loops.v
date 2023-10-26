@@ -60,9 +60,37 @@ Proof.
   case=><-; autos*.
 Qed.
 
+(* Lemma fset_Uinon1 {A : Type} (fs : fset A): 
+  fs = \U_(i <- fs) `{i}.
+Proof.
+  elim/fset_ind: fs. 
+  { by rewrite Union0. }
+  move=> ?? {2}-> ?; rewrite Union_upd //.
+  demo.
+  (* move=> > ?; rewrite indom_update_eq *)
+Qed. *)
+
+
+Lemma disjoint_prod {A B : Type} (fs1 fs2 : fset A) (fr1 fr2 : fset B): 
+  disjoint (fs1 \x fr1) (fs2 \x fr2) = (disjoint fs1 fs2 \/ disjoint fr1 fr2).
+Proof.
+  extens; splits.
+  { move/disjoint_inv_not_indom_both=> Dj.
+    case: (prop_inv (disjoint fs1 fs2)); autos*.
+    move=> NDj; right; apply/disjoint_of_not_indom_both=> x ??.
+    have: ~ (forall p : A, indom (fs1) p -> indom (fs2) p -> False).
+    { by move=> ?; apply/NDj/disjoint_of_not_indom_both. }
+    rewrite not_forall_eq=> -[]y IN.
+    apply/(Dj (y,x)); rewrite indom_prod=> /=; splits=>//.
+    all: apply:not_not_inv=> ?; apply/IN; autos*. }
+  case=> /disjoint_inv_not_indom_both=> Dj.
+  all: apply/disjoint_of_not_indom_both=> -[]??; rewrite ?indom_prod/=; autos*.
+Qed.
+
+
 
 Hint Rewrite @disjoint_single disjoint_interval disjoint_single_interval 
-  disjoint_interval_single @disjoint_eq_label @disjoint_label : disjointE.
+  disjoint_interval_single @disjoint_eq_label @disjoint_label @disjoint_prod : disjointE.
 
 
 (* Definition is_bool (v : val) := 
@@ -1889,26 +1917,34 @@ Qed.
 End WithLoops.
 
 Global Hint Rewrite @disjoint_single disjoint_interval disjoint_single_interval 
-  disjoint_interval_single @disjoint_eq_label @disjoint_label : disjointE.
+  disjoint_interval_single @disjoint_eq_label @disjoint_label @disjoint_prod : disjointE.
 
-Tactic Notation "xfor_sum" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(s) :=
+Hint Rewrite @indom_label_eq @indom_union_eq @indom_prod @indom_interval @indom_single_eq : indomE.
+
+Ltac indomE := autorewrite with indomE.
+
+Ltac disjointE := 
+  let Neq := fresh in
+  let i   := fresh "i" in
+  let j   := fresh "j" in 
+  intros i j; 
+  indomE;
+  autorewrite with disjointE; try lia; try eqsolve.
+
+  Tactic Notation "xfor_sum" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(s) :=
   eapply (@xfor_big_op_lemma _ _ Inv R R' op s); 
   [ let L := fresh in 
     intros ?? L;
     xnsimpl
-  | let Neq := fresh in
-    let i   := fresh "i" in
-    let j   := fresh "j" in 
-    intros i j; 
-    autorewrite with disjointE; try math
+  | disjointE
   | let hvE := fresh "hvE" in
-    let someindom := fresh "someindom" in
-    intros ???? hvE; rewrite ?/op;
-    match goal with 
-    | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ? someindom; extens; intros 
-    | _ => idtac
-    end; try setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
-      (first [ apply someindom | idtac ])]
+  let someindom := fresh "someindom" in
+  intros ???? hvE; rewrite ?/op; indomE;
+  match goal with 
+  | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
+  | _ => idtac
+  end; try setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
+    (first [ apply someindom | idtac ])]
   |
   |
   |
@@ -1956,18 +1992,6 @@ Tactic Notation "xframe2" uconstr(QH) :=
     | simpl; rewrite -> ?hstar0E
     ]; clear Q HEQ
   ).
-
-Ltac xlocal := 
-  repeat (intros; 
-  match goal with 
-  | |- hlocal (_ \* _) _ => apply hlocal_hstar
-  | |- hlocal \[] _    => apply hlocal_hempty
-  | |- hlocal (hexists _) _ => apply hlocal_hexists
-  | |- hlocal (hsingle _ _ _) (single _ _) => apply hlocal_hsingle_single
-  | |- hlocal (hsingle _ _ _) (label (Lab _ (single _ _))) => 
-    rewrite label_single; apply hlocal_hsingle_single
-  | |- hlocal (hpure _) _ => apply hlocal_hpure
-  end).
 
 Ltac xwhile1 Z N b Inv := 
   let N := constr:(N) in
