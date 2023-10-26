@@ -177,3 +177,23 @@ Tactic Notation "xnapp" constr(E) :=
          let HE := fresh "HE" in 
         remember hpure as hp eqn:HE;
        xapp_simpl=> ?; rewrite HE; exact: himpl_refl]|]; eauto; simpl.
+
+Lemma wp_prod_single {A B : Type} s fs Q ht (l : labType):
+  @wp (labeled (A * B)) (label (Lab l (`{s} \x fs))) ht Q = 
+  @wp (labeled (A * B)) (label (Lab l (`{s} \x fs))) (fun ld => ht(Lab l (s, (eld ld).2))) Q.
+Proof. apply/wp_ht_eq; case=> ?[>]; indomE=> /= -[<-][<-]//. Qed.
+
+Lemma hstar_fset_prod1fs {A B D : Type} (l : A) (fs : fset B) : 
+  hbig_fset hstar (`{l} \x fs) = 
+  fun Q : _ -> hhprop D => \*_(d <- fs) (Q (l, d)).
+Proof.
+  apply/fun_ext_1=> Q.
+  elim/fset_ind: fs. 
+  { by rewrite prodfs0 ?hbig_fset_empty. }
+  move=> fs x IH ?; rewrite prodfsS hbig_fset_union //.
+  { by rewrite hbig_fset_update // IH prod11 hstar_fset_label_single. }
+  apply/disjoint_of_not_indom_both=> -[]??; rewrite ?indom_prod /= ?indom_single_eq.
+  by case=> ?<-[_].
+Qed.
+
+Hint Rewrite @hstar_fset_prod1fs : hstar_fset.

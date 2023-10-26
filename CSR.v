@@ -103,11 +103,6 @@ Tactic Notation "seclocal_fold" :=
     -/(For_aux _ _) 
     -/(For _ _ _) //=.
 
-Lemma wp_prod_single {A B : Type} s fs Q ht (l : labType):
-  @wp (labeled (A * B)) (label (Lab l (`{s} \x fs))) ht Q = 
-  @wp (labeled (A * B)) (label (Lab l (`{s} \x fs))) (fun ld => ht(Lab l (s, (eld ld).2))) Q.
-Proof.
-Admitted.
 
 Lemma in_interval_list {A : Type} (l : list A) lb rb x: 
    In x (list_interval lb rb l) -> In x l.
@@ -120,26 +115,6 @@ Local Notation Dom := (int * int)%type.
 Local Notation D := (labeled (int * int)).
 Definition eld := @LibWP.eld (int * int)%type.
 Coercion eld : D >-> Dom.
-
-
-Lemma hstar_fset_prod1fs {A B D : Type} (l : A) (fs : fset B) : 
-  hbig_fset hstar (`{l} \x fs) = 
-  fun Q : _ -> hhprop D => \*_(d <- fs) (Q (l, d)).
-Proof.
-  apply/fun_ext_1=> Q.
-  elim/fset_ind: fs. 
-  { by rewrite prodfs0 ?hbig_fset_empty. }
-  move=> fs x IH ?; rewrite prodfsS hbig_fset_union //.
-  { by rewrite hbig_fset_update // IH prod11 hstar_fset_label_single. }
-  apply/disjoint_of_not_indom_both=> -[]??; rewrite ?indom_prod /= ?indom_single_eq.
-  by case=> ?<-[_].
-Qed.
-
-Global Instance Inhab_lab_int : Inhab (labeled int).
-split. by exists (Lab (0,0) 0). Qed.
-
-Hint Rewrite @hstar_fset_prod1fs : hstar_fset.
-Hint Rewrite @indom_label_eq @indom_union_eq @indom_prod @indom_interval @indom_single_eq : indomE.
 
 Lemma sum_spec `{Inhab D} (x_mval x_colind x_rowptr : loc) : 
   {{ arr(x_mval, mval)⟨1, (0,0)⟩ \*

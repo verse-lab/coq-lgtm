@@ -1712,7 +1712,7 @@ Lemma ntriple_frame X H Q fs_ht H' Q' :
   {{ H }} fs_ht {{ v, Q v }}.
 Proof.
 move=>-> QE ? QI ?.
-apply/ntriple_conseq_frame2; eauto=> hv; rewrite*
+apply/ntriple_conseq_frame2; eauto=> hv; rewrite* QE.
 Qed.
 
 Lemma hstar0E {DD : Type} : @hstar DD \[] = id.
