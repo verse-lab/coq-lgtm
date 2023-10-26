@@ -697,6 +697,12 @@ Proof using.
   apply htriple_set.
 Qed.
 
+Lemma lhtriple_array_set_pre : forall fs (p : loc) (i : int) (v v' : val),
+  @htriple D fs (fun d => val_array_set p i v)
+    (\[0 <= i] \* \*_(d <- fs) (p + 1 + abs i)%nat ~(d)~> v')
+    (fun=> \*_(d <- fs) (p + 1 + abs i)%nat ~(d)~> v).
+Proof. intros. apply wp_equiv. xsimpl. intros. xapp @htriple_array_set_pre; try xsimpl. auto. Qed.
+
 Corollary htriple_array_set : forall fs (p : D -> loc) (i : D -> int) (v : D -> val) (L : D -> list val),
   (forall d, indom fs d -> 0 <= (i d) < length (L d)) ->
   htriple fs (fun d => val_array_set (p d) (i d) (v d))

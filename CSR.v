@@ -1,7 +1,7 @@
 Set Implicit Arguments.
 From SLF Require Import LabType Fun LibSepFmap Sum.
 From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer.
-From SLF Require Import Struct Loops Unary_IndexWithBounds SV2 Subst NTriple.
+From SLF Require Import Struct Loops Unary_IndexWithBounds SV2 Subst NTriple Loops2 Struct2.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
@@ -183,15 +183,8 @@ Qed.
 
 Context (dvec : list int).
 Context (dvec_len : length dvec = Ncol :> int).
-(*  
-  TODO: 
-    - define harray_fun : (int -> int) -> loc -> int -> D -> hhprop D (Q)
-    - alloc0 that allocates a zero harray_fun (??)
-    - adjust xfor_lemma_gen2_array to harray_fun (V)
-    - prove CSR (Q)
-*)
 
-(* Definition spmv := 
+Definition spmv := 
   <{
   fun mval colind rowptr dvec =>
   let s = alloc0 Nrow in
@@ -200,9 +193,9 @@ Context (dvec_len : length dvec = Ncol :> int).
     let i' = i + 1 in
     let rb = read_array rowptr i' in
     let x = sv.dotprod colind mval dvec lb rb in 
-      s[i] := x
-  };
-  ! s
+    val_array_set s i x
+  }; 
+  s
 }>.
 
 Lemma spmv_spec `{Inhab D} (x_mval x_colind x_rowptr x_dvec : loc) : 
@@ -215,65 +208,67 @@ Lemma spmv_spec `{Inhab D} (x_mval x_colind x_rowptr x_dvec : loc) :
      (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_rowptr, rowptr)⟨2, i⟩) \*
      (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_dvec, dvec)⟨2, i⟩) }}
   [{
-    [1| ld in `{(0,0)}                 => csrspmv x_mval x_colind x_rowptr x_dvec];
+    [1| ld in `{(0,0)}                 => spmv x_mval x_colind x_rowptr x_dvec];
     {2| ld in `[0, Nrow] \x `[0, Ncol] => get x_mval x_colind x_rowptr ld.1 ld.2}
   }]
-  (* is this a good way to describe matrix-vector multiplication? *)
-  {{ hv, 
-    harray_fun (fun i => Σ_(j <- `[0, Ncol]) hv`[2]((i, j)) * vec[j]) (hv[`1]((0,0)))
-     \* \Top}}. (* this \Top can be made concrete, if needed *)
+  {{ hv, (\exists p, 
+    \[hv[`1]((0,0)) = val_loc p] \*
+    harray_fun (fun i => Σ_(j <- `[0, Ncol]) hv[`2]((i, j)) * dvec[j]) p Nrow (Lab (1,0) (0,0)))
+      \* \Top }}. (* this \Top can be made concrete, if needed *)
 Proof with (try seclocal_fold; seclocal_solver).
   xin (2,0) : do 3 (xwp; xapp).
-  xin (1,0) : xwp; xapp=> s...
-  assert (`[0, Nrow] \x `[0, Ncol] = Union `[0, Nrow] (fun i => `{i} \x `[0, Ncol])) as E
-    by now rewrite prod_cascade.
-  rewrite E.
-  set (R i := 
+  xfocus (1,0). (* TODO xin does not work here. why? *)
+  xwp; xapp (@htriple_alloc0_unary); try assumption.
+  intros ss s Es... rewrite Es. clear ss Es. rewrite <- label_single.
+  xunfocus.
+  rewrite prod_cascade.
+  set (R (i : Dom) := 
     arr(x_mval, mval)⟨2, i⟩ \*
     arr(x_colind, colind)⟨2, i⟩ \* 
     arr(x_rowptr, rowptr)⟨2, i⟩ \*
-    arr(x_dvec, dvec)⟨2, i⟩ : hhprop D).
+    arr(x_dvec, dvec)⟨2, i⟩).
   set (Inv (i : int) := 
     arr(x_mval, mval)⟨1, (0,0)⟩ \* 
     arr(x_colind, colind)⟨1, (0,0)⟩ \* 
     arr(x_rowptr, rowptr)⟨1, (0,0)⟩ \*
     arr(x_dvec, dvec)⟨1, (0,0)⟩).
-  xfor_sum Inv R R (fun hv i => Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * dvec[j.2])) s.
-  { rewrite /Inv /R.
+  eapply (@xfor_lemma_gen_array_fun _ _ Inv R R _ _ _ s (fun=> 0)
+    (fun hv i => Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * dvec[j.2]))); auto; try math.
+  2-4: rewrite /Inv /R /=; xlocal. 
+  (* for now, just copy/paste things from "xfor_sum" *)
+  2: let hvE := fresh "hvE" in
+     let someindom := fresh "someindom" in
+     intros ???? hvE; indomE;
+     match goal with 
+     | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
+     | _ => idtac
+     end; try setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
+       (first [ apply someindom | idtac ])].
+  { intros l0 Hl0. simpl subst. rewrite /Inv /R.
     xin (2,0) : rewrite wp_prod_single /=.
     xin (1,0) : do 3 (xwp; xapp)...
     xframe2 (arr(x_rowptr, rowptr)⟨1, (0, 0)⟩).
     xsubst (snd : _ -> int).
-    rewrite fsubst_single /=. rewrite -> prod_fsubst_snd with (a:=l0)...
-    rewrite (@hstar_fset_eq_restr _ _ _ (fun d => arr(x_mval, mval)⟨2, d⟩ \\*
-      arr(x_colind, colind)⟨2, d⟩ \\*
-      arr(x_rowptr, rowptr)⟨2, d⟩ \\* arr(x_dvec, dvec)⟨2, d⟩) (`{l0} \x `[0, Ncol]) snd).
-    2:{ hnf. intros (?, ?) (?, ?) HH1 HH2. rewrite ?indom_prod ?indom_single_eq /= in HH1, HH2 |- * =>?. eqsolve. }
-    rewrite -> prod_fsubst_snd with (a:=l0)...
     xnapp sv.dotprod_spec...
     { move=> ?/in_interval_list... }
     move=> ?; rewrite -wp_equiv. xsimpl=>->.
-    (* TODO weird. xapp (@incr.spec _ H) does not work here; try something else first *)
-    assert (Inhab (labeled int)) as H_ by (constructor; now exists (Lab (0,0) 0)).
-    apply wp_equiv. eapply htriple_conseq_frame.
-    1: eapply incr.spec. xsimpl*. xsimpl*.
-    (* weird *)
-    unfold prod. rewrite <- SumCascade, -> Sum1, <- SumCascade.
-    { erewrite SumEq with (fs:=`[0, Ncol]). 1: xsimpl*.
-      intros c Hin. simpl. now rewrite Sum1. } 
-    { intros i0 j0 Hneq _ _. apply disjoint_of_not_indom_both.
-      intros (r, c). rewrite !indom_single_eq /=. congruence. }
-    { intros i0 j0 Hneq Ha Hb. rewrite !indom_single_eq in Ha, Hb. congruence. } }
-  { intros Hneq Hi Hj. 
-    apply disjoint_of_not_indom_both.
-    intros (r, c). rewrite !indom_prod !indom_interval !indom_single_eq /=. math. }
-  { now rewrite !indom_prod !indom_interval !indom_single_eq /= in someindom. }
-  { xapp. xsimpl*. rewrite SumCascade; try reflexivity.
-    (* repeating the proof above? *)
-    intros i0 j0 Hneq. rewrite ! indom_interval=> ? ?.
-    apply disjoint_of_not_indom_both.
-    intros (r, c). rewrite !indom_prod !indom_interval !indom_single_eq /=. math. }
-Qed. *)
+    xapp @lhtriple_array_set_pre; try math.
+    unfold prod; rewrite -SumCascade ?Sum1 -?SumCascade; try by disjointE.
+    erewrite SumEq with (fs:=`[0, Ncol]). 1: xsimpl*.
+    move=>* /=; by rewrite Sum1. }
+  { rewrite ?/Inv ?/R; rewrite -> ?hbig_fset_hstar; xsimpl. }
+  { intros ?; rewrite ?/Inv ?/R' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl. 
+    xwp; xval. xsimpl*. 
+    (* just by funext *)
+    replace (fun i0 : int => Σ_(j0 <- `{i0} \x `[0, Ncol]) hv[`2](j0) * dvec[j0.2]) with
+      (fun i0 : int => Σ_(j0 <- `[0, Ncol]) hv[`2]((i0, j0)) * dvec[j0]).
+    1: xsimpl*.
+    extens=> ?.
+    (* TODO why repeating above here? *)
+    unfold prod; rewrite -SumCascade ?Sum1 -?SumCascade; try by disjointE.
+    erewrite SumEq with (fs:=`[0, Ncol]). 1: reflexivity.
+    move=>* /=; by rewrite Sum1. }
+Qed.
 
 End csr.
 

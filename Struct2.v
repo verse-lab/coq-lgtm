@@ -127,11 +127,12 @@ Definition alloc0 : val :=
       memset0 'p; 
       'p }>.
 
-Lemma htriple_alloc0_unary {D : Type} `{Inhab D} (n : int) (d : D) (Hn : 0 <= n) :
+Lemma htriple_alloc0_unary {D : Type} `{Inhab D} (n : int) (d : D) :
   htriple (single d tt) (fun=> alloc0 n)
-    \[]
+    \[0 <= n]
     (fun hv => \exists p, \[hv d = val_loc p] \* harray_fun (fun=> 0) p n d).
 Proof with fold'.
+  apply wp_equiv. xsimpl. intros HH.
   assert (n = abs n :> int) as E by math.
   rewrite -> E.
   xwp; xapp (@htriple_alloc_nat)=>x p EE... rewrite !EE.
