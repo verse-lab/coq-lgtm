@@ -34,6 +34,7 @@ Proof.
 Admitted.
 
 Lemma length_lof f N : 
+  0 <= N ->
   length (lof f N) = N :> int.
 Proof.
 Admitted.
@@ -46,6 +47,7 @@ Lemma xfor_lemma_gen_array_fun `{ID : Inhab D}
   (N: Z) (C1 : Dom -> trm) (C : trm)
   (i j : Z)
   Pre Post: 
+  (0 <= N) ->
   (forall (l : int), 
     (0 <= l < N) ->
     {{ Inv l \* 
@@ -90,7 +92,7 @@ Lemma xfor_lemma_gen_array_fun `{ID : Inhab D}
     }]
   {{ v, Post v }}. 
 Proof.
-  move=> IH *.
+  move=>? IH *.
   eapply xfor_lemma_gen_array with (R := R) (R' := R') (arr1 := lof f N) (arr2 := fun hv => lof (g hv) N); try eassumption.
   { by move=> ?; rewrite length_lof. }
   { exact/length_lof. }
