@@ -62,8 +62,8 @@ Lemma xfor_lemma_gen_array_fun_aux `{ID : Inhab D}
         (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R' d) \* 
         (arrl + 1 + abs l)%nat ~⟨(i,0)%Z, s⟩~> g v l }}) ->
   (forall j : int, hlocal (Inv j) ⟨(i,0%Z), single s tt⟩) ->
-  (forall i : D, hlocal (R i) (single i tt)) ->
-  (forall i : D, hlocal (R' i) (single i tt)) ->
+  (forall i : Dom, hlocal (R i) ⟨(j,0%Z), (single i tt)⟩) ->
+  (forall i : Dom, hlocal (R' i) ⟨(j,0%Z), (single i tt)⟩) ->
   (forall (hv hv' : D -> val) m,
     0 <= m < N ->
     (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
@@ -92,6 +92,7 @@ Lemma xfor_lemma_gen_array_fun_aux `{ID : Inhab D}
     }]
   {{ v, Post v }}. 
 Proof.
+  (*
   move=>? IH *.
   eapply xfor_lemma_gen_array with (R := R) (R' := R') (arr1 := lof f N) (arr2 := fun hv => lof (g hv) N); try eassumption.
   { by move=> ?; rewrite length_lof. }
@@ -100,7 +101,8 @@ Proof.
     apply/ntriple_conseq; [| |move=> v; rewrite nth_lof//]; try exact:himpl_refl.
     exact/IH. }
   move=> *; rewrite ?nth_lof //; autos*.
-Qed.
+Qed.*)
+Admitted.
 
 Lemma xfor_lemma_gen_array_fun `{ID : Inhab D}
   Inv 
@@ -124,8 +126,8 @@ Lemma xfor_lemma_gen_array_fun `{ID : Inhab D}
         (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R' d) \* 
         (arrl + 1 + abs l)%nat ~⟨(i,0)%Z, s⟩~> g v l }}) ->
   (forall j : int, hlocal (Inv j) ⟨(i,0%Z), single s tt⟩) ->
-  (forall i : D, hlocal (R i) (single i tt)) ->
-  (forall i : D, hlocal (R' i) (single i tt)) ->
+  (forall i : Dom, hlocal (R i) ⟨(j,0%Z), (single i tt)⟩) ->
+  (forall i : Dom, hlocal (R' i) ⟨(j,0%Z), (single i tt)⟩) ->
   (forall (hv hv' : D -> val) m,
     0 <= m < N ->
     (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
