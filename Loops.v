@@ -1711,7 +1711,9 @@ Lemma ntriple_frame X H Q fs_ht H' Q' :
   H' \[] ==> N-WP fs_ht {{ v, Q' \[] v }} ->
   {{ H }} fs_ht {{ v, Q v }}.
 Proof.
-Admitted.
+move=>-> QE ? QI ?.
+apply/ntriple_conseq_frame2; eauto=> hv; rewrite*
+Qed.
 
 Lemma hstar0E {DD : Type} : @hstar DD \[] = id.
 Proof. apply/fun_ext_1; xsimpl. Qed.
