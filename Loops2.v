@@ -87,7 +87,7 @@ Lemma xfor_lemma_gen_array_fun `{ID : Inhab D}
     Post hv) -> 
   {{ Pre }}
     [{
-      {i| _  in single s tt => For 0 N (trm_fun vr C)};
+      {i| _  in single s tt => trm_seq (For Z N (trm_fun vr C)) C'};
       {j| ld in Union `[0,N] fsi1 => C1 ld}
     }]
   {{ v, Post v }}. 
