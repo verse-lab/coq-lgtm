@@ -45,12 +45,13 @@ Context (N Nrow Ncol Nidx : int).
 Hypothesis Nrow_nonneg : 0 <= Nrow.
 Hypothesis len_mval : length mval = N :> int.
 Hypothesis len_midx : length midx = Nidx :> int.
-Hypotheses Nidx_leq_Ncol : Nidx <= Nrow.
+Hypotheses Nidx_leq_Nrow : Nidx <= Nrow.
 Hypothesis len_colind : length colind = N :> int.
 Hypothesis len_rowptr : length rowptr = Nidx + 1 :> int.
 Hypothesis colind_leq : forall x, In x colind -> 0 <= x < Ncol.
-Hypothesis rowptr_first : List.nth (abs 0) rowptr 0 = 0.
-Hypothesis rowptr_last : List.nth (abs Nrow) rowptr 0 = length midx.
+Hypothesis midx_leq : forall x, In x midx -> 0 <= x < Nrow.
+Hypothesis rowptr_first : rowptr[0] = 0.
+Hypothesis rowptr_last : rowptr[Nidx] = N.
 Hypothesis rowptr_weakly_sorted : forall (i j : int), 
   (0 <= i <= Nidx) -> 
   (0 <= j <= Nidx) -> 
@@ -61,6 +62,7 @@ Definition colind_seg (row : int) :=
   list_interval (abs rowptr[row]) (abs rowptr[row+1]) colind.
 
 Hypothesis nodup_eachcol : forall x : int, 0 <= x < Nidx -> NoDup (colind_seg x).
+Hypotheses nodup_midx : NoDup midx.
 
 (* FIXME: rowptr may not be strictly increasing? so the existing definition of increasing list 
     may not work, currently use these instead *)
@@ -77,11 +79,11 @@ Tactic Notation "seclocal_solver" :=
       split; [ rewrite <- rowptr_first at 1 | ]; apply rowptr_weakly_sorted; math
     | idtac ]; auto.
 
-Definition indexf := index_bounded.func Nidx.
+Definition indexf := index.func Nidx.
 
-Definition get := 
+Definition get (mval : loc) := 
 <{
-  fun mval midx colind rowptr i => fun j =>
+  fun midx colind rowptr i j =>
       let i = indexf i midx in
       if i < Nidx then
         let lb = read_array rowptr i in
@@ -93,17 +95,17 @@ Definition get :=
 
 Definition sum := 
   <{
-  fun mval midx colind rowptr =>
-  let s = ref 0 in
-  for i <- [0, Nidx] {
-    let i = read_array midx i in
-    let lb = read_array rowptr i in
-    let i' = i + 1 in
-    let rb = read_array rowptr i' in
-    let x = sv.sum colind mval lb rb in 
-      s += x
-  };
-  ! s
+    fun mval midx colind rowptr =>
+    let s = ref 0 in
+    for i <- [0, Nidx] {
+      let i = read_array midx i in
+      let lb = read_array rowptr i in
+      let i' = i + 1 in
+      let rb = read_array rowptr i' in
+      let x = sv.sum colind mval lb rb in 
+        s += x
+    };
+    ! s
 }>.
 
 Tactic Notation "seclocal_fold" := 
@@ -139,6 +141,12 @@ Lemma sum_spec `{Inhab D} (x_mval x_colind x_rowptr x_midx : loc) :
   }]
   {{ hv, \[hv[`1]((0,0)) = Σ_(i <- `[0, Nrow] \x `[0, Ncol]) hv[`2](i)] \* \Top}}.
 Proof with (try seclocal_fold; seclocal_solver).
+  xfocus (2,0) (indom (midx \x `[0, Ncol])).
+  xwp. xlet. xapp @index.Spec.
+  xin (2,0): xwp; xlet. xapp @index.spec.
+  (*
+     - [0, Nrow] \x [0, Ncol] --> idx \x [0, Ncol]
+  *)
 demo.
   (* xin (2,0) : do 3 (xwp; xapp).
   xin (1,0) : xwp; xapp=> s...
