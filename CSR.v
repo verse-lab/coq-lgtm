@@ -196,36 +196,7 @@ Definition spmv :=
   s
 }>.
 
-(* TODO possibly, reuse some parts from xfor_sum? *)
-Tactic Notation "xfor_specialized" constr(Inv) constr(R) uconstr(R') uconstr(op) uconstr(f) constr(s) :=
-  eapply (@xfor_lemma_gen_array_fun _ _ Inv R R' _ _ _ s f op);
-  [ try math
-  | intros ??; rewrite ?/Inv ?/R ?/R';
-    xnsimpl
-  | 
-  |
-  |
-  | let hvE := fresh "hvE" in
-    let someindom := fresh "someindom" in
-    intros ???? hvE; rewrite ?/op; indomE;
-    match goal with 
-    | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
-    | _ => idtac
-    end; try setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
-      (first [ apply someindom | idtac ])]
-  |
-  |
-  |
-  |
-  |
-  |
-  |
-  |
-  | rewrite ?/Inv ?/R; rewrite -> ?hbig_fset_hstar; xsimpl
-  | intros ?; rewrite ?/Inv ?/R' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl
-  ]=> //; try (solve [ rewrite ?/Inv ?/R ?/R' /=; xlocal ]); autos*.
-
-  Lemma htriple_alloc0_unary {D : Type} `{Inhab D} (n : int) (d : D) :
+Lemma htriple_alloc0_unary {D : Type} `{Inhab D} (n : int) (d : D) :
   htriple (single d tt) (fun=> alloc0 n)
     \[0 <= n]
     (fun hv => \exists p, \[hv = fun=> val_loc p] \* harray_fun (fun=> 0) p n d).
@@ -275,7 +246,7 @@ Proof with (try seclocal_fold; seclocal_solver).
     arr(x_colind, colind)⟨1, (0,0)⟩ \* 
     arr(x_rowptr, rowptr)⟨1, (0,0)⟩ \*
     arr(x_dvec, dvec)⟨1, (0,0)⟩).
-  xfor_specialized Inv R R (fun hv i => Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * dvec[j.2])) (fun=> 0) s.
+  xfor_specialized_normal Inv R R (fun hv i => Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * dvec[j.2])) (fun=> 0) s.
   { xin (2,0) : rewrite wp_prod_single /=.
     xin (1,0) : do 3 (xwp; xapp)...
     xframe2 (arr(x_rowptr, rowptr)⟨1, (0, 0)⟩).

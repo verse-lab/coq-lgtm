@@ -164,14 +164,6 @@ Lemma in_interval_list {A : Type} (l : list A) lb rb x:
 Proof.
 Admitted.
 
-(* TODO make a local copy here since the one in SV2 depends on many section hypotheses
-    (adding "Proof using." may work, though); but in the future, 
-    we eventually need to move this to some place which holds all lemmas about fset_of_list *)
-Fact intr_list (a b : int) (l: list int) : 
-  (forall x, In x l -> a <= x < b) ->
-  `[a, b] ∩ l = l.
-Admitted.
-
 Arguments in_interval_list {_ _ _ _ _}.
 
 Local Notation Dom := (int * int)%type.
@@ -251,6 +243,21 @@ Proof with (try seclocal_fold; seclocal_solver).
     move: Hd. erewrite -> NoDup_nth in nodup_midx. apply nodup_midx; math. }
 Qed.
 
+(* challenge: unordered array set *)
+Definition spmv := 
+  <{
+  fun mval midx colind rowptr dvec =>
+  let s = alloc0 Nrow in
+  for i <- [0, Nidx] {
+    let lb = read_array rowptr i in
+    let i' = i + 1 in
+    let rb = read_array rowptr i' in
+    let x = sv.dotprod colind mval dvec lb rb in 
+    let i = read_array midx i in
+    val_array_set s i x
+  }; 
+  s
+}>.
 
 End unordered_csr.
 

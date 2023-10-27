@@ -1990,17 +1990,21 @@ Qed.
 Lemma xfor_lemma_gen_array `{ID : Inhab D}
   Inv 
   (R R' : Dom -> hhprop)
-  s fsi1 vr (arrl : loc) (arr1 : list int) arr2
-  (N: Z) (C1 : Dom -> trm) (C : trm)
+  s fsi1 vr (arrl : loc) (arr1 : list int) arr2 (idx : list int)
+  (N M : Z) (C1 : Dom -> trm) (C : trm)
   (i j : Z)
   Pre Post: 
-  (forall v, length (arr2 v) = N :> int) ->
-  length arr1 = N :> int ->
+  (forall v, length (arr2 v) = M :> int) ->
+  length arr1 = M :> int ->
+  length idx = N :> int ->
+  NoDup idx ->
+  (forall (l : int), 
+    (0 <= l < N) -> 0 <= idx[l] < M) ->
   (forall (l : int), 
     (0 <= l < N) ->
     {{ Inv l \* 
         (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R d) \* 
-        (arrl + 1 + abs l)%nat ~⟨(i,0)%Z, s⟩~> arr1[l] }}
+        (arrl + 1 + abs (idx[l]))%nat ~⟨(i,0)%Z, s⟩~> arr1[(idx[l])] }}
       [{
         {i| _  in single s tt  => subst vr l C};
         {j| ld in fsi1 l       => C1 ld}
@@ -2008,16 +2012,18 @@ Lemma xfor_lemma_gen_array `{ID : Inhab D}
     {{ v, 
         Inv (l + 1) \* 
         (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R' d) \* 
-        (arrl + 1 + abs l)%nat ~⟨(i,0)%Z, s⟩~> (arr2 v)[l] }}) ->
+        (arrl + 1 + abs (idx[l]))%nat ~⟨(i,0)%Z, s⟩~> (arr2 v)[(idx[l])] }}) ->
   (forall j : int, hlocal (Inv j) ⟨(i,0%Z), single s tt⟩) ->
   (forall i : Dom, hlocal (R i) ⟨(j,0%Z), single i tt⟩) ->
   (forall i : Dom, hlocal (R' i) ⟨(j,0%Z), single i tt⟩) ->
   (forall (hv hv' : D -> val) m,
     0 <= m < N ->
     (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
-    (arr2 hv)[m] = (arr2 hv')[m]) ->
+    (arr2 hv)[(idx[m])] = (arr2 hv')[(idx[m])]) ->
+  (forall (hv : D -> val) m,
+    0 <= m < M -> ~ In m idx -> arr1[m] = (arr2 hv)[m]) ->
   (i <> j)%Z ->
-  0 <= N ->
+  0 <= N <= M ->
   (forall t : val, subst "for" t C = C) -> 
   (forall t : val, subst "cnt" t C = C) ->
   (forall t : val, subst "cond" t C = C) ->
@@ -2040,9 +2046,12 @@ Lemma xfor_lemma_gen_array `{ID : Inhab D}
     }]
   {{ v, Post v }}. 
 Proof.
-  move=> AL1 AL2 IH ??? hvE ???????? PreH PostH.
+  move=> AL1 AL2 ALidx Hnodup Hidx IH ??? hvE Hre ???????? PreH PostH.
   have AL : forall hv, Datatypes.length arr1 = Datatypes.length (arr2 hv).
   { move=> v; move: (AL1 v). lia. }
+  have Hidx' : forall x : int, In x idx -> 0 <= x < M.
+  { intros. eapply In_nth with (d:=0) in H. destruct H as (n & Hn & <-). 
+    replace n with (abs n)%nat by math. apply Hidx. math. }
   apply/ntriple_conseq; last exact/PostH; eauto.
   rewrite /harray_int/harray/hheader ?length_map ?length_List_length.
   apply/(ntriple_conseq); [|exact: himpl_trans|move=> ?]; first last.
@@ -2050,16 +2059,34 @@ Proof.
     move=> ?; apply:applys_eq_init; reflexivity. }
   xframe2 (arrl ~⟨(i, 0%Z), s⟩~> val_header (length arr1)).
   xframe2 \[(arrl, (⟨(i, 0), s⟩)%arr) <> null (⟨(i, 0), s⟩)%arr].
-  rewrite ?hcellsE.  
+  rewrite ?hcellsE AL2.
+  rewrite -> hbig_fset_part with (fs:=`[0, M]) (P:=idx).
+  set (Inv' := hbig_fset _ (_ ∖ _) _).
+  rewrite intr_list // (fset_of_list_nodup 0) // ALidx hbig_fset_Union.
+  2:{ introv Ha Hb Hc. apply disjoint_single_single. intros Hd. rewrite ! indom_interval in Hb, Hc. apply Ha. enough (abs i0 = abs j0) by lia.
+    move: Hd. erewrite -> NoDup_nth in Hnodup. apply Hnodup; math. }
+  erewrite hbig_fset_eq with (fs:=`[0, N]). 2: intros; rewrite hbig_fset_label_single'; reflexivity.
   eapply xfor_lemma_gen_bigstr with 
-  (H := fun l => (arrl + 1 + abs l)%nat ~⟨(i, 0%Z), s⟩~> arr1[l])
-  (H' := fun l v => (arrl + 1 + abs l)%nat ~⟨(i, 0%Z), s⟩~> (arr2 v)[l])
+  (Inv := fun i => Inv i \* Inv')
+  (H := fun l => (arrl + 1 + abs (idx[l]))%nat ~⟨(i, 0%Z), s⟩~> arr1[(idx[l])])
+  (H' := fun l v => (arrl + 1 + abs (idx[l]))%nat ~⟨(i, 0%Z), s⟩~> (arr2 v)[(idx[l])])
   (R := R) (R' := R'); try eassumption; autos*=> //.
+  { move=> l Hl. xframe2 Inv'. rewrite wp_equiv. eapply htriple_conseq. 1: apply wp_equiv, IH=> //. all: xsimpl*. 
+    (* xnsimpl will make over simplification *) }
+  { rewrite /Inv'. xlocal. autos*. apply hlocal_hstar_fset. xlocal. }
   { xlocal. }
   { xlocal. }
   { move=> ???? hvE1; erewrite hvE; eauto. }
-  { rewrite AL2. xsimpl. }
-  move=> ?. rewrite hcellsE AL1. xsimpl*.
+  { xsimpl*. }
+  (* TODO the following part is very bad; need improvement *)
+  move=> ?. rewrite /Inv' hcellsE AL1 !fun_eta_1. xsimpl*. 
+  rewrite -> hbig_fset_part with (fs:=`[0, M]) (P:=idx).
+  rewrite intr_list // (fset_of_list_nodup 0) // ALidx hbig_fset_Union.
+  2:{ introv Ha Hb Hc. apply disjoint_single_single. intros Hd. rewrite ! indom_interval in Hb, Hc. apply Ha. enough (abs i0 = abs j0) by lia.
+    move: Hd. erewrite -> NoDup_nth in Hnodup. apply Hnodup; math. }
+  erewrite hbig_fset_eq with (fs:=`[0, N]). 1: xsimpl*. 2: move=> * /=; by rewrite hbig_fset_label_single'.
+  erewrite hbig_fset_eq. 1: xsimpl*. 
+  move=> d Hnotin /=. rewrite filter_indom indom_interval /Sum.mem /= in Hnotin. do 2 f_equal. now apply Hre.
 Qed.
 
 End WithLoops.
