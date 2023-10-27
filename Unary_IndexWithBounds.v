@@ -35,6 +35,9 @@ Proof Build_Inhab (ex_intro (fun=> True) (Lab (0, 0) 0) I). *)
       k++
 *)
 
+Global Instance Inhab_lab_int : Inhab (labeled int).
+split. by exists (Lab (0,0) 0). Qed.
+
 
 Section pure_facts.
 

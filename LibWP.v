@@ -9012,26 +9012,60 @@ Proof.
 Qed.
 
 
-Lemma hhoare_ref_lab : forall H (f : D -> val) fs l,
+(* Lemma hhoare_ref_lab : forall H (f : D -> val) fs l,
   hhoare ⟨l, fs⟩ (fun d => val_ref (f d))
     H
     (fun hr => (\exists (p : D -> loc), \[hr = fun d => val_loc (p d)] \* \*_(d <- ⟨l, fs⟩) p (eld d) ~(d)~> f (eld d)) \* H).
 Proof using.
-Admitted.
+Admitted. *)
+
+Lemma hbig_fset_label_single' {DD A} (Q : DD -> LibSepReference.hhprop A) (d : DD) :
+  \*_(d0 <- single d tt) Q d0 = Q d.
+Proof using.
+  unfold hbig_fset.
+  rewrite -> update_empty. rewrite -> (snd (@fset_foldE _ _ _ _)); auto.
+  2: intros; xsimpl.
+  rewrite -> (fst (@fset_foldE _ _ _ _)); auto.
+  (* by rewrite -> hstar_hempty_r. *)
+Qed.
+
+Lemma hstar_fset_Lab (Q : labeled D -> hhprop) l fs : 
+  \*_(d <- ⟨l, fs⟩) Q d = 
+  \*_(d <- fs) (Q (Lab l d)).
+Proof.
+  elim/fset_ind: fs. 
+  { by rewrite label_empty ?hbig_fset_empty. }
+  move=> fs x IHfs ?.
+  rewrite label_update ?hbig_fset_update // ?indom_label_eq ?IHfs//.
+  by case.
+Qed.
+Hint Rewrite @hbig_fset_label_single' @hstar_fset_Lab : hstar_fset.
+
 
 Lemma lhtriple_ref : forall (f : val)  l x, 
   htriple ⟨l, (single x tt)⟩ (fun d => val_ref f)
     (\[] : hhprop)
     (fun hr => (\exists (p : loc), \[hr = fun=> val_loc p] \*  p ~(Lab l x)~> f)).
 Proof using.
-Admitted.
+move=> ? l d. rewrite -wp_equiv; apply:himpl_trans; last apply/wp_hv.
+simpl; rewrite wp_equiv; apply/htriple_conseq; first apply/htriple_ref. 
+{ xsimpl*. }
+move=> ?. xpull=> p->. 
+xsimpl ((fun=> val_loc (p (Lab l d))) : HD -> _) (p (Lab l d)).
+extens=> -[]??; rewrite /uni; case: classicT=> //.
+by rewrite indom_label_eq indom_single_eq=> -[]<-<-.
+Qed.
 
-Lemma htriple_ref_lab : forall (f : val) fs l,
+(* Lemma htriple_ref_lab : forall (f : val) fs l,
   htriple ⟨l, fs⟩ (fun d => val_ref f)
     \[]
     (fun hr => (\exists (p : D -> loc), \[hr = fun d => val_loc (p d)] \* \*_(d <- ⟨l, fs⟩) p (eld d) ~(d)~> f)).
 Proof using.
-Admitted.
+  move=> f fs l.
+  apply/htriple_conseq; first apply (@htriple_ref HD ⟨l, fs⟩ (fun=> f)); try by xsimpl*.
+  move=> hv. xpull=> v ->.
+   xsimpl ((fun (d : D) => v (Lab l d)) : D -> loc).
+Admitted. *)
 
 Lemma lhtriple_get : forall v (p : loc) fs,
   @htriple D fs (fun d => val_get p)
@@ -9044,11 +9078,12 @@ Qed.
 Lemma lhtriple_set : forall v (w : _ -> val) (p : loc) fs,
   @htriple D fs (fun d => val_set p (w d))
   (\*_(d <- fs) p ~(d)~> v)
-  (fun hr => \[hr = w] \* (\*_(d <- fs) p ~(d)~> w d)).
+  (fun hr => \[hr = fun=> val_unit] \* (\*_(d <- fs) p ~(d)~> w d)).
 Proof using.
-Admitted.
+intros. unfold htriple. intros H'. applys @hhoare_conseq @hhoare_set; xsimpl*.
+Qed.
 
-Hint Resolve htriple_ref_lab lhtriple_ref lhtriple_get lhtriple_set : lhtriple.
+Hint Resolve (*htriple_ref_lab*) lhtriple_ref lhtriple_get lhtriple_set : lhtriple.
 
 Arguments xfocus_lemma _ {_}.
 Arguments xunfocus_lemma _ {_}.
@@ -9107,28 +9142,6 @@ Proof.
   apply/fun_ext_1=> ?.
   rewrite update_empty hbig_fset_update // hbig_fset_empty. xsimpl*. 
 Qed.
-
-Lemma hbig_fset_label_single' {DD } (Q : DD -> LibSepReference.hhprop DD) (d : DD) :
-  \*_(d0 <- single d tt) Q d0 = Q d.
-Proof using.
-  unfold hbig_fset.
-  rewrite -> update_empty. rewrite -> (snd (@fset_foldE _ _ _ _)); auto.
-  2: intros; xsimpl.
-  rewrite -> (fst (@fset_foldE _ _ _ _)); auto.
-  (* by rewrite -> hstar_hempty_r. *)
-Qed.
-
-Lemma hstar_fset_Lab (Q : labeled D -> hhprop) l fs : 
-  \*_(d <- ⟨l, fs⟩) Q d = 
-  \*_(d <- fs) (Q (Lab l d)).
-Proof.
-  elim/fset_ind: fs. 
-  { by rewrite label_empty ?hbig_fset_empty. }
-  move=> fs x IHfs ?.
-  rewrite label_update ?hbig_fset_update // ?indom_label_eq ?IHfs//.
-  by case.
-Qed.
-
 Fact hstar_interval_offset (L R offset : int) (f : int -> hhprop) :
   \*_(d <- interval L R) f (d + offset) = 
   \*_(d <- interval (L + offset) (R + offset)) f d.
@@ -9161,7 +9174,7 @@ Arguments disjoint_subset {_} _.
 
 Arguments htrm_of : simpl never.
 
-Hint Resolve htriple_ref_lab lhtriple_ref lhtriple_get lhtriple_set : lhtriple.
+Hint Resolve (*htriple_ref_lab*) lhtriple_ref lhtriple_get lhtriple_set : lhtriple.
 
 Arguments xfocus_lemma _ {_}.
 Arguments xunfocus_lemma _ {_}.
