@@ -187,7 +187,11 @@ Proof.
   rewrite /intr !indom_prod !filter_indom !indom_prod /Sum.mem -fset_of_list_in /=. intuition.
 Qed.
 
-Lemma sum_spec `{Inhab D} (x_mval x_colind x_rowptr x_midx : loc) : 
+Hint Rewrite @filter_indom : indomE.
+Hint Rewrite <- @fset_of_list_in :  indomE.
+
+
+Lemma sum_spec `{Inhab D} `{Inhab (labeled int)} (x_mval x_colind x_rowptr x_midx : loc) : 
   {{ arr(x_mval, mval)⟨1, (0,0)⟩ \*
      arr(x_midx, midx)⟨1, (0,0)⟩ \*
      arr(x_colind, colind)⟨1, (0,0)⟩ \*
@@ -207,48 +211,47 @@ Proof with (try seclocal_fold; seclocal_solver).
   rewrite -!hbig_fset_hstar (hbig_fset_part (`[0, Nrow] \x `[0, Ncol]) (indom (midx \x `[0, Ncol]))). (* TODO: move to xfocus *)
   set (Habbr := hbig_fset _ (_ ∩ _) _).
   rewrite -> ! hbig_fset_hstar.
-  xapp get_spec_out=> //.
-  { intros (?, (?, ?)). rewrite indom_label_eq /intr filter_indom !indom_prod /= !indom_interval -fset_of_list_in. autos*. }
+  xapp get_spec_out=> [[?][>]|].
+  { rewrite /(_ ∖ _). do ? indomE=> //=; autos*. }
   repeat (set (HHQ := hbig_fset hstar (_ ∖ _) _); xframe HHQ; clear HHQ).
   subst Habbr.
-  have E : (`[0, Nrow] \x `[0, Ncol]) ∩ (indom (midx \x `[0, Ncol])) = (midx \x `[0, Ncol]).
+  have E : (`[0, Nrow] \x `[0, Ncol]) ∩ indom (midx \x `[0, Ncol]) = midx \x `[0, Ncol].
   { rewrite -prod_intr_list_on_1. f_equal. now apply intr_list. }
-  rewrite E.
-  rewrite -> fset_of_list_nodup with (l:=midx) (a:=0), -> len_midx, -> prod_Union_distr; try assumption.
+  rewrite E (fset_of_list_nodup 0 nodup_midx) len_midx prod_Union_distr.
   xin (1,0) : xwp; xapp=> s...
-  match goal with |- context [(_ \* ?a \* ?b \* ?c \* ?d \* (hbig_fset _ _ ?f))] => 
-    pose (Inv (i : int) := a \* b \* c \* d); pose (R := f) end.
+  match goal with 
+    |- context [(_ \* ?a \* ?b \* ?c \* ?d \* (hbig_fset _ _ ?f))] => 
+      pose (Inv (i : int) := a \* b \* c \* d); pose (R := f) 
+  end. (* smart!! *)
   xfor_sum Inv R R (fun hv i => Σ_(j <- `{midx[i]} \x `[0, Ncol]) hv[`2](j)) s.
   { rewrite /Inv /R.
     xin (2,0) : rewrite wp_prod_single /=.
     xin (1,0) : do 3 (xwp; xapp)...
     xframe2 (arr(x_rowptr, rowptr)⟨1, (0, 0)⟩). (* TODO xframe2 will not work if it is in the ntriple form? *)
     xsubst (snd : _ -> int).
-    xfocus (2,0).
-    rewrite -> ! hbig_fset_hstar.
+    xfocus (2,0); rewrite -> ! hbig_fset_hstar.
     xwp; xapp (@Unary.index.Spec `[0, Ncol] Nidx (2,0) midx x_midx (fun=> midx[l0]))=> //.
     rewrite Unary.index_nodup; try math; try assumption.
-    xwp; xapp. xwp; xif=> Hif; [ | math ].
+    xwp; xapp. xwp; xif=> ?; [ | math ].
     (* TODO raw xapp will fail here. guess the reason is that it cannot switch between different doms? *)
-    xwp; xapp (@lhtriple_array_read). xwp; xapp. xwp; xapp (@lhtriple_array_read).
-    xunfocus.
-    xin (1,0) : idtac. (* reformat *)
+    (* Yes, just add Inhab (labeled int) as a hypothesis  *)
+    do 3 (xwp; xapp).
+    xunfocus; xin (1,0) : idtac. (* reformat *)
     xnapp sv.sum_spec...
     { move=> ?/in_interval_list... }
     move=> ?; rewrite -wp_equiv. xsimpl=>->.
     xapp @incr.spec. rewrite csr.sum_prod1E. xsimpl. }
-  { intros Ha Hb Hc. left=> Hd. apply Ha. enough (abs i0 = abs j0) by math.
-    move: Hd. erewrite -> NoDup_nth in nodup_midx. apply nodup_midx; math. }
-  { math. }
+  { left=> /(NoDup_nth _ _).1 Eq; have: abs i0 <> abs j0 by lia. 
+    rewrite 1?Eq //; lia. }
   xwp; xapp. xsimpl*. 
   f_equal; under (@SumEq _ _ _ (`[0, Nrow] \x `[0, Ncol])).
   { move=>*; rewrite to_int_if; over. }
   rewrite Sum.SumIf Sum0s Z.add_0_r SumCascade.
-  1: rewrite -prod_Union_distr -len_midx; rewrite <- fset_of_list_nodup with (l:=midx) (a:=0), -> E=> //.
+  1: rewrite -prod_Union_distr -len_midx -(fset_of_list_nodup 0) ?E //.
   disjointE.
   (* repeating proof *)
-  { intros Ha Hb Hc. left=> Hd. apply Ha. enough (abs i0 = abs j0) by math.
-    move: Hd. erewrite -> NoDup_nth in nodup_midx. apply nodup_midx; math. }
+  left=> /(NoDup_nth _ _).1 Eq; have: abs i0 <> abs j0 by lia. 
+  rewrite 1?Eq //; lia.
 Qed.
 
 
