@@ -350,16 +350,6 @@ Proof with (try seclocal_fold; seclocal_solver).
     xframe2 (arr(x_midx, midx)⟨1, (0, 0)⟩).
     xsubst (snd : _ -> int).
     xfocus (2,0); rewrite -> ! hbig_fset_hstar.
-    (*
-    (* too many conjuncts *)
-    match goal with 
-      |- context [(?a \* ?b \* ?c \* ?d \* ?HHH ==> _)] => 
-        set (Inv__ := b \* a \* c \* d); (* need this since Dom has changed; also match the post-condition form *)
-        eapply himpl_trans with (H2:=Inv__ \\* HHH)
-    end.
-    1: rewrite /Inv__; xsimpl*.
-    rewrite -> ! hbig_fset_hstar.
-    *)
     xwp; xapp (@Unary.index.Spec `[0, Ncol] Nidx (2,0) midx x_midx (fun=> midx[l0]))=> //.
     rewrite Unary.index_nodup; try math; try assumption.
     xwp; xapp. xwp; xif=> ?; [ | math ].
