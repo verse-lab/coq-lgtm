@@ -258,6 +258,14 @@ Proof with fold'.
   exact/indexG0.
 Qed.
 
+Lemma Spec (fs : fset int) N l (i : int) (xind : list int) (x_ind : loc) : 
+  htriple ⟨l, fs⟩
+    (fun i => func N (el i) x_ind)
+    ((\*_(d <- fs) harray_int xind x_ind (Lab l d)) \* \[length xind = N :> int] \* \[List.NoDup xind])
+    (fun hv => (\*_(d <- fs) harray_int xind x_ind (Lab l d)) \* \[hv = fun i => index (el i) xind]).
+Proof with fold'.
+Admitted.
+
 End index.
 End index.
 

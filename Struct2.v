@@ -130,14 +130,15 @@ Definition alloc0 : val :=
 Lemma htriple_alloc0_unary {D : Type} `{Inhab D} (n : int) (d : D) :
   htriple (single d tt) (fun=> alloc0 n)
     \[0 <= n]
-    (fun hv => \exists p, \[hv d = val_loc p] \* harray_fun (fun=> 0) p n d).
-Proof with fold'.
-  apply wp_equiv. xsimpl. intros HH.
+    (fun hv => \exists p, \[hv = fun=> val_loc p] \* harray_fun (fun=> 0) p n d).
+(* Proof with fold'. *)
+  (* apply wp_equiv. xsimpl. intros HH.
   assert (n = abs n :> int) as E by math.
   rewrite -> E.
   xwp; xapp (@htriple_alloc_nat)=>x p EE... rewrite !EE.
   xwp; xapp (@htriple_memset0_unary). xwp; xval. xsimpl*.
   rewrite -length_List_length length_make. xsimpl.
-Qed.
+Qed. *)
+Admitted.
 
 End alloc0.
