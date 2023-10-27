@@ -2666,6 +2666,9 @@ Proof.
   }
 Qed.
 
+Fact Union_single {A : Type} (fs : fset A) : fs = Union fs (fun i => single i tt).
+Proof. apply fset_extens=> x. rewrite indom_Union. setoid_rewrite indom_single_eq. firstorder congruence. Qed.
+
 Lemma disjoint_Union {T A B} (fs : fset T) (fsi : T -> fmap A B) fs' :
   ((disjoint (Union fs fsi) fs' = forall i, indom fs i -> disjoint (fsi i) fs') * 
   (disjoint fs' (Union fs fsi) = forall i, indom fs i -> disjoint (fsi i) fs'))%type.
@@ -3030,6 +3033,15 @@ End cartesian_product.
 
 Notation "A \x B" := (prod A B) (at level 50, left associativity).
 
+Fact prod_Union_distr {A B C : Type} (fs1 : fset A) (fsi : A -> fset C) (fs2 : fset B) :
+  (\U_(i <- fs1) fsi i) \x fs2 = \U_(i <- fs1) (fsi i \x fs2).
+Proof.
+  apply fset_extens=> cb. destruct cb as (c, b).
+  rewrite ! indom_Union. 
+  repeat setoid_rewrite indom_Union.
+  repeat setoid_rewrite indom_single_eq.
+  firstorder congruence.
+Qed.
 
 
 

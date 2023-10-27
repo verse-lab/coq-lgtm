@@ -1,7 +1,7 @@
 Set Implicit Arguments.
 From SLF Require Import LabType Fun LibSepFmap Sum.
-From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer Unary.
-From SLF Require Import Struct Loops Unary_IndexWithBounds SV2 Subst NTriple Loops2 Struct2.
+From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer Unary_IndexWithBounds.
+From SLF Require Import Struct Loops SV2 Subst NTriple Loops2 Struct2 CSR.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
@@ -79,26 +79,72 @@ Tactic Notation "seclocal_solver" :=
       split; [ rewrite <- rowptr_first at 1 | ]; apply rowptr_weakly_sorted; math
     | idtac ]; auto.
 
-Definition indexf := index.func Nidx.
+Definition indexf := Unary.index.func Nidx.
 
-Definition get (mval : loc) := 
+Definition get (x_mval : loc) := 
 <{
   fun midx colind rowptr i j =>
       let i = indexf i midx in
-      if i < Nidx then
+      let "i < Nidx" = i < Nidx in
+      if "i < Nidx" then
         let lb = read_array rowptr i in
         let i' = i + 1 in
         let rb = read_array rowptr i' in
-          sv.get j colind mval lb rb
+          sv.get j colind x_mval lb rb
       else 0
 }>.
+
+Lemma get_spec_out_unary {D : Type} `{Inhab D} (x_midx x_mval x_colind x_rowptr : loc) (i j : int) d :
+  @htriple D (single d tt) 
+    (fun=> get x_mval x_midx x_colind x_rowptr i j)
+    (\[~ In i midx] \*
+      harray_int mval x_mval d \* 
+      harray_int midx x_midx d \* 
+      harray_int colind x_colind d \* 
+      harray_int rowptr x_rowptr d)
+    (fun hr => 
+     \[hr = fun=> 0] \* 
+      harray_int mval x_mval d \* 
+      harray_int midx x_midx d \* 
+      harray_int colind x_colind d \* 
+      harray_int rowptr x_rowptr d).
+Proof with seclocal_solver.
+  rewrite -wp_equiv; xsimpl=> Hnotin.
+  apply (Unary.memNindex 0) in Hnotin.
+  xwp; xapp @Unary.index.spec... xwp; xapp.
+  xwp; xif=> HQ; try math.
+  xwp; xval. xsimpl*.
+Qed.
+
+Lemma get_spec_out `{Inhab (labeled (int * int))} fs (x_midx x_mval x_colind x_rowptr : loc) : 
+  @htriple (labeled (int * int)) fs
+    (fun d => get x_mval x_midx x_colind x_rowptr (eld d).1 (eld d).2)
+    (\[forall d, indom fs d -> ~ In (eld d).1 midx] \*
+      (\*_(d <- fs) harray_int mval x_mval d) \* 
+      (\*_(d <- fs) harray_int midx x_midx d) \* 
+      (\*_(d <- fs) harray_int colind x_colind d) \* 
+       \*_(d <- fs) harray_int rowptr x_rowptr d)
+    (fun hr => 
+     \[hr = fun=> 0] \* 
+      (\*_(d <- fs) harray_int mval x_mval d) \*
+      (\*_(d <- fs) harray_int midx x_midx d) \* 
+      (\*_(d <- fs) harray_int colind x_colind d) \*  
+       \*_(d <- fs) harray_int rowptr x_rowptr d).
+Proof.
+  apply/htriple_val_eq/htriple_conseq;
+  [|eauto|move=> ?]; rewrite -hstar_fset_pure -?hbig_fset_hstar; first last.
+  { move=> ?; apply: applys_eq_init; reflexivity. }
+  apply/htriple_union_pointwise=> [> -> //|[?][??]?]. 
+  rewrite -wp_equiv wp_single /=. 
+  xapp (@get_spec_out_unary)=> //= ??->.
+  xsimpl*.
+Qed.
 
 Definition sum := 
   <{
     fun mval midx colind rowptr =>
     let s = ref 0 in
     for i <- [0, Nidx] {
-      let i = read_array midx i in
       let lb = read_array rowptr i in
       let i' = i + 1 in
       let rb = read_array rowptr i' in
@@ -113,10 +159,17 @@ Tactic Notation "seclocal_fold" :=
     -/(For_aux _ _) 
     -/(For _ _ _) //=.
 
-
 Lemma in_interval_list {A : Type} (l : list A) lb rb x: 
    In x (list_interval lb rb l) -> In x l.
 Proof.
+Admitted.
+
+(* TODO make a local copy here since the one in SV2 depends on many section hypotheses
+    (adding "Proof using." may work, though); but in the future, 
+    we eventually need to move this to some place which holds all lemmas about fset_of_list *)
+Fact intr_list (a b : int) (l: list int) : 
+  (forall x, In x l -> a <= x < b) ->
+  `[a, b] ∩ l = l.
 Admitted.
 
 Arguments in_interval_list {_ _ _ _ _}.
@@ -125,6 +178,14 @@ Local Notation Dom := (int * int)%type.
 Local Notation D := (labeled (int * int)).
 Definition eld := @LibWP.eld (int * int)%type.
 Coercion eld : D >-> Dom.
+
+(* although this can be put in LibSepFmap.v, it depends on Sum.mem so put it here now *)
+Fact prod_intr_list_on_1 {A B : Type} (fs1 : fset A) (fs2 : fset B) (la : list A) :
+  (fs1 ∩ la) \x fs2 = (fs1 \x fs2) ∩ (indom (la \x fs2)).
+Proof.
+  apply fset_extens. intros (a, b).
+  rewrite /intr !indom_prod !filter_indom !indom_prod /Sum.mem -fset_of_list_in /=. intuition.
+Qed.
 
 Lemma sum_spec `{Inhab D} (x_mval x_colind x_rowptr x_midx : loc) : 
   {{ arr(x_mval, mval)⟨1, (0,0)⟩ \*
@@ -142,37 +203,52 @@ Lemma sum_spec `{Inhab D} (x_mval x_colind x_rowptr x_midx : loc) :
   {{ hv, \[hv[`1]((0,0)) = Σ_(i <- `[0, Nrow] \x `[0, Ncol]) hv[`2](i)] \* \Top}}.
 Proof with (try seclocal_fold; seclocal_solver).
   xfocus (2,0) (indom (midx \x `[0, Ncol])).
-  xwp. xlet. xapp @index.Spec.
-  xin (2,0): xwp; xlet. xapp @index.spec.
-  (*
-     - [0, Nrow] \x [0, Ncol] --> idx \x [0, Ncol]
-  *)
-demo.
-  (* xin (2,0) : do 3 (xwp; xapp).
+  (* now xapp can no longer handle so many conjunctions; some tweak is needed *)
+  rewrite -!hbig_fset_hstar (hbig_fset_part (`[0, Nrow] \x `[0, Ncol]) (indom (midx \x `[0, Ncol]))). (* TODO: move to xfocus *)
+  set (Habbr := hbig_fset _ (_ ∩ _) _).
+  rewrite -> ! hbig_fset_hstar.
+  xapp get_spec_out=> //.
+  { intros (?, (?, ?)). rewrite indom_label_eq /intr filter_indom !indom_prod /= !indom_interval -fset_of_list_in. autos*. }
+  repeat (set (HHQ := hbig_fset hstar (_ ∖ _) _); xframe HHQ; clear HHQ).
+  subst Habbr.
+  have E : (`[0, Nrow] \x `[0, Ncol]) ∩ (indom (midx \x `[0, Ncol])) = (midx \x `[0, Ncol]).
+  { rewrite -prod_intr_list_on_1. f_equal. now apply intr_list. }
+  rewrite E.
+  rewrite -> fset_of_list_nodup with (l:=midx) (a:=0), -> len_midx, -> prod_Union_distr; try assumption.
   xin (1,0) : xwp; xapp=> s...
-  rewrite prod_cascade.
-  set (R i := 
-    arr(x_mval, mval)⟨2, i⟩ \*
-    arr(x_colind, colind)⟨2, i⟩ \* 
-    arr(x_rowptr, rowptr)⟨2, i⟩ : hhprop D).
-  set (Inv (i : int) := 
-    arr(x_mval, mval)⟨1, (0,0)⟩ \* 
-    arr(x_colind, colind)⟨1, (0,0)⟩ \* 
-    arr(x_rowptr, rowptr)⟨1, (0,0)⟩).
-  xfor_sum Inv R R (fun hv i => Σ_(j <- `{i} \x `[0, Ncol]) hv[`2](j)) s.
+  match goal with |- context [(_ \* ?a \* ?b \* ?c \* ?d \* (hbig_fset _ _ ?f))] => 
+    pose (Inv (i : int) := a \* b \* c \* d); pose (R := f) end.
+  xfor_sum Inv R R (fun hv i => Σ_(j <- `{midx[i]} \x `[0, Ncol]) hv[`2](j)) s.
   { rewrite /Inv /R.
     xin (2,0) : rewrite wp_prod_single /=.
     xin (1,0) : do 3 (xwp; xapp)...
-    xframe2 (arr(x_rowptr, rowptr)⟨1, (0, 0)⟩).
+    xframe2 (arr(x_rowptr, rowptr)⟨1, (0, 0)⟩). (* TODO xframe2 will not work if it is in the ntriple form? *)
     xsubst (snd : _ -> int).
+    xfocus (2,0).
+    rewrite -> ! hbig_fset_hstar.
+    xwp; xapp (@Unary.index.Spec `[0, Ncol] Nidx (2,0) midx x_midx (fun=> midx[l0]))=> //.
+    rewrite Unary.index_nodup; try math; try assumption.
+    xwp; xapp. xwp; xif=> Hif; [ | math ].
+    (* TODO raw xapp will fail here. guess the reason is that it cannot switch between different doms? *)
+    xwp; xapp (@lhtriple_array_read). xwp; xapp. xwp; xapp (@lhtriple_array_read).
+    xunfocus.
+    xin (1,0) : idtac. (* reformat *)
     xnapp sv.sum_spec...
     { move=> ?/in_interval_list... }
     move=> ?; rewrite -wp_equiv. xsimpl=>->.
-    xapp @incr.spec.
-    unfold prod; rewrite -SumCascade ?Sum1 -?SumCascade; try by disjointE.
-    erewrite SumEq with (fs:=`[0, Ncol]). 1: xsimpl*.
-    move=>* /=; by rewrite Sum1. }
-  { xapp. xsimpl*. rewrite SumCascade //; disjointE. } *)
+    xapp @incr.spec. rewrite csr.sum_prod1E. xsimpl. }
+  { intros Ha Hb Hc. left=> Hd. apply Ha. enough (abs i0 = abs j0) by math.
+    move: Hd. erewrite -> NoDup_nth in nodup_midx. apply nodup_midx; math. }
+  { math. }
+  xwp; xapp. xsimpl*. 
+  f_equal; under (@SumEq _ _ _ (`[0, Nrow] \x `[0, Ncol])).
+  { move=>*; rewrite to_int_if; over. }
+  rewrite Sum.SumIf Sum0s Z.add_0_r SumCascade.
+  1: rewrite -prod_Union_distr -len_midx; rewrite <- fset_of_list_nodup with (l:=midx) (a:=0), -> E=> //.
+  disjointE.
+  (* repeating proof *)
+  { intros Ha Hb Hc. left=> Hd. apply Ha. enough (abs i0 = abs j0) by math.
+    move: Hd. erewrite -> NoDup_nth in nodup_midx. apply nodup_midx; math. }
 Qed.
 
 

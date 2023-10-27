@@ -45,6 +45,8 @@ Proof Build_Inhab (ex_intro (fun=> True) (Lab (0, 0) 0) I). *)
       k++
 *)
 
+Global Instance Inhab_lab_int : Inhab (labeled int).
+split. by exists (Lab (0,0) 0). Qed.
 
 Section pure_facts.
 
@@ -176,8 +178,6 @@ Notation "k '+=' x" :=
 Module index.
 Section index.
 
-Context {D : Type}.
-
 Definition whilecond N (i x_ind k : trm) :=
   <{
     let 'k = !k in 
@@ -216,11 +216,7 @@ Import List.
 Ltac bool_rew := 
   rewrite ?false_eq_isTrue_eq ?true_eq_isTrue_eq -?(isTrue_and, isTrue_not, isTrue_or).
 
-Implicit Type d : D.
-
-Context `{Inhab D}.
-
-Lemma spec  d N (i : int) (xind : list int) (x_ind : loc) : 
+Lemma spec {D : Type} `{Inhab D} (d : D) N (i : int) (xind : list int) (x_ind : loc) : 
   htriple (single d tt) 
     (fun=> func N i x_ind)
     (harray_int xind x_ind d \* \[length xind = N :> int] \* \[List.NoDup xind])
@@ -258,13 +254,20 @@ Proof with fold'.
   exact/indexG0.
 Qed.
 
-Lemma Spec (fs : fset int) N l (i : int) (xind : list int) (x_ind : loc) : 
+Lemma Spec (fs : fset int) N l (xind : list int) (x_ind : loc) (f : int -> int) : 
   htriple ⟨l, fs⟩
-    (fun i => func N (el i) x_ind)
+    (fun i => func N (f (el i)) x_ind)
     ((\*_(d <- fs) harray_int xind x_ind (Lab l d)) \* \[length xind = N :> int] \* \[List.NoDup xind])
-    (fun hv => (\*_(d <- fs) harray_int xind x_ind (Lab l d)) \* \[hv = fun i => index (el i) xind]).
+    (fun hv => (\*_(d <- fs) harray_int xind x_ind (Lab l d)) \* \[hv = fun i => index (f (el i)) xind]).
 Proof with fold'.
-Admitted.
+  apply/htriple_conseq. 1: apply htriple_val_eq. 2-3: xsimpl*.
+  apply wp_equiv. xsimpl*. intros. apply wp_equiv.
+  apply/htriple_conseq. 3: hnf=> hv; rewrite -hstar_fset_pure. 2-3: rewrite -hstar_fset_Lab -?hbig_fset_hstar; xsimpl*. 
+  apply/htriple_union_pointwise=> [> -> //|].
+  intros. rewrite -wp_equiv wp_single /=. 
+  xapp (@spec)=> //.
+  xsimpl*.
+Qed.
 
 End index.
 End index.
