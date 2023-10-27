@@ -246,6 +246,9 @@ Proof with (try seclocal_fold; seclocal_solver).
   rewrite 1?Eq //; lia.
 Qed.
 
+Context (dvec : list int).
+Context (dvec_len : length dvec = Ncol :> int).
+
 (* challenge: unordered array set *)
 Definition spmv := 
   <{
@@ -255,12 +258,150 @@ Definition spmv :=
     let lb = read_array rowptr i in
     let i' = i + 1 in
     let rb = read_array rowptr i' in
-    let x = sv.dotprod colind mval dvec lb rb in 
     let i = read_array midx i in
+    let x = sv.dotprod colind mval dvec lb rb in 
     val_array_set s i x
   }; 
   s
 }>.
+
+Tactic Notation "xfor_specialized" constr(Inv) constr(R) uconstr(R') uconstr(op) uconstr(f) uconstr(idx) constr(s) :=
+  eapply (@xfor_lemma_gen_array_fun _ _ Inv R R' _ _ _ s f op idx);
+  [ try math
+  |
+  |
+  | intros ??; rewrite ?/Inv ?/R ?/R';
+    xnsimpl
+  | 
+  |
+  |
+  | let hvE := fresh "hvE" in
+    let someindom := fresh "someindom" in
+    intros ???? hvE; rewrite ?/op; indomE;
+    match goal with 
+    | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
+    | _ => idtac
+    end; try (setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
+      (first [ apply someindom | idtac ])])
+  |
+  |
+  | try math
+  |
+  |
+  |
+  |
+  |
+  |
+  | rewrite ?/Inv ?/R; rewrite -> ?hbig_fset_hstar; xsimpl
+  | intros ?; rewrite ?/Inv ?/R' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl
+  ]=> //; try (solve [ rewrite ?/Inv ?/R ?/R' /=; xlocal ]); autos*.
+
+Lemma spmv_spec `{Inhab D} `{H__ : Inhab (labeled int)} (x_mval x_midx x_colind x_rowptr x_dvec : loc) : 
+  {{ arr(x_mval, mval)⟨1, (0,0)⟩ \*
+     arr(x_midx, midx)⟨1, (0,0)⟩ \*
+     arr(x_colind, colind)⟨1, (0,0)⟩ \*
+     arr(x_rowptr, rowptr)⟨1, (0,0)⟩ \*
+     arr(x_dvec, dvec)⟨1, (0,0)⟩ \* 
+     (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_mval, mval)⟨2, i⟩) \*
+     (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_midx, midx)⟨2, i⟩) \*
+     (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_colind, colind)⟨2, i⟩) \*
+     (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_rowptr, rowptr)⟨2, i⟩) \*
+     (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_dvec, dvec)⟨2, i⟩) }}
+  [{
+    [1| ld in `{(0,0)}                 => spmv x_mval x_midx x_colind x_rowptr x_dvec];
+    {2| ld in `[0, Nrow] \x `[0, Ncol] => get x_mval x_midx x_colind x_rowptr ld.1 ld.2}
+  }]
+  {{ hv, (\exists p, 
+    \[hv[`1]((0,0)) = val_loc p] \*
+    harray_fun (fun i => Σ_(j <- `[0, Ncol]) hv[`2]((i, j)) * dvec[j]) p Nrow (Lab (1,0) (0,0)))
+      \* \Top }}.
+Proof with (try seclocal_fold; seclocal_solver).
+  xfocus (2,0) (indom (midx \x `[0, Ncol])).
+  (* now xapp can no longer handle so many conjunctions; some tweak is needed *)
+  rewrite -!hbig_fset_hstar (hbig_fset_part (`[0, Nrow] \x `[0, Ncol]) (indom (midx \x `[0, Ncol]))). (* TODO: move to xfocus *)
+  remember (hbig_fset _ (_ ∩ _) _) as Habbr eqn:Eabbr.
+  rewrite -> ! hbig_fset_hstar.
+  match goal with 
+    |- context [(?aa \* ?a \* ?b \* ?c \* ?d \* _ \* ?HHH ==> _)] => 
+      remember (aa \* a \* b \* c \* d) as Inv_ eqn:EInv_; set (Hbig := HHH)
+  end.
+  eapply himpl_trans with (H2:=Inv_ \\* Habbr \\* Hbig).
+  1: rewrite EInv_; xsimpl.
+  subst Hbig.
+  xapp get_spec_out=> [[?][>]|].
+  { rewrite /(_ ∖ _). do ? indomE=> //=; autos*. }
+  repeat (set (HHQ := hbig_fset hstar (_ ∖ _) _); xframe HHQ; clear HHQ).
+  have E : (`[0, Nrow] \x `[0, Ncol]) ∩ indom (midx \x `[0, Ncol]) = midx \x `[0, Ncol].
+  { rewrite -prod_intr_list_on_1. f_equal. now apply intr_list. }
+  rewrite E (fset_of_list_nodup 0 nodup_midx) len_midx prod_Union_distr in Eabbr |- *.
+  rewrite EInv_.
+  xin (1,0) : (xwp; xapp (@htriple_alloc0_unary)=> // s)...
+  match type of Eabbr with _ = hbig_fset _ _ ?RR => pose (R := RR) end.
+  (* TODO this "If" is weird *)
+  xfor_specialized (fun (_ : int) => Inv_) R R 
+    (fun hv (i : int) => (If (In i midx) then Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * dvec[j.2]) else 0)) (fun=> 0) midx s.
+  { intros. apply midx_leq, nth_In; math. }
+  { have Hin : In midx[l0] midx by apply nth_In; math.
+    case_if; try contradiction. 
+    xin (2,0) : rewrite wp_prod_single /=.
+    rewrite EInv_.
+    xin (1,0) : do 4 (xwp; xapp)...
+    xframe2 (arr(x_rowptr, rowptr)⟨1, (0, 0)⟩).
+    xframe2 (arr(x_midx, midx)⟨1, (0, 0)⟩).
+    xsubst (snd : _ -> int).
+    xfocus (2,0); rewrite -> ! hbig_fset_hstar.
+    (*
+    (* too many conjuncts *)
+    match goal with 
+      |- context [(?a \* ?b \* ?c \* ?d \* ?HHH ==> _)] => 
+        set (Inv__ := b \* a \* c \* d); (* need this since Dom has changed; also match the post-condition form *)
+        eapply himpl_trans with (H2:=Inv__ \\* HHH)
+    end.
+    1: rewrite /Inv__; xsimpl*.
+    rewrite -> ! hbig_fset_hstar.
+    *)
+    xwp; xapp (@Unary.index.Spec `[0, Ncol] Nidx (2,0) midx x_midx (fun=> midx[l0]))=> //.
+    rewrite Unary.index_nodup; try math; try assumption.
+    xwp; xapp. xwp; xif=> ?; [ | math ].
+    do 3 (xwp; xapp).
+    xunfocus; xin (1,0) : idtac. (* reformat *)
+    (* clean up; otherwise xnapp will complain *)
+    xframe2 (\*_(d0 <- `[0, Ncol]) arr(x_rowptr, rowptr)⟨2, d0⟩).
+    xframe2 (\*_(d0 <- `[0, Ncol]) arr(x_midx, midx)⟨2, d0⟩).
+    xnapp sv.dotprod_spec...
+    { move=> ?/in_interval_list... }
+    move=> ?; rewrite -wp_equiv. xsimpl=>->.
+    xapp @lhtriple_array_set_pre. 1: apply midx_leq in Hin; math. 
+    rewrite csr.sum_prod1E. xsimpl. }
+  { rewrite EInv_=> _. xlocal. }
+  { case_if. 2: reflexivity. 
+    (* for now, just manually prove *)
+    apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros.
+    try (setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
+      (first [ apply someindom | idtac ])]). }
+  { intros. now case_if. }
+  { math. }
+  { subst Inv_ Habbr. xsimpl*. rewrite -> ! hbig_fset_hstar. xsimpl. }
+  xwp; xval. xsimpl*.
+  match goal with
+    |- _ ==> harray_fun ?ff _ _ _ \\* _ => eapply eq_ind_r with (y:=ff)
+  end.
+  1: xsimpl*.
+  extens=> i. 
+  under (@SumEq _ _ _ (`[0, Ncol])).
+  { move=>*; rewrite to_int_if; over. }
+  case_if.
+  { rewrite csr.sum_prod1E /=. apply SumEq=> c Hinc. rewrite indom_interval in Hinc.
+    case_if; try reflexivity.
+    false C0. rewrite indom_Union. exists (Unary.index i midx). indomE=> /=.
+    splits; try tauto. 
+    { split; [ apply (Unary.indexG0 0) | ]. by rewrite -len_midx (Unary.index_mem 0). }
+    { by rewrite (Unary.nth_index 0). } }
+  { rewrite <- Sum0s with (fs:=`[0, Ncol]) at 2. apply SumEq=> c Hinc. rewrite indom_interval in Hinc.
+    case_if; try reflexivity.
+    false C. rewrite indom_Union in C0. destruct C0 as (f & Hin & Hin2). move: Hin Hin2; indomE=> /=.
+    intros ? (<- & _). apply nth_In. math. }
+Qed.
 
 End unordered_csr.
 
