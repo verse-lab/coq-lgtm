@@ -160,7 +160,6 @@ Proof with fold'.
   xfor_sum Inv R R op s.
   2: intros; apply ind_seg_disjoint with (N:=N); subst M N; 
     try math; try autorewrite with indomE; try assumption.
-  2: pose proof IIL_L_notnil; math.
   { (* align *)
     rewrite /Inv /R /op.
     (xin (1,0): (do 9 (xwp; xapp)))...

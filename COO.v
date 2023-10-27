@@ -172,7 +172,6 @@ Proof with fold'.
     xapp get_spec_in=> //; xsimpl*. }
   { move=> Neq ???; apply/Neq. 
     move/NoDup_nthZ: nodup_xind; apply; autos*; math. }
-  { rewrite -len_xind; math. }
   xapp; xsimpl.
   under (@SumEq _ _ _ `[0,M]).
   { move=>*; rewrite to_int_if; over. }
@@ -236,7 +235,6 @@ Proof with fold'.
     xapp get_spec_in=> //; xsimpl*. }
   { move=> Neq ???; apply/Neq. 
     move/NoDup_nthZ: nodup_xind; apply; autos*; math. }
-  { rewrite -len_xind; math. }
   xapp; xsimpl.
   under (@SumEq _ _ _ `[0,M]).
   { move=>*; rewrite to_int_if; over. }
@@ -427,7 +425,6 @@ Proof with fold'.
   { move=> Neq ???; apply/Neq. 
     move/NoDup_nthZ: nodup_xrowcol; apply; autos*; math. }
   { rewrite combine_nth //; lia. }
-  { lia. }
   xapp; xsimpl.
   under (@SumEq _ _ _ (`[0, Nrow] \x `[0, Ncol])).
   { move=>*; rewrite to_int_if; over. }

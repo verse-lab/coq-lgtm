@@ -2094,7 +2094,7 @@ Ltac disjointE :=
   end; try setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
     (first [ apply someindom | idtac ])]
   |
-  |
+  | try lia
   |
   |
   |
