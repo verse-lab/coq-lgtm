@@ -1,4 +1,9 @@
 Set Implicit Arguments.
+(* Require Export Setoid.
+Require Export Relation_Definitions.
+
+Locate "_ ==> _ ==> _". Check Morphisms.respectful. *)
+
 From SLF Require Import LabType Fun LibSepFmap Sum.
 From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer.
 From SLF Require Import Struct Loops Unary_IndexWithBounds SV2 Subst NTriple Loops2 Struct2.
@@ -116,6 +121,27 @@ Local Notation D := (labeled (int * int)).
 Definition eld := @LibWP.eld (int * int)%type.
 Coercion eld : D >-> Dom.
 
+Lemma sum_prod1{A B :Type} (fs : fset B) (x : A) : 
+  Sum (`{x} \x fs) = fun Q => Sum fs (fun i => Q (x, i)).
+Proof.
+  extens=> ?.
+  unfold prod; rewrite -SumCascade ?Sum1 -?SumCascade; try by disjointE.
+  erewrite SumEq with (fs:=fs); eauto.
+  move=>* /=; by rewrite Sum1.
+Qed.
+
+Lemma sum_prod1' {A B :Type} (fs : fset B) Q: 
+(fun x : A => Sum (`{x} \x fs) Q) = fun x => Sum fs (fun i => Q (x, i)).
+Proof.
+extens=> ?.
+unfold prod; rewrite -SumCascade ?Sum1 -?SumCascade; try by disjointE.
+erewrite SumEq with (fs:=fs); eauto.
+move=>* /=; by rewrite Sum1.
+Qed.
+
+Definition sum_prod1E := (@sum_prod1, @sum_prod1')%type.
+
+
 Lemma sum_spec `{Inhab D} (x_mval x_colind x_rowptr : loc) : 
   {{ arr(x_mval, mval)⟨1, (0,0)⟩ \*
      arr(x_colind, colind)⟨1, (0,0)⟩ \*
@@ -149,10 +175,7 @@ Proof with (try seclocal_fold; seclocal_solver).
     xnapp sv.sum_spec...
     { move=> ?/in_interval_list... }
     move=> ?; rewrite -wp_equiv. xsimpl=>->.
-    xapp @incr.spec.
-    unfold prod; rewrite -SumCascade ?Sum1 -?SumCascade; try by disjointE.
-    erewrite SumEq with (fs:=`[0, Ncol]). 1: xsimpl*.
-    move=>* /=; by rewrite Sum1. }
+    xapp @incr.spec; rewrite sum_prod1E; xsimpl. }
   { xapp. xsimpl*. rewrite SumCascade //; disjointE. }
 Qed.
 
@@ -202,6 +225,27 @@ Tactic Notation "xfor_specialized" constr(Inv) constr(R) uconstr(R') uconstr(op)
   | intros ?; rewrite ?/Inv ?/R' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl
   ]=> //; try (solve [ rewrite ?/Inv ?/R ?/R' /=; xlocal ]); autos*.
 
+  Lemma htriple_alloc0_unary {D : Type} `{Inhab D} (n : int) (d : D) :
+  htriple (single d tt) (fun=> alloc0 n)
+    \[0 <= n]
+    (fun hv => \exists p, \[hv = fun=> val_loc p] \* harray_fun (fun=> 0) p n d).
+(* Proof with fold'. *)
+  (* apply wp_equiv. xsimpl. intros HH.
+  assert (n = abs n :> int) as E by math.
+  rewrite -> E.
+  xwp; xapp (@htriple_alloc_nat)=>x p EE... rewrite !EE.
+  xwp; xapp (@htriple_memset0_unary). xwp; xval. xsimpl*.
+  rewrite -length_List_length length_make. xsimpl.
+Qed. *)
+Admitted.
+
+Add Parametric Morphism D : (@harray_fun D) with signature 
+  Morphisms.respectful (fun f g => forall x, f x = g x) (eq) as blah.
+Admitted.
+
+
+
+
 Lemma spmv_spec `{Inhab D} (x_mval x_colind x_rowptr x_dvec : loc) : 
   {{ arr(x_mval, mval)⟨1, (0,0)⟩ \*
      arr(x_colind, colind)⟨1, (0,0)⟩ \*
@@ -221,18 +265,13 @@ Lemma spmv_spec `{Inhab D} (x_mval x_colind x_rowptr x_dvec : loc) :
       \* \Top }}. (* this \Top can be made concrete, if needed *)
 Proof with (try seclocal_fold; seclocal_solver).
   xin (2,0) : do 3 (xwp; xapp).
-  xfocus (1,0). (* TODO xin does not work here. why? *)
-  xwp; xapp (@htriple_alloc0_unary); try assumption.
-  intros ss s Es... rewrite Es. clear ss Es. rewrite <- label_single.
-  xunfocus.
+  xin (1,0) : (xwp; xapp (@htriple_alloc0_unary)=> // s)...
   rewrite prod_cascade.
-  set (R (i : Dom) := 
-    arr(x_mval, mval)⟨2, i⟩ \*
+  set (R (i : Dom) := arr(x_mval, mval)⟨2, i⟩ \*
     arr(x_colind, colind)⟨2, i⟩ \* 
     arr(x_rowptr, rowptr)⟨2, i⟩ \*
     arr(x_dvec, dvec)⟨2, i⟩).
-  set (Inv (i : int) := 
-    arr(x_mval, mval)⟨1, (0,0)⟩ \* 
+  set (Inv (i : int) := arr(x_mval, mval)⟨1, (0,0)⟩ \* 
     arr(x_colind, colind)⟨1, (0,0)⟩ \* 
     arr(x_rowptr, rowptr)⟨1, (0,0)⟩ \*
     arr(x_dvec, dvec)⟨1, (0,0)⟩).
@@ -245,19 +284,8 @@ Proof with (try seclocal_fold; seclocal_solver).
     { move=> ?/in_interval_list... }
     move=> ?; rewrite -wp_equiv. xsimpl=>->.
     xapp @lhtriple_array_set_pre; try math.
-    unfold prod; rewrite -SumCascade ?Sum1 -?SumCascade; try by disjointE.
-    erewrite SumEq with (fs:=`[0, Ncol]). 1: xsimpl*.
-    move=>* /=; by rewrite Sum1. }
-  { xwp; xval. xsimpl*. 
-    (* just by funext *)
-    replace (fun i0 : int => Σ_(j0 <- `{i0} \x `[0, Ncol]) hv[`2](j0) * dvec[j0.2]) with
-      (fun i0 : int => Σ_(j0 <- `[0, Ncol]) hv[`2]((i0, j0)) * dvec[j0]).
-    1: xsimpl*.
-    extens=> ?.
-    (* TODO why repeating above here? *)
-    unfold prod; rewrite -SumCascade ?Sum1 -?SumCascade; try by disjointE.
-    erewrite SumEq with (fs:=`[0, Ncol]). 1: reflexivity.
-    move=>* /=; by rewrite Sum1. }
+    rewrite sum_prod1E; xsimpl. }
+  { xwp; xval. xsimpl*. xsimpl; rewrite sum_prod1E; xsimpl. }
 Qed.
 
 End csr.
