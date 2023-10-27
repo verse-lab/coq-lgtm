@@ -92,7 +92,6 @@ Lemma xfor_lemma_gen_array_fun_aux `{ID : Inhab D}
     }]
   {{ v, Post v }}. 
 Proof.
-  (*
   move=>? IH *.
   eapply xfor_lemma_gen_array with (R := R) (R' := R') (arr1 := lof f N) (arr2 := fun hv => lof (g hv) N); try eassumption.
   { by move=> ?; rewrite length_lof. }
@@ -101,8 +100,7 @@ Proof.
     apply/ntriple_conseq; [| |move=> v; rewrite nth_lof//]; try exact:himpl_refl.
     exact/IH. }
   move=> *; rewrite ?nth_lof //; autos*.
-Qed.*)
-Admitted.
+Qed.
 
 Lemma xfor_lemma_gen_array_fun `{ID : Inhab D}
   Inv 

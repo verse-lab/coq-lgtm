@@ -1363,10 +1363,10 @@ Lemma xfor_lemma2_hbig_op `{ID : Inhab D}
   (forall j : int, hlocal (Inv j) ⟨(i,0%Z), single s tt⟩) ->
   (forall j : int, hlocal (H j) ⟨(i,0%Z), single s tt⟩) ->
   (forall (j : int) (v : D -> val), hlocal (H' j v) ⟨(i,0%Z), single s tt⟩) ->
-  (forall i : D, hlocal (R1 i) (single i tt)) ->
-  (forall i : D, hlocal (R1' i) (single i tt)) ->
-  (forall i : D, hlocal (R2 i) (single i tt)) ->
-  (forall i : D, hlocal (R2' i) (single i tt)) ->
+  (forall i : Dom, hlocal (R1 i) ⟨(j,0%Z), single i tt⟩) ->
+  (forall i : Dom, hlocal (R1' i) ⟨(j,0%Z), single i tt⟩) ->
+  (forall i : Dom, hlocal (R2 i) ⟨(k,0%Z), single i tt⟩) ->
+  (forall i : Dom, hlocal (R2' i) ⟨(k,0%Z), single i tt⟩) ->
   (forall (hv hv' : D -> val) m,
     0 <= m < N ->
     (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
@@ -1431,10 +1431,16 @@ Proof.
     { by case: classicT=> // -[]; split=> //; rewrite -indom_interval. }
     case: classicT=> // _ ?; case: classicT=> // -[].
     by split=> //; rewrite -indom_interval. }
+  (set r := fun d => if lab_eqb (lab d) (j,0) then R1 (el d) else if lab_eqb (lab d) (k,0) then R2 (el d) else \[]).
+  (set r' := fun d => if lab_eqb (lab d) (j,0) then R1' (el d) else if lab_eqb (lab d) (k,0) then R2' (el d) else \[]).
+  have lbE1: (lab_eqb (k,0) (j,0) = false).
+  { rewrite /lab_eqb /=. case E: (k =? j)=> //.  lia. }
+  have lbE2: (lab_eqb (j,0) (k,0) = false).
+  { rewrite /lab_eqb /=. case E: (j =? k)=> //.  lia. }
   apply/(
     wp_for_hbig_op_na_bis Inv 
-      (fun d => If lab d = (j,0) then R1  d else R2  d)
-      (fun d => If lab d = (j,0) then R1' d else R2' d)
+      r
+      r'
       H (fun i hv => H' i (hv \o set2 i))  
       (fun d => ⟨(j,0%Z), fsi1 d⟩ \u ⟨(k,0%Z), fsi2 d⟩) Post fsi' fi gi g
       (fs' := ⟨(i, 0), single s tt⟩)
@@ -1442,16 +1448,19 @@ Proof.
       (f := f)
       (* (fsi' := fsi') *)
   ); try eassumption.
-  { rewrite -Union_union_fset hbig_fset_union //.
-      { rewrite -?Union_label ?hstar_fset_Lab /=. 
-        do ? case: classicT=> *; subst=> //; xsimpl*. }
+  { rewrite /r/r' -Union_union_fset hbig_fset_union //.
+      { rewrite -?Union_label ?hstar_fset_Lab /= ?eqbxx lbE1; xsimpl*. }
       do 2 rewrite disjoint_Union=> ??. 
       rewrite disjoint_label. left=> -[]. lia. }
   { by rewrite -Union_union_fset ?Union_label. }
   { by case=> l d; rewrite indom_label_eq /= /htrm_of; case: classicT. }
   { by move=> *. }
-  { by move=> ?; case: classicT. }
-  { by move=> ?; case: classicT. }
+  { case=> ??; rewrite /r /=; do ? case: ssrbool.ifP.
+    1,2: move/lab_eqbP->; rewrite -label_single; autos*.
+    move=> *; exact/hlocal_hempty. }
+  { case=> ??; rewrite /r' /=; do ? case: ssrbool.ifP.
+    1,2: move/lab_eqbP->; rewrite -label_single; autos*.
+    move=> *; exact/hlocal_hempty. }
   { clear. move=> ? [][??]?; rewrite /gi /fi.
     (do ? case: classicT=> //)=> -[]-> _; do ? fequals; lia. }
   { clear. move=> ? [][??]?; rewrite /gi /fi.
@@ -1597,6 +1606,7 @@ Proof.
     { rewrite -?Union_label ?hstar_fset_Lab /=. 
       do ? case: classicT=> *; subst=> //; xsimpl*.
       apply: himpl_trans; last exact/PostH; xsimpl.
+      rewrite /r' /= ?eqbxx lbE1.
       by rewrite H'E. }
       do 2 rewrite disjoint_Union=> ??. 
       rewrite disjoint_label. left=> -[]. lia. } 
@@ -1608,15 +1618,12 @@ Proof.
   have->: 
     (fun hr : D -> val =>
       Inv (l + 1) \*
-      (\*_(d <- ⟨(j, 0), fsi1 l⟩ \u ⟨(k, 0), fsi2 l⟩)
-          (If lab d = (j, 0) then R1' d else R2' d)) \*
+      (\*_(d <- ⟨(j, 0), fsi1 l⟩ \u ⟨(k, 0), fsi2 l⟩) r' d) \*
       Q \(m, vd) H' l ((hr \o f) \o set2 l)) = 
     (fun v : D -> val => Inv (l + 1) \* (\*_(d <- ⟨(j, 0), fsi1 l⟩) R1' d) \* (\*_(d <- ⟨(j, 0), fsi2 l⟩) R2' d) \* Q \(m, vd) H' l v).
   { apply/fun_ext_1=> ?. 
     rewrite hbig_fset_union // .
-    { rewrite -?Union_label ?hstar_fset_Lab /=.
-      do ? case: classicT=> *; subst=> //.
-      { xsimpl*. }
+    { rewrite -?Union_label ?hstar_fset_Lab /= /r' /= ?eqbxx lbE1.
       rewrite ?hstar_assoc; do 4 fequals.
       apply/opP=> // x ? /=; case: classicT=> // ?; try lia.
       { case: classicT=> // -[]; split=> //; lia. }
@@ -1627,8 +1634,8 @@ Proof.
   rewrite hbig_fset_union //; first last.
   { do 2 rewrite disjoint_Union=> ??. 
     rewrite disjoint_single /= => -[]; lia. }
-  rewrite -?Union_label ?hstar_fset_Lab /=.
-  case: classicT=> // ?; case: classicT=> // [[]|?]; first lia.
+  rewrite -?Union_label ?hstar_fset_Lab /= /r /= ?eqbxx lbE1.
+  (* case: classicT=> // ?; case: classicT=> // [[]|?]; first lia. *)
   rewrite hstar_assoc.
   rewrite ?hstar_fset_Lab /= in IH.
   erewrite wp_ht_eq; first (apply/IH; lia).
@@ -1638,8 +1645,9 @@ Proof.
   { have?: (i, 0) <> (j, 0) by case.
     rewrite uni_nin ?indom_label_eq /= /htrm_of; autos*.
     do ? (case: classicT=> //=; autos* ).
-    move=> [_]??[]; split=> //.
-    rewrite indom_Union; setoid_rewrite indom_interval; do ? (eexists; eauto). }
+    { move=> [_]??[]; split=> //.
+      rewrite indom_Union; setoid_rewrite indom_interval; do ? (eexists; eauto). }
+    move=> ?? []; splits*; rewrite indom_Union; setoid_rewrite indom_interval; do ? (eexists; eauto). }
   have?: (i, 0) <> (k, 0) by case; lia.
   have?: (j, 0) <> (k, 0) by case; lia.
   rewrite uni_nin ?indom_label_eq /= /htrm_of; autos*.
@@ -1712,7 +1720,7 @@ Lemma ntriple_frame X H Q fs_ht H' Q' :
   {{ H }} fs_ht {{ v, Q v }}.
 Proof.
 move=>-> QE ? QI ?.
-apply/ntriple_conseq_frame2; eauto=> hv; rewrite*
+apply/ntriple_conseq_frame2; eauto=> hv; rewrite* QE.
 Qed.
 
 Lemma hstar0E {DD : Type} : @hstar DD \[] = id.
@@ -1782,10 +1790,10 @@ Lemma xfor_lemma_gen2_bigstr `{ID : Inhab D}
   (forall j : int, hlocal (Inv j) ⟨(i,0%Z), single s tt⟩) ->
   (forall j : int, hlocal (H j) ⟨(i,0%Z), single s tt⟩) ->
   (forall (j : int) (v : D -> val), hlocal (H' j v) ⟨(i,0%Z), single s tt⟩) ->
-  (forall i : D, hlocal (R1 i) (single i tt)) ->
-  (forall i : D, hlocal (R1' i) (single i tt)) ->
-  (forall i : D, hlocal (R2 i) (single i tt)) ->
-  (forall i : D, hlocal (R2' i) (single i tt)) ->
+  (forall i : Dom, hlocal (R1 i) ⟨(j,0%Z), single i tt⟩) ->
+  (forall i : Dom, hlocal (R1' i) ⟨(j,0%Z), single i tt⟩) ->
+  (forall i : Dom, hlocal (R2 i) ⟨(k,0%Z), single i tt⟩) ->
+  (forall i : Dom, hlocal (R2' i) ⟨(k,0%Z), single i tt⟩) ->
   (forall (hv hv' : D -> val) m,
     0 <= m < N ->
     (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
@@ -1853,8 +1861,8 @@ Lemma xfor_lemma_gen_bigstr `{ID : Inhab D}
   (forall j : int, hlocal (Inv j) ⟨(i,0%Z), single s tt⟩) ->
   (forall j : int, hlocal (H j) ⟨(i,0%Z), single s tt⟩) ->
   (forall (j : int) (v : D -> val), hlocal (H' j v) ⟨(i,0%Z), single s tt⟩) ->
-  (forall i : D, hlocal (R i) (single i tt)) ->
-  (forall i : D, hlocal (R' i) (single i tt)) ->
+  (forall i : Dom, hlocal (R i) ⟨(j,0%Z), single i tt⟩) ->
+  (forall i : Dom, hlocal (R' i) ⟨(j,0%Z), single i tt⟩) ->
   (forall (hv hv' : D -> val) m,
     0 <= m < N ->
     (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
@@ -1919,10 +1927,10 @@ Lemma xfor_lemma_gen2_array `{ID : Inhab D}
         (\*_(d <- ⟨(j,0)%Z, fsi2 l⟩) R2' d) \* 
         (arrl + 1 + abs l)%nat ~⟨(i,0)%Z, s⟩~> (arr2 v)[l] }}) ->
   (forall j : int, hlocal (Inv j) ⟨(i,0%Z), single s tt⟩) ->
-  (forall i : D, hlocal (R1 i) (single i tt)) ->
-  (forall i : D, hlocal (R1' i) (single i tt)) ->
-  (forall i : D, hlocal (R2 i) (single i tt)) ->
-  (forall i : D, hlocal (R2' i) (single i tt)) ->
+  (forall i : Dom, hlocal (R1 i) ⟨(j,0%Z), single i tt⟩) ->
+  (forall i : Dom, hlocal (R1' i) ⟨(j,0%Z), single i tt⟩) ->
+  (forall i : Dom, hlocal (R2 i) ⟨(k,0%Z), single i tt⟩) ->
+  (forall i : Dom, hlocal (R2' i) ⟨(k,0%Z), single i tt⟩) ->
   (forall (hv hv' : D -> val) m,
     0 <= m < N ->
     (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
@@ -2002,8 +2010,8 @@ Lemma xfor_lemma_gen_array `{ID : Inhab D}
         (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R' d) \* 
         (arrl + 1 + abs l)%nat ~⟨(i,0)%Z, s⟩~> (arr2 v)[l] }}) ->
   (forall j : int, hlocal (Inv j) ⟨(i,0%Z), single s tt⟩) ->
-  (forall i : D, hlocal (R i) (single i tt)) ->
-  (forall i : D, hlocal (R' i) (single i tt)) ->
+  (forall i : Dom, hlocal (R i) ⟨(j,0%Z), single i tt⟩) ->
+  (forall i : Dom, hlocal (R' i) ⟨(j,0%Z), single i tt⟩) ->
   (forall (hv hv' : D -> val) m,
     0 <= m < N ->
     (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->

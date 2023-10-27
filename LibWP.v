@@ -9371,8 +9371,8 @@ Lemma xfor_lemma D `{ID : Inhab (labeled D)}
   (forall j : int, hlocal (Inv j) ⟨(i,0%Z), single s tt⟩) ->
   (forall j : int, hlocal (H j) ⟨(i,0%Z), single s tt⟩) ->
   (forall (j : int) (v : labeled D -> val), hlocal (H' j v) ⟨(i,0%Z), single s tt⟩) ->
-  (forall i : labeled D, hlocal (R (el i)) (single i tt)) ->
-  (forall i : labeled D, hlocal (R' (el i)) (single i tt)) ->
+  (forall i : D, hlocal (R i) ⟨(j,0%Z), single i tt⟩) ->
+  (forall i : D, hlocal (R' i) ⟨(j,0%Z), single i tt⟩) ->
   (forall (hv hv' : labeled D -> val) (m : int),
     (0 <= m < N) ->
     (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
@@ -9424,17 +9424,25 @@ Proof.
   { move=> hv; apply/hbig_fset_eq=> d. rewrite indom_interval=> ?.
     apply/opP=> // x ? /=; case: classicT=> // _.
     by case: classicT=> // -[]; split=> //. }
+  set (r := fun x => if lab_eqb (lab x) (j,0) then R (el x) else \[]).
+  set (r' := fun x => if lab_eqb (lab x) (j,0) then R' (el x) else \[]).
   apply/(
-    wp_for_hbig_op_na_bis Inv (R \o el) (R' \o el) H (fun i hv => H' i (hv \o set2 i))  
+    wp_for_hbig_op_na_bis Inv (r) (r') H (fun i hv => H' i (hv \o set2 i))  
       (fun d => ⟨(j,0%Z), fsi1 d⟩) Post fsi' fi gi g
       (fs' := ⟨(i, 0), single s tt⟩)
       (f := f)
       (* (fsi' := fsi') *)
   ); try eassumption.
-  { rewrite -Union_label; xsimpl*. }
+  { rewrite -Union_label /r/r' . xsimpl*; rewrite eqbxx //. }
   { by rewrite -Union_label. }
   { by case=> l d; rewrite indom_label_eq /= /htrm_of; case: classicT. }
   { by move=> *. }
+  { case=> [??]; rewrite /r; case: ssrbool.ifP=> // [|?]. 
+    { by move=> /= /lab_eqbP->; rewrite -label_single. }
+    exact/hlocal_hempty. }
+  { case=> [??]; rewrite /r'; case: ssrbool.ifP=> // [|?]. 
+    { by move=> /= /lab_eqbP->; rewrite -label_single. }
+    exact/hlocal_hempty. }
   { clear. move=> ? [][??]?; rewrite /gi /fi.
     (do ? case: classicT=> //)=>_->; do ? fequals; lia. }
   { clear. move=> ? [][??]?; rewrite /gi /fi.
@@ -9525,18 +9533,21 @@ Proof.
       apply/disjoint_of_not_indom_both=> -[][]???.
       rewrite ?indom_label_eq=> -[][]_ <-_[][]_ ?; by subst. }
     { move=> ?; rewrite -Union_label hstar_fset_Lab/= -H'E.
-      apply/PostH. }
+      rewrite /r' /= eqbxx; apply/PostH. }
     { move=> > ? hvP. apply/opP=> // * /=. apply/hvP.
       by rewrite indom_label_eq. }
     move=> l Q ?; move: (IH l Q).
     rewrite /ntriple /nwp ?fset_of_cons /= ?fset_of_nil.
     rewrite union_empty_r => {}IH.
     have->: 
-      (fun hr : labeled D -> val => Inv (l + 1) \* (\*_(d <- ⟨(j, 0), fsi1 l⟩) R' (el d)) \* Q \(m, vd) H' l ((hr \o f) \o set2 l)) = 
+      (fun hr : labeled D -> val => Inv (l + 1) \* (\*_(d <- ⟨(j, 0), fsi1 l⟩) r' d) \* Q \(m, vd) H' l ((hr \o f) \o set2 l)) = 
       (fun hr : labeled D -> val => Inv (l + 1) \* (\*_(d <- ⟨(j, 0), fsi1 l⟩) R' (el d)) \* Q \(m, vd) H' l hr).
-    { apply/fun_ext_1=> ?; do 3? fequals.
+    { apply/fun_ext_1=> ?; do 2? fequals.
+      { by xsimpl; rewrite /r' /= eqbxx. }
+      f_equal.
       apply/opP=> // x ? /=; case: classicT=> // _.
-      case: classicT=> // -[]; split=> //; lia. } 
+      case: classicT=> // -[]; split=> //; lia. }
+    rewrite /r hstar_fset_Lab {1}/lab eqbxx -(hstar_fset_Lab (fun d => R(el d))).
     erewrite wp_ht_eq; first (apply/IH; lia).
     case=> l' ?; rewrite indom_union_eq ?indom_label_eq=> -[][??]; subst.
     { rewrite uni_in ?indom_label_eq //= /htrm_of.
