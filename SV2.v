@@ -185,11 +185,6 @@ Fact Sum_list_interval  (f : int -> int) (a b : int) l:
   Sum `[a, b] (fun i => f l[i]).
 Admitted.
 
-Fact intr_list (a b : int) (l: list int) : 
-  (forall x, In x l -> a <= x < b) ->
-  `[a, b] ∩ l = l.
-Admitted.
-
 Lemma lhtriple_free : forall (p : loc) (v : val) fs,
   @htriple D fs (fun d => val_free p)
     (\*_(d <- fs) p ~(d)~> v)

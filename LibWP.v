@@ -7152,17 +7152,17 @@ Proof with autos*.
 Qed. *)
 
 Lemma hbig_fset_Union {A : Type} (fs : fset A) fsi (H : A -> hhprop Dom) : 
-  (forall i j, i <> j -> disjoint (fsi i) (fsi j)) ->
+  (forall i j, i <> j -> indom fs i -> indom fs j -> disjoint (fsi i) (fsi j)) ->
     \*_(i <- Union fs fsi) H i =
     \*_(i <- fs) \*_(d <- fsi i) H d.
 Proof.
-  move=> dj.
   elim/fset_ind: fs. 
   { by rewrite Union0 ?hbig_fset_empty. }
-  move=> fs x IHfs ?.
+  move=> fs x IHfs Hnotin Hdj.
   have?: disjoint (fsi x) (Union fs fsi).
-  { rewrite disjoint_Union=> y ?; apply/dj=> ?; by subst. }
-  by rewrite Union_upd //; autos*; rewrite hbig_fset_union // hbig_fset_update // IHfs.
+  { rewrite disjoint_Union=> y ?. apply/Hdj; [ by intros -> | | ]; rewrite indom_update_eq; tauto. }
+  rewrite Union_upd // hbig_fset_union // hbig_fset_update // IHfs //.
+  intros. apply Hdj=> //; rewrite indom_update_eq; tauto.
 Qed.
 
 Lemma valid_subst_not_squash h1 h2 (f : Dom -> Dom) fs1 fs2 : 

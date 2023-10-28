@@ -31,6 +31,11 @@ Lemma fset_of_list_nodup {A : Type} a (l : list A) :
   l = \U_(i <- interval 0 (length l)) `{List.nth (abs i) l a} :> fset _.
 Admitted.
 
+Fact intr_list (a b : int) (l: list int) : 
+  (forall x, In x l -> a <= x < b) ->
+  `[a, b] ∩ l = l.
+Admitted.
+
 Lemma Sum0 {A} : @Sum A empty = fun=> 0.
 Proof. unfold Sum. extens. intros F. rewrite -> (fst (@fset_foldE _ _ _ _)); auto. Qed.
 
