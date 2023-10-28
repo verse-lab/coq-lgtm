@@ -208,17 +208,15 @@ Lemma sum_spec `{Inhab D} `{Inhab (labeled int)} (x_mval x_colind x_rowptr x_mid
 Proof with (try seclocal_fold; seclocal_solver).
   xfocus (2,0) (indom (midx \x `[0, Ncol])).
   (* now xapp can no longer handle so many conjunctions; some tweak is needed *)
-  rewrite -!hbig_fset_hstar (hbig_fset_part (`[0, Nrow] \x `[0, Ncol]) (indom (midx \x `[0, Ncol]))). (* TODO: move to xfocus *)
-  set (Habbr := hbig_fset _ (_ ∩ _) _).
-  rewrite -> ! hbig_fset_hstar.
+  rewrite (hbig_fset_part (`[0, Nrow] \x `[0, Ncol]) (indom (midx \x `[0, Ncol]))). (* TODO: move to xfocus *)
   xapp get_spec_out=> [[?][>]|].
   { rewrite /(_ ∖ _). do ? indomE=> //=; autos*. }
   repeat (set (HHQ := hbig_fset hstar (_ ∖ _) _); xframe HHQ; clear HHQ).
-  subst Habbr.
   have E : (`[0, Nrow] \x `[0, Ncol]) ∩ indom (midx \x `[0, Ncol]) = midx \x `[0, Ncol].
   { rewrite -prod_intr_list_on_1. f_equal. now apply intr_list. }
   rewrite E (fset_of_list_nodup 0 nodup_midx) len_midx prod_Union_distr.
   xin (1,0) : xwp; xapp=> s...
+  rewrite -?hbig_fset_hstar.
   match goal with 
     |- context [(_ \* ?a \* ?b \* ?c \* ?d \* (hbig_fset _ _ ?f))] => 
       pose (Inv (i : int) := a \* b \* c \* d); pose (R := f) 
@@ -227,11 +225,10 @@ Proof with (try seclocal_fold; seclocal_solver).
   { rewrite /Inv /R.
     xin (2,0) : rewrite wp_prod_single /=.
     xin (1,0) : do 3 (xwp; xapp)...
-    xframe2 (arr(x_rowptr, rowptr)⟨1, (0, 0)⟩). (* TODO xframe2 will not work if it is in the ntriple form? *)
     xsubst (snd : _ -> int).
     xfocus (2,0); rewrite -> ! hbig_fset_hstar.
     xwp; xapp (@Unary.index.Spec `[0, Ncol] Nidx (2,0) midx x_midx (fun=> midx[l0]))=> //.
-    rewrite Unary.index_nodup; try math; try assumption.
+    rewrite Unary.index_nodup //; try math.
     xwp; xapp. xwp; xif=> ?; [ | math ].
     (* TODO raw xapp will fail here. guess the reason is that it cannot switch between different doms? *)
     (* Yes, just add Inhab (labeled int) as a hypothesis  *)
