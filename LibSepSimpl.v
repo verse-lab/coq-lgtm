@@ -265,6 +265,36 @@ Lemma hstars_flip_9 {D : Type} : forall (H1 H2 H3 H4 H5 H6 H7 H8 H9 : hhprop D),
   = H9 \* H8 \* H7 \* H6 \* H5 \* H4 \* H3 \* H2 \* H1 \* \[].
 Proof using. intros. rewrite <- (hstars_flip_8 H1). rew_heap. rewrite (hstar_comm H9). rew_heap~. Qed.
 
+Lemma hstars_flip_10 {D : Type} : forall (H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 : hhprop D),
+    H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* \[]
+  = H10 \* H9 \* H8 \* H7 \* H6 \* H5 \* H4 \* H3 \* H2 \* H1 \* \[].
+Proof using. intros. rewrite <- (hstars_flip_9 H1). rew_heap. rewrite (hstar_comm H10). rew_heap~. Qed.
+
+Lemma hstars_flip_11 {D : Type} : forall (H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 : hhprop D),
+    H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11 \* \[]
+  = H11 \* H10 \* H9 \* H8 \* H7 \* H6 \* H5 \* H4 \* H3 \* H2 \* H1 \* \[].
+Proof using. intros. rewrite <- (hstars_flip_10 H1). rew_heap. rewrite (hstar_comm H11). rew_heap~. Qed.
+
+Lemma hstars_flip_12 {D : Type} : forall (H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12 : hhprop D),
+    H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11 \* H12 \* \[]
+  = H12 \* H11 \* H10 \* H9 \* H8 \* H7 \* H6 \* H5 \* H4 \* H3 \* H2 \* H1 \* \[].
+Proof using. intros. rewrite <- (hstars_flip_11 H1). rew_heap. rewrite (hstar_comm H12). rew_heap~. Qed.
+
+Lemma hstars_flip_13 {D : Type} : forall (H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12 H13 : hhprop D),
+    H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11 \* H12 \* H13 \* \[]
+  = H13 \* H12 \* H11 \* H10 \* H9 \* H8 \* H7 \* H6 \* H5 \* H4 \* H3 \* H2 \* H1 \* \[].
+Proof using. intros. rewrite <- (hstars_flip_12 H1). rew_heap. rewrite (hstar_comm H13). rew_heap~. Qed.
+
+Lemma hstars_flip_14 {D : Type} : forall (H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12 H13 H14 : hhprop D),
+    H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11 \* H12 \* H13 \* H14 \* \[]
+  = H14 \* H13 \* H12 \* H11 \* H10 \* H9 \* H8 \* H7 \* H6 \* H5 \* H4 \* H3 \* H2 \* H1 \* \[].
+Proof using. intros. rewrite <- (hstars_flip_13 H1). rew_heap. rewrite (hstar_comm H14). rew_heap~. Qed.
+
+Lemma hstars_flip_15 {D : Type} : forall (H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12 H13 H14 H15 : hhprop D),
+    H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11 \* H12 \* H13 \* H14 \* H15 \* \[]
+  = H15 \* H14 \* H13 \* H12 \* H11 \* H10 \* H9 \* H8 \* H7 \* H6 \* H5 \* H4 \* H3 \* H2 \* H1 \* \[].
+Proof using. intros. rewrite <- (hstars_flip_14 H1). rew_heap. rewrite (hstar_comm H15). rew_heap~. Qed.
+
 Ltac hstars_flip_lemma i :=
   match number_to_nat i with
   | 0%nat => constr:(@hstars_flip_0)
@@ -277,6 +307,12 @@ Ltac hstars_flip_lemma i :=
   | 7%nat => constr:(@hstars_flip_7)
   | 8%nat => constr:(@hstars_flip_8)
   | 9%nat => constr:(@hstars_flip_9)
+  | 10%nat => constr:(@hstars_flip_10)
+  | 11%nat => constr:(@hstars_flip_11)
+  | 12%nat => constr:(@hstars_flip_12)
+  | 13%nat => constr:(@hstars_flip_13)
+  | 14%nat => constr:(@hstars_flip_14)
+  | 15%nat => constr:(@hstars_flip_15)
   | _ => constr:(@hstars_flip_1) (* unsupported *)
   end.
 
@@ -359,6 +395,36 @@ Lemma hstars_pick_9 {D : Type} : forall (H1 H2 H3 H4 H5 H6 H7 H8 H9 H : hhprop D
   = H9 \* H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H.
 Proof using. intros. rewrite~ (hstar_comm_assoc H8). applys @hstars_pick_8. Qed.
 
+Lemma hstars_pick_10 {D : Type} : forall (H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H : hhprop D),
+    H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H
+  = H10 \* H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H.
+Proof using. intros. rewrite~ (hstar_comm_assoc H9). applys @hstars_pick_9. Qed.
+
+Lemma hstars_pick_11 {D : Type} : forall (H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H : hhprop D),
+    H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11 \* H
+  = H11 \* H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H.
+Proof using. intros. rewrite~ (hstar_comm_assoc H10). applys @hstars_pick_10. Qed.
+
+Lemma hstars_pick_12 {D : Type} : forall (H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12 H : hhprop D),
+    H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11 \* H12 \* H
+  = H12 \* H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11 \* H.
+Proof using. intros. rewrite~ (hstar_comm_assoc H11). applys @hstars_pick_11. Qed.
+
+Lemma hstars_pick_13 {D : Type} : forall (H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12 H13 H : hhprop D),
+    H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11 \* H12 \* H13 \* H
+  = H13 \* H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11 \* H12 \* H.
+Proof using. intros. rewrite~ (hstar_comm_assoc H12). applys @hstars_pick_12. Qed.
+
+Lemma hstars_pick_14 {D : Type} : forall (H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12 H13 H14 H : hhprop D),
+    H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11 \* H12 \* H13 \* H14 \* H
+  = H14 \* H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11 \* H12 \* H13 \* H.
+Proof using. intros. rewrite~ (hstar_comm_assoc H13). applys @hstars_pick_13. Qed.
+
+Lemma hstars_pick_15 {D : Type} : forall (H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12 H13 H14 H15 H : hhprop D),
+    H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11 \* H12 \* H13 \* H14 \* H15 \* H
+  = H15 \* H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11 \* H12 \* H13 \* H14 \* H.
+Proof using. intros. rewrite~ (hstar_comm_assoc H14). applys @hstars_pick_14. Qed.
+
 Lemma hstars_pick_last_1 {D : Type} : forall (H1 : hhprop D),
   H1 = H1.
 Proof using. auto. Qed.
@@ -399,6 +465,36 @@ Lemma hstars_pick_last_9 {D : Type} : forall (H1 H2 H3 H4 H5 H6 H7 H8 H9 : hhpro
   = H9 \* H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8.
 Proof using. intros. rewrite~ (hstar_comm H8). applys @hstars_pick_8. Qed.
 
+Lemma hstars_pick_last_10 {D : Type} : forall (H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 : hhprop D),
+    H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10
+  = H10 \* H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9.
+Proof using. intros. rewrite~ (hstar_comm H9). applys @hstars_pick_9. Qed.
+
+Lemma hstars_pick_last_11 {D : Type} : forall (H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 : hhprop D),
+    H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11
+  = H11 \* H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10.
+Proof using. intros. rewrite~ (hstar_comm H10). applys @hstars_pick_10. Qed.
+
+Lemma hstars_pick_last_12 {D : Type} : forall (H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12 : hhprop D),
+    H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11 \* H12
+  = H12 \* H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11.
+Proof using. intros. rewrite~ (hstar_comm H11). applys @hstars_pick_11. Qed.
+
+Lemma hstars_pick_last_13 {D : Type} : forall (H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12 H13 : hhprop D),
+    H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11 \* H12 \* H13
+  = H13 \* H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11 \* H12.
+Proof using. intros. rewrite~ (hstar_comm H12). applys @hstars_pick_12. Qed.
+
+Lemma hstars_pick_last_14 {D : Type} : forall (H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12 H13 H14 : hhprop D),
+    H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11 \* H12 \* H13 \* H14
+  = H14 \* H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11 \* H12 \* H13.
+Proof using. intros. rewrite~ (hstar_comm H13). applys @hstars_pick_13. Qed.
+
+Lemma hstars_pick_last_15 {D : Type} : forall (H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12 H13 H14 H15 : hhprop D),
+    H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11 \* H12 \* H13 \* H14 \* H15
+  = H15 \* H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11 \* H12 \* H13 \* H14.
+Proof using. intros. rewrite~ (hstar_comm H14). applys @hstars_pick_14. Qed.
+
 Ltac hstars_pick_lemma i :=
   let unsupported tt := fail 100 "hstars_pick supports only arity up to 9" in
   match i with
@@ -412,6 +508,12 @@ Ltac hstars_pick_lemma i :=
     | 7%nat => constr:(@hstars_pick_last_7)
     | 8%nat => constr:(@hstars_pick_last_8)
     | 9%nat => constr:(@hstars_pick_last_9)
+    | 10%nat => constr:(@hstars_pick_last_10)
+    | 11%nat => constr:(@hstars_pick_last_11)
+    | 12%nat => constr:(@hstars_pick_last_12)
+    | 13%nat => constr:(@hstars_pick_last_13)
+    | 14%nat => constr:(@hstars_pick_last_14)
+    | 15%nat => constr:(@hstars_pick_last_15)
     | ?x => unsupported tt
     end
   | ?j => match number_to_nat j with
@@ -424,6 +526,12 @@ Ltac hstars_pick_lemma i :=
     | 7%nat => constr:(@hstars_pick_7)
     | 8%nat => constr:(@hstars_pick_8)
     | 9%nat => constr:(@hstars_pick_9)
+    | 10%nat => constr:(@hstars_pick_10)
+    | 11%nat => constr:(@hstars_pick_11)
+    | 12%nat => constr:(@hstars_pick_12)
+    | 13%nat => constr:(@hstars_pick_13)
+    | 14%nat => constr:(@hstars_pick_14)
+    | 15%nat => constr:(@hstars_pick_15)
     | ?x => unsupported tt
     end
   end.
