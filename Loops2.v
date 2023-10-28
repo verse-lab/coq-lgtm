@@ -291,3 +291,35 @@ Global Tactic Notation "xfor_specialized_normal" constr(Inv) constr(R) uconstr(R
   | rewrite ?/Inv ?/R; rewrite -> ?hbig_fset_hstar; xsimpl
   | intros ?; rewrite ?/Inv ?/R' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl
   ]=> //; try (solve [ rewrite ?/Inv ?/R ?/R' /=; xlocal ]); autos*.
+
+Tactic Notation "xfor_specialized" constr(Inv) constr(R) uconstr(R') uconstr(op) uconstr(f) uconstr(idx) constr(s) :=
+  eapply (@xfor_lemma_gen_array_fun _ _ Inv R R' _ _ _ s f op idx);
+  [ try math
+  |
+  |
+  | intros ??; rewrite ?/Inv ?/R ?/R';
+    xnsimpl
+  | rewrite ?/Inv; try xlocal
+  | rewrite ?/R; try xlocal
+  | rewrite ?/R'; try xlocal
+   | let hvE := fresh "hvE" in
+     let someindom := fresh "someindom" in
+     intros ???? hvE; (try case_if=> //; [ ]); 
+     rewrite ?/op; indomE;
+     match goal with 
+     | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
+     | _ => idtac
+     end; try (setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
+       (first [ apply someindom | idtac ])])
+  |
+  | 
+  | try math
+  |
+  |
+  |
+  |
+  |
+  |
+  | rewrite ?/Inv ?/R; rewrite -> ?hbig_fset_hstar; xsimpl
+  | intros ?; rewrite ?/Inv ?/R' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl
+  ]=> //; autos*; try math.

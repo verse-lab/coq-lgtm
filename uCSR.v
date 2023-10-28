@@ -262,38 +262,6 @@ Definition spmv :=
   s
 }>.
 
-Tactic Notation "xfor_specialized" constr(Inv) constr(R) uconstr(R') uconstr(op) uconstr(f) uconstr(idx) constr(s) :=
-  eapply (@xfor_lemma_gen_array_fun _ _ Inv R R' _ _ _ s f op idx);
-  [ try math
-  |
-  |
-  | intros ??; rewrite ?/Inv ?/R ?/R';
-    xnsimpl
-  | rewrite ?/Inv; try xlocal
-  | rewrite ?/R; try xlocal
-  | rewrite ?/R'; try xlocal
-   | let hvE := fresh "hvE" in
-     let someindom := fresh "someindom" in
-     intros ???? hvE; (try case_if=> //; [ ]); 
-     rewrite ?/op; indomE;
-     match goal with 
-     | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
-     | _ => idtac
-     end; try (setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
-       (first [ apply someindom | idtac ])])
-  |
-  | 
-  | try math
-  |
-  |
-  |
-  |
-  |
-  |
-  | rewrite ?/Inv ?/R; rewrite -> ?hbig_fset_hstar; xsimpl
-  | intros ?; rewrite ?/Inv ?/R' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl
-  ]=> //; autos*; try math.
-
 Lemma spmv_spec `{Inhab D} `{H__ : Inhab (labeled int)} (x_mval x_midx x_colind x_rowptr x_dvec : loc) : 
   {{ arr(x_mval, mval)⟨1, (0,0)⟩ \*
      arr(x_midx, midx)⟨1, (0,0)⟩ \*
