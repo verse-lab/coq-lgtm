@@ -705,10 +705,6 @@ Lemma foo {D} H1 H2 H3 H4 : H1 = H2 -> H3 = H4 -> H1 \* H3 = H2 \* H4 :> hhprop 
 by move=> ->->.
 Qed.
 
-Hint Rewrite @indom_label_eq @indom_union_eq @indom_prod : indomE.
-
-Ltac indomE := autorewrite with indomE.
-
 Ltac xsubst_rew H :=
   do ? match goal with 
   | |- hsub _ _ (hsingle _ _ _) = _ => erewrite hsingle_hsub; simpl; eauto
@@ -749,6 +745,7 @@ Global Hint Rewrite @fsubst_single @prod_single_fsubst_snd : fsubstE.
 Ltac fsubstE := autorewrite with fsubstE; simpl.
 
 Tactic Notation "xsubst" uconstr(f) := 
+  rewrite /ntriple;
   match goal with 
   | |- _ ==> N-WP [{
     [?i| _ in ?fs1 => _];
