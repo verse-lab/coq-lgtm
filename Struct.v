@@ -660,50 +660,49 @@ Notation "x '[' i ']'" := (read_array x i) (in custom trm at level 50, format "x
 
 Definition val_array_set : val :=
   <{ fun 'p 'i 'v =>
+       let 'i = val_abs 'i in
        let 'j = 'i + 1 in
        let 'n = val_ptr_add 'p 'j in
        val_set 'n 'v }>.
 
 (* a single point operation *)
-Lemma htriple_array_set_pre : forall fs (p : D -> loc) (i : D -> int) (v v' : D -> val),
-  (forall d, indom fs d -> 0 <= i d) ->
+Lemma htriple_array_set_pre `{Inhab D} : forall fs (p : D -> loc) (i : D -> int) (v v' : D -> val),
+  (* (forall d, indom fs d -> 0 <= i d) -> *)
   htriple fs (fun d => val_array_set (p d) (i d) (v d))
     (\*_(d <- fs) ((p d) + 1 + abs (i d))%nat ~(d)~> v' d)
     (fun=> \*_(d <- fs) ((p d) + 1 + abs (i d))%nat ~(d)~> v d).
 Proof using.
-  introv E. eapply htriple_eval_like.
+  intros; eapply htriple_eval_like.
   1:{ apply eval_like_app_fun3. all: intros; eqsolve. }
   simpl.
-  eapply htriple_let. 
-  1:{
-    eapply htriple_conseq_frame. 1: apply htriple_add.
-    1: xsimpl. apply qimpl_refl.
-  }
-  simpl. intros. apply htriple_hpure. intros ->.
-  eapply htriple_let. 
+  rewrite -wp_equiv.
+  xwp. xapp htriple_abs.
+  xwp. xapp.
+  eapply wp_equiv, htriple_let. 
   1:{ 
     eapply htriple_conseq_frame. 
-    1:{ apply htriple_ptr_add. intros. specialize (E _ H). math. }
+    1:{ apply htriple_ptr_add. intros. math. }
     1: xsimpl. apply qimpl_refl.
   }
   simpl. intros. apply htriple_hpure. intros ->.
   apply wp_equiv.
   rewrite -> wp_ht_eq with (ht2:=fun d => 
     val_set (val_loc (p d + 1 + abs (i d))%nat) (v d)).
-  2:{ intros. f_equal. f_equal. specialize (E _ H).
-    f_equal. f_equal. math.
+  2:{ intros. f_equal. f_equal. rewrite abs_nat_plus_nonneg; try math.
+    { rewrite abs_nat_plus_nonneg ?abs_1 1?(Nat.add_comm _ 1); try math.
+      by rewrite Nat.add_assoc. }
   }
   apply wp_equiv.
   apply htriple_set.
 Qed.
 
-Lemma lhtriple_array_set_pre : forall fs (p : loc) (i : int) (v v' : val),
+Lemma lhtriple_array_set_pre `{Inhab D} : forall fs (p : loc) (i : int) (v v' : val),
   @htriple D fs (fun d => val_array_set p i v)
-    (\[0 <= i] \* \*_(d <- fs) (p + 1 + abs i)%nat ~(d)~> v')
+    (\*_(d <- fs) (p + 1 + abs i)%nat ~(d)~> v')
     (fun=> \*_(d <- fs) (p + 1 + abs i)%nat ~(d)~> v).
-Proof. intros. apply wp_equiv. xsimpl. intros. xapp @htriple_array_set_pre; try xsimpl. auto. Qed.
+Proof. intros. apply wp_equiv. xsimpl. intros. xapp @htriple_array_set_pre; try xsimpl. Qed.
 
-Corollary htriple_array_set : forall fs (p : D -> loc) (i : D -> int) (v : D -> val) (L : D -> list val),
+Corollary htriple_array_set  `{Inhab D} : forall fs (p : D -> loc) (i : D -> int) (v : D -> val) (L : D -> list val),
   (forall d, indom fs d -> 0 <= (i d) < length (L d)) ->
   htriple fs (fun d => val_array_set (p d) (i d) (v d))
     (\*_(d <- fs) (harray (L d) (p d) d))
@@ -713,18 +712,17 @@ Proof using.
   eapply htriple_conseq. 3: xsimpl.
   2:{ apply hbig_fset_himpl.
     intros. apply harray_focus with (k:=abs (i d)).
-    specializes N H. math.
+    specializes N H0. math.
   }
   simpl. rewrite -> hbig_fset_hstar.
   eapply htriple_conseq_frame.
   1: apply htriple_array_set_pre.
-  1: intros; by apply N.
   { xsimpl. }
   { xsimpl. rewrite <- hbig_fset_hstar. 
     apply hbig_fset_himpl.
     intros. 
     replace (p d + 1 + abs (i d))%nat with (abs (p d + (i d + 1))).
-    2:{ specializes N H. math. }
+    2:{ specializes N H0. math. }
     xchange (@hforall_specialize D _ (v d)).
   }
 Qed.

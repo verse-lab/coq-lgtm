@@ -179,7 +179,7 @@ Proof.
   rewrite /intr !indom_prod !filter_indom !indom_prod /Sum.mem -fset_of_list_in /=. intuition.
 Qed.
 
-Hint Rewrite @filter_indom : indomE.
+Hint Rewrite @filter_indom @indom_Union : indomE.
 Hint Rewrite <- @fset_of_list_in :  indomE.
 
 
@@ -269,19 +269,20 @@ Tactic Notation "xfor_specialized" constr(Inv) constr(R) uconstr(R') uconstr(op)
   |
   | intros ??; rewrite ?/Inv ?/R ?/R';
     xnsimpl
+  | rewrite ?/Inv; try xlocal
+  | rewrite ?/R; try xlocal
+  | rewrite ?/R'; try xlocal
+   | let hvE := fresh "hvE" in
+     let someindom := fresh "someindom" in
+     intros ???? hvE; (try case_if=> //; [ ]); 
+     rewrite ?/op; indomE;
+     match goal with 
+     | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
+     | _ => idtac
+     end; try (setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
+       (first [ apply someindom | idtac ])])
+  |
   | 
-  |
-  |
-  | let hvE := fresh "hvE" in
-    let someindom := fresh "someindom" in
-    intros ???? hvE; rewrite ?/op; indomE;
-    match goal with 
-    | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
-    | _ => idtac
-    end; try (setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
-      (first [ apply someindom | idtac ])])
-  |
-  |
   | try math
   |
   |
@@ -291,7 +292,7 @@ Tactic Notation "xfor_specialized" constr(Inv) constr(R) uconstr(R') uconstr(op)
   |
   | rewrite ?/Inv ?/R; rewrite -> ?hbig_fset_hstar; xsimpl
   | intros ?; rewrite ?/Inv ?/R' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl
-  ]=> //; try (solve [ rewrite ?/Inv ?/R ?/R' /=; xlocal ]); autos*.
+  ]=> //; autos*; try math.
 
 Lemma spmv_spec `{Inhab D} `{H__ : Inhab (labeled int)} (x_mval x_midx x_colind x_rowptr x_dvec : loc) : 
   {{ arr(x_mval, mval)⟨1, (0,0)⟩ \*
@@ -315,36 +316,26 @@ Lemma spmv_spec `{Inhab D} `{H__ : Inhab (labeled int)} (x_mval x_midx x_colind 
 Proof with (try seclocal_fold; seclocal_solver).
   xfocus (2,0) (indom (midx \x `[0, Ncol])).
   (* now xapp can no longer handle so many conjunctions; some tweak is needed *)
-  rewrite -!hbig_fset_hstar (hbig_fset_part (`[0, Nrow] \x `[0, Ncol]) (indom (midx \x `[0, Ncol]))). (* TODO: move to xfocus *)
-  remember (hbig_fset _ (_ ∩ _) _) as Habbr eqn:Eabbr.
-  rewrite -> ! hbig_fset_hstar.
-  match goal with 
-    |- context [(?aa \* ?a \* ?b \* ?c \* ?d \* _ \* ?HHH ==> _)] => 
-      remember (aa \* a \* b \* c \* d) as Inv_ eqn:EInv_; set (Hbig := HHH)
-  end.
-  eapply himpl_trans with (H2:=Inv_ \\* Habbr \\* Hbig).
-  1: rewrite EInv_; xsimpl.
-  subst Hbig.
+  rewrite (hbig_fset_part (`[0, Nrow] \x `[0, Ncol]) (indom (midx \x `[0, Ncol]))). (* TODO: move to xfocus *)
   xapp get_spec_out=> [[?][>]|].
   { rewrite /(_ ∖ _). do ? indomE=> //=; autos*. }
   repeat (set (HHQ := hbig_fset hstar (_ ∖ _) _); xframe HHQ; clear HHQ).
   have E : (`[0, Nrow] \x `[0, Ncol]) ∩ indom (midx \x `[0, Ncol]) = midx \x `[0, Ncol].
   { rewrite -prod_intr_list_on_1. f_equal. now apply intr_list. }
-  rewrite E (fset_of_list_nodup 0 nodup_midx) len_midx prod_Union_distr in Eabbr |- *.
-  rewrite EInv_.
+  rewrite E (fset_of_list_nodup 0 nodup_midx) len_midx prod_Union_distr.
   xin (1,0) : (xwp; xapp (@htriple_alloc0_unary)=> // s)...
-  match type of Eabbr with _ = hbig_fset _ _ ?RR => pose (R := RR) end.
-  (* TODO this "If" is weird *)
-  xfor_specialized (fun (_ : int) => Inv_) R R 
+  rewrite -?hbig_fset_hstar.
+  match goal with 
+    |- context [(_ \* ?a \* ?b \* ?c \* ?d \* ?e \* (hbig_fset _ _ ?f))] => 
+      pose (Inv (i : int) := a \* b \* c \* d \* e); pose (R := f) 
+  end.
+  xfor_specialized Inv R R 
     (fun hv (i : int) => (If (In i midx) then Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * dvec[j.2]) else 0)) (fun=> 0) midx s.
   { intros. apply midx_leq, nth_In; math. }
-  { have Hin : In midx[l0] midx by apply nth_In; math.
-    case_if; try contradiction. 
+  { case: classicT=> [?|/(_ (nth_In _ _ _))]; last lia.
     xin (2,0) : rewrite wp_prod_single /=.
-    rewrite EInv_.
+    rewrite /Inv.
     xin (1,0) : do 4 (xwp; xapp)...
-    xframe2 (arr(x_rowptr, rowptr)⟨1, (0, 0)⟩).
-    xframe2 (arr(x_midx, midx)⟨1, (0, 0)⟩).
     xsubst (snd : _ -> int).
     xfocus (2,0); rewrite -> ! hbig_fset_hstar.
     xwp; xapp (@Unary.index.Spec `[0, Ncol] Nidx (2,0) midx x_midx (fun=> midx[l0]))=> //.
@@ -352,23 +343,12 @@ Proof with (try seclocal_fold; seclocal_solver).
     xwp; xapp. xwp; xif=> ?; [ | math ].
     do 3 (xwp; xapp).
     xunfocus; xin (1,0) : idtac. (* reformat *)
-    (* clean up; otherwise xnapp will complain *)
-    xframe2 (\*_(d0 <- `[0, Ncol]) arr(x_rowptr, rowptr)⟨2, d0⟩).
-    xframe2 (\*_(d0 <- `[0, Ncol]) arr(x_midx, midx)⟨2, d0⟩).
     xnapp sv.dotprod_spec...
     { move=> ?/in_interval_list... }
     move=> ?; rewrite -wp_equiv. xsimpl=>->.
-    xapp @lhtriple_array_set_pre. 1: apply midx_leq in Hin; math. 
+    xapp @lhtriple_array_set_pre.
     rewrite csr.sum_prod1E. xsimpl. }
-  { rewrite EInv_=> _. xlocal. }
-  { case_if. 2: reflexivity. 
-    (* for now, just manually prove *)
-    apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros.
-    try (setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
-      (first [ apply someindom | idtac ])]). }
   { intros. now case_if. }
-  { math. }
-  { subst Inv_ Habbr. xsimpl*. rewrite -> ! hbig_fset_hstar. xsimpl. }
   xwp; xval. xsimpl*.
   match goal with
     |- _ ==> harray_fun ?ff _ _ _ \\* _ => eapply eq_ind_r with (y:=ff)
@@ -378,16 +358,14 @@ Proof with (try seclocal_fold; seclocal_solver).
   under (@SumEq _ _ _ (`[0, Ncol])).
   { move=>*; rewrite to_int_if; over. }
   case_if.
-  { rewrite csr.sum_prod1E /=. apply SumEq=> c Hinc. rewrite indom_interval in Hinc.
-    case_if; try reflexivity.
-    false C0. rewrite indom_Union. exists (Unary.index i midx). indomE=> /=.
+  { rewrite csr.sum_prod1E /=; apply SumEq=> >; indomE.
+    case: classicT=> // /[swap]? []; exists (Unary.index i midx); indomE=> /=.
     splits; try tauto. 
-    { split; [ apply (Unary.indexG0 0) | ]. by rewrite -len_midx (Unary.index_mem 0). }
-    { by rewrite (Unary.nth_index 0). } }
-  { rewrite <- Sum0s with (fs:=`[0, Ncol]) at 2. apply SumEq=> c Hinc. rewrite indom_interval in Hinc.
-    case_if; try reflexivity.
-    false C. rewrite indom_Union in C0. destruct C0 as (f & Hin & Hin2). move: Hin Hin2; indomE=> /=.
-    intros ? (<- & _). apply nth_In. math. }
+    { rewrite -len_midx Unary.index_mem //; splits*; exact/(Unary.indexG0). }
+    { by rewrite Unary.nth_index. } }
+  { erewrite SumEq=> [|?]; first exact/Sum0s.
+    indomE; case: classicT=> // -[?]; indomE=> /=-[?][*]. 
+    case: C; subst; apply/nth_In; math. }
 Qed.
 
 End unordered_csr.
