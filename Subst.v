@@ -701,6 +701,46 @@ Proof.
   all: move=> >; rewrite* indom_union_eq.
 Qed.
 
+Lemma xntriple3_hsub {Dom Dom' : Type} (f : Dom -> Dom') 
+  Pre Pre' Post (Post' : (labeled Dom' -> val) -> hhprop (labeled Dom')) i j k
+  (C1 : Dom -> trm)
+  (C2 : Dom -> trm) 
+  (C3 : Dom -> trm) 
+  (C1' : Dom' -> trm)
+  (C2' : Dom' -> trm) 
+  (C3' : Dom' -> trm) 
+  (fs1 fs2 fs3 : fset Dom)
+  (F := labf_of f)
+  (Fs := ⟨(i,0), fs1⟩ \u ⟨(j,0), fs2⟩ \u ⟨(k,0), fs3⟩) :
+  i <> j ->
+  j <> k ->
+  k <> i ->
+  (forall x y , indom Fs x -> indom Fs y -> F x = F y -> x = y) ->
+  hlocal Pre Fs ->
+  (forall hv, hlocal (Post hv) Fs) ->
+  (forall x, C1 x = C1' (f x)) ->
+  (forall x, C2 x = C2' (f x)) ->
+  (forall x, C3 x = C3' (f x)) ->
+  (hsub F Fs Pre = Pre') ->
+  (forall (hv : labeled Dom' -> val), hsub F Fs (Post (hv \o F)) = Post' hv) ->
+  {{ Pre' }}
+    [{
+      {i| ld in (Fmap.fsubst fs1 f) => C1' ld};
+      {j| ld in (Fmap.fsubst fs2 f) => C2' ld};
+      {k| ld in (Fmap.fsubst fs3 f) => C3' ld}
+    }]
+  {{ hv, Post' hv }} ->
+
+  {{ Pre }}
+    [{
+      {i| ld in fs1 => C1 ld};
+      {j| ld in fs2 => C2 ld};
+      {k| ld in fs3 => C3 ld}
+    }]
+  {{ hv, Post hv }}.
+Proof.
+Admitted.
+
 Lemma foo {D} H1 H2 H3 H4 : H1 = H2 -> H3 = H4 -> H1 \* H3 = H2 \* H4 :> hhprop D.
 by move=> ->->.
 Qed.

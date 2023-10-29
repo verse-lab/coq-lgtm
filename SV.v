@@ -45,7 +45,6 @@ Context (xind xval : list int).
 Context (N M : int).
 Context (lb rb : int).
 Hypothesis (len : rb - lb = N).
-(* Hypothesis (bounds: 0 <= lb <= rb). *) (* TODO generalize_arith will loop if bounds is present *)
 Hypotheses (bounds_l: 0 <= lb) (bounds_r: lb <= rb).
 Hypothesis len_xind : rb <= length xind.
 Hypothesis len_xval : rb <= length xval.
@@ -317,8 +316,8 @@ Definition slice {A} (l : list A) i j := (list_interval (abs i) (abs j) l).
 
 Context (xind xval yind yval : list int).
 Context (Nx Ny M rbx lbx rby lby : int).
-Hypothesis lenx : rbx - lbx = Nx.
-Hypothesis leny : rby - lby = Nx.
+(* Hypothesis lenx : rbx - lbx = Nx. *)
+(* Hypothesis leny : rby - lby = Nx. *)
 Hypothesis (bounds_lx : 0 <= lbx) (bound_rx : lbx <= rbx).
 Hypothesis (bounds_ly : 0 <= lby) (bound_ry : lby <= rby).
 Hypothesis len_xind : rbx <= length xind.
@@ -331,10 +330,14 @@ Hypothesis xind_leq : forall x, In x (slice xind lbx rbx) -> 0 <= x < M.
 Hypothesis yind_leq : forall x, In x (slice yind lby rby) -> 0 <= x < M.
 
 
-Notation "'xind'" := ("x_ind":var) (in custom trm at level 0) : trm_scope.
-Notation "'xval'" := ("x_val":var) (in custom trm at level 0) : trm_scope.
-Notation "'yind'" := ("y_ind":var) (in custom trm at level 0) : trm_scope.
-Notation "'yval'" := ("y_val":var) (in custom trm at level 0) : trm_scope.
+(* Notation "'xind'" := ("x_ind":var) (in custom trm at level 0) : trm_scope. *)
+(* Notation "'xval'" := ("x_val":var) (in custom trm at level 0) : trm_scope. *)
+(* Notation "'yind'" := ("y_ind":var) (in custom trm at level 0) : trm_scope. *)
+(* Notation "'yval'" := ("y_val":var) (in custom trm at level 0) : trm_scope. *)
+Notation "'rbx'" := ("rb_x":var) (in custom trm at level 0) : trm_scope.
+Notation "'lbx'" := ("lb_x":var) (in custom trm at level 0) : trm_scope.
+Notation "'rby'" := ("rb_y":var) (in custom trm at level 0) : trm_scope.
+Notation "'lby'" := ("lb_y":var) (in custom trm at level 0) : trm_scope.
 Notation "'iX'" := ("iX":var) (in custom trm at level 0) : trm_scope.
 Notation "'iY'" := ("iY":var) (in custom trm at level 0) : trm_scope.
 Notation "'ans'" := ("ans":var) (in custom trm at level 0) : trm_scope.
@@ -345,8 +348,8 @@ Notation "'while' C '{' T '}'"  :=
     C, T at level 0,
     format "'[' while  C ']'  '{' '/   ' '[' T  '}' ']'") : trm_scope.
 
-Definition sv_dotprod := <{
-  fun xind xval yind yval =>
+Definition sv_dotprod (xind yind xval yval : loc) := <{
+  fun lbx rbx lby rby  =>
     let ans = ref 0 in
     let iX = ref lbx in 
     let iY = ref lby in 
@@ -407,7 +410,7 @@ Lemma sv_dotprod_spec `{Inhab (labeled int)} (x_ind x_val y_ind y_val : loc) :
      (\*_(i <- `[0, M]) arr(y_ind, yind)⟨3, i⟩) \\*
      (\*_(i <- `[0, M]) arr(y_val, yval)⟨3, i⟩) }}
   [{
-    [1| ld in `{0}   => sv_dotprod x_ind x_val y_ind y_val];
+    {1| ld in `{0}   => sv_dotprod x_ind y_ind x_val y_val lbx rbx lby rby};
     {2| ld in `[0,M] => get ld x_ind x_val lbx rbx};
     {3| ld in `[0,M] => get ld y_ind y_val lby rby}
   }]

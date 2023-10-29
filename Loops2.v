@@ -107,6 +107,7 @@ Proof.
   all: move=> *; rewrite ?nth_lof //; autos*.
 Qed.
 
+
 Lemma xfor_lemma_gen_array_fun `{ID : Inhab D}
   Inv 
   (R R' : Dom -> hhprop)
@@ -261,6 +262,70 @@ Proof.
   { intros hv m HH HH2. false HH2. replace m with ((lof id N)[m]) by (rewrite nth_lof; math).
     apply nth_In. math. }
 Qed.
+
+Lemma xfor_lemma_gen_array_fun_normal2 `{ID : Inhab D}
+  Inv 
+  (R1 R1' R2 R2' : Dom -> hhprop)
+  s fsi1 fsi2 vr (arrl : loc) (f : int -> int) (g : _ -> _ -> int)
+  (N: Z) (C1 C2 : Dom -> trm) (C C' : trm)
+  (i j k : Z)
+  Pre Post: 
+  (forall (l : int), 
+    (0 <= l < N) ->
+    {{ Inv l \* 
+        (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R1 d) \* 
+        (\*_(d <- ⟨(k,0)%Z, fsi2 l⟩) R2 d) \* 
+        (arrl + 1 + abs l)%nat ~⟨(i,0)%Z, s⟩~> f l }}
+      [{
+        {i| _  in single s tt  => subst vr l C};
+        {j| ld in fsi1 l       => C1 ld};
+        {k| ld in fsi2 l       => C2 ld}
+      }]
+    {{ v, 
+        Inv (l + 1) \* 
+        (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R1' d) \* 
+        (\*_(d <- ⟨(k,0)%Z, fsi2 l⟩) R2' d) \* 
+        (arrl + 1 + abs l)%nat ~⟨(i,0)%Z, s⟩~> g v l }}) ->
+  (forall j : int, hlocal (Inv j) ⟨(i,0%Z), single s tt⟩) ->
+  (forall i : Dom, hlocal (R1 i) ⟨(j,0%Z), (single i tt)⟩) ->
+  (forall i : Dom, hlocal (R1' i) ⟨(j,0%Z), (single i tt)⟩) ->
+  (forall i : Dom, hlocal (R2 i) ⟨(k,0%Z), (single i tt)⟩) ->
+  (forall i : Dom, hlocal (R2' i) ⟨(k,0%Z), (single i tt)⟩) ->
+  (forall (hv hv' : D -> val) m,
+    0 <= m < N ->
+    (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
+    (forall i, indom (fsi2 m) i -> hv[`k](i) = hv'[`k](i)) ->
+    g hv m = g hv' m) ->
+  (i <> j)%Z ->
+  (j <> k)%Z ->
+  (k <> i)%Z ->
+  0 <= N ->
+  (forall t : val, subst "for" t C = C) -> 
+  (forall t : val, subst "cnt" t C = C) ->
+  (forall t : val, subst "cond" t C = C) ->
+  var_eq vr "cnt" = false ->
+  var_eq vr "for" = false ->
+  var_eq vr "cond" = false ->
+  (Pre ==> 
+    Inv 0 \* 
+    (\*_(d <- Union `[0,N] fsi1) R1 d) \*
+    (\*_(d <- Union `[0,N] fsi2) R2 d) \*
+    harray_fun f arrl N (Lab (i,0) s)) ->
+  (forall hv, 
+    Inv N \* 
+    (\*_(d <- Union `[0,N] fsi1) R1' d) \* 
+    (\*_(d <- Union `[0,N] fsi2) R2' d) \* 
+    harray_fun (g hv) arrl N (Lab (i,0) s) ==>
+    wp ⟨(i,0),single s tt⟩ (fun=> C') (fun hr' => Post (lab_fun_upd hr' hv (i,0)))) -> 
+  {{ Pre }}
+    [{
+      {i| _  in single s tt => trm_seq (For 0 N (trm_fun vr C)) C'};
+      {j| ld in Union `[0,N] fsi1 => C1 ld};
+      {k| ld in Union `[0,N] fsi2 => C2 ld}
+    }]
+  {{ v, Post v }}.
+Proof.
+Admitted.
 
 End WithLoops.
 
