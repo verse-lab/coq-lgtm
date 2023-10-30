@@ -1,7 +1,7 @@
 Set Implicit Arguments.
 From SLF Require Import LabType Fun LibSepFmap Sum.
 From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer Unary_IndexWithBounds.
-From SLF Require Import Struct Loops SV2 Subst NTriple Loops2 Struct2 CSR.
+From SLF Require Import Struct Loops SV Subst NTriple Loops2 Struct2 CSR ListCommon.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
@@ -158,11 +158,6 @@ Tactic Notation "seclocal_fold" :=
   rewrite ?label_single ?wp_single
     -/(For_aux _ _) 
     -/(For _ _ _) //=.
-
-Lemma in_interval_list {A : Type} (l : list A) lb rb x: 
-   In x (list_interval lb rb l) -> In x l.
-Proof.
-Admitted.
 
 Arguments in_interval_list {_ _ _ _ _}.
 
@@ -335,6 +330,117 @@ Proof with (try seclocal_fold; seclocal_solver).
     indomE; case: classicT=> // -[?]; indomE=> /=-[?][*]. 
     case: C; subst; apply/nth_In; math. }
 Qed.
+
+Context (yind yval : list int).
+Context (M : int).
+Hypothesis len_xind : length yind = M :> int.
+Hypothesis len_xval : length yval = M :> int.
+Hypothesis stored_yind : sorted yind.
+Hypothesis yind_leq : forall x, In x yind -> 0 <= x < Ncol.
+Hypothesis Nrow0 : Nidx > 0. (* we get rid of it later *)
+
+
+Hypothesis sorted_eachcol : forall x : int, 0 <= x < Nidx -> sorted (colind_seg x).
+
+Definition spmspv x_colind y_ind x_mval y_val := 
+  let dot := sv.sv_dotprod x_colind y_ind x_mval y_val in
+  <{
+  fun rowptr midx =>
+  let s = alloc0 Nrow in
+  for i <- [0, Nidx] {
+    let lb = read_array rowptr i in
+    let i' = i + 1 in
+    let rb = read_array rowptr i' in
+    let i = read_array midx i in
+    let x = dot lb rb 0 M in 
+      val_array_set s i x
+  }; 
+  s
+}>.
+
+Lemma spmspv_spec `{Inhab D} `{H__ : Inhab (labeled int)}
+  (x_mval x_colind x_midx x_rowptr y_ind y_val : loc) : 
+  {{ arr(x_mval, mval)⟨1, (0,0)⟩ \*
+     arr(x_midx, midx)⟨1, (0,0)⟩ \*
+     arr(x_colind, colind)⟨1, (0,0)⟩ \*
+     arr(x_rowptr, rowptr)⟨1, (0,0)⟩ \*
+     arr(y_ind, yind)⟨1, (0,0)⟩ \* 
+     arr(y_val, yval)⟨1, (0,0)⟩ \* 
+     (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_mval, mval)⟨2, i⟩) \*
+     (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_midx, midx)⟨2, i⟩) \*
+     (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_colind, colind)⟨2, i⟩) \*
+     (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_rowptr, rowptr)⟨2, i⟩) \*
+     (\*_(i <- `[0, Ncol]) arr(y_ind, yind)⟨3, (0,i)⟩) \* 
+     (\*_(i <- `[0, Ncol]) arr(y_val, yval)⟨3, (0,i)⟩) }}
+  [{
+    {1| ld in `{(0,0)}                 => spmspv x_colind y_ind x_mval y_val x_rowptr x_midx};
+    {2| ld in `[0, Nrow] \x `[0, Ncol] => get x_mval x_midx x_colind x_rowptr ld.1 ld.2};
+    {3| ld in `{0}       \x `[0, Ncol] => sv.get ld.2 y_ind y_val 0 M}
+  }]
+  {{ hv, (\exists p, 
+    \[hv[`1]((0,0)) = val_loc p] \*
+    harray_fun (fun i => Σ_(j <- `[0, Ncol]) hv[`2]((i, j)) * hv[`3]((0, j))) p Nrow (Lab (1,0) (0,0)))
+      \* \Top }}.
+Proof with (try seclocal_fold; seclocal_solver).
+  xfocus (2,0) (indom (midx \x `[0, Ncol])).
+  rewrite (hbig_fset_part (`[0, Nrow] \x `[0, Ncol]) (indom (midx \x `[0, Ncol]))). (* TODO: move to xfocus *)
+  xapp get_spec_out=> [[?][>]|].
+  { rewrite /(_ ∖ _). do ? indomE=> //=; autos*. }
+  repeat (set (HHQ := hbig_fset hstar (_ ∖ _) _); xframe HHQ; clear HHQ).
+  have E : (`[0, Nrow] \x `[0, Ncol]) ∩ indom (midx \x `[0, Ncol]) = midx \x `[0, Ncol].
+  { rewrite -prod_intr_list_on_1. f_equal. now apply intr_list. }
+  rewrite E (fset_of_list_nodup 0 nodup_midx) len_midx prod_Union_distr.
+  rewrite -(Union_same Nidx (`{0} \x `[0, Ncol])) //.
+  xin (1,0) : (xwp; xapp (@htriple_alloc0_unary)=> // s)...
+  rewrite -?hbig_fset_hstar -3?(hstar_assoc _ _ (hbig_fset hstar _ (fun _ => _ \* _))).
+  rewrite -?hbig_fset_hstar.
+  match goal with 
+    |- context [(_ \* ?a \* ?b \* ?c \* ?d \* ?e \* ?h \* (hbig_fset _ _ ?f) \* (hbig_fset _ _ ?g))] => 
+      pose (Inv (i : int) := a \* b \* c \* d \* e \* h); pose (R1 := f)
+  end.
+  set (R2 := fun i : Dom => arr(y_ind, yind)⟨3, i⟩ \* arr(y_val, yval)⟨3, i⟩).
+  xfor_specialized2 Inv R1 R1 R2 R2 
+    (fun hv (i : int) => (If (In i midx) then Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * hv[`3]((0,j.2))) else 0)) (fun=> 0) midx s.
+  { intros. apply midx_leq, nth_In; math. }
+  { case: classicT=> [?|/(_ (nth_In _ _ _))]; last lia.
+    xin (2,0) : rewrite wp_prod_single /=.
+    rewrite /Inv.
+    xin (1,0) : do 4 (xwp; xapp)...
+    xsubst (snd : _ -> int).
+    xfocus (2,0); rewrite -> ! hbig_fset_hstar.
+    xwp; xapp (@Unary.index.Spec `[0, Ncol] Nidx (2,0) midx x_midx (fun=> midx[l0]))=> //.
+    rewrite Unary.index_nodup; try math; try assumption.
+    xwp; xapp. xwp; xif=> ?; [ | math ].
+    do 3 (xwp; xapp).
+    xunfocus; xin (1,0) : idtac. (* reformat *)
+    xnapp sv.sv_dotprod_spec...
+    1-3: lia. 
+    { by rewrite /slice -len_xind slice_fullE. }
+    { move=> ?/in_interval_list... }
+    { move=> ?; rewrite /slice -len_xind slice_fullE... }
+    move=> ?; rewrite -wp_equiv. xsimpl=>->.
+    xapp @lhtriple_array_set_pre.
+    rewrite csr.sum_prod1E. xsimpl. }
+  { intros. now case_if. }
+  { rewrite Union_same //; xsimpl*. }
+  xwp; xval. xsimpl*.
+  match goal with
+    |- _ ==> harray_fun ?ff _ _ _ \\* _ => eapply eq_ind_r with (y:=ff)
+  end.
+  1: xsimpl*.
+  extens=> i. 
+  under (@SumEq _ _ _ (`[0, Ncol])).
+  { move=>*; rewrite to_int_if; over. }
+  case_if.
+  { rewrite csr.sum_prod1E /=; apply SumEq=> >; indomE.
+    case: classicT=> // /[swap]? []; exists (Unary.index i midx); indomE=> /=.
+    splits; try tauto. 
+    { rewrite -len_midx Unary.index_mem //; splits*; exact/(Unary.indexG0). }
+    { by rewrite Unary.nth_index. } }
+  { erewrite SumEq=> [|?]; first exact/Sum0s.
+    indomE; case: classicT=> // -[?]; indomE=> /=-[?][*]. 
+    case: C; subst; apply/nth_In; math. }
+Qed. 
 
 End unordered_csr.
 

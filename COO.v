@@ -119,6 +119,20 @@ Proof.
   xsimpl*.
 Qed.
 
+Lemma get_spec `{Inhab D} (x_ind x_val : loc) d (l : int): 
+  htriple (single d tt) 
+    (fun=> get l x_ind x_val)
+    (harray_int xind x_ind d \* 
+      harray_int xval x_val d)
+    (fun hr => 
+      harray_int xind x_ind d \* 
+      harray_int xval x_val d).
+Proof.
+  rewrite -wp_equiv; xsimpl.
+  xwp; xapp @index.spec=> //.
+  xapp; xsimpl*.
+Qed.
+
 
 Definition sum := 
   <{

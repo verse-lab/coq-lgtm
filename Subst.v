@@ -701,6 +701,65 @@ Proof.
   all: move=> >; rewrite* indom_union_eq.
 Qed.
 
+Lemma xntriple3_hsub {Dom Dom' : Type} (f : Dom -> Dom') 
+  Pre Pre' Post (Post' : (labeled Dom' -> val) -> hhprop (labeled Dom')) i j k
+  (C1 : Dom -> trm)
+  (C2 : Dom -> trm) 
+  (C3 : Dom -> trm) 
+  (C1' : Dom' -> trm)
+  (C2' : Dom' -> trm) 
+  (C3' : Dom' -> trm) 
+  (fs1 fs2 fs3 : fset Dom)
+  (F := labf_of f)
+  (Fs := ⟨(i,0), fs1⟩ \u ⟨(j,0), fs2⟩ \u ⟨(k,0), fs3⟩) :
+  i <> j ->
+  j <> k ->
+  k <> i ->
+  (forall x y , indom Fs x -> indom Fs y -> F x = F y -> x = y) ->
+  hlocal Pre Fs ->
+  (forall hv, hlocal (Post hv) Fs) ->
+  (forall x, C1 x = C1' (f x)) ->
+  (forall x, C2 x = C2' (f x)) ->
+  (forall x, C3 x = C3' (f x)) ->
+  (hsub F Fs Pre = Pre') ->
+  (forall (hv : labeled Dom' -> val), hsub F Fs (Post (hv \o F)) = Post' hv) ->
+  {{ Pre' }}
+    [{
+      {i| ld in (Fmap.fsubst fs1 f) => C1' ld};
+      {j| ld in (Fmap.fsubst fs2 f) => C2' ld};
+      {k| ld in (Fmap.fsubst fs3 f) => C3' ld}
+    }]
+  {{ hv, Post' hv }} ->
+
+  {{ Pre }}
+    [{
+      {i| ld in fs1 => C1 ld};
+      {j| ld in fs2 => C2 ld};
+      {k| ld in fs3 => C3 ld}
+    }]
+  {{ hv, Post hv }}.
+Proof.
+  move=> ??? INj ?? C1E C2E C3E <- /(@fun_ext_1 _ _ _ _)<-; rewrite /ntriple /nwp /= => ht.
+  rewrite /htrm_of /=.
+  set (g := fun ld : labeled Dom' => 
+    If (i, 0) = lab (ld) /\ indom (Fmap.fsubst fs1 f) (el (ld)) then C1' (el (ld))
+    else If (j, 0) = lab (ld) /\ indom (Fmap.fsubst fs2 f) (el (ld)) then C2' (el (ld))
+    else If (k, 0) = lab (ld) /\ indom (Fmap.fsubst fs3 f) (el (ld)) then C3' (el (ld))
+    else 0).
+  erewrite (wp_ht_eq _ (g \o F)).
+  { rewrite wp_equiv /g/F. 
+    apply/(@htriple_hsub (labeled Dom) (labeled Dom') F _ _ g).
+    all: rewrite* union_empty_r.
+    move: ht; rewrite /Fs/g wp_equiv union_empty_r ?fsubst_union_fset ?disjoint_label.
+    { by rewrite /htrm_of /= ?fsubst_labf_of. }
+    { eqsolve. }
+    rewrite disjoint_union_eq_r ?disjoint_label. eqsolve. }
+  case=> l d /=; rewrite /F/g //=.
+  rewrite union_empty_r -?(indom_label_eq _ (Fmap.fsubst _ f)) -?fsubst_labf_of=> IND.
+  rewrite ?(fsubst_indom_eq' (labf_of f) _ _ IND) // ?indom_label_eq ?C1E ?C2E ?C3E //.
+  all: move=> >; do ? rewrite* indom_union_eq.
+Qed.
+
 Lemma foo {D} H1 H2 H3 H4 : H1 = H2 -> H3 = H4 -> H1 \* H3 = H2 \* H4 :> hhprop D.
 by move=> ->->.
 Qed.
@@ -770,4 +829,31 @@ Tactic Notation "xsubst" uconstr(f) :=
           |
           ]
         ]
-  end; simpl; fsubstE.
+  | |- _ ==> N-WP [{
+    [?i| _ in ?fs1 => _];
+    [?j| _ in ?fs2 => _];
+    [?k| _ in ?fs3 => _]
+  }] {{ _ , _}} => 
+  let Inj := fresh in 
+  have Inj : 
+    forall x y, 
+      indom (⟨(i,0), fs1⟩ \u ⟨(j,0), fs2⟩ \u ⟨(k,0), fs3⟩) x -> 
+      indom (⟨(i,0), fs1⟩ \u ⟨(j,0), fs2⟩ \u ⟨(k,0), fs3⟩) y -> 
+      Lab (lab x) (f (el x)) = Lab (lab y) (f (el y)) -> x = y; 
+      [ try (intros [?[??] ][?[??] ]; indomE=> /= + /[swap]=>/[swap]-[]->-> []?[]; eqsolve)
+        | eapply (@xntriple3_hsub _ _ f); 
+          [ by []
+          | by []
+          | by []
+          | eapply Inj
+          | xlocal 
+          | xlocal
+          | case=> ??/=; reflexivity
+          | case=> ??/=; reflexivity
+          | case=> ??/=; reflexivity
+          | xsubst_rew Inj; indomE; autos*
+          | move=> ? /=; xsubst_rew Inj; indomE; autos*
+          |
+          ]
+        ]
+  end; rewrite /labf_of; simpl; fsubstE.
