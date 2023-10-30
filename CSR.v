@@ -108,12 +108,6 @@ Tactic Notation "seclocal_fold" :=
     -/(For_aux _ _) 
     -/(For _ _ _) //=.
 
-
-Lemma in_interval_list {A : Type} (l : list A) lb rb x: 
-   In x (list_interval lb rb l) -> In x l.
-Proof.
-Admitted.
-
 Arguments in_interval_list {_ _ _ _ _}.
 
 Local Notation Dom := (int * int)%type.
@@ -246,6 +240,9 @@ Hypothesis stored_yind : sorted yind.
 Hypothesis yind_leq : forall x, In x yind -> 0 <= x < Ncol.
 Hypothesis Nrow0 : Nrow > 0. (* we get rid of it later *)
 
+
+Hypothesis sorted_eachcol : forall x : int, 0 <= x < Nrow -> sorted (colind_seg x).
+
 Definition spmspv x_colind y_ind x_mval y_val := 
   let dot := sv.sv_dotprod x_colind y_ind x_mval y_val in
   <{
@@ -261,103 +258,7 @@ Definition spmspv x_colind y_ind x_mval y_val :=
   s
 }>.
 
-Lemma Union_same {B C} (v : int) (f : fmap B C) : 
-  v > 0 -> 
-    Union `[0, v] (fun=> f) = f.
-Admitted.
-
 Arguments Union_same {_ _} _ _.
-
-Tactic Notation "xfor_specialized_normal" constr(Inv) constr(R) uconstr(R') uconstr(op) uconstr(f) constr(s) :=
-  eapply (@xfor_lemma_gen_array_fun_normal _ _ Inv R R' _ _ _ s f op);
-  [ intros ??; rewrite ?/Inv ?/R ?/R';
-    xnsimpl
-  | 
-  |
-  |
-  | let hvE := fresh "hvE" in
-    let someindom := fresh "someindom" in
-    intros ???? hvE; rewrite ?/op; indomE;
-    match goal with 
-    | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
-    | _ => idtac
-    end; try setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
-      (first [ apply someindom | idtac ])]
-  |
-  | try lia
-  |
-  |
-  |
-  |
-  |
-  |
-  | rewrite ?/Inv ?/R; rewrite -> ?hbig_fset_hstar; xsimpl
-  | intros ?; rewrite ?/Inv ?/R' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl
-  ]=> //; try (solve [ rewrite ?/Inv ?/R ?/R' /=; xlocal ]); autos*.
-
-Tactic Notation "xsubst" uconstr(f) := 
-  rewrite /ntriple;
-  match goal with 
-  | |- _ ==> N-WP [{
-    [?i| _ in ?fs1 => _];
-    [?j| _ in ?fs2 => _]
-  }] {{ _ , _}} => 
-    let Inj := fresh in 
-    have Inj : 
-      forall x y, 
-        indom (⟨(i,0), fs1⟩ \u ⟨(j,0), fs2⟩) x -> 
-        indom (⟨(i,0), fs1⟩ \u ⟨(j,0), fs2⟩) y -> 
-        Lab (lab x) (f (el x)) = Lab (lab y) (f (el y)) -> x = y; 
-        [ try (intros [?[??] ][?[??] ]; indomE=> /= + /[swap]=>/[swap]-[]->-> []?[]; eqsolve)
-        | eapply (@xntriple2_hsub _ _ f); 
-          [ by []
-          | eapply Inj
-          | xlocal 
-          | xlocal
-          | case=> ??/=; reflexivity
-          | case=> ??/=; reflexivity
-          | xsubst_rew Inj; indomE; autos*
-          | move=> ? /=; xsubst_rew Inj; indomE; autos*
-          |
-          ]
-        ]
-  | |- _ ==> N-WP [{
-    [?i| _ in ?fs1 => _];
-    [?j| _ in ?fs2 => _];
-    [?k| _ in ?fs3 => _]
-  }] {{ _ , _}} => 
-  let Inj := fresh in 
-  have Inj : 
-    forall x y, 
-      indom (⟨(i,0), fs1⟩ \u ⟨(j,0), fs2⟩ \u ⟨(k,0), fs3⟩) x -> 
-      indom (⟨(i,0), fs1⟩ \u ⟨(j,0), fs2⟩ \u ⟨(k,0), fs3⟩) y -> 
-      Lab (lab x) (f (el x)) = Lab (lab y) (f (el y)) -> x = y; 
-      [ try (intros [?[??] ][?[??] ]; indomE=> /= + /[swap]=>/[swap]-[]->-> []?[]; eqsolve)
-        | eapply (@xntriple3_hsub _ _ f); 
-          [ by []
-          | by []
-          | by []
-          | eapply Inj
-          | xlocal 
-          | xlocal
-          | case=> ??/=; reflexivity
-          | case=> ??/=; reflexivity
-          | case=> ??/=; reflexivity
-          | xsubst_rew Inj; indomE; autos*
-          | move=> ? /=; xsubst_rew Inj; indomE; autos*
-          |
-          ]
-        ]
-  end; rewrite /labf_of; simpl; fsubstE.
-
-Tactic Notation "xnapp" constr(E) := 
-  rewrite -> ?hbig_fset_hstar;
-  apply/xletu2=> //=; [eapply xnapp_lemma'; 
-       [eapply E|rewrite /arr1;
-         let hp := fresh "hp" in 
-         let HE := fresh "HE" in 
-        remember hpure as hp eqn:HE;
-       xapp_simpl=> ?; rewrite HE; exact: himpl_refl]|]; eauto; simpl.
 
 Lemma spmspv_spec `{Inhab D}
   (x_mval x_colind x_rowptr y_ind y_val : loc) : 
@@ -394,44 +295,23 @@ Proof with (try seclocal_fold; seclocal_solver; try lia).
     arr(x_rowptr, rowptr)⟨1, (0,0)⟩ \*
     arr(y_ind, yind)⟨1, (0,0)⟩ \* 
     arr(y_val, yval)⟨1, (0,0)⟩).
-  eapply (@xfor_lemma_gen_array_fun_normal2 _ _ 
-   Inv R1 R1 R2 R2 _ _ _ _ s (fun=> 0)
-   (fun hv i => Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * hv[`3]((0, j.2)))))=> //; try eassumption.
-  { intros ??; rewrite ?/Inv ?/R1 ?/R2; xnsimpl.
-    xin (2,0) : rewrite wp_prod_single /=.
+  xfor_specialized_normal2 Inv R1 R1 R2 R2 
+    (fun hv i => Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * hv[`3]((0, j.2))))
+    (fun=> 0) s.
+  { xin (2,0) : rewrite wp_prod_single /=.
     xin (1,0) : do 3 (xwp; xapp)...
     xframe2 (arr(x_rowptr, rowptr)⟨1, (0, 0)⟩).
     xsubst (snd : _ -> int).
     xnapp @sv.sv_dotprod_spec... 
-    { admit. }
-    { admit. }
-    { admit. }
-    { admit. }  
+    { by rewrite -len_xind /slice slice_fullE. }
+    { move=> ? /in_interval_list... }
+    { move=> ?; rewrite -len_xind /slice slice_fullE... }
     move=> ?; rewrite -wp_equiv. xsimpl=>->.
     xapp @lhtriple_array_set_pre; try math.
     rewrite sum_prod1E; xsimpl. }
-  { rewrite /Inv. xlocal. }
-  { rewrite /R1. xlocal. }
-  { rewrite /R1. xlocal. }
-  { rewrite /R2. xlocal. }
-  { rewrite /R2. xlocal. }
-  { let hvE1 := fresh "hvE1" in
-    let hvE2 := fresh "hvE2" in
-    let someindom := fresh "someindom" in
-    intros ???? hvE1 hvE2; rewrite ?/op; indomE;
-    match goal with 
-    | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
-    | _ => idtac
-    end; try rewrite hvE1 1?hvE2;
-     [eauto|autorewrite with indomE; try math; 
-      (first [ apply someindom | idtac ])| autorewrite with indomE; try math; 
-      (first [ apply someindom | idtac ])]; simpl; try lia. }
-  { rewrite ?/Inv ?/R1 /R2. rewrite -> ?hbig_fset_hstar; xsimpl.
-    rewrite Union_same //; xsimpl*. }
-  intros ?; rewrite ?/Inv ?/R1 /R2 ?/op; rewrite -> ?hbig_fset_hstar; xsimpl.
+  { rewrite Union_same //; xsimpl*. }
   xwp; xval. xsimpl*. xsimpl; rewrite sum_prod1E; xsimpl.
-Admitted.
-
+Qed.
 
 End csr.
 

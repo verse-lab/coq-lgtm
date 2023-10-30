@@ -295,6 +295,11 @@ Lemma hstars_flip_15 {D : Type} : forall (H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12
   = H15 \* H14 \* H13 \* H12 \* H11 \* H10 \* H9 \* H8 \* H7 \* H6 \* H5 \* H4 \* H3 \* H2 \* H1 \* \[].
 Proof using. intros. rewrite <- (hstars_flip_14 H1). rew_heap. rewrite (hstar_comm H15). rew_heap~. Qed.
 
+Lemma hstars_flip_16 {D : Type} : forall (H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12 H13 H14 H15 H16 : hhprop D),
+    H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11 \* H12 \* H13 \* H14 \* H15 \* H16 \* \[]
+  = H16 \* H15 \* H14 \* H13 \* H12 \* H11 \* H10 \* H9 \* H8 \* H7 \* H6 \* H5 \* H4 \* H3 \* H2 \* H1 \* \[].
+Proof using. intros. rewrite <- (hstars_flip_15 H1). rew_heap. rewrite (hstar_comm H16). rew_heap~. Qed.
+
 Ltac hstars_flip_lemma i :=
   match number_to_nat i with
   | 0%nat => constr:(@hstars_flip_0)
@@ -313,6 +318,7 @@ Ltac hstars_flip_lemma i :=
   | 13%nat => constr:(@hstars_flip_13)
   | 14%nat => constr:(@hstars_flip_14)
   | 15%nat => constr:(@hstars_flip_15)
+  | 16%nat => constr:(@hstars_flip_16)
   | _ => constr:(@hstars_flip_1) (* unsupported *)
   end.
 
@@ -425,6 +431,11 @@ Lemma hstars_pick_15 {D : Type} : forall (H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12
   = H15 \* H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11 \* H12 \* H13 \* H14 \* H.
 Proof using. intros. rewrite~ (hstar_comm_assoc H14). applys @hstars_pick_14. Qed.
 
+Lemma hstars_pick_16 {D : Type} : forall (H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12 H13 H14 H15 H16 H : hhprop D),
+    H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11 \* H12 \* H13 \* H14 \* H15 \* H16 \* H
+  = H16 \* H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11 \* H12 \* H13 \* H14 \* H15 \* H.
+Proof using. intros. rewrite~ (hstar_comm_assoc H15). applys @hstars_pick_15. Qed.
+
 Lemma hstars_pick_last_1 {D : Type} : forall (H1 : hhprop D),
   H1 = H1.
 Proof using. auto. Qed.
@@ -495,6 +506,12 @@ Lemma hstars_pick_last_15 {D : Type} : forall (H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H1
   = H15 \* H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11 \* H12 \* H13 \* H14.
 Proof using. intros. rewrite~ (hstar_comm H14). applys @hstars_pick_14. Qed.
 
+Lemma hstars_pick_last_16 {D : Type} : forall (H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 H11 H12 H13 H14 H15 H16 : hhprop D),
+    H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11 \* H12 \* H13 \* H14 \* H15 \* H16
+  = H16 \* H1 \* H2 \* H3 \* H4 \* H5 \* H6 \* H7 \* H8 \* H9 \* H10 \* H11 \* H12 \* H13 \* H14 \* H15.
+Proof using. intros. rewrite~ (hstar_comm H15). applys @hstars_pick_15. Qed.
+
+
 Ltac hstars_pick_lemma i :=
   let unsupported tt := fail 100 "hstars_pick supports only arity up to 9" in
   match i with
@@ -514,6 +531,7 @@ Ltac hstars_pick_lemma i :=
     | 13%nat => constr:(@hstars_pick_last_13)
     | 14%nat => constr:(@hstars_pick_last_14)
     | 15%nat => constr:(@hstars_pick_last_15)
+    | 16%nat => constr:(@hstars_pick_last_16)
     | ?x => unsupported tt
     end
   | ?j => match number_to_nat j with
@@ -532,6 +550,7 @@ Ltac hstars_pick_lemma i :=
     | 13%nat => constr:(@hstars_pick_13)
     | 14%nat => constr:(@hstars_pick_14)
     | 15%nat => constr:(@hstars_pick_15)
+    | 16%nat => constr:(@hstars_pick_16)
     | ?x => unsupported tt
     end
   end.

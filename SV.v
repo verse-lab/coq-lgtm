@@ -404,7 +404,8 @@ Ltac bool_rew :=
 Hint Resolve lhtriple_free : lhtriple.
 
 Lemma sv_dotprod_spec `{Inhab (labeled int)} (x_ind x_val y_ind y_val : loc) : 
-  {{ arr1 x_ind y_ind x_val y_val \*
+  {{ (arr(x_ind, xind)⟨1, 0⟩ \* arr(y_ind, yind)⟨1, 0⟩ \*
+     arr(x_val, xval)⟨1, 0⟩ \* arr(y_val, yval)⟨1, 0⟩) \*
      (\*_(i <- `[0, M]) arr(x_ind, xind)⟨2, i⟩) \\*
      (\*_(i <- `[0, M]) arr(x_val, xval)⟨2, i⟩) \\* 
      (\*_(i <- `[0, M]) arr(y_ind, yind)⟨3, i⟩) \\*
@@ -414,8 +415,9 @@ Lemma sv_dotprod_spec `{Inhab (labeled int)} (x_ind x_val y_ind y_val : loc) :
     {2| ld in `[0,M] => get ld x_ind x_val lbx rbx};
     {3| ld in `[0,M] => get ld y_ind y_val lby rby}
   }]
-  {{ hv, \[hv[`1](0) = Σ_(i <- `[0,M]) (hv[`2](i) * hv[`3](i))] 
-      \* arr1 x_ind y_ind x_val y_val \*
+  {{ hv, \[hv[`1](0) = Σ_(i <- `[0,M]) (hv[`2](i) * hv[`3](i))] \* 
+      (arr(x_ind, xind)⟨1, 0⟩ \* arr(y_ind, yind)⟨1, 0⟩ \*
+      arr(x_val, xval)⟨1, 0⟩ \* arr(y_val, yval)⟨1, 0⟩) \*
       (\*_(i <- `[0, M]) arr(x_ind, xind)⟨2, i⟩) \\*
       (\*_(i <- `[0, M]) arr(x_val, xval)⟨2, i⟩) \\* 
       (\*_(i <- `[0, M]) arr(y_ind, yind)⟨3, i⟩) \\*
@@ -428,6 +430,7 @@ Proof with fold'.
   set (ind := merge sxind syind).
   have?: NoDup sxind by exact/sorted_nodup.
   have?: NoDup syind by exact/sorted_nodup.
+  rewrite -/(arr1 _ _ _ _).
   have ndind: NoDup ind by exact/sorted_nodup/sorted_merge.
   xfocus (2,0) (ind).
   rewrite {1 2 5 6}(hbig_fset_part `[0, M] ind).

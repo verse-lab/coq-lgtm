@@ -116,3 +116,17 @@ Fact intr_list (a b : int) (l: list int) :
   (forall x, In x l -> a <= x < b) ->
   `[a, b] ∩ l = l.
 Admitted.
+
+Lemma slice_fullE {A : Type} (l : list A) : 
+  list_interval (abs 0) (abs (length l)) l = l.
+Admitted.
+
+Lemma Union_same {B C} (v : int) (f : fmap B C) : 
+  v > 0 -> 
+    Union `[0, v] (fun _ => f) = f.
+Admitted.
+
+Lemma in_interval_list {A : Type} (l : list A) lb rb x: 
+   In x (list_interval lb rb l) -> In x l.
+Proof.
+Admitted.
