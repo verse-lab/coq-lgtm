@@ -196,33 +196,6 @@ Definition spmv :=
   s
 }>.
 
-Global Tactic Notation "xfor_specialized_normal" constr(Inv) constr(R) uconstr(R') uconstr(op) uconstr(f) constr(s) :=
-  eapply (@xfor_lemma_gen_array_fun_normal _ _ Inv R R' _ _ _ s f op);
-  [ intros ??; rewrite ?/Inv ?/R ?/R';
-    xnsimpl
-  | 
-  |
-  |
-  | let hvE := fresh "hvE" in
-    let someindom := fresh "someindom" in
-    intros ???? hvE; rewrite ?/op; indomE;
-    match goal with 
-    | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
-    | _ => idtac
-    end; try setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
-      (first [ apply someindom | idtac ])]
-  |
-  | try lia
-  |
-  |
-  |
-  |
-  |
-  |
-  | rewrite ?/Inv ?/R; rewrite -> ?hbig_fset_hstar; xsimpl
-  | intros ?; rewrite ?/Inv ?/R' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl
-  ]=> //; try (solve [ rewrite ?/Inv ?/R ?/R' /=; xlocal ]); autos*.
-
 Lemma spmv_spec `{Inhab D} (x_mval x_colind x_rowptr x_dvec : loc) : 
   {{ arr(x_mval, mval)⟨1, (0,0)⟩ \*
      arr(x_colind, colind)⟨1, (0,0)⟩ \*
@@ -295,6 +268,97 @@ Admitted.
 
 Arguments Union_same {_ _} _ _.
 
+Tactic Notation "xfor_specialized_normal" constr(Inv) constr(R) uconstr(R') uconstr(op) uconstr(f) constr(s) :=
+  eapply (@xfor_lemma_gen_array_fun_normal _ _ Inv R R' _ _ _ s f op);
+  [ intros ??; rewrite ?/Inv ?/R ?/R';
+    xnsimpl
+  | 
+  |
+  |
+  | let hvE := fresh "hvE" in
+    let someindom := fresh "someindom" in
+    intros ???? hvE; rewrite ?/op; indomE;
+    match goal with 
+    | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
+    | _ => idtac
+    end; try setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
+      (first [ apply someindom | idtac ])]
+  |
+  | try lia
+  |
+  |
+  |
+  |
+  |
+  |
+  | rewrite ?/Inv ?/R; rewrite -> ?hbig_fset_hstar; xsimpl
+  | intros ?; rewrite ?/Inv ?/R' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl
+  ]=> //; try (solve [ rewrite ?/Inv ?/R ?/R' /=; xlocal ]); autos*.
+
+Tactic Notation "xsubst" uconstr(f) := 
+  rewrite /ntriple;
+  match goal with 
+  | |- _ ==> N-WP [{
+    [?i| _ in ?fs1 => _];
+    [?j| _ in ?fs2 => _]
+  }] {{ _ , _}} => 
+    let Inj := fresh in 
+    have Inj : 
+      forall x y, 
+        indom (⟨(i,0), fs1⟩ \u ⟨(j,0), fs2⟩) x -> 
+        indom (⟨(i,0), fs1⟩ \u ⟨(j,0), fs2⟩) y -> 
+        Lab (lab x) (f (el x)) = Lab (lab y) (f (el y)) -> x = y; 
+        [ try (intros [?[??] ][?[??] ]; indomE=> /= + /[swap]=>/[swap]-[]->-> []?[]; eqsolve)
+        | eapply (@xntriple2_hsub _ _ f); 
+          [ by []
+          | eapply Inj
+          | xlocal 
+          | xlocal
+          | case=> ??/=; reflexivity
+          | case=> ??/=; reflexivity
+          | xsubst_rew Inj; indomE; autos*
+          | move=> ? /=; xsubst_rew Inj; indomE; autos*
+          |
+          ]
+        ]
+  | |- _ ==> N-WP [{
+    [?i| _ in ?fs1 => _];
+    [?j| _ in ?fs2 => _];
+    [?k| _ in ?fs3 => _]
+  }] {{ _ , _}} => 
+  let Inj := fresh in 
+  have Inj : 
+    forall x y, 
+      indom (⟨(i,0), fs1⟩ \u ⟨(j,0), fs2⟩ \u ⟨(k,0), fs3⟩) x -> 
+      indom (⟨(i,0), fs1⟩ \u ⟨(j,0), fs2⟩ \u ⟨(k,0), fs3⟩) y -> 
+      Lab (lab x) (f (el x)) = Lab (lab y) (f (el y)) -> x = y; 
+      [ try (intros [?[??] ][?[??] ]; indomE=> /= + /[swap]=>/[swap]-[]->-> []?[]; eqsolve)
+        | eapply (@xntriple3_hsub _ _ f); 
+          [ by []
+          | by []
+          | by []
+          | eapply Inj
+          | xlocal 
+          | xlocal
+          | case=> ??/=; reflexivity
+          | case=> ??/=; reflexivity
+          | case=> ??/=; reflexivity
+          | xsubst_rew Inj; indomE; autos*
+          | move=> ? /=; xsubst_rew Inj; indomE; autos*
+          |
+          ]
+        ]
+  end; rewrite /labf_of; simpl; fsubstE.
+
+Tactic Notation "xnapp" constr(E) := 
+  rewrite -> ?hbig_fset_hstar;
+  apply/xletu2=> //=; [eapply xnapp_lemma'; 
+       [eapply E|rewrite /arr1;
+         let hp := fresh "hp" in 
+         let HE := fresh "HE" in 
+        remember hpure as hp eqn:HE;
+       xapp_simpl=> ?; rewrite HE; exact: himpl_refl]|]; eauto; simpl.
+
 Lemma spmspv_spec `{Inhab D}
   (x_mval x_colind x_rowptr y_ind y_val : loc) : 
   {{ arr(x_mval, mval)⟨1, (0,0)⟩ \*
@@ -305,41 +369,68 @@ Lemma spmspv_spec `{Inhab D}
      (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_mval, mval)⟨2, i⟩) \*
      (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_colind, colind)⟨2, i⟩) \*
      (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_rowptr, rowptr)⟨2, i⟩) \*
-     (\*_(i <- `[0, Ncol]) arr(y_ind, yind)⟨2, (0,i)⟩) \* 
-     (\*_(i <- `[0, Ncol]) arr(y_val, yval)⟨2, (0,i)⟩) }}
+     (\*_(i <- `[0, Ncol]) arr(y_ind, yind)⟨3, (0,i)⟩) \* 
+     (\*_(i <- `[0, Ncol]) arr(y_val, yval)⟨3, (0,i)⟩) }}
   [{
     {1| ld in `{(0,0)}                 => spmspv x_colind y_ind x_mval y_val x_rowptr};
     {2| ld in `[0, Nrow] \x `[0, Ncol] => get x_mval x_colind x_rowptr ld.1 ld.2};
-    {3| ld in `{0} \x `[0, Ncol]       => sv.get ld.2 y_ind y_val 0 M}
+    {3| ld in `{0}       \x `[0, Ncol] => sv.get ld.2 y_ind y_val 0 M}
   }]
   {{ hv, (\exists p, 
     \[hv[`1]((0,0)) = val_loc p] \*
-    harray_fun (fun i => Σ_(j <- `[0, Ncol]) hv[`2]((i, j)) * hv[`3]((0, i))) p Nrow (Lab (1,0) (0,0)))
+    harray_fun (fun i => Σ_(j <- `[0, Ncol]) hv[`2]((i, j)) * hv[`3]((0, j))) p Nrow (Lab (1,0) (0,0)))
       \* \Top }}. (* this \Top can be made concrete, if needed *)
-Proof with (try seclocal_fold; seclocal_solver).
+Proof with (try seclocal_fold; seclocal_solver; try lia).
   xin (2,0) : do 3 (xwp; xapp).
   xin (1,0) : (xwp; xapp (@htriple_alloc0_unary)=> // s)...
-  rewrite prod_cascade -(Union_same Nrow (`{0} \x `[0, Ncol])).
-  set (R (i : Dom) := arr(x_mval, mval)⟨2, i⟩ \*
+  rewrite prod_cascade -(Union_same Nrow (`{0} \x `[0, Ncol])) //.
+  set (R1 (i : Dom) := arr(x_mval, mval)⟨2, i⟩ \*
     arr(x_colind, colind)⟨2, i⟩ \* 
-    arr(x_rowptr, rowptr)⟨2, i⟩ \*
-    arr(x_dvec, dvec)⟨2, i⟩).
+    arr(x_rowptr, rowptr)⟨2, i⟩).
+  set (R2 (i : Dom) := arr(y_ind, yind)⟨3, i⟩ \*
+    arr(y_val, yval)⟨3, i⟩).
   set (Inv (i : int) := arr(x_mval, mval)⟨1, (0,0)⟩ \* 
     arr(x_colind, colind)⟨1, (0,0)⟩ \* 
     arr(x_rowptr, rowptr)⟨1, (0,0)⟩ \*
-    arr(x_dvec, dvec)⟨1, (0,0)⟩).
-  xfor_specialized_normal Inv R R (fun hv i => Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * dvec[j.2])) (fun=> 0) s.
-  { xin (2,0) : rewrite wp_prod_single /=.
+    arr(y_ind, yind)⟨1, (0,0)⟩ \* 
+    arr(y_val, yval)⟨1, (0,0)⟩).
+  eapply (@xfor_lemma_gen_array_fun_normal2 _ _ 
+   Inv R1 R1 R2 R2 _ _ _ _ s (fun=> 0)
+   (fun hv i => Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * hv[`3]((0, j.2)))))=> //; try eassumption.
+  { intros ??; rewrite ?/Inv ?/R1 ?/R2; xnsimpl.
+    xin (2,0) : rewrite wp_prod_single /=.
     xin (1,0) : do 3 (xwp; xapp)...
     xframe2 (arr(x_rowptr, rowptr)⟨1, (0, 0)⟩).
     xsubst (snd : _ -> int).
-    xnapp sv.dotprod_spec...
-    { move=> ?/in_interval_list... }
+    xnapp @sv.sv_dotprod_spec... 
+    { admit. }
+    { admit. }
+    { admit. }
+    { admit. }  
     move=> ?; rewrite -wp_equiv. xsimpl=>->.
     xapp @lhtriple_array_set_pre; try math.
     rewrite sum_prod1E; xsimpl. }
-  { xwp; xval. xsimpl*. xsimpl; rewrite sum_prod1E; xsimpl. }
-Qed.
+  { rewrite /Inv. xlocal. }
+  { rewrite /R1. xlocal. }
+  { rewrite /R1. xlocal. }
+  { rewrite /R2. xlocal. }
+  { rewrite /R2. xlocal. }
+  { let hvE1 := fresh "hvE1" in
+    let hvE2 := fresh "hvE2" in
+    let someindom := fresh "someindom" in
+    intros ???? hvE1 hvE2; rewrite ?/op; indomE;
+    match goal with 
+    | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
+    | _ => idtac
+    end; try rewrite hvE1 1?hvE2;
+     [eauto|autorewrite with indomE; try math; 
+      (first [ apply someindom | idtac ])| autorewrite with indomE; try math; 
+      (first [ apply someindom | idtac ])]; simpl; try lia. }
+  { rewrite ?/Inv ?/R1 /R2. rewrite -> ?hbig_fset_hstar; xsimpl.
+    rewrite Union_same //; xsimpl*. }
+  intros ?; rewrite ?/Inv ?/R1 /R2 ?/op; rewrite -> ?hbig_fset_hstar; xsimpl.
+  xwp; xval. xsimpl*. xsimpl; rewrite sum_prod1E; xsimpl.
+Admitted.
 
 
 End csr.
