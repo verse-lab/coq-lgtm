@@ -44,7 +44,6 @@ Import List Vars.
 
 Context (xind xval : list int) {HindIIL : IncreasingIntList xind}.
 Hypothesis H_length_xval : length xval = length xind - 1 :> int.
-Hypothesis H_xval_notnil : 0 < length xval.
 
 Local Notation D := (labeled int).
 
@@ -211,11 +210,9 @@ Import List.
 
 Context (xind xval : list int) {HindIIL : IncreasingIntList xind}.
 Hypothesis H_length_xval : length xval = length xind - 1 :> int.
-Hypothesis H_xval_notnil : 0 < length xval.
 
 Context (yind yval : list int) {HindIIL' : IncreasingIntList yind}.
 Hypothesis H_length_yval : length yval = length yind - 1 :> int.
-Hypothesis H_yval_notnil : 0 < length yval.
 
 Context (Mx My N : int).
 Hypotheses (EMx : Mx = length xind - 1) (ENx : N = xind[Mx]).
@@ -260,46 +257,47 @@ Definition alpha_blend := <{
             stride := xindx;
             ++iX;
             ++iY;
-            let step = !step in 
+            let "st" = !step in 
             let stride = !stride in 
-            let delta = stride - step in 
-            let xvalx = xval[i] in 
+            let delta = stride - "st" in 
+            let xvalx = xval[ix] in 
             let xvalx = α * xvalx in 
-            let yvaly = yval[i] in 
+            let yvaly = yval[iy] in 
             let yvaly = β * yvaly in 
             let xvalx = xvalx + yvaly in 
             let xvalx = xvalx * delta in
-              ans += xvalx
+              ans += xvalx;
+              step := stride
           else 
             let cnd = xindx < yindy in 
             if cnd then 
               stride := xindx;
               ++iX;
-              let step = !step in 
+              let "st" = !step in 
               let stride = !stride in 
-              let delta = stride - step in 
-              let xvalx = xval[i] in 
+              let delta = stride - "st" in 
+              let xvalx = xval[ix] in 
               let xvalx = α * xvalx in 
-              let yvaly = yval[i] in 
+              let yvaly = yval[iy] in 
               let yvaly = β * yvaly in 
               let xvalx = xvalx + yvaly in 
               let xvalx = xvalx * delta in
-                ans += xvalx
+                ans += xvalx;
+                step := stride
             else 
               stride := yindy;
               ++iY;
-              let step = !step in 
+              let "st" = !step in 
               let stride = !stride in 
-              let delta = stride - step in 
-              let xvalx = xval[i] in 
+              let delta = stride - "st" in 
+              let xvalx = xval[ix] in 
               let xvalx = α * xvalx in 
-              let yvaly = yval[i] in 
+              let yvaly = yval[iy] in 
               let yvaly = β * yvaly in 
               let xvalx = xvalx + yvaly in 
               let xvalx = xvalx * delta in
-                ans += xvalx);
-          let stride = !stride in
-          step := stride
+                ans += xvalx;
+                step := stride)
       }; !ans
 }>.
 
@@ -323,6 +321,27 @@ Ltac fold' :=
     -/(While_aux _ _) 
     -/(While _ _) //=; try lia.
 
+Ltac abbrv :=
+  match goal with 
+  | |- context [ While ?c ?f ] => set (cnd := c); set (bdy := f)
+  end.
+
+Lemma interval_unionE (l : list int) : 
+  sorted l -> 
+  max l = N ->
+  `[0, N] = \U_(i <- `[0, length l]) `[l[i], l[i+1] ].
+Admitted.
+
+Lemma not_isTrueE (P: Prop) : (~ isTrue P) = ~ P.
+Proof.
+Admitted.
+
+Ltac bool_rew := 
+  rewrite ?false_eq_isTrue_eq ?istrue_isTrue_eq 
+    ?true_eq_isTrue_eq -?(isTrue_and, isTrue_not, isTrue_or) ?not_isTrueE.
+
+Notation size := Datatypes.length.
+
 Lemma alpha_blend_spec `{Inhab (labeled int)} (x_ind x_val y_ind y_val : loc) : 
   {{ (arr(x_ind, xind)⟨1, 0⟩ \* arr(y_ind, yind)⟨1, 0⟩ \*
      arr(x_val, xval)⟨1, 0⟩ \* arr(y_val, yval)⟨1, 0⟩) \*
@@ -337,16 +356,67 @@ Lemma alpha_blend_spec `{Inhab (labeled int)} (x_ind x_val y_ind y_val : loc) :
   }]
   {{ hv, \[hv[`1](0) = Σ_(i <- `[0,N]) (α * hv[`2](i) + β * hv[`3](i))] 
       \* \Top}}.
-Proof with fold'.
+Proof with (fold'; try abbrv).
   set (ind := merge xind yind).
   have?: sorted xind by admit. 
   have?: sorted yind by admit.
   have?: NoDup xind by admit. 
   have?: NoDup yind by admit.
-  have ndind: NoDup ind by exact/sorted_nodup/sorted_merge.
+  have sind: sorted ind by exact/sorted_merge.
+  have ndind: NoDup ind by exact/sorted_nodup.
   xin (1,0): (xwp;xapp=> ans); (xwp;xapp=> iX); 
     (xwp;xapp=> iY); (xwp;xapp=> step); (xwp;xapp=> stride)...
-Admitted.
+  rewrite (@interval_unionE ind)=> //; last admit.
+  set (Inv (b : bool) (i : int) := 
+    arr(x_ind, xind)⟨1, 0⟩ \* arr(y_ind, yind)⟨1, 0⟩ \\*
+    arr(x_val, xval)⟨1, 0⟩ \* arr(y_val, yval)⟨1, 0⟩ \\*
+    step ~⟨(1,0)%Z,0⟩~> ind[i] \\*
+    \exists (ix iy str : int), 
+      iX ~⟨(1,0)%Z,0⟩~> ix \* iY ~⟨(1,0)%Z,0⟩~> iy \* stride ~⟨(1,0)%Z,0⟩~> str \\*
+      \[b = isTrue (ind[i] < N) /\ 
+        0 < ix <= Mx +1 /\ 0 < iy <= My + 1 /\
+        (b -> ind[i+1] = Z.min xind[ix] yind[iy])]).
+  set (op hv i := Σ_(i <- `[ind[i], ind[i+1] ]) α * hv[`2](i) + β * hv[`3](i)).
+  set (R3 (i : int) := \*_(i <- `[ind[i], ind[i+1] ]) arr(y_ind, yind)⟨3,i⟩ \* arr(y_val, yval)⟨3,i⟩).
+  set (R2 (i : int) := \*_(i <- `[ind[i], ind[i+1] ]) arr(x_ind, xind)⟨2,i⟩ \* arr(x_val, xval)⟨2,i⟩).
+  xwhile_sum Inv R2 R3 R2 R3 op ans=> //; try clear bdy cnd.
+  { move=> l ??; rewrite /Inv; xnsimpl=> ix iy str. 
+    bool_rew=> -[indL][ixL][iyL]/(_ eq_refl) indSE.
+    rewrite {}/bdy.
+    xfocus (1,0). do 5 (xwp; xapp). xwp. xif=> indE.
+    { (xwp; xapp). do 2 (xwp; xapp @incr1.spec).
+      do ? (xwp; xapp). xwp; xapp @incr.spec. xwp; xapp. 
+      xcleanup (1,0); rewrite /op /=.
+      have?: (l + 1 < size ind) by admit.
+      case: (classicT (ix = Mx + 1)).
+      { move=> ?; subst.
+        move: indE indSE; rewrite nth_overflow; try lia... 
+        move=> <- /[! Z.min_id] E.
+        move: (sorted_le l (l+1) _ sind)=> /[! E].
+        suff: ind[l] >= 0 by lia.
+        have?: ind[0] = 0 by rewrite /ind merge_nth0; lia.
+        case: (classicT (l = 0))=> [->|?].
+        { rewrite /ind merge_nth0; try lia. }
+        suff: ind[0] < ind[l] by lia. apply/sorted_le=> //; lia. }
+      move=> ?; have?: ix < size xind by lia. 
+      case: (classicT (iy = My + 1)).
+      { move=> ?; subst.
+        move: indE indSE; rewrite (nth_overflow yind); try lia... 
+        move=> -> /[! Z.min_id] E.
+        move: (sorted_le l (l+1) _ sind)=> /[! E].
+        suff: ind[l] >= 0 by lia.
+        have?: ind[0] = 0 by rewrite /ind merge_nth0; lia.
+        case: (classicT (l = 0))=> [->|?].
+        { rewrite /ind merge_nth0; try lia. }
+        suff: ind[0] < ind[l] by lia. apply/sorted_le=> //; lia. }
+      move=> ?; have?: iy < size yind by lia.
+      move: (size_merge xind yind); rewrite -/ind=> ?.
+      move: indSE; rewrite merge_nthS -/ind //; try lia.
+      
+       } }
+  { admit. }
+  { admit. }
+Qed.
 
 
 End alpha_blending.
