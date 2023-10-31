@@ -59,6 +59,9 @@ Definition harray_int (L:list int) (p:loc) (d : D) : hhprop :=
 Notation "'arr(' x ',' y ')⟨' l ',' d '⟩'" := 
   (harray_int y x (Lab (l,0) d)) (at level 32, format "arr( x ,  y )⟨ l ,  d ⟩") : hprop_scope.
 
+Definition harray_float (L:list binary64) (p:loc) (d : D) : hhprop :=
+  harray (LibList.map val_float L) p d.
+
 Definition val_array_length : val := val_length.
 
 (* Module Export Realization. *)
@@ -603,19 +606,23 @@ move: (i _)=> {}i ?.
 math.
 Qed.
 
-Definition read_array : val :=
+Definition read_array_withdef (def : val) : val :=
   <{ fun 'p 'i =>
       let 'i = val_abs 'i in
       let 'l = val_length 'p in
       let 'c = 'i < 'l in
       if 'c then 
         val_array_get 'p 'i
-      else 0 }>.
+      else def }>.
 
-Lemma htriple_array_read `{Inhab D} : forall fs (p : D -> loc) (i : D -> int) (L : D -> list int),
-  htriple fs (fun d => read_array (p d) (i d))
-    (\*_(d <- fs) (harray_int (L d) (p d) d))
-    (fun hr => \[hr = fun d => List.nth (abs (i d)) (L d) 0] \* (\*_(d <- fs) (harray_int (L d) (p d) d))).
+Definition read_array := Eval unfold read_array_withdef in read_array_withdef (val_int 0).
+
+Definition read_array_float := Eval unfold read_array_withdef in read_array_withdef (val_float (Zconst Tdouble 0)).
+
+Lemma htriple_array_read_withdef `{Inhab D} {def : val} : forall fs (p : D -> loc) (i : D -> int) (L : D -> list val),
+  htriple fs (fun d => (read_array_withdef def) (p d) (i d))
+    (\*_(d <- fs) (harray (L d) (p d) d))
+    (fun hr => \[hr = fun d => List.nth (abs (i d)) (L d) def] \* (\*_(d <- fs) (harray (L d) (p d) d))).
 Proof using.
 move=> ?? i L.
 eapply htriple_eval_like.
@@ -630,20 +637,44 @@ xwp; xapp.
 rewrite wp_equiv.
 apply/htriple_if_dep; rewrite -wp_equiv.
 { apply/xapp_lemma.
-  { apply/(htriple_array_get _ _ _ (fun d => LibList.map val_int (L d))); last reflexivity.
+  { apply/(htriple_array_get _ _ _ L); last reflexivity.
     move=> ?. rewrite /intr filter_indom=> -[] ?; math. }
   unfold protect.
   xsimpl=> f-> d.
-  rewrite length_map=> Lt.
   replace (abs (abs (i d))) with (abs (i d)); [| math].
-  rewrite nth_map; try math; move:Lt.
   move: (abs _) (L _)=> /[swap].
   elim=> // ?. 
   { rewrite length_nil; math. }
   move=> l IHl [|?] /=; rewrite length_cons ?nth_zero // => ?.
   rewrite nth_cons IHl //. rewrite istrue_isTrue_eq. math. }
-xwp; xval;xsimpl=>?. rewrite length_map istrue_isTrue_eq=> ?.
+xwp; xval;xsimpl=>?. rewrite istrue_isTrue_eq=> ?.
 rewrite List.nth_overflow // -length_List_length. math.
+Qed.
+
+Fact map_conversion [A B : Type] (l : list A) (f : A -> B) :
+  LibList.map f l = List.map f l.
+Proof.
+  induction l; simpl; rewrite ?LibList.map_cons ?LibList.map_nil; auto; f_equal; auto.
+Qed.
+
+Lemma htriple_array_read `{Inhab D} fs (p : D -> loc) (i : D -> int) (L : D -> list int) :
+  htriple fs (fun d => read_array (p d) (i d))
+    (\*_(d <- fs) (harray_int (L d) (p d) d))
+    (fun hr => \[hr = fun d => List.nth (abs (i d)) (L d) 0] \* (\*_(d <- fs) (harray_int (L d) (p d) d))).
+Proof.
+  rewrite /harray_int /read_array -/(read_array_withdef _).
+  eapply htriple_conseq. 1: apply htriple_array_read_withdef. 1: xsimpl.
+  xsimpl=> ? ->. extens=> d. by rewrite map_conversion List.map_nth.
+Qed.
+
+Lemma htriple_array_read_float `{Inhab D} fs (p : D -> loc) (i : D -> int) (L : D -> list binary64) :
+  htriple fs (fun d => read_array_float (p d) (i d))
+    (\*_(d <- fs) (harray_float (L d) (p d) d))
+    (fun hr => \[hr = fun d => List.nth (abs (i d)) (L d) (Zconst Tdouble 0)] \* (\*_(d <- fs) (harray_float (L d) (p d) d))).
+Proof.
+  rewrite /harray_float /read_array -/(read_array_withdef _).
+  eapply htriple_conseq. 1: apply htriple_array_read_withdef. 1: xsimpl.
+  xsimpl=> ? ->. extens=> d. by rewrite map_conversion List.map_nth.
 Qed.
 
 Lemma lhtriple_array_read `{Inhab D} : forall fs (p : loc) (i : D -> int) (L : list int),
@@ -651,6 +682,12 @@ Lemma lhtriple_array_read `{Inhab D} : forall fs (p : loc) (i : D -> int) (L : l
     (\*_(d <- fs) (harray_int L p d))
     (fun hr => \[hr = fun d => List.nth (abs (i d)) L 0] \* (\*_(d <- fs) (harray_int L p d))).
 Proof. move=> *; exact/htriple_array_read. Qed.
+
+Lemma lhtriple_array_read_float `{Inhab D} fs (p : loc) (i : D -> int) (L : list binary64) :
+  htriple fs (fun d => read_array_float p (i d))
+    (\*_(d <- fs) (harray_float L p d))
+    (fun hr => \[hr = fun d => List.nth (abs (i d)) L (Zconst Tdouble 0)] \* (\*_(d <- fs) (harray_float L p d))).
+Proof. move=> *; exact/htriple_array_read_float. Qed.
 
 Hint Resolve lhtriple_array_read : lhtriple.
 
@@ -734,7 +771,13 @@ Global Hint Resolve lhtriple_array_read : lhtriple.
 
 Global Hint Resolve htriple_array_read : htriple.
 
+Global Hint Resolve lhtriple_array_read_float : lhtriple.
+
+Global Hint Resolve htriple_array_read_float : htriple.
+
 Global Notation "x '[' i ']'" := (read_array x i) (in custom trm at level 50, format "x [ i ]") : trm_scope.
+
+Global Notation "x '[.' i ']'" := (read_array_float x i) (in custom trm at level 50, format "x [. i ]") : trm_scope.
 
 Global Hint Resolve htriple_length : htriple.
 
@@ -744,3 +787,6 @@ Global Hint Resolve htriple_alloc_nat : htriple.
 
 Global Notation "'arr(' x ',' y ')⟨' l ',' d '⟩'" := 
 (harray_int y x (Lab (l,0) d)) (at level 32, format "arr( x ,  y )⟨ l ,  d ⟩") : hprop_scope.
+
+Global Notation "'.arr(' x ',' y ')⟨' l ',' d '⟩'" := 
+(harray_float y x (Lab (l,0) d)) (at level 32, format ".arr( x ,  y )⟨ l ,  d ⟩") : hprop_scope.

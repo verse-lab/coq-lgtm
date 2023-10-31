@@ -27,10 +27,12 @@ Proof.
     { apply Z.leb_gt in E2. rewrite app_nth1. 1: apply H2. all: math. } }
 Qed.
 
-Definition intlist_of_intfun (f : int -> int) (n : int) :
-  @sigT (list int) (fun l =>
-    (length l = abs n :> int /\ (forall i : int, 0 <= i < abs n -> nth (abs i) l 0 = f i))).
+Definition list_of_fun' [A : Type] [def : A] (f : int -> A) (n : int) :
+  @sigT (list A) (fun l =>
+    (length l = abs n :> int /\ (forall i : int, 0 <= i < abs n -> nth (abs i) l def = f i))).
 apply list_of_fun. math. Defined.
+
+Definition intlist_of_intfun := Eval unfold list_of_fun' in @list_of_fun' int 0.
 
 Fact lof_make_constfun (n c : int) (H : 0 <= n) :
   (projT1 (intlist_of_intfun (fun=> c) n)) = repeat c (abs n).
@@ -76,13 +78,6 @@ Fact list_update_intermediate (L : list val) (i : int) (H : 0 <= i < length L) :
   (List.app (repeat (val_int 0) (abs (i+1))) (skipn (abs (i+1)) L)) =
   LibList.update (abs i) (val_int 0) (List.app (repeat (val_int 0) (abs i)) (skipn (abs i) L)).
 Admitted.
-
-(* TODO move this to somewhere else *)
-Fact map_conversion [A B : Type] (l : list A) (f : A -> B) :
-  LibList.map f l = map f l.
-Proof.
-  induction l; simpl; rewrite ?LibList.map_cons ?LibList.map_nil; auto; f_equal; auto.
-Qed.
 
 Lemma htriple_memset0_unary {D : Type} `{Inhab D} (L : list val) (p : loc) (d : D) :
   htriple (single d tt) (fun=> memset0 p)

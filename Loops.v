@@ -2130,7 +2130,7 @@ Ltac disjointE :=
   let Neq := fresh in
   let i   := fresh "i" in
   let j   := fresh "j" in 
-  intros i j; 
+  try intros i j; 
   indomE;
   autorewrite with disjointE; try lia; try eqsolve.
 

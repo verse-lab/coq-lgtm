@@ -65,7 +65,22 @@ Proof.
   }
 Qed.
 
+Lemma SumList_fold_eq {A : Type} a (l : list A) F :
+  fold_left Z.add (map F l) 0 = Σ_(i <- `[0, length l]) F (nth (abs i) l a) .
+Proof.
+  induction l as [ | x l IH ] using rev_ind; simpl.
+	{ by rewrite intervalgt // Sum0. }
+	{ rewrite -> ?List.app_length in *; simpl List.length in *.
+		replace (Z.of_nat (_ + 1)%nat) with ((List.length l) + 1)%Z by math.
+		rewrite -> map_app, -> intervalUr, -> SumUpdate, -> fold_left_app; try rewrite indom_interval; try math.
+		simpl. f_equal.
+		{ rewrite IH. apply SumEq=> i Hi. rewrite indom_interval in Hi. rewrite app_nth1 //; try math. }
+		{ replace (abs _) with (List.length l)%nat by math. by rewrite nth_middle. } }
+Qed.
 
+Corollary SumList_fold_eq' (l : list int) :
+  fold_left Z.add l 0 = Σ_(i <- `[0, length l]) l[i].
+Proof. rewrite <- map_id at 1. by rewrite -> SumList_fold_eq with (a:=0). Qed.
 
 Lemma SumList {A : Type} a (l : list A) F :
   NoDup l ->

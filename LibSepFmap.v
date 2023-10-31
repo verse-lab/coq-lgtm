@@ -2410,7 +2410,7 @@ Proof.
   (do 2? case: classicT)=> ??; subst*; by case: (fmap_data _ _).
 Qed.
 
-Lemma diff0 {A B} (fs : fmap A B) : fs \- empty = fs.
+Lemma diff_empty {A B} (fs : fmap A B) : fs \- empty = fs.
 Proof.
   apply fmap_extens. intros. simpl. unfolds map_filter. 
   unfolds indom, map_indom. simpl. 

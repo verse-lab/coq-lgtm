@@ -562,7 +562,7 @@ Qed.
 Lemma proj_remove h d l d' : d <> d' -> 
   proj (Fmap.remove h (l, d)) d' = proj h d'.
 Proof.
-  move=> ?; rewrite remove_diff proj_diff (@proj_empty (single d tt) (single _ _)) ?diff0 //.
+  move=> ?; rewrite remove_diff proj_diff (@proj_empty (single d tt) (single _ _)) ?diff_empty //.
   { by rewrite indom_single_eq. }
   by move=> >; rewrite ?indom_single_eq=> -[].
 Qed.
@@ -891,6 +891,7 @@ Proof.
     inversion H; inversion H7; subst=> //; split=> //.
     all: try by case: H6 H8=> -> [->] //.
     all: try by case: H9 H10=> -> [->] //.
+    { by injection H6=> -> ->; injection H8=> ->. }
     case: H9 H10 H1 H6=>-> [->] <-/eq_nat_of_eq_int-> //. }
   { inversion H1; subst=> //; simpl in *; autos*.
     { by inversion H7. }
@@ -2561,7 +2562,7 @@ Proof.
     (\*_(d <- fs') Q d (hv d)).
   exists f; splits; rewrite/f.
   { exists (fun (d : D) => arbitrary : val).
-    rewrite diff0 hbig_fset_empty; xsimpl. }
+    rewrite diff_empty hbig_fset_empty; xsimpl. }
   { move=> ?; rewrite diffxx hbig_fset_empty; xsimpl. }
   move=> fs' d' hv *.
   replace (fun v =>
@@ -3044,6 +3045,12 @@ Lemma htriple_add : forall (n1 n2 : D -> int),
     (fun hr => \[hr = fun d => val_int (n1 d + n2 d)]).
 Proof using. intros. applys* htriple_binop; intros. apply evalbinop_add. Qed.
 
+Lemma htriple_float_add : forall (f1 f2 : D -> binary64),
+  htriple (fun d => val_float_add (f1 d) (f2 d))
+    \[]
+    (fun hr => \[hr = fun d => val_float (f1 d + f2 d)%F64]).
+Proof using. intros. applys* htriple_binop; intros. apply evalbinop_float_add. Qed.
+
 Lemma htriple_div : forall (n1 n2 : D -> int),
   (forall d, indom fs d -> n2 d <> 0) ->
   htriple (fun d => val_div (n1 d) (n2 d))
@@ -3054,7 +3061,7 @@ Proof using. intros. applys* htriple_binop; intros; applys* evalbinop_div. Qed.
 Lemma htriple_neg : forall (b1:D -> bool),
   htriple (fun d => val_neg (b1 d))
     \[]
-    (fun hr => \[hr = fun d => val_bool (neg (b1 d))]).
+    (fun hr => \[hr = fun d => val_bool (LibBool.neg (b1 d))]).
 Proof using. intros. applys* htriple_unop; intros; applys* evalunop_neg. Qed.
 
 Lemma htriple_opp : forall (n1 : D -> int),
@@ -3086,6 +3093,18 @@ Lemma htriple_mul : forall (n1 n2 : D -> int),
     \[]
     (fun hr => \[hr = fun d => val_int (n1 d * n2 d)]).
 Proof using. intros. applys* htriple_binop; intros; applys* evalbinop_mul. Qed.
+
+Lemma htriple_float_mkpair : forall (f1 f2 : D -> binary64),
+  htriple (fun d => val_float_mkpair (f1 d) (f2 d))
+    \[]
+    (fun hr => \[hr = fun d => val_floatpair (f1 d) (f2 d)]).
+Proof using. intros. applys* htriple_binop; intros. apply evalbinop_float_mkpair. Qed.
+
+Lemma htriple_float_fma : forall (f1 f2 f3 : D -> binary64),
+  htriple (fun d => val_float_fma (val_floatpair (f1 d) (f2 d)) (f3 d))
+    \[]
+    (fun hr => \[hr = fun d => val_float (@BFMA _ Tdouble (f1 d) (f2 d) (f3 d))]).
+Proof using. intros. applys* htriple_binop; intros. apply evalbinop_float_fma. Qed.
 
 Lemma htriple_mod : forall (n1 n2 : D -> int),
   (forall d, indom fs d -> n2 d <> 0) ->
@@ -4988,6 +5007,7 @@ Hint Resolve htriple_get htriple_set htriple_ref htriple_free : htriple.
 
 Hint Resolve htriple_add htriple_div htriple_neg htriple_opp htriple_eq
     htriple_neq htriple_sub htriple_mul htriple_mod htriple_le htriple_lt
+    htriple_float_add htriple_float_mkpair htriple_float_fma
     htriple_ge htriple_gt htriple_ptr_add htriple_ptr_add_nat : htriple.
 
 (** [xstruct] removes the leading [mkstruct]. *)
@@ -5381,6 +5401,10 @@ Notation "t1 + t2" :=
   (val_add t1 t2)
   (in custom trm at level 58) : trm_scope.
 
+Notation "t1 .+ t2" :=
+  (val_float_add t1 t2)
+  (in custom trm at level 58) : trm_scope.
+
 Notation "'- t" :=
   (val_opp t)
   (in custom trm at level 57,
@@ -5393,6 +5417,14 @@ Notation "t1 - t2" :=
 Notation "t1 * t2" :=
   (val_mul t1 t2)
   (in custom trm at level 57) : trm_scope.
+
+Notation "t1 .* t2" :=
+  (val_float_mkpair t1 t2)
+  (in custom trm at level 58) : trm_scope.
+
+Notation "'\fma' t1 t2 t3" :=
+  (val_float_fma (val_floatpair t1 t2) t3)
+  (in custom trm at level 58) : trm_scope.
 
 Notation "t1 / t2" :=
   (val_div t1 t2)
@@ -8028,7 +8060,7 @@ Hypothesis IH : (forall l Q, Z <= l < N ->
 Definition Gi (x : D) :=
   match classicT (exists i, indom (interval Z N) i /\ indom (fsi' i) x) with 
   | left P => 
-    let '(exist a _) := indefinite_description P in gi a
+    let '(@exist _ _ a _) := indefinite_description P in gi a
   | _ => id
   end.
 
@@ -8038,7 +8070,7 @@ Lemma Gi_in i x :
     Gi x = gi i.
 Proof.
   move=> ??; rewrite /Gi; case: classicT=> [?|[] ].
-  { case: (indefinite_description _)=> j [] ?.
+  { case: (indefinite_description _)=> j [] ? /=.
     case: (prop_inv (i = j))=> [->|]// /fsi'D.
     move/(@disjoint_inv_not_indom_both _ _ _ _ _)/[apply].
     by case. }
@@ -9340,7 +9372,7 @@ Global Hint Rewrite indom_interval indom_single_eq : indomE.
 Definition Get {A} Z N (fsi : int -> fset A) (x : A)  :=
   match classicT (exists i, indom (interval Z N) i /\ indom (fsi i) x) with 
   | left P => 
-    let '(exist a _) := indefinite_description P in a
+    let '(@exist _ _ a _) := indefinite_description P in a
   | _ => 0
   end.
 
