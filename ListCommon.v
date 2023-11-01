@@ -2,6 +2,7 @@ Set Implicit Arguments.
 From mathcomp Require Import ssreflect seq ssrbool eqtype choice.
 From SLF Require Import Sum Fun LabType Unary_IndexWithBounds LibSepFmap.
 
+
 Import List.
 
 Definition sorted (l : list int) : Prop. Admitted.
@@ -372,3 +373,4 @@ Qed.
 End segmentation.
 
 End search_pure_facts.
+
