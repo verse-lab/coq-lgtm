@@ -390,7 +390,7 @@ Proof with (try seclocal_fold; seclocal_solver).
   have E : (`[0, Nrow] \x `[0, Ncol]) ∩ indom (midx \x `[0, Ncol]) = midx \x `[0, Ncol].
   { rewrite -prod_intr_list_on_1. f_equal. now apply intr_list. }
   rewrite E (fset_of_list_nodup 0 nodup_midx) len_midx prod_Union_distr.
-  rewrite -(Union_same Nidx (`{0} \x `[0, Ncol])) //.
+  rewrite -(Union_same (v:=Nidx) (`{0} \x `[0, Ncol])) //.
   xin (1,0) : (xwp; xapp (@htriple_alloc0_unary)=> // s)...
   rewrite -?hbig_fset_hstar -3?(hstar_assoc _ _ (hbig_fset hstar _ (fun _ => _ \* _))).
   rewrite -?hbig_fset_hstar.

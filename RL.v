@@ -17,6 +17,30 @@ Coercion to_int : val >-> Z.
 
 Module runlength.
 
+Module min.
+Section min.
+
+Context {D : Type}.
+
+Definition func :=
+  <{fun "b" "c" =>
+    let "cnd" = "b" < "c" in 
+    if "cnd" then "b" else "c"
+  }>.
+
+Lemma spec `{Inhab D} (b c : int) d : 
+  @htriple D (single d tt) 
+    (fun=> func b c)
+    \[]
+    (fun hr => \[hr = fun d=> Z.min b c]).
+Proof.
+  xwp;xapp; xwp; xif=> ?; xwp; xval; xsimpl; extens=>?;f_equal; lia.
+Qed.
+End min.
+End min.
+
+Hint Resolve min.spec : lhtriple.
+
 Notation "'for' i <- '[' Z ',' N ']' '{' t '}'"  :=
   (For Z N <{ fun_ i => t }>)
   (in custom trm at level 69,
@@ -74,10 +98,30 @@ Lemma get_spec_unary `{Inhab D} (x_ind x_val : loc) d
 Proof.
   apply wp_equiv.
   pose proof (@IIL_L_bounded_impl _ HindIIL _ eq_refl _ _ Ha Hka) as Hk.
-  xwp. xapp (@search.spec xind _ HindIIL H d x_ind k Hk a Ha Hka). (* FIXME: put all these into precondition *)
-  intros r Er.
-  rewrite wp_single Er. (* TODO why need wp_single here? *)
-  xapp; xsimpl*.
+  xwp; xapp (@search.spec); eauto; xapp; xsimpl*.
+Qed.
+
+Lemma get_spec (k : int)  (x_ind x_val : loc)
+  (fs : fset (labeled int)) :
+  0 <= k < length xind - 1 -> 
+  (forall i, indom fs i -> xind[k] <= (eld i) < xind[k+1]) ->
+    htriple fs
+      (fun d => get (eld d) x_ind x_val)
+      (\*_(d <- fs) 
+          (harray_int xind x_ind d \* 
+          harray_int xval x_val d))
+      (fun hr => \[hr = fun d => xval[k] ] \*
+        \*_(d <- fs) 
+          (harray_int xind x_ind d \* 
+          harray_int xval x_val d)).
+Proof.
+  move=> *.
+  apply/htriple_val_eq/htriple_conseq;
+  [|eauto|move=> ?]; rewrite -?hstar_fset_pure -?hbig_fset_hstar; first last.
+  { move=> ?; apply: applys_eq_init; reflexivity. }
+  apply/htriple_union_pointwise=> [> -> //|??].
+  rewrite -wp_equiv wp_single; xapp @get_spec_unary=> //; eauto=> ?->.
+  xsimpl*. 
 Qed.
 
 Lemma get_spec_seg `{Inhab D} (x_ind x_val : loc) (k : int) 
@@ -94,21 +138,9 @@ Lemma get_spec_seg `{Inhab D} (x_ind x_val : loc) (k : int)
         (harray_int xind x_ind d0 \* 
         harray_int xval x_val d0))).
 Proof.
-  eapply htriple_conseq.
-  1: apply htriple_union_pointwise with (Q:=fun d hv => 
-        \[hv d = val_int (xval[k])] \*
-        harray_int xind x_ind d \* harray_int xval x_val d).
-  3: xsimpl.
-  1: intros ??? HH; rewrite HH; xsimpl*.
-  2:{ xsimpl. intros hv. rewrite -> ! hbig_fset_hstar. xsimpl. }
-  (* TODO this is slightly bad rewriting! *)
-  intros (ll, d) Hin.
-  rewrite indom_label_eq /ind_seg indom_interval in Hin. destruct Hin as (<- & Hin).
-  rewrite -wp_equiv wp_single. 
-  simpl.
-  xapp (@get_spec_unary H x_ind x_val (Lab l d) d k Hk Hin)=> r Er.
-  rewrite Er.
-  xsimpl*.
+  apply/htriple_conseq; [apply/get_spec| |]; eauto.
+  { move=> -[>]; indomE=> -[<-]/=. rewrite /ind_seg; by indomE. }
+  move=> ?; xsimpl=>->; rewrite hstar_fset_pure; xsimpl*.
 Qed.
 
 End get.
@@ -221,30 +253,35 @@ Hypotheses (xind0 : xind[0] = 0) (yind0 : yind[0] = 0).
 
 Context (α β : int).
 
+Notation "t1 && t2" :=
+  (and.func t1 t2)
+  (in custom trm at level 58) : trm_scope.
+
+Hint Resolve and.spec : htriple.
+
 Notation "'i'"     := ("i":var) (in custom trm at level 0) : trm_scope.
 Notation "'iX'"     := ("iX":var) (in custom trm at level 0) : trm_scope.
 Notation "'iY'"     := ("iY":var) (in custom trm at level 0) : trm_scope.
 Notation "'iXl'"    := ("iXl":var) (in custom trm at level 0) : trm_scope.
-Notation "'iYl'"    := ("iYl":var) (in custom trm at level 0) : trm_scope.
-Notation "'ix'"     := ("ix":var) (in custom trm at level 0) : trm_scope.
-Notation "'iy'"     := ("iy":var) (in custom trm at level 0) : trm_scope.
-Notation "'ans'"    := ("ans":var) (in custom trm at level 0) : trm_scope.
-Notation "'step'"   := ("step":var) (in custom trm at level 0) : trm_scope.
+Notation "'iYl'"    := ("iYl"   :var) (in custom trm at level 0) : trm_scope.
+Notation "'ix'"     := ("ix"    :var) (in custom trm at level 0) : trm_scope.
+Notation "'iy'"     := ("iy"    :var) (in custom trm at level 0) : trm_scope.
+Notation "'ans'"    := ("ans"   :var) (in custom trm at level 0) : trm_scope.
+Notation "'step'"   := ("step"  :var) (in custom trm at level 0) : trm_scope.
 Notation "'stride'" := ("stride":var) (in custom trm at level 0) : trm_scope.
-Notation "'xindx'" := ("x_indx":var) (in custom trm at level 0) : trm_scope.
-Notation "'xvalx'" := ("x_valx":var) (in custom trm at level 0) : trm_scope.
-Notation "'yindy'" := ("y_indy":var) (in custom trm at level 0) : trm_scope.
-Notation "'yvaly'" := ("y_valy":var) (in custom trm at level 0) : trm_scope.
-Notation "'cnd'"    := ("cnd":var) (in custom trm at level 0) : trm_scope.
-Notation "'delta'"    := ("delta":var) (in custom trm at level 0) : trm_scope.
+Notation "'xindx'"  := ("x_indx":var) (in custom trm at level 0) : trm_scope.
+Notation "'xvalx'"  := ("x_valx":var) (in custom trm at level 0) : trm_scope.
+Notation "'yindy'"  := ("y_indy":var) (in custom trm at level 0) : trm_scope.
+Notation "'yvaly'"  := ("y_valy":var) (in custom trm at level 0) : trm_scope.
+Notation "'cnd'"    := ("cnd"   :var) (in custom trm at level 0)  : trm_scope.
+Notation "'delta'"  := ("delta" :var) (in custom trm at level 0) : trm_scope.
 
 Definition alpha_blend := <{
   fun xind yind xval yval  =>
     let ans    = ref 0 in
-    let iX     = ref 1 in
-    let iY     = ref 1 in
+    let iX     = ref 0 in
+    let iY     = ref 0 in
     let step   = ref 0 in 
-    let stride = ref 0 in 
       while (
         let step = !step in 
         step < N) {
@@ -252,49 +289,54 @@ Definition alpha_blend := <{
         let iy = !iY in 
         let xindx = xind[ix] in 
         let yindy = yind[iy] in 
+        let "st" = !step in
         let cnd = xindx = yindy in 
           (if cnd then 
-            stride := xindx;
-            ++iX;
-            ++iY;
-            let "st" = !step in 
-            let stride = !stride in 
-            let delta = stride - "st" in 
             let xvalx = xval[ix] in 
             let xvalx = α * xvalx in 
             let yvaly = yval[iy] in 
             let yvaly = β * yvaly in 
             let xvalx = xvalx + yvaly in 
+            ++iX;
+            ++iY;
+            let ix = !iX in 
+            let iy = !iY in 
+            let xindx = xind[ix] in 
+            let yindy = yind[iy] in 
+            let stride = min.func xindx yindy in 
+            let delta = stride - "st" in 
             let xvalx = xvalx * delta in
               ans += xvalx;
               step := stride
           else 
             let cnd = xindx < yindy in 
             if cnd then 
-              stride := xindx;
-              ++iX;
-              let "st" = !step in 
-              let stride = !stride in 
-              let delta = stride - "st" in 
+              let iy = iy - 1 in
               let xvalx = xval[ix] in 
               let xvalx = α * xvalx in 
               let yvaly = yval[iy] in 
               let yvaly = β * yvaly in 
               let xvalx = xvalx + yvaly in 
+              ++iX;
+              let ix = !iX in 
+              let xindx = xind[ix] in 
+              let stride = min.func xindx yindy in 
+              let delta = stride - "st" in 
               let xvalx = xvalx * delta in
                 ans += xvalx;
                 step := stride
             else 
-              stride := yindy;
-              ++iY;
-              let "st" = !step in 
-              let stride = !stride in 
-              let delta = stride - "st" in 
+              let ix = ix - 1 in
               let xvalx = xval[ix] in 
               let xvalx = α * xvalx in 
               let yvaly = yval[iy] in 
               let yvaly = β * yvaly in 
               let xvalx = xvalx + yvaly in 
+              ++iY;
+              let iy = !iY in 
+              let yindy = yind[iy] in 
+              let stride = min.func xindx yindy in 
+              let delta = stride - "st" in 
               let xvalx = xvalx * delta in
                 ans += xvalx;
                 step := stride)
@@ -326,12 +368,6 @@ Ltac abbrv :=
   | |- context [ While ?c ?f ] => set (cnd := c); set (bdy := f)
   end.
 
-Lemma interval_unionE (l : list int) : 
-  sorted l -> 
-  max l = N ->
-  `[0, N] = \U_(i <- `[0, length l]) `[l[i], l[i+1] ].
-Admitted.
-
 Lemma not_isTrueE (P: Prop) : (~ isTrue P) = ~ P.
 Proof.
 Admitted.
@@ -358,66 +394,142 @@ Lemma alpha_blend_spec `{Inhab (labeled int)} (x_ind x_val y_ind y_val : loc) :
       \* \Top}}.
 Proof with (fold'; try abbrv).
   set (ind := merge xind yind).
-  have?: sorted xind by admit. 
-  have?: sorted yind by admit.
-  have?: NoDup xind by admit. 
-  have?: NoDup yind by admit.
+  have sxind: sorted xind by exact/IIL_sorted. 
+  have yxind: sorted yind by exact/IIL_sorted.
+  have?: NoDup xind by exact/sorted_nodup. 
+  have?: NoDup yind by exact/sorted_nodup.
   have sind: sorted ind by exact/sorted_merge.
   have ndind: NoDup ind by exact/sorted_nodup.
   xin (1,0): (xwp;xapp=> ans); (xwp;xapp=> iX); 
-    (xwp;xapp=> iY); (xwp;xapp=> step); (xwp;xapp=> stride)...
-  rewrite (@interval_unionE ind)=> //; last admit.
+    (xwp;xapp=> iY); (xwp;xapp=> step)...
+  have maxindE: max ind = N.
+  { move: (max_merge sxind yxind)->.
+    rewrite -(sorted_max_size _ Mx) -?(sorted_max_size _ My)... }
+  rewrite (@interval_unionE ind)=> //.
   set (Inv (b : bool) (i : int) := 
     arr(x_ind, xind)⟨1, 0⟩ \* arr(y_ind, yind)⟨1, 0⟩ \\*
     arr(x_val, xval)⟨1, 0⟩ \* arr(y_val, yval)⟨1, 0⟩ \\*
     step ~⟨(1,0)%Z,0⟩~> ind[i] \\*
-    \exists (ix iy str : int), 
-      iX ~⟨(1,0)%Z,0⟩~> ix \* iY ~⟨(1,0)%Z,0⟩~> iy \* stride ~⟨(1,0)%Z,0⟩~> str \\*
-      \[b = isTrue (ind[i] < N) /\ 
-        0 < ix <= Mx +1 /\ 0 < iy <= My + 1 /\
-        (b -> ind[i+1] = Z.min xind[ix] yind[iy])]).
-  set (op hv i := Σ_(i <- `[ind[i], ind[i+1] ]) α * hv[`2](i) + β * hv[`3](i)).
-  set (R3 (i : int) := \*_(i <- `[ind[i], ind[i+1] ]) arr(y_ind, yind)⟨3,i⟩ \* arr(y_val, yval)⟨3,i⟩).
-  set (R2 (i : int) := \*_(i <- `[ind[i], ind[i+1] ]) arr(x_ind, xind)⟨2,i⟩ \* arr(x_val, xval)⟨2,i⟩).
-  xwhile_sum Inv R2 R3 R2 R3 op ans=> //; try clear bdy cnd.
-  { move=> l ??; rewrite /Inv; xnsimpl=> ix iy str. 
-    bool_rew=> -[indL][ixL][iyL]/(_ eq_refl) indSE.
+    \exists (ix iy : int), 
+      iX ~⟨(1,0)%Z,0⟩~> ix \* iY ~⟨(1,0)%Z,0⟩~> iy \\*
+      \[0 <= ix < Mx + 1 /\ 0 <= iy < My + 1 /\ b = isTrue (ind[i] < N) /\ 
+        (b -> 
+          (ix > 0 -> xind[ix -1] < yind[iy]) /\ 
+          (iy > 0 -> yind[iy -1] < xind[ix]) /\
+          (ind[i] = Z.min xind[ix] yind[iy]))]).
+  set (op hv i := Σ_(i <- `[ind[i], ind[i+1] ]) (α * hv[`2](i) + β * hv[`3](i))).
+  set (R3 (i : int) := arr(y_ind, yind)⟨3,i⟩ \* arr(y_val, yval)⟨3,i⟩).
+  set (R2 (i : int) := arr(x_ind, xind)⟨2,i⟩ \* arr(x_val, xval)⟨2,i⟩).
+  have?: forall i j, i <> j -> 0 <= i < size ind - 1 ->
+    0 <= j < size ind - 1 ->
+    ind[i + 1] <= ind[j] \/
+    ind[j + 1] <= ind[i] \/ ind[i + 1] <= ind[i] \/ ind[j + 1] <= ind[j].
+  { move=> i j *. 
+    suff: (i+1 <= j -> ind[i+1] <= ind [j]) /\ 
+          (j+1 <= i -> ind[j+1] <= ind [i]) by lia.
+    split; apply/sorted_leq... }
+  xwhile_sum Inv R2 R3 R2 R3 op ans=> //; autos*; try clear bdy cnd.
+  { move=> l ??; rewrite /Inv; xnsimpl=> ix iy.
+    bool_rew=> -[?][?][indL]/(_ eq_refl)-[ix0][iy0]indE.
     rewrite {}/bdy.
-    xfocus (1,0). do 5 (xwp; xapp). xwp. xif=> indE.
-    { (xwp; xapp). do 2 (xwp; xapp @incr1.spec).
-      do ? (xwp; xapp). xwp; xapp @incr.spec. xwp; xapp. 
+    xfocus (1,0). 
+    do 6 (xwp; xapp). xwp; xif=> C.
+    { do 5 (xwp; xapp).
+      do 2 (xwp; xapp @incr1.spec).
+      do ? (xwp; xapp). xwp; xapp @min.spec. do ? (xwp; xapp).
+      xwp; xapp @incr.spec; xwp; xapp. 
       xcleanup (1,0); rewrite /op /=.
-      have?: (l + 1 < size ind) by admit.
-      case: (classicT (ix = Mx + 1)).
-      { move=> ?; subst.
-        move: indE indSE; rewrite nth_overflow; try lia... 
-        move=> <- /[! Z.min_id] E.
-        move: (sorted_le l (l+1) _ sind)=> /[! E].
-        suff: ind[l] >= 0 by lia.
-        have?: ind[0] = 0 by rewrite /ind merge_nth0; lia.
-        case: (classicT (l = 0))=> [->|?].
-        { rewrite /ind merge_nth0; try lia. }
-        suff: ind[0] < ind[l] by lia. apply/sorted_le=> //; lia. }
-      move=> ?; have?: ix < size xind by lia. 
-      case: (classicT (iy = My + 1)).
-      { move=> ?; subst.
-        move: indE indSE; rewrite (nth_overflow yind); try lia... 
-        move=> -> /[! Z.min_id] E.
-        move: (sorted_le l (l+1) _ sind)=> /[! E].
-        suff: ind[l] >= 0 by lia.
-        have?: ind[0] = 0 by rewrite /ind merge_nth0; lia.
-        case: (classicT (l = 0))=> [->|?].
-        { rewrite /ind merge_nth0; try lia. }
-        suff: ind[0] < ind[l] by lia. apply/sorted_le=> //; lia. }
-      move=> ?; have?: iy < size yind by lia.
-      move: (size_merge xind yind); rewrite -/ind=> ?.
-      move: indSE; rewrite merge_nthS -/ind //; try lia.
-      
-       } }
-  { admit. }
-  { admit. }
+      rewrite val_int_eq in C.
+      move: (indL); rewrite {1}indE {1}ENx -{1}C Z.min_id.
+      move/(sorted_le_rev sxind)=> ?.
+      move: (indL); rewrite {1}indE {1}ENy {1}C Z.min_id.
+      move/(sorted_le_rev yxind)=> ?.
+      have indlE: ind[l+1] = Z.min xind[ix + 1] yind[iy + 1].
+      { rewrite merge_nthS -/ind ?indE...
+        rewrite -{1}C Z.min_id {2}C Z.min_id ?search_nth... }
+      rewrite /R2/R3.
+      xin (2,0): xapp (@get_spec xind xval HindIIL ix)...
+      { move=> [>]; indomE=>-[?]/=; lia. }
+      xapp (@get_spec yind yval HindIIL' iy)...
+      { move=> [>]; indomE=>-[?]/=; lia. }
+      xsimpl (isTrue (ind[l + 1] < N)).
+      { splits... move=> ?; splits*=> _.
+        { replace (ix +1 -1) with ix by lia; rewrite C. 
+          apply/sorted_le... }
+        replace (iy +1 -1) with iy by lia; rewrite -C. 
+        apply/sorted_le... }
+      rewrite SumConst_interval indlE; try xsimpl.
+      rewrite -indlE; apply/Z.lt_le_incl/sorted_le... }
+    xwp; xapp; xwp; xif=> C'.
+    { do 6 (xwp; xapp); xwp; xapp @incr1.spec. 
+      do 2 (xwp; xapp); xwp; xapp @min.spec.
+      do 2 (xwp; xapp); xwp; xapp @incr.spec; xwp; xapp.
+      xcleanup (1,0); rewrite /op /=.
+      move: (indL); rewrite {1}indE {1}ENx Z.min_l...
+      move/(sorted_le_rev sxind)=> ?.
+      have?: (0 < iy).
+      { apply/(sorted_le_rev yxind)...
+        suff: xind[ix] >= 0 by lia. exact/IILG0. } 
+      have indlE: ind[l+1] = Z.min xind[ix + 1] yind[iy].
+      { rewrite merge_nthS -/ind ?indE...
+        rewrite (Z.min_l xind[ix]) ?search_nth...
+        rewrite (@search_nth_pred _ iy)... }
+      rewrite /R2/R3.
+      xin (2,0): xapp (@get_spec xind xval HindIIL ix)...
+      { move=> [>]; indomE=>-[?]/=; lia. }
+      xapp (@get_spec yind yval HindIIL' (iy-1))...
+      { move=> [>]; indomE=>-[?]/=;
+        replace (iy - 1 + 1) with iy; lia. }
+      xsimpl (isTrue (ind[l + 1] < N)).
+      { splits... move=> ?; splits*.
+        { replace (ix + 1 - 1) with ix; lia. }
+        suff: xind[ix] < xind[ix + 1] by lia. 
+        apply/(sorted_le sxind)... }
+      rewrite SumConst_interval indlE; try xsimpl.
+      rewrite -indlE; apply/Z.lt_le_incl/sorted_le... }
+    do 6 (xwp; xapp); xwp; xapp @incr1.spec. 
+    do 2 (xwp; xapp); xwp; xapp @min.spec.
+    do 2 (xwp; xapp); xwp; xapp @incr.spec; xwp; xapp.
+    xcleanup (1,0); rewrite /op /=.
+    rewrite val_int_eq in C.
+    move: (indL); rewrite {1}indE {1}ENy Z.min_r...
+    move/(sorted_le_rev yxind)=> ?.
+    have?: (0 < ix).
+    { apply/(sorted_le_rev sxind)...
+      suff: yind[iy] >= 0 by lia. exact/IILG0. } 
+    have indlE: ind[l+1] = Z.min xind[ix] yind[iy + 1].
+    { rewrite merge_nthS -/ind ?indE...
+      rewrite (Z.min_r xind[ix]) ?search_nth...
+      rewrite (@search_nth_pred _ ix)... }
+    rewrite /R2/R3.
+    xin (2,0): xapp (@get_spec xind xval HindIIL (ix-1))...
+    { move=> [>]; indomE=>-[?]/=;
+      replace (ix - 1 + 1) with ix; lia. }
+    xapp (@get_spec yind yval HindIIL' iy)...
+    { move=> [>]; indomE=>-[?]/=; lia. }
+    xsimpl (isTrue (ind[l + 1] < N)).
+    { splits... move=> ?; splits*.
+      { suff: yind[iy] < yind[iy + 1] by lia. 
+        apply/(sorted_le yxind)... }
+      replace (iy + 1 - 1) with iy; lia. }
+    rewrite SumConst_interval indlE; try xsimpl.
+    rewrite -indlE; apply/Z.lt_le_incl/sorted_le... }
+  { move=> l _ ?; rewrite /Inv; xnsimpl.
+    move=> ?? [?][?][]; bool_rew=> ?.
+    suff: (l + 1 = size ind) by lia. 
+    apply/sorted_max_le... }
+  { move=> ???; rewrite /Inv{}/cnd.
+    xnsimpl=> *; xin (1,0): do ? (xwp; xapp).
+    xsimpl*. apply/eq_sym/f_equal. autos*. }
+  { move=> ??[?][?][->]*; apply/isTrue_eq_false...
+    rewrite sorted_max_size... }
+  { rewrite /ind; move: (size_merge xind yind)... }
+  { rewrite /Inv/R2/R3 merge_nth0 ?xind0 ?yind0 ?Z.min_id...
+    rewrite -> ?hbig_fset_hstar; xsimpl.
+    splits*... }
+  simpl=> ?; rewrite /Inv /op; xsimpl=> *; xwp; xapp; xsimpl.
+  rewrite -SumCascade //; disjointE; autos*.
 Qed.
-
 
 End alpha_blending.
 
