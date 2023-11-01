@@ -334,3 +334,31 @@ Proof.
 Qed.
 
 End WithLoops.
+
+Definition float_unit : binary64 := Zconst Tdouble 0.
+
+Tactic Notation "xfor_sum_float" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(s) :=
+  eapply (@xfor_big_op_lemma_extended _ _ _ _ Inv R R' val_float float_unit float_unit (@BPLUS _ Tdouble) op s);
+  [ let L := fresh in 
+    intros ?? L;
+    xnsimpl
+  | disjointE
+  | let hvE := fresh "hvE" in
+    let someindom := fresh "someindom" in
+    intros ???? hvE; rewrite ?/op; indomE;
+    match goal with 
+    | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
+    | _ => idtac
+    end; try (setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
+      (first [ apply someindom | idtac ])])
+  |
+  | try lia
+  |
+  |
+  |
+  |
+  |
+  |
+  | rewrite ?/Inv ?/R; rewrite -> ?hbig_fset_hstar; xsimpl
+  | intros ?; rewrite ?/Inv ?/R' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl
+  ]=> //; autos*.
