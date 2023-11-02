@@ -388,7 +388,8 @@ Tactic Notation "xfor_sum_float" constr(Inv) constr(R) uconstr(R') uconstr(op) c
   ]=> //; autos*.
 
 Tactic Notation "xfor_sum_fma" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(s) :=
-  eapply (@xfor_big_op_lemma_extended _ _ _ _ Inv R R' val_float float_unit float_unit (@BFMA _ Tdouble) (@finite Tdouble) op s);
+  eapply (@xfor_big_op_lemma_extended _ _ _ _ Inv R R' val_float float_unit (float_unit, float_unit) (fun a (b : binary64 * binary64) => @BFMA _ Tdouble b.1 b.2 a) 
+    (fun (b : binary64 * binary64) => @finite Tdouble b.1 /\ @finite Tdouble b.2) op s);
   [ let L := fresh in 
     intros ?? L;
     xnsimpl

@@ -434,33 +434,6 @@ Lemma SumIf {A : Type} {P : A -> Prop} {fs F G} (C : A -> int -> int) :
 Proof using.
 Admitted.
 
-Tactic Notation "xfor_sum_fma" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(s) :=
-  eapply (@xfor_big_op_lemma_extended _ _ _ _ Inv R R' val_float float_unit (float_unit, float_unit) (fun a (b : binary64 * binary64) => @BFMA _ Tdouble b.1 b.2 a) 
-    (fun (b : binary64 * binary64) => @finite Tdouble b.1 /\ @finite Tdouble b.2) op s);
-  [ let L := fresh in 
-    intros ?? L;
-    xnsimpl
-  | disjointE
-  | let hvE := fresh "hvE" in
-    let someindom := fresh "someindom" in
-    intros ???? hvE; rewrite ?/op; indomE;
-    match goal with 
-    | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
-    | _ => idtac
-    end; try (setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
-      (first [ apply someindom | idtac ])])
-  |
-  | try lia
-  |
-  |
-  |
-  |
-  |
-  |
-  | rewrite ?/Inv ?/R; rewrite -> ?hbig_fset_hstar; xsimpl
-  | intros ?; rewrite ?/Inv ?/R' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl
-  ]=> //; autos*.
-
 Lemma dotprod_spec `{Inhab D} (x_ind x_val d_vec : loc) : 
   {{ arr(x_ind, xind)⟨1, 0⟩ \\*
      .arr(x_val, xval)⟨1, 0⟩ \\*
