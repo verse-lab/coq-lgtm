@@ -26,19 +26,6 @@ Definition eld := (@eld Dom).
 
 Local Coercion eld : D >-> Dom.
 
-Definition lof f N := projT1 (intlist_of_intfun f N).
-
-Lemma nth_lof f N i  : 
-  0 <= i < N -> (lof f N)[i] = f i.
-Proof.
-Admitted.
-
-Lemma length_lof f N : 
-  0 <= N ->
-  length (lof f N) = N :> int.
-Proof.
-Admitted.
-
 
 Lemma xfor_lemma_gen_array_fun_aux `{ID : Inhab D}
   Inv 
@@ -101,10 +88,10 @@ Proof.
   eapply xfor_lemma_gen_array with (R := R) (R' := R') (arr1 := lof f M) (arr2 := fun hv => lof (g hv) M) (arrl:=arrl); try eassumption.
   { move=> ?; rewrite length_lof; math. }
   { apply length_lof; math. }
-  { move=> l P; rewrite nth_lof //; auto.
-    apply/ntriple_conseq; [ | |move=> v; rewrite nth_lof//; auto]; try exact:himpl_refl.
+  { move=> l P; rewrite nth_lof' //; try math; auto.
+    apply/ntriple_conseq; [ | |move=> v; rewrite nth_lof'//; try math; auto]; try exact:himpl_refl.
     rewrite -/(ntriple _ _ _). auto. }
-  all: move=> *; rewrite ?nth_lof //; autos*.
+  all: move=> *; rewrite ?nth_lof' //; autos*.
 Qed.
 
 
@@ -269,10 +256,10 @@ Proof.
   eapply xfor_lemma_gen2_array with (R1 := R1) (R1' := R1') (R2 := R2) (R2' := R2') (arr1 := lof f M) (arr2 := fun hv => lof (g hv) M) (arrl:=arrl); try eassumption.
   { move=> ?; rewrite length_lof; math. }
   { apply length_lof; math. }
-  { move=> l P; rewrite nth_lof //; auto.
-    apply/ntriple_conseq; [ | |move=> v; rewrite nth_lof//; auto]; try exact:himpl_refl.
+  { move=> l P; rewrite nth_lof' //; try math; auto.
+    apply/ntriple_conseq; [ | |move=> v; rewrite nth_lof' //; try math; auto]; try exact:himpl_refl.
     rewrite -/(ntriple _ _ _).  auto. }
-  all: move=> *; rewrite ?nth_lof //; autos*.
+  all: move=> *; rewrite ?nth_lof' //; autos*.
 Qed.
 
 Lemma xfor_lemma_gen_array_fun2 `{ID : Inhab D}

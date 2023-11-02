@@ -109,17 +109,61 @@ Proof.
   apply H in Ef. 2: rewrite List.in_app_iff /=; tauto.
   destruct H0, Ef as [ -> | -> ]; rewrite ?BFMA_zero1 ?BFMA_zero2 //=.
 Qed.
-(*
+
 Lemma pair_fst_If {A B : Type} P (a b : A) (c : B) : 
   (If P then a else b, c) = If P then (a, c) else (b, c).
 Proof. by case_if. Qed.
-*)
+
 Lemma Sum_fma_eq {A : Type} (s : binary64) (l : list A) (f g : A -> binary64 * binary64) :
   (forall a, List.In a l -> f a = g a) -> Sum_fma s l f = Sum_fma s l g.
 Proof.
   intros H. revert s. induction l; intros; simpl; auto. rewrite ?H ?IHl; simpl; auto.
   move=>*. rewrite H /=; tauto.
 Qed.
+
+Corollary Sum_fma_filter_If {A : Type} (P : A -> Prop) (s : binary64) (l : list A) (f g : A -> binary64) 
+  (Hfinf : forall a, List.In a l -> P a -> @finite Tdouble (f a))
+  (Hfing : forall a, List.In a l -> @finite Tdouble (g a)) :
+  @feq Tdouble (Sum_fma s l (fun i => If P i then (f i, g i) else (float_unit, g i))) 
+    (Sum_fma s (List.filter (fun i => isTrue (P i)) l) (fun i => (f i, g i))).
+Proof.
+  rewrite -> Sum_fma_filter0_feq with (p:=fun i => isTrue (P i)).
+  2:{ intros. rewrite -> isTrue_eq_false_eq in *. case_if; auto. }
+  2:{ intros. case_if; simpl; auto. }
+  rewrite -> Sum_fma_eq with (g:=fun i => (f i, g i)). 
+  2:{ intros ? Hin%List.filter_In. rewrite isTrue_eq_true_eq in Hin. case_if; eqsolve. }
+  reflexivity.
+Qed.
+
+Lemma Sum_fma_list_interval (s : binary64) (l : list int) (f : int -> binary64 * binary64) 
+  lb rb (H1 : 0 <= lb) (H2 : lb <= rb) (H3 : rb <= List.length l) :
+  Sum_fma s (list_interval (abs lb) (abs rb) l) f = Sum_fma s (lof id (rb - lb)) (fun i => f (l[i + lb])).
+Proof.
+  unfold Sum_fma.
+  match goal with 
+    |- List.fold_left ?ff _ _ = _ => 
+      pose proof (fold_left_map (lof id (rb - lb)) (fun a : int => l[a + lb]) ff s) as Htmp
+  end.
+  simpl in Htmp. rewrite Htmp. f_equal.
+  assert (List.length (lof id (rb - lb)) = rb - lb :> int) as Hl1 by (rewrite length_lof; math).
+  assert (List.length (list_interval (abs lb) (abs rb) l) = rb - lb :> int) as Hl2 by (rewrite list_interval_length; math).
+  apply (List.nth_ext _ _ 0 0). 
+  1: rewrite List.map_length; math.
+  intros n Hlt. replace n with (abs n)%nat by math.
+  rewrite (Eval.nth_map_lt 0) -?list_interval_nth ?nth_lof; try math. f_equal. math.
+Qed.
+
+Lemma Sum_fma_lof {A} a (f : int -> A) s n (g : A -> _) : 
+  Sum_fma s (projT1 (@list_of_fun' _ a f n)) g = 
+  Sum_fma s (lof id n) (fun x => g (f x)).
+Proof.
+  unfold Sum_fma.
+  match goal with 
+    |- List.fold_left ?ff _ _ = _ => pose proof (fold_left_map (lof id n) f ff s) as Htmp
+  end.
+  simpl in Htmp. rewrite Htmp. f_equal. apply lof_indices.
+Qed.
+
 (*
 Lemma Sum_fma_filter_If {A : Type} (P : int -> Prop) (f g : A -> binary64 * binary64) : 
   forall (s : binary64) (l : list A) (f : A -> binary64 * binary64), 
@@ -477,31 +521,11 @@ Proof with fold'.
     eapply NoDup_nth. 4: apply Hq. all: try math; try assumption. }
   { rewrite -list_interval_nth; try f_equal; lia. }
   intros Hfin. simpl in Hfin. xwp; xapp... xwp; xapp. xwp; xval. xsimpl*.
-  (* ... *)
-  rewrite -> Sum_fma_filter0_feq with (p:=fun i => isTrue (Sum.mem xind [[lb -- rb]] i)).
-  2:{ intros. rewrite -> isTrue_eq_false_eq in *. case_if; auto. }
-  2:{ intros. case_if; simpl; auto. all: split; try apply I; try by apply finite_suffcond. 
-    apply In_nth with (d:=0) in C. destruct C as (n & Hn & E). replace n with (abs n) in E by math. 
-    rewrite <- list_interval_nth in E; try math. rewrite <- E. apply Hfin. math. }
-  rewrite -> Sum_fma_eq with (g:=fun i => (to_float (hv[`2](i)), nth (abs i) dvec float_unit)). 
-  2:{ intros ? Hin%filter_In. rewrite isTrue_eq_true_eq in Hin. case_if; eqsolve. }
-  destruct (list_of_fun' _ _) as (l1 & Hlen1 & Hl1); simpl.
-  rewrite /Sum_fma /=. 
-  replace (filter _ _) with (xind [[lb -- rb]]).
-  2: by apply sorted_bounded_sublist.
-  (* ... *)
-  match goal with |- feq ?a ?b => enough (a = b) as Htmp by (rewrite Htmp; auto) end.
-  symmetry.
-  eapply eq_ind_r with (y:=l1). 
-  1: rewrite <- fold_left_map with (l:=(xind [[lb -- rb]])). 
-  2: instantiate (1:=fun b0 : int => (to_float (hv[`2](b0)), nth (abs b0) dvec float_unit)).
-  1: reflexivity.
-  apply (nth_ext _ _ (float_unit, float_unit) (float_unit, float_unit)). 
-  1: rewrite map_length; match goal with |- ?a = ?b => enough (Z.of_nat a = Z.of_nat b) by math end; 
-    rewrite list_interval_length; math.
-  intros n Hlt. replace n with (abs n)%nat by math.
-  rewrite -> Hl1, -> Eval.nth_map_lt with (d':=0) by math.
-  rewrite -?list_interval_nth; try math. by replace (n + lb) with (lb + n) by math.
+  erewrite Sum_fma_eq; [ | move=> i0 ?; rewrite to_float_if pair_fst_If; reflexivity ].
+  rewrite Sum_fma_filter_If -?sorted_bounded_sublist //; try solve [ intros; by apply finite_suffcond | idtac ].
+  2:{ intros a0 _ (n & Hn & <-)%(In_nth _ _ 0). replace n with (abs n) by math. 
+    rewrite -list_interval_nth; try math. apply Hfin; math. }
+  rewrite -/(Sum_fma _ _ _) Sum_fma_lof /= Sum_fma_list_interval //=.
 Qed.
 
 End sv. 

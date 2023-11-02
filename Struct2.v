@@ -32,7 +32,7 @@ Definition list_of_fun' [A : Type] [def : A] (f : int -> A) (n : int) :
     (length l = abs n :> int /\ (forall i : int, 0 <= i < abs n -> nth (abs i) l def = f i))).
 apply list_of_fun. math. Defined.
 
-Definition intlist_of_intfun := Eval unfold list_of_fun' in @list_of_fun' int 0.
+Definition intlist_of_intfun := @list_of_fun' int 0.
 
 Fact lof_make_constfun (n c : int) (H : 0 <= n) :
   (projT1 (intlist_of_intfun (fun=> c) n)) = repeat c (abs n).
@@ -43,6 +43,35 @@ Proof.
   intros i Hi. rewrite -> nth_indep with (l:=repeat _ _) (d':=c) by (rewrite repeat_length; math).
   rewrite -> nth_repeat, <- HH with (i:=i); try math.
   f_equal; math.
+Qed.
+
+Definition lof f N := Eval unfold intlist_of_intfun in projT1 (intlist_of_intfun f N).
+
+Lemma nth_lof f N i : 
+  0 <= i < abs N -> nth (abs i) (lof f N) 0 = f i.
+Proof. unfold lof. destruct (list_of_fun' _ _) as (l1 & Hlen1 & Hl1); simpl. auto. Qed.
+
+Lemma nth_lof' f N i :
+  0 <= N -> 0 <= i < N -> nth (abs i) (lof f N) 0 = f i.
+Proof. intros ??. apply nth_lof. math. Qed.
+
+Lemma length_lof f N : 
+  0 <= N -> length (lof f N) = N :> int.
+Proof. unfold lof. destruct (list_of_fun' _ _) as (l1 & Hlen1 & Hl1); simpl. math. Qed.
+
+Lemma length_lof' f N : 
+  length (lof f N) = abs N :> nat.
+Proof. unfold lof. destruct (list_of_fun' _ _) as (l1 & Hlen1 & Hl1); simpl. math. Qed.
+
+Lemma lof_indices {A : Type} [a : A] (f : int -> A) n :
+  projT1 (@list_of_fun' _ a f n) = List.map f (lof id n).
+Proof.
+  destruct (list_of_fun' _ _) as (l1 & Hlen1 & Hl1); simpl.
+  pose proof (length_lof' id n) as Hlen2.
+  apply (List.nth_ext _ _ a a). 
+  1: rewrite List.map_length; math.
+  intros n0 Hlt. replace n0 with (abs n0) by math.
+  rewrite Hl1 ?(Eval.nth_map_lt 0) ?nth_lof //; try math.
 Qed.
 
 End list_of_fun.
