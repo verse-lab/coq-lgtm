@@ -23,7 +23,7 @@ Definition eld := (@eld Dom).
 Local Coercion eld : D >-> Dom.
 
 Lemma xfor_big_op_lemma_aux_extended `{INH: Inhab D} {A B : Type} Inv (R R' : Dom -> hhprop) 
-	(toval : A -> val) (a0 : A) (bdef : B) (fa : A -> B -> A)
+	(toval : A -> val) (a0 : A) (bdef : B) (fa : A -> B -> A) (Pb : B -> Prop)
   (op : (D -> val) -> int -> B) p
   s fsi1 vr
   Z N (C1 : Dom -> trm) (i j : int) (C : trm)
@@ -40,7 +40,8 @@ Lemma xfor_big_op_lemma_aux_extended `{INH: Inhab D} {A B : Type} Inv (R R' : Do
     {{ hv, 
         Inv (l + 1) \* 
         (\*_(d <- ⟨(j, 0%Z), fsi1 l⟩) R' d) \* 
-        p ~⟨(i, 0%Z), s⟩~> (toval (fa a (op hv l)))}}) ->
+        p ~⟨(i, 0%Z), s⟩~> (toval (fa a (op hv l))) \*
+        \[Pb (op hv l)] }}) ->
   (forall i0 j0 : int, i0 <> j0 -> Z <= i0 < N -> Z <= j0 < N -> disjoint (fsi1 i0) (fsi1 j0)) ->
   (forall (hv hv' : D -> val) m,
     (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
@@ -61,7 +62,8 @@ Lemma xfor_big_op_lemma_aux_extended `{INH: Inhab D} {A B : Type} Inv (R R' : Do
   (forall hv, 
     Inv N \* 
     (\*_(d <- Union (interval Z N) fsi1) R' d) \* 
-    p ~⟨(i, 0%Z), s⟩~> (toval (fold_left fa (projT1 (@list_of_fun' B bdef (fun i => op hv (i + Z)) (N - Z))) a0)) ==>
+    p ~⟨(i, 0%Z), s⟩~> (toval (fold_left fa (projT1 (@list_of_fun' B bdef (fun i => op hv (i + Z)) (N - Z))) a0)) \*
+    \[forall i, Z <= i < N -> Pb (op hv i)] ==>
     Post hv) -> 
   {{ Pre }}
     [{
@@ -81,7 +83,8 @@ Proof.
       Inv q \* 
       (\*_(d <- Union (interval Z q) fsi1) R' d) \*
       (\*_(d <- Union (interval q N) fsi1) R d) \* 
-      p ~⟨(i, 0%Z), s⟩~> (toval (fold_left fa (projT1 (@list_of_fun' B bdef (fun i => op hv (i + Z)) (q - Z))) a0))))
+      p ~⟨(i, 0%Z), s⟩~> (toval (fold_left fa (projT1 (@list_of_fun' B bdef (fun i => op hv (i + Z)) (q - Z))) a0)) \*
+      \[forall i, Z <= i < q -> Pb (op hv i)]))
     (hv0:=fun=> 0)=> //; try eassumption.
   { clear -IH Dj iNj opP.
     move=>l hv ?; move: (IH l).
@@ -124,12 +127,23 @@ Proof.
     }
     assert (Z <= l < N) as Htmp by math. 
     specialize (Hwp (fold_left fa (projT1 (@list_of_fun' B bdef (fun i => op hv (i + Z)) (l - Z))) a0) Htmp). clear Htmp.
+    xsimpl. intros Hpb.
     apply wp_equiv in Hwp. apply wp_equiv.
     eapply htriple_conseq_frame.
     1: apply Hwp.
     1: xsimpl. 1: xsimpl.
-    hnf. intros v.
-    xsimpl. xsimpl. clear Hwp.
+    hnf. intros v. xsimpl.
+    1:{ intros Hpb0 i0 Hi0.  
+      destruct (Z.ltb i0 l) eqn:E.
+      (* TODO this proof is repeating below *)
+      { apply Z.ltb_lt in E. rewrite <- opP with (hv:=hv); try math. 1: apply Hpb; math.
+        intros i1 Hi1. unfold uni. rewrite /uni indom_label_eq. case_if; auto.
+        destruct C0 as (_ & Hin2).
+				false @disjoint_inv_not_indom_both. 2: apply Hi1. 2: apply Hin2.
+				apply Dj; math. }
+      { apply Z.ltb_ge in E. assert (i0 = l) as -> by math. rewrite <- opP with (hv:=v); try math; try assumption.
+        intros i1 Hi1. unfold uni. rewrite /uni indom_label_eq. case_if; eqsolve. } }
+    intros Hpb0. xsimpl. clear Hwp.
 		destruct (list_of_fun' _ _) as (l1 & Hlen1 & Hl1); simpl.
 		destruct (list_of_fun' _ _) as (l2 & Hlen2 & Hl2); simpl.
 		match goal with 
@@ -155,6 +169,12 @@ Proof.
 				rewrite -> Hl2; try math. replace (n+Z) with l by math. apply opP; try math.
 				intros i0 Hin. rewrite /uni indom_label_eq. case_if; eqsolve. } } }
   { move=> r hv hv' ? hvE.
+    do 4 f_equal.
+    2:{ f_equal. extens. split; intros H i0 Hi0. 
+      1: erewrite <- opP with (hv:=hv); try apply H; try math.
+      2: erewrite -> opP with (hv':=hv'); try apply H; try math.
+      all: intros i1 Hi1; apply hvE.
+      all: rewrite indom_Union; exists i0; indomE; split; [ math | auto ]. }
     suff->:
 			projT1 (@list_of_fun' _ bdef (fun i0 : int => op hv (i0 + Z)) (r - Z)) = 
       projT1 (@list_of_fun' _ bdef (fun i0 : int => op hv' (i0 + Z)) (r - Z)) by xsimpl.
@@ -168,10 +188,11 @@ Proof.
   { rewrite [_ Z Z]intervalgt; last math.
 		rewrite Union0 hbig_fset_empty. 
 		destruct (list_of_fun' _ _) as (l1 & Hlen1 & Hl1); simpl.
-		replace (abs _) with 0%nat in Hlen1 by math. destruct l1; try discriminate; xsimpl. }
+		replace (abs _) with 0%nat in Hlen1 by math. destruct l1; try discriminate; xsimpl.
+    intros; math. }
   { move=> ?.
     rewrite [_ N N]intervalgt; last math.
-    rewrite Union0 hbig_fset_empty. xsimpl. }
+    rewrite Union0 hbig_fset_empty. xsimpl*. }
   { simpl.
     intros. apply disjoint_of_not_indom_both. 
     intros. destruct x as (?, x). 
@@ -191,7 +212,7 @@ Proof.
 Qed.
 
 Lemma xfor_big_op_lemma_extended `{Inhab D} {A B : Type} Inv (R R' : Dom -> hhprop) 
-	(toval : A -> val) (a0 : A) (bdef : B) (fa : A -> B -> A)
+	(toval : A -> val) (a0 : A) (bdef : B) (fa : A -> B -> A) (Pb : B -> Prop)
   (op : (D -> val) -> int -> B) p 
   s fsi1 vr
   Z N (C1 : Dom -> trm) (i j : int) (C : trm) C'
@@ -208,7 +229,8 @@ Lemma xfor_big_op_lemma_extended `{Inhab D} {A B : Type} Inv (R R' : Dom -> hhpr
     {{ hv, 
         Inv (l + 1) \* 
         (\*_(d <- ⟨(j, 0%Z), fsi1 l⟩) R' d) \* 
-        p ~⟨(i, 0%Z), s⟩~> (toval (fa a (op hv l))) }}) ->
+        p ~⟨(i, 0%Z), s⟩~> (toval (fa a (op hv l))) \*
+        \[Pb (op hv l)] }}) ->
   (forall i j : int, i <> j -> Z <= i < N -> Z <= j < N -> disjoint (fsi1 i) (fsi1 j)) ->
   (forall (hv hv' : D -> val) m,
      Z <= m < N ->
@@ -229,7 +251,8 @@ Lemma xfor_big_op_lemma_extended `{Inhab D} {A B : Type} Inv (R R' : Dom -> hhpr
   (forall hv, 
     Inv N \* 
     (\*_(d <- Union (interval Z N) fsi1) R' d) \* 
-    p ~⟨(i, 0%Z), s⟩~> (toval (fold_left fa (projT1 (@list_of_fun' B bdef (fun i => op hv (i + Z)) (N - Z))) a0)) ==>
+    p ~⟨(i, 0%Z), s⟩~> (toval (fold_left fa (projT1 (@list_of_fun' B bdef (fun i => op hv (i + Z)) (N - Z))) a0)) \*
+    \[forall i, Z <= i < N -> Pb (op hv i)] ==>
     wp ⟨(i,0),single s tt⟩ (fun=> C') (fun hr' => Post (lab_fun_upd hr' hv (i,0)))) -> 
   {{ Pre }}
     [{
@@ -260,7 +283,7 @@ Proof.
   apply/xfor_big_op_lemma_aux_extended; eauto.
   move=> hv. apply: himpl_trans; [|apply/wp_hv].
   move: (H12 hv); rewrite wp_equiv=> ?.
-  xapp=> hv'. rewrite -/(lab_fun_upd _ _ _).
+  xapp=> //. move=> Hpb hv'. rewrite -/(lab_fun_upd _ _ _).
   xsimpl (lab_fun_upd hv' hv (i, 0))=> ?.
   apply: applys_eq_init; fequals; apply/fun_ext_1=> /=.
   case=> l x.
@@ -319,11 +342,12 @@ Lemma xfor_big_op_lemma_int `{Inhab D} Inv (R R' : Dom -> hhprop)
   {{ hv, Post hv }}.
 Proof.
   intros.
-	eapply xfor_big_op_lemma_extended with (toval:=val_int) (a0:=0) (bdef:=0); eauto.
-	intros.
+	eapply xfor_big_op_lemma_extended with (toval:=val_int) (a0:=0) (bdef:=0) (Pb:=fun=> True) (fa:=Z.add) (R':=R'); eauto.
+  1:{ intros. eapply himpl_trans. 1: apply H0; try assumption. apply wp_conseq. xsimpl*. }
+	intros. eapply himpl_trans. 2: apply H12; try assumption. xsimpl=>_.
 	match goal with
 		|- context[fold_left Z.add ?ll 0] => eapply eq_ind_r with (y:=fold_left Z.add ll 0)
-	end; [ apply H12 | ].
+	end; [ xsimpl* | ].
 	destruct (list_of_fun' _ _) as (l1 & Hlen1 & Hl1); simpl.
 	rewrite -> Sum_interval_change with (c:=(-Z)).
 	replace (`[_, _]) with (`[0, N - Z]) by (f_equal; math).
@@ -339,6 +363,32 @@ Definition float_unit : binary64 := Zconst Tdouble 0.
 
 Tactic Notation "xfor_sum_float" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(s) :=
   eapply (@xfor_big_op_lemma_extended _ _ _ _ Inv R R' val_float float_unit float_unit (@BPLUS _ Tdouble) op s);
+  [ let L := fresh in 
+    intros ?? L;
+    xnsimpl
+  | disjointE
+  | let hvE := fresh "hvE" in
+    let someindom := fresh "someindom" in
+    intros ???? hvE; rewrite ?/op; indomE;
+    match goal with 
+    | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
+    | _ => idtac
+    end; try (setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
+      (first [ apply someindom | idtac ])])
+  |
+  | try lia
+  |
+  |
+  |
+  |
+  |
+  |
+  | rewrite ?/Inv ?/R; rewrite -> ?hbig_fset_hstar; xsimpl
+  | intros ?; rewrite ?/Inv ?/R' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl
+  ]=> //; autos*.
+
+Tactic Notation "xfor_sum_fma" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(s) :=
+  eapply (@xfor_big_op_lemma_extended _ _ _ _ Inv R R' val_float float_unit float_unit (@BFMA _ Tdouble) (@finite Tdouble) op s);
   [ let L := fresh in 
     intros ?? L;
     xnsimpl

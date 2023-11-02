@@ -35,6 +35,29 @@ Notation "k '.+=' x" :=
   (incr_float.func k x)
   (in custom trm at level 58, format "k  .+=  x") : trm_scope.
 
+Module fma.
+
+Section fma. 
+
+Context {D : Type}.
+
+Definition func :=
+  (<{ fun "z" "x" "y" =>
+      let "tmp1" = "x" .* "y" in
+      let "tmp2" = ! "z" in
+      let "tmp2" = val_float_fma "tmp1" "tmp2" in
+      "z" := "tmp2" }>).
+
+Lemma spec `{Inhab D} (pj0 : loc) (d : D) (x y z : binary64) :
+  htriple (single d tt)
+  (fun=> func pj0 x y) 
+  (pj0 ~(d)~> val_float z)
+    (fun=> pj0 ~(d)~> val_float (@BFMA _ Tdouble x y z)).
+Proof. by do 4 (xwp; xapp). Qed.
+
+End fma.
+End fma.
+
 Definition to_float (v : val) : binary64 := 
   match v with 
   | val_float i => i 
@@ -46,6 +69,73 @@ Coercion to_float : val >-> binary64.
 Lemma to_float_if P a b : 
   to_float (If P then a else b) = If P then a else b.
 Proof. by case: classicT. Qed.
+
+Fact fold_left_map {A B C : Type} (l : list B) (g : B -> C) (f : A -> C -> A) (s : A) :
+  List.fold_left (fun a b => f a (g b)) l s = List.fold_left f (List.map g l) s.
+Proof.
+  revert s. induction l as [ | x l IH ] using List.rev_ind; intros; rewrite ?List.map_app ?List.fold_left_app /= ?IH; auto. 
+Qed. 
+
+(*
+(* This is not doable ... *)
+Definition Sumf {A : Type} (l : list A) (f : A -> binary64) : binary64 := 
+  List.fold_left (fun acc a => (acc + f a)%F64) l float_unit.
+
+Lemma Sumf_filter {A : Type} (p : A -> bool) (l : list A) (f : A -> binary64) :
+  (forall a, List.In a l -> p a = false -> f a = float_unit) -> 
+  Sumf l f = Sumf (List.filter p l) f.
+Proof.
+  induction l as [ | a l IH ] using List.rev_ind; intros; auto.
+  unfold Sumf in *. rewrite List.filter_app /=. destruct (p a); rewrite ?List.fold_left_app ?IH //=.
+  /= IH.
+Admitted.
+*)
+
+Definition Sum_fma {A : Type} (s : binary64) (l : list A) (f : A -> binary64 * binary64) : binary64 := 
+  List.fold_left (fun acc a => (@BFMA _ Tdouble (f a).1 (f a).2 acc)%F64) l s.
+
+Lemma Sum_fma_filter0_feq {A : Type} (p : A -> bool) : forall (s : binary64) (l : list A) (f : A -> binary64 * binary64), 
+  (forall a, List.In a l -> p a = false -> (f a).1 = float_unit \/ (f a).2 = float_unit) -> 
+  (forall a, List.In a l -> @finite Tdouble (f a).1 /\ @finite Tdouble (f a).2) ->
+  @feq Tdouble (Sum_fma s l f) (Sum_fma s (List.filter p l) f).
+Proof.
+  move=> s l. move: s.
+  induction l as [ | a l IH ] using List.rev_ind; intros; auto.
+  unfold Sum_fma in *. rewrite List.fold_left_app List.filter_app /=. 
+  destruct (p a) eqn:Ef; rewrite ?IH //= ?List.fold_left_app //=.
+  all: try (move=> a0 Hin; (apply H + apply H0); rewrite List.in_app_iff; tauto).
+  specialize (H0 a). rewrite List.in_app_iff /= /finite in H0. 
+  specialize (H0 (or_intror (or_introl eq_refl))). 
+  apply H in Ef. 2: rewrite List.in_app_iff /=; tauto.
+  destruct H0, Ef as [ -> | -> ]; rewrite ?BFMA_zero1 ?BFMA_zero2 //=.
+Qed.
+(*
+Lemma pair_fst_If {A B : Type} P (a b : A) (c : B) : 
+  (If P then a else b, c) = If P then (a, c) else (b, c).
+Proof. by case_if. Qed.
+*)
+Lemma Sum_fma_eq {A : Type} (s : binary64) (l : list A) (f g : A -> binary64 * binary64) :
+  (forall a, List.In a l -> f a = g a) -> Sum_fma s l f = Sum_fma s l g.
+Proof.
+  intros H. revert s. induction l; intros; simpl; auto. rewrite ?H ?IHl; simpl; auto.
+  move=>*. rewrite H /=; tauto.
+Qed.
+(*
+Lemma Sum_fma_filter_If {A : Type} (P : int -> Prop) (f g : A -> binary64 * binary64) : 
+  forall (s : binary64) (l : list A) (f : A -> binary64 * binary64), 
+  (forall a, List.In a l -> p a = false -> (f a).1 = float_unit \/ (f a).2 = float_unit) -> 
+  (forall a, List.In a l -> @finite Tdouble (f a).1 /\ @finite Tdouble (f a).2) ->
+  @feq Tdouble (Sum_fma s l f) (Sum_fma s (List.filter p l) f).
+Proof.
+*)
+
+Fact finite_suffcond (l : list binary64) n (H : forall x, List.In x l -> @finite Tdouble x) :
+  @finite Tdouble (List.nth n l float_unit).
+Proof. destruct (List.nth_in_or_default n l float_unit) as [ | -> ]; auto. by compute. Qed.
+
+Fact sorted_bounded_sublist (l : list int) (Hs : sorted l) (M : int) (Hb : forall x, List.In x l -> 0 <= x < M) :
+  l = List.filter (fun x => isTrue (List.In x l)) (lof id M).
+Admitted.
 
 Module sv.
 
@@ -62,12 +152,9 @@ Notation "'xlb'" := ("l_b":var) (in custom trm at level 0) : trm_scope.
 Notation "'xrb'" := ("r_b":var) (in custom trm at level 0) : trm_scope.
 
 Import List Vars.
-
+(*
 (* TODO maybe move these somewhere else *)
 Section pure_facts.
-
-Fact fold_left_BPLUS_unit n : fold_left (@BPLUS _ Tdouble) (repeat float_unit n) float_unit = float_unit.
-Proof. induction n; auto. Qed.
 
 Variable (M : int) (l : list int).
 Hypothesis (HM : 0 <= M) (* avoid the case where l is nil and M can be anything *). 
@@ -98,8 +185,8 @@ Proof.
   simpl in Hbounded. 
   *)
 Admitted.
-
 End pure_facts.
+*)
 
 Context (xind : list int).
 Context (xval : list binary64).
@@ -110,7 +197,9 @@ Hypotheses (bounds_l: 0 <= lb) (bounds_r: lb <= rb).
 Hypothesis len_xind : rb <= length xind.
 Hypothesis len_xval : rb <= length xval.
 Hypothesis nodup_xind : NoDup (list_interval (abs lb) (abs rb) xind).
+Hypothesis sorted_xind : sorted (list_interval (abs lb) (abs rb) xind). (* TODO possibly remove nodup_xind since sorted_xind subsumes it? *)
 Hypothesis xind_leq : forall x, In x (list_interval (abs lb) (abs rb) xind) -> 0 <= x < M.
+Hypothesis xval_finite : forall x, In x (list_interval (abs lb) (abs rb) xval) -> @finite Tdouble x.
 
 Definition indexf := index_bounded.func.
 
@@ -145,7 +234,7 @@ Lemma get_spec_in {D : Type} `{Inhab D} (x_ind x_val : loc) i d :
       harray_int xind x_ind d \* 
       harray_float xval x_val d)
     (fun hr => 
-     \[hr = fun=> List.nth (abs i) (list_interval (abs lb) (abs rb) xval) 0] \* 
+     \[hr = fun=> List.nth (abs i) (list_interval (abs lb) (abs rb) xval) float_unit] \* 
       harray_int xind x_ind d \* 
       harray_float xval x_val d).
 Proof.
@@ -255,6 +344,7 @@ Hint Resolve lhtriple_free : lhtriple.
 
 Notation "l '[[' i '--' j ']]' " := (list_interval (abs i) (abs j) l) (at level 5).
 
+(*
 Lemma sum_spec `{Inhab D} (x_ind x_val : loc) : 
   {{ arr(x_ind, xind)⟨1, 0⟩ \*
      .arr(x_val, xval)⟨1, 0⟩ \\* 
@@ -268,8 +358,7 @@ Lemma sum_spec `{Inhab D} (x_ind x_val : loc) :
     \[Permutation (lof id M) perm /\ 
     (* stating that xind is a subsequence of perm may be beneficial, but is it needed? *)
     (* this is exact, no feq is needed *)
-    (hv[`1](0)) = val_float (fold_left (@BPLUS _ Tdouble) 
-    (projT1 (@list_of_fun' _ float_unit (fun i => to_float (hv[`2](perm[i]))) M)) float_unit)]) \* 
+    (feq (hv[`1](0)) (Sumf (lof int M) (to_float \o (fun i => hv[`2](i)))))  \* 
       arr(x_ind, xind)⟨1, 0⟩ \*
       .arr(x_val, xval)⟨1, 0⟩ \* 
       (\*_(i <- `[0, M]) arr(x_ind, xind)⟨2, i⟩) \\*
@@ -318,20 +407,21 @@ Proof with fold'.
     { admit. } }
   rewrite fold_left_app fold_left_BPLUS_unit //.
 Abort.
-(*
-Context (dvec : list int).
+*)
+
+Context (dvec : list binary64).
 Context (dvec_len : length dvec = M :> int).
+Hypothesis dvec_finite : forall x, In x dvec -> @finite Tdouble x.
 
 Definition dotprod := 
   <{
   fun xind xval dvec xlb xrb =>
-  let s = ref 0 in
+  let s = ref float_unit in
   for i <- [xlb, xrb] {
-    let x = xval[i] in 
+    let x = xval[.i] in 
     let i = xind[i] in 
-    let v = dvec[i] in 
-    let x = x * v in
-    s += x
+    let v = dvec[.i] in 
+    fma.func s x v
   };
   let "res" = ! s in
   free s;
@@ -344,24 +434,52 @@ Lemma SumIf {A : Type} {P : A -> Prop} {fs F G} (C : A -> int -> int) :
 Proof using.
 Admitted.
 
+Tactic Notation "xfor_sum_fma" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(s) :=
+  eapply (@xfor_big_op_lemma_extended _ _ _ _ Inv R R' val_float float_unit (float_unit, float_unit) (fun a (b : binary64 * binary64) => @BFMA _ Tdouble b.1 b.2 a) 
+    (fun (b : binary64 * binary64) => @finite Tdouble b.1 /\ @finite Tdouble b.2) op s);
+  [ let L := fresh in 
+    intros ?? L;
+    xnsimpl
+  | disjointE
+  | let hvE := fresh "hvE" in
+    let someindom := fresh "someindom" in
+    intros ???? hvE; rewrite ?/op; indomE;
+    match goal with 
+    | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
+    | _ => idtac
+    end; try (setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
+      (first [ apply someindom | idtac ])])
+  |
+  | try lia
+  |
+  |
+  |
+  |
+  |
+  |
+  | rewrite ?/Inv ?/R; rewrite -> ?hbig_fset_hstar; xsimpl
+  | intros ?; rewrite ?/Inv ?/R' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl
+  ]=> //; autos*.
+
 Lemma dotprod_spec `{Inhab D} (x_ind x_val d_vec : loc) : 
   {{ arr(x_ind, xind)⟨1, 0⟩ \\*
-     arr(x_val, xval)⟨1, 0⟩ \\*
-     arr(d_vec, dvec)⟨1, 0⟩ \\* 
+     .arr(x_val, xval)⟨1, 0⟩ \\*
+     .arr(d_vec, dvec)⟨1, 0⟩ \\* 
      (\*_(i <- `[0, M]) arr(x_ind, xind)⟨2, i⟩) \\*
-     (\*_(i <- `[0, M]) arr(x_val, xval)⟨2, i⟩) \\* 
-     (\*_(i <- `[0, M]) arr(d_vec, dvec)⟨2, i⟩) }}
+     (\*_(i <- `[0, M]) .arr(x_val, xval)⟨2, i⟩) \\* 
+     (\*_(i <- `[0, M]) .arr(d_vec, dvec)⟨2, i⟩) }}
   [{
     [1| ld in `{0}   => dotprod x_ind x_val d_vec lb rb];
     [2| ld in `[0,M] => get ld x_ind x_val lb rb]
   }]
-  {{ hv, \[hv[`1](0) = Σ_(i <- `[0,M]) (hv[`2](i) * dvec[i])] \* 
+  {{ hv, \[@feq Tdouble (to_float (hv[`1](0))) 
+      (Sum_fma float_unit (lof id M) (fun i => (to_float (hv[`2](i)), dvec[i])))] \* 
      arr(x_ind, xind)⟨1, 0⟩ \\*
-     arr(x_val, xval)⟨1, 0⟩ \\*
-     arr(d_vec, dvec)⟨1, 0⟩ \\* 
+     .arr(x_val, xval)⟨1, 0⟩ \\*
+     .arr(d_vec, dvec)⟨1, 0⟩ \\* 
      (\*_(i <- `[0, M]) arr(x_ind, xind)⟨2, i⟩) \\*
-     (\*_(i <- `[0, M]) arr(x_val, xval)⟨2, i⟩) \\* 
-     (\*_(i <- `[0, M]) arr(d_vec, dvec)⟨2, i⟩)}}.
+     (\*_(i <- `[0, M]) .arr(x_val, xval)⟨2, i⟩) \\* 
+     (\*_(i <- `[0, M]) .arr(d_vec, dvec)⟨2, i⟩)}}.
 Proof with fold'.
   xfocus (2,0) xind[[lb -- rb]].
   rewrite (hbig_fset_part (`[0, M]) xind[[lb -- rb]]). (* TODO: move to xfocus *)
@@ -372,24 +490,47 @@ Proof with fold'.
   have Hl : length xind[[lb -- rb]] = rb - lb :> int.
   1: rewrite -> list_interval_length; try math.
   rewrite intr_list ?(fset_of_list_nodup 0) ?Hl ?Union_interval_change2 //.
-  set (R (i : int) := arr(x_ind, xind)⟨2, i⟩ \* arr(x_val, xval)⟨2, i⟩ \* arr(d_vec, dvec)⟨2,i⟩).
-  set (Inv (i : int) := arr(x_ind, xind)⟨1, 0⟩ \* arr(x_val, xval)⟨1, 0⟩ \* arr(d_vec, dvec)⟨1,0⟩).
-  xfor_sum Inv R R (fun hv i => (hv[`2](xind[i]) * dvec[xind[i] ])) q.
+  set (R (i : int) := arr(x_ind, xind)⟨2, i⟩ \* .arr(x_val, xval)⟨2, i⟩ \* .arr(d_vec, dvec)⟨2,i⟩).
+  set (Inv (i : int) := arr(x_ind, xind)⟨1, 0⟩ \* .arr(x_val, xval)⟨1, 0⟩ \* .arr(d_vec, dvec)⟨1,0⟩).
+  xfor_sum_fma Inv R R (fun hv i => (to_float (hv[`2](xind[i])), dvec[xind[i] ])) q.
   { rewrite /Inv /R.
-    (xin (1,0): do 4 (xwp; xapp); xapp (@incr.spec _ H)=> y)...
+    (xin (1,0): do 3 (xwp; xapp); xapp (@fma.spec _ H)=> y)...
     xapp (@get_spec_in D)=> //; try math. xsimpl*.
+    1: split; by apply finite_suffcond.
     rewrite <- list_interval_nth with (l:=xval); try math.
     replace (lb + (l0 - lb)) with l0 by math. xsimpl*. }
   { intros Hneq Hi Hj Hq. apply Hneq. 
     enough (abs (i0 - lb) = abs (j0 - lb) :> nat) by math.
     eapply NoDup_nth. 4: apply Hq. all: try math; try assumption. }
   { rewrite -list_interval_nth; try f_equal; lia. }
-  xwp; xapp... xwp; xapp. xwp; xval. xsimpl*.
-  f_equal; under (@SumEq _ _ _ (`[0, M])).
-  { move=>*; rewrite to_int_if; over. }
-  rewrite (SumIf (fun=> Z.mul^~ _)) intr_list // Sum0s Sum_list_interval //; math.
+  intros Hfin. simpl in Hfin. xwp; xapp... xwp; xapp. xwp; xval. xsimpl*.
+  (* ... *)
+  rewrite -> Sum_fma_filter0_feq with (p:=fun i => isTrue (Sum.mem xind [[lb -- rb]] i)).
+  2:{ intros. rewrite -> isTrue_eq_false_eq in *. case_if; auto. }
+  2:{ intros. case_if; simpl; auto. all: split; try apply I; try by apply finite_suffcond. 
+    apply In_nth with (d:=0) in C. destruct C as (n & Hn & E). replace n with (abs n) in E by math. 
+    rewrite <- list_interval_nth in E; try math. rewrite <- E. apply Hfin. math. }
+  rewrite -> Sum_fma_eq with (g:=fun i => (to_float (hv[`2](i)), nth (abs i) dvec float_unit)). 
+  2:{ intros ? Hin%filter_In. rewrite isTrue_eq_true_eq in Hin. case_if; eqsolve. }
+  destruct (list_of_fun' _ _) as (l1 & Hlen1 & Hl1); simpl.
+  rewrite /Sum_fma /=. 
+  replace (filter _ _) with (xind [[lb -- rb]]).
+  2: by apply sorted_bounded_sublist.
+  (* ... *)
+  match goal with |- feq ?a ?b => enough (a = b) as Htmp by (rewrite Htmp; auto) end.
+  symmetry.
+  eapply eq_ind_r with (y:=l1). 
+  1: rewrite <- fold_left_map with (l:=(xind [[lb -- rb]])). 
+  2: instantiate (1:=fun b0 : int => (to_float (hv[`2](b0)), nth (abs b0) dvec float_unit)).
+  1: reflexivity.
+  apply (nth_ext _ _ (float_unit, float_unit) (float_unit, float_unit)). 
+  1: rewrite map_length; match goal with |- ?a = ?b => enough (Z.of_nat a = Z.of_nat b) by math end; 
+    rewrite list_interval_length; math.
+  intros n Hlt. replace n with (abs n)%nat by math.
+  rewrite -> Hl1, -> Eval.nth_map_lt with (d':=0) by math.
+  rewrite -?list_interval_nth; try math. by replace (n + lb) with (lb + n) by math.
 Qed.
-*)
+
 End sv. 
 (*
 Section sv.
