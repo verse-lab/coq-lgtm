@@ -71,11 +71,11 @@ Lemma xfor_lemma_gen_array_fun_aux `{ID : Inhab D}
   (Pre ==> 
     Inv 0 \* 
     (\*_(d <- Union `[0,N] fsi1) R d) \*
-    harray_fun f arrl M (Lab (i,0) s)) ->
+    harray_fun_int f arrl M (Lab (i,0) s)) ->
   (forall hv, 
     Inv N \* 
     (\*_(d <- Union `[0,N] fsi1) R' d) \* 
-    harray_fun (g hv) arrl M (Lab (i,0) s) ==>
+    harray_fun_int (g hv) arrl M (Lab (i,0) s) ==>
     Post hv) -> 
   {{ Pre }}
     [{
@@ -85,13 +85,13 @@ Lemma xfor_lemma_gen_array_fun_aux `{ID : Inhab D}
   {{ v, Post v }}. 
 Proof.
   move=>? IH *.
-  eapply xfor_lemma_gen_array with (R := R) (R' := R') (arr1 := lof f M) (arr2 := fun hv => lof (g hv) M) (arrl:=arrl); try eassumption.
-  { move=> ?; rewrite length_lof; math. }
-  { apply length_lof; math. }
-  { move=> l P; rewrite nth_lof' //; try math; auto.
-    apply/ntriple_conseq; [ | |move=> v; rewrite nth_lof'//; try math; auto]; try exact:himpl_refl.
+  eapply xfor_lemma_gen_array with (R := R) (R' := R') (arr1 := LibList.map val_int (lof f M)) (arr2 := fun hv => LibList.map val_int (lof (g hv) M)) (arrl:=arrl) (def:=val_int 0); try eassumption.
+  { move=> ?; rewrite map_conversion map_length length_lof; math. }
+  { rewrite map_conversion map_length length_lof; math. }
+  { move=> l P; rewrite map_conversion map_nth nth_lof' //; try math; auto.
+    apply/ntriple_conseq; [ | |move=> v; rewrite map_conversion map_nth nth_lof'//; try math; auto]; try exact:himpl_refl.
     rewrite -/(ntriple _ _ _). auto. }
-  all: move=> *; rewrite ?nth_lof' //; autos*.
+  all: move=> *; rewrite ?map_conversion ?map_nth ?nth_lof' //; f_equal; autos*.
 Qed.
 
 
@@ -139,11 +139,11 @@ Lemma xfor_lemma_gen_array_fun `{ID : Inhab D}
   (Pre ==> 
     Inv 0 \* 
     (\*_(d <- Union `[0,N] fsi1) R d) \*
-    harray_fun f arrl M (Lab (i,0) s)) ->
+    harray_fun_int f arrl M (Lab (i,0) s)) ->
   (forall hv, 
     Inv N \* 
     (\*_(d <- Union `[0,N] fsi1) R' d) \* 
-    harray_fun (g hv) arrl M (Lab (i,0) s) ==>
+    harray_fun_int (g hv) arrl M (Lab (i,0) s) ==>
     wp ⟨(i,0),single s tt⟩ (fun=> C') (fun hr' => Post (lab_fun_upd hr' hv (i,0)))) -> 
   {{ Pre }}
     [{
@@ -237,12 +237,12 @@ Lemma xfor_lemma_gen_array_fun_aux2 `{ID : Inhab D}
     Inv 0 \* 
     (\*_(d <- Union `[0,N] fsi1) R1 d) \*
     (\*_(d <- Union `[0,N] fsi2) R2 d) \*
-    harray_fun f arrl M (Lab (i,0) s)) ->
+    harray_fun_int f arrl M (Lab (i,0) s)) ->
   (forall hv, 
     Inv N \* 
     (\*_(d <- Union `[0,N] fsi1) R1' d) \*
     (\*_(d <- Union `[0,N] fsi2) R2' d) \* 
-    harray_fun (g hv) arrl M (Lab (i,0) s) ==>
+    harray_fun_int (g hv) arrl M (Lab (i,0) s) ==>
      Post hv) -> 
   {{ Pre }}
     [{
@@ -315,12 +315,12 @@ Lemma xfor_lemma_gen_array_fun2 `{ID : Inhab D}
     Inv 0 \* 
     (\*_(d <- Union `[0,N] fsi1) R1 d) \*
     (\*_(d <- Union `[0,N] fsi2) R2 d) \*
-    harray_fun f arrl M (Lab (i,0) s)) ->
+    harray_fun_int f arrl M (Lab (i,0) s)) ->
   (forall hv, 
     Inv N \* 
     (\*_(d <- Union `[0,N] fsi1) R1' d) \*
     (\*_(d <- Union `[0,N] fsi2) R2' d) \* 
-    harray_fun (g hv) arrl M (Lab (i,0) s) ==>
+    harray_fun_int (g hv) arrl M (Lab (i,0) s) ==>
     wp ⟨(i,0),single s tt⟩ (fun=> C') (fun hr' => Post (lab_fun_upd hr' hv (i,0)))) -> 
   {{ Pre }}
     [{
@@ -334,7 +334,7 @@ Proof.
   eapply ntriple_sequ2_gen with (Q' := fun hv=> Inv N \*
     (\*_(d <- \U_(i <- `[0, N]) fsi1 i) R1' d) \*
     (\*_(d <- \U_(i <- `[0, N]) fsi2 i) R2' d) \*
-    harray_fun (g hv) arrl M (Lab (i,0) s)); autos*=> /=.
+    harray_fun_int (g hv) arrl M (Lab (i,0) s)); autos*=> /=.
   { apply/xfor_lemma_gen_array_fun_aux2; try eassumption; xsimpl*. }
   { move=> v; rewrite -wp_equiv; apply: himpl_trans_r.
     apply/wp_hv; apply: wp_conseq Hwp=> hr ? Qh.
@@ -390,11 +390,11 @@ Lemma xfor_lemma_gen_array_fun_normal `{ID : Inhab D}
   (Pre ==> 
     Inv 0 \* 
     (\*_(d <- Union `[0,N] fsi1) R d) \*
-    harray_fun f arrl N (Lab (i,0) s)) ->
+    harray_fun_int f arrl N (Lab (i,0) s)) ->
   (forall hv, 
     Inv N \* 
     (\*_(d <- Union `[0,N] fsi1) R' d) \* 
-    harray_fun (g hv) arrl N (Lab (i,0) s) ==>
+    harray_fun_int (g hv) arrl N (Lab (i,0) s) ==>
     wp ⟨(i,0),single s tt⟩ (fun=> C') (fun hr' => Post (lab_fun_upd hr' hv (i,0)))) -> 
   {{ Pre }}
     [{
@@ -465,12 +465,12 @@ Lemma xfor_lemma_gen_array_fun_normal2 `{ID : Inhab D}
     Inv 0 \* 
     (\*_(d <- Union `[0,N] fsi1) R1 d) \*
     (\*_(d <- Union `[0,N] fsi2) R2 d) \*
-    harray_fun f arrl N (Lab (i,0) s)) ->
+    harray_fun_int f arrl N (Lab (i,0) s)) ->
   (forall hv, 
     Inv N \* 
     (\*_(d <- Union `[0,N] fsi1) R1' d) \* 
     (\*_(d <- Union `[0,N] fsi2) R2' d) \* 
-    harray_fun (g hv) arrl N (Lab (i,0) s) ==>
+    harray_fun_int (g hv) arrl N (Lab (i,0) s) ==>
     wp ⟨(i,0),single s tt⟩ (fun=> C') (fun hr' => Post (lab_fun_upd hr' hv (i,0)))) -> 
   {{ Pre }}
     [{

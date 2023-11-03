@@ -274,7 +274,7 @@ Lemma spmv_spec `{Inhab D} `{H__ : Inhab (labeled int)} (x_mval x_midx x_colind 
   }]
   {{ hv, (\exists p, 
     \[hv[`1]((0,0)) = val_loc p] \*
-    harray_fun (fun i => Σ_(j <- `[0, Ncol]) hv[`2]((i, j)) * dvec[j]) p Nrow (Lab (1,0) (0,0)))
+    harray_fun_int (fun i => Σ_(j <- `[0, Ncol]) hv[`2]((i, j)) * dvec[j]) p Nrow (Lab (1,0) (0,0)))
       \* \Top }}.
 Proof with (try seclocal_fold; seclocal_solver).
   xfocus (2,0) (indom (midx \x `[0, Ncol])).
@@ -314,7 +314,7 @@ Proof with (try seclocal_fold; seclocal_solver).
   { intros. now case_if. }
   xwp; xval. xsimpl*.
   match goal with
-    |- _ ==> harray_fun ?ff _ _ _ \\* _ => eapply eq_ind_r with (y:=ff)
+    |- _ ==> harray_fun_int ?ff _ _ _ \\* _ => eapply eq_ind_r with (y:=ff)
   end.
   1: xsimpl*.
   extens=> i. 
@@ -379,7 +379,7 @@ Lemma spmspv_spec `{Inhab D} `{H__ : Inhab (labeled int)}
   }]
   {{ hv, (\exists p, 
     \[hv[`1]((0,0)) = val_loc p] \*
-    harray_fun (fun i => Σ_(j <- `[0, Ncol]) hv[`2]((i, j)) * hv[`3]((0, j))) p Nrow (Lab (1,0) (0,0)))
+    harray_fun_int (fun i => Σ_(j <- `[0, Ncol]) hv[`2]((i, j)) * hv[`3]((0, j))) p Nrow (Lab (1,0) (0,0)))
       \* \Top }}.
 Proof with (try seclocal_fold; seclocal_solver).
   xfocus (2,0) (indom (midx \x `[0, Ncol])).
@@ -425,7 +425,7 @@ Proof with (try seclocal_fold; seclocal_solver).
   { rewrite Union_same //; xsimpl*. }
   xwp; xval. xsimpl*.
   match goal with
-    |- _ ==> harray_fun ?ff _ _ _ \\* _ => eapply eq_ind_r with (y:=ff)
+    |- _ ==> harray_fun_int ?ff _ _ _ \\* _ => eapply eq_ind_r with (y:=ff)
   end.
   1: xsimpl*.
   extens=> i. 

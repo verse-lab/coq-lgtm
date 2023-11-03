@@ -359,8 +359,6 @@ Qed.
 
 End WithLoops.
 
-Definition float_unit : binary64 := Zconst Tdouble 0.
-
 Tactic Notation "xfor_sum_float" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(s) :=
   eapply (@xfor_big_op_lemma_extended _ _ _ _ Inv R R' val_float float_unit float_unit (@BPLUS _ Tdouble) op s);
   [ let L := fresh in 

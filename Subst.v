@@ -639,10 +639,10 @@ Qed.
 
 Lemma harray_hsub L l d : 
   indom fs d ->
-  hsub (harray_int L l d) = harray_int L l (f d).
+  hsub (harray L l d) = harray L l (f d).
 Proof.
   move=> pd.
-  rewrite /harray_int /harray ?hcellsE ?hstar_hsub hpure_hsub /hheader hstar_fset_hsub.
+  rewrite /harray_int /harray ?(hcellsE _ val_uninit) ?hstar_hsub hpure_hsub /hheader hstar_fset_hsub.
   rewrite  hsingle_hsub //.  do ? f_equal.
   { by extens; split=> -[]->. }
   by apply/fun_ext_1=> ?; rewrite hsingle_hsub //.
@@ -768,6 +768,7 @@ Ltac xsubst_rew H :=
   do ? match goal with 
   | |- hsub _ _ (hsingle _ _ _) = _ => erewrite hsingle_hsub; simpl; eauto
   | |- hsub _ _ (harray_int _ _ _) = _ => rewrite (@harray_hsub _ _ _ _ H); simpl; eauto
+  | |- hsub _ _ (harray_float _ _ _) = _ => rewrite (@harray_hsub _ _ _ _ H); simpl; eauto
   | |- hsub _ _ (_ \* _) = _ => rewrite (@hstar_hsub _ _ _ _ H); apply/foo
   | |- hsub _ _ (@hbig_fset _ _ hstar _ _) = _ => 
     rewrite (@hstar_fset_hsub _ _ _ _ H); eapply hbig_fset_eq; intros ?; indomE=> ?
@@ -793,6 +794,8 @@ Ltac xlocal :=
   | |- hlocal (hsingle _ _ _) _ =>
     apply hlocal_hsingle; indomE; autos*
   | |- hlocal (harray_int _ _ _) _ =>
+    apply hlocal_harray; indomE; autos*
+  | |- hlocal (harray_float _ _ _) _ =>
     apply hlocal_harray; indomE; autos*
   | |- hlocal (hpure _) _ => apply hlocal_hpure
   | |- hlocal (@hbig_fset _ _ hstar _ _) _ => 

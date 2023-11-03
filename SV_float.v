@@ -161,7 +161,7 @@ Proof.
   match goal with 
     |- List.fold_left ?ff _ _ = _ => pose proof (fold_left_map (lof id n) f ff s) as Htmp
   end.
-  simpl in Htmp. rewrite Htmp. f_equal. apply lof_indices.
+  simpl in Htmp. rewrite Htmp. f_equal. apply lof_indices'.
 Qed.
 
 (*
@@ -181,7 +181,7 @@ Fact sorted_bounded_sublist (l : list int) (Hs : sorted l) (M : int) (Hb : foral
   l = List.filter (fun x => isTrue (List.In x l)) (lof id M).
 Admitted.
 
-Module sv.
+Module sv_float.
 
 Notation "H1 '\\*' H2" := (hstar H1 H2)
   (at level 42, right associativity, format "H1  \\* '//' H2") : hprop_scope.
@@ -894,4 +894,4 @@ Qed.
 
 End sv.
 *)
-End sv.
+End sv_float.

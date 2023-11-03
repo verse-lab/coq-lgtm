@@ -9,6 +9,12 @@ Hint Rewrite conseq_cons' : rew_listx.
 Open Scope Z_scope.
 Global Open Scope hprop_scope.
 
+Fact map_conversion [A B : Type] (l : list A) (f : A -> B) :
+  LibList.map f l = List.map f l.
+Proof.
+  induction l; simpl; rewrite ?LibList.map_cons ?LibList.map_nil; auto; f_equal; auto.
+Qed.
+
 Ltac hlocal := 
   repeat (intros; 
   match goal with 
@@ -272,8 +278,8 @@ Qed.
 
 Arguments List.nth : simpl nomatch.
 
-Lemma hcellsE_gen (L : list int) p z : 
-  hcells (LibList.map val_int L) (p + z)%nat d = \*_(i <- `[z, z + List.length L]) (p + (abs i))%nat ~(d)~> List.nth (abs (i - z)) L 0.
+Lemma hcellsE_gen (def : val) (L : list val) p z : 
+  hcells L (p + z)%nat d = \*_(i <- `[z, z + List.length L]) (p + (abs i))%nat ~(d)~> List.nth (abs (i - z)) L def.
 Proof.
   elim: L p z=> [??|? l/= IHl p z].
   { rewrite /= intervalgt // ?hbig_fset_empty //; lia. }
@@ -290,14 +296,30 @@ Proof.
   by have<- /=: S (abs (x - (z + 1))) = (abs (x - z)) by lia.
 Qed.
 
-Lemma hcellsE (L : list int) p: 
-  hcells (LibList.map val_int L) p d = \*_(i <- `[0, List.length L]) (p + (abs i))%nat ~(d)~> List.nth (abs i) L 0.
+Lemma hcellsE (def : val) (L : list val) p: 
+  hcells L p d = \*_(i <- `[0, List.length L]) (p + (abs i))%nat ~(d)~> List.nth (abs i) L def.
 Proof.
-  move: (hcellsE_gen L p 0%nat)=> /=.
+  move: (hcellsE_gen def L p 0%nat)=> /=.
   have->: (p + 0)%nat = p by lia.
   have->: 0 + List.length L = List.length L by lia.
   apply:applys_eq_init; do ? fequals.
   apply/fun_ext_1=> ?; do ? fequals; lia.
+Qed.
+
+Lemma hcellsE_int (L : list int) p: 
+  hcells (LibList.map val_int L) p d = \*_(i <- `[0, List.length L]) (p + (abs i))%nat ~(d)~> List.nth (abs i) L 0.
+Proof.
+  rewrite (hcellsE 0) map_conversion List.map_length. 
+  apply hbig_fset_eq=> ??. by rewrite List.map_nth.
+Qed.
+
+Definition float_unit : binary64 := Zconst Tdouble 0.
+
+Lemma hcellsE_float (L : list binary64) p: 
+  hcells (LibList.map val_float L) p d = \*_(i <- `[0, List.length L]) (p + (abs i))%nat ~(d)~> List.nth (abs i) L float_unit.
+Proof.
+  rewrite (hcellsE float_unit) map_conversion List.map_length. 
+  apply hbig_fset_eq=> ??. by rewrite List.map_nth.
 Qed.
 
 Lemma hcells_focus : forall k p L,
@@ -617,7 +639,7 @@ Definition read_array_withdef (def : val) : val :=
 
 Definition read_array := Eval unfold read_array_withdef in read_array_withdef (val_int 0).
 
-Definition read_array_float := Eval unfold read_array_withdef in read_array_withdef (val_float (Zconst Tdouble 0)).
+Definition read_array_float := Eval unfold read_array_withdef in read_array_withdef (val_float float_unit).
 
 Lemma htriple_array_read_withdef `{Inhab D} {def : val} : forall fs (p : D -> loc) (i : D -> int) (L : D -> list val),
   htriple fs (fun d => (read_array_withdef def) (p d) (i d))
@@ -651,12 +673,6 @@ xwp; xval;xsimpl=>?. rewrite istrue_isTrue_eq=> ?.
 rewrite List.nth_overflow // -length_List_length. math.
 Qed.
 
-Fact map_conversion [A B : Type] (l : list A) (f : A -> B) :
-  LibList.map f l = List.map f l.
-Proof.
-  induction l; simpl; rewrite ?LibList.map_cons ?LibList.map_nil; auto; f_equal; auto.
-Qed.
-
 Lemma htriple_array_read `{Inhab D} fs (p : D -> loc) (i : D -> int) (L : D -> list int) :
   htriple fs (fun d => read_array (p d) (i d))
     (\*_(d <- fs) (harray_int (L d) (p d) d))
@@ -670,7 +686,7 @@ Qed.
 Lemma htriple_array_read_float `{Inhab D} fs (p : D -> loc) (i : D -> int) (L : D -> list binary64) :
   htriple fs (fun d => read_array_float (p d) (i d))
     (\*_(d <- fs) (harray_float (L d) (p d) d))
-    (fun hr => \[hr = fun d => List.nth (abs (i d)) (L d) (Zconst Tdouble 0)] \* (\*_(d <- fs) (harray_float (L d) (p d) d))).
+    (fun hr => \[hr = fun d => List.nth (abs (i d)) (L d) float_unit] \* (\*_(d <- fs) (harray_float (L d) (p d) d))).
 Proof.
   rewrite /harray_float /read_array -/(read_array_withdef _).
   eapply htriple_conseq. 1: apply htriple_array_read_withdef. 1: xsimpl.
@@ -686,7 +702,7 @@ Proof. move=> *; exact/htriple_array_read. Qed.
 Lemma lhtriple_array_read_float `{Inhab D} fs (p : loc) (i : D -> int) (L : list binary64) :
   htriple fs (fun d => read_array_float p (i d))
     (\*_(d <- fs) (harray_float L p d))
-    (fun hr => \[hr = fun d => List.nth (abs (i d)) L (Zconst Tdouble 0)] \* (\*_(d <- fs) (harray_float L p d))).
+    (fun hr => \[hr = fun d => List.nth (abs (i d)) L float_unit] \* (\*_(d <- fs) (harray_float L p d))).
 Proof. move=> *; exact/htriple_array_read_float. Qed.
 
 Hint Resolve lhtriple_array_read : lhtriple.

@@ -1,12 +1,7 @@
 Set Implicit Arguments.
-(* Require Export Setoid.
-Require Export Relation_Definitions.
-
-Locate "_ ==> _ ==> _". Check Morphisms.respectful. *)
-
 From SLF Require Import LabType Fun LibSepFmap Sum.
 From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer ListCommon.
-From SLF Require Import Struct Loops Unary_IndexWithBounds SV Subst NTriple Loops2 Struct2.
+From SLF Require Import Struct Loops Unary_IndexWithBounds Subst NTriple Loops2 Struct2 Loops2_float SV_float.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
@@ -23,8 +18,6 @@ Coercion to_int : val >-> Z.
 (* Module Export AD := WithUnary(Int2Dom). *)
 
 Module csr.
-
-Import sv.
 
 Section csr.
 
@@ -44,7 +37,8 @@ Notation "'for' i <- '[' Z ',' N ']' '{' t '}'"  :=
 
 Import List Vars.
 
-Context (mval colind rowptr : list int).
+Context (mval : list binary64).
+Context (colind rowptr : list int).
 Context (N Nrow Ncol : int).
 Hypothesis Nrow_nonneg : 0 <= Nrow.
 Hypothesis len_mval : length mval = N :> int.
@@ -58,11 +52,13 @@ Hypothesis rowptr_weakly_sorted : forall (i j : int),
   (0 <= j <= Nrow) -> 
   (i <= j) -> 
   (List.nth (abs i) rowptr 0 <= List.nth (abs j) rowptr 0).
+Hypothesis mval_finite : forall x, In x mval -> @finite Tdouble x.
 
 Definition colind_seg (row : int) :=
   list_interval (abs (nth (abs row) rowptr 0)) (abs (nth (abs (row + 1)) rowptr 0)) colind.
 
 Hypothesis nodup_eachcol : forall x : int, 0 <= x < Nrow -> NoDup (colind_seg x).
+Hypothesis sorted_eachcol : forall x : int, 0 <= x < Nrow -> sorted (colind_seg x). (* TODO possibly remove nodup_eachcol since sorted_eachcol subsumes it? *)
 (* FIXME: rowptr may not be strictly increasing? so the existing definition of increasing list 
     may not work, currently use these instead *)
 
@@ -86,9 +82,9 @@ Definition get :=
     let lb = read_array rowptr i in
     let i' = i + 1 in
     let rb = read_array rowptr i' in
-      sv.get j colind mval lb rb
+      sv_float.get j colind mval lb rb
 }>.
-
+(*
 Definition sum := 
   <{
   fun mval colind rowptr =>
@@ -102,9 +98,11 @@ Definition sum :=
   };
   ! s
 }>.
-
+*)
 Tactic Notation "seclocal_fold" := 
   rewrite ?label_single ?wp_single
+    -/(harray_float _ _ _)
+    -/(harray_int _ _ _)
     -/(For_aux _ _) 
     -/(For _ _ _) //=.
 
@@ -114,7 +112,7 @@ Local Notation Dom := (int * int)%type.
 Local Notation D := (labeled (int * int)).
 Definition eld := @LibWP.eld (int * int)%type.
 Coercion eld : D >-> Dom.
-
+(*
 Lemma sum_prod1{A B :Type} (fs : fset B) (x : A) : 
   Sum (`{x} \x fs) = fun Q => Sum fs (fun i => Q (x, i)).
 Proof.
@@ -134,8 +132,8 @@ move=>* /=; by rewrite Sum1.
 Qed.
 
 Definition sum_prod1E := (@sum_prod1, @sum_prod1')%type.
-
-
+*)
+(*
 Lemma sum_spec `{Inhab D} (x_mval x_colind x_rowptr : loc) : 
   {{ arr(x_mval, mval)⟨1, (0,0)⟩ \*
      arr(x_colind, colind)⟨1, (0,0)⟩ \*
@@ -172,66 +170,64 @@ Proof with (try seclocal_fold; seclocal_solver).
     xapp @incr.spec; rewrite sum_prod1E; xsimpl. }
   { xapp. xsimpl*. rewrite SumCascade //; disjointE. }
 Qed.
-
-Context (dvec : list int).
+*)
+Context (dvec : list binary64).
 Context (dvec_len : length dvec = Ncol :> int).
+Hypothesis dvec_finite : forall x, In x dvec -> @finite Tdouble x.
 
 Definition spmv := 
   <{
   fun mval colind rowptr dvec =>
-  let s = alloc0 Nrow in
+  let s = allocf0 Nrow in
   for i <- [0, Nrow] {
     let lb = read_array rowptr i in
     let i' = i + 1 in
     let rb = read_array rowptr i' in
-    let x = sv.dotprod colind mval dvec lb rb in 
+    let x = sv_float.dotprod colind mval dvec lb rb in 
     val_array_set s i x
   }; 
   s
 }>.
 
 Lemma spmv_spec `{Inhab D} (x_mval x_colind x_rowptr x_dvec : loc) : 
-  {{ arr(x_mval, mval)⟨1, (0,0)⟩ \*
+  {{ .arr(x_mval, mval)⟨1, (0,0)⟩ \*
      arr(x_colind, colind)⟨1, (0,0)⟩ \*
      arr(x_rowptr, rowptr)⟨1, (0,0)⟩ \*
-     arr(x_dvec, dvec)⟨1, (0,0)⟩ \* 
-     (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_mval, mval)⟨2, i⟩) \*
+     .arr(x_dvec, dvec)⟨1, (0,0)⟩ \* 
+     (\*_(i <- `[0, Nrow] \x `[0, Ncol]) .arr(x_mval, mval)⟨2, i⟩) \*
      (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_colind, colind)⟨2, i⟩) \*
      (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_rowptr, rowptr)⟨2, i⟩) \*
-     (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_dvec, dvec)⟨2, i⟩) }}
+     (\*_(i <- `[0, Nrow] \x `[0, Ncol]) .arr(x_dvec, dvec)⟨2, i⟩) }}
   [{
     [1| ld in `{(0,0)}                 => spmv x_mval x_colind x_rowptr x_dvec];
     {2| ld in `[0, Nrow] \x `[0, Ncol] => get x_mval x_colind x_rowptr ld.1 ld.2}
   }]
   {{ hv, (\exists p, 
     \[hv[`1]((0,0)) = val_loc p] \*
-    harray_fun_int (fun i => Σ_(j <- `[0, Ncol]) hv[`2]((i, j)) * dvec[j]) p Nrow (Lab (1,0) (0,0)))
+    harray_fun_float (fun i => (Sum_fma float_unit (lof id Ncol) (fun j => (to_float (hv[`2]((i, j))), dvec[j])))) p Nrow (Lab (1,0) (0,0)))
       \* \Top }}. (* this \Top can be made concrete, if needed *)
 Proof with (try seclocal_fold; seclocal_solver).
+  rewrite -!hbig_fset_hstar; match goal with
+    |- context[?a \* ?b \* ?c \* ?d \* hbig_fset _ _ ?ff] =>
+      pose (Inv (_ : int) := a \* b \* c \* d); pose (R := ff)
+  end; rewrite -> ! hbig_fset_hstar.
   xin (2,0) : do 3 (xwp; xapp).
-  xin (1,0) : (xwp; xapp (@htriple_alloc0_unary)=> // s)...
+  xin (1,0) : (xwp; xapp (@htriple_allocf0_unary)=> // s)...
   rewrite prod_cascade.
-  set (R (i : Dom) := arr(x_mval, mval)⟨2, i⟩ \*
-    arr(x_colind, colind)⟨2, i⟩ \* 
-    arr(x_rowptr, rowptr)⟨2, i⟩ \*
-    arr(x_dvec, dvec)⟨2, i⟩).
-  set (Inv (i : int) := arr(x_mval, mval)⟨1, (0,0)⟩ \* 
-    arr(x_colind, colind)⟨1, (0,0)⟩ \* 
-    arr(x_rowptr, rowptr)⟨1, (0,0)⟩ \*
-    arr(x_dvec, dvec)⟨1, (0,0)⟩).
-  xfor_specialized_normal Inv R R (fun hv i => Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * dvec[j.2])) (fun=> 0) s.
+  xfor_specialized_normal_float Inv R R (fun hv i => (Sum_fma float_unit (lof id Ncol) (fun j => (to_float (hv[`2]((i, j))), dvec[j])))) (fun=> float_unit) s.
   { xin (2,0) : rewrite wp_prod_single /=.
     xin (1,0) : do 3 (xwp; xapp)...
     xframe2 (arr(x_rowptr, rowptr)⟨1, (0, 0)⟩).
     xsubst (snd : _ -> int).
-    xnapp sv.dotprod_spec...
-    { move=> ?/in_interval_list... }
-    move=> ?; rewrite -wp_equiv. xsimpl=>->.
+    xnapp sv_float.dotprod_spec...
+    1-2: move=> ?/in_interval_list...
+    move=> ?; rewrite -wp_equiv. (* xsimpl=>->.
     xapp @lhtriple_array_set_pre; try math.
-    rewrite sum_prod1E; xsimpl. }
-  { xwp; xval. xsimpl*. xsimpl; rewrite sum_prod1E; xsimpl. }
-Qed.
-
+    rewrite sum_prod1E; xsimpl. *) admit. }
+  { admit. } 
+  { xwp; xval. xsimpl*. }
+Abort.
+(*
 Context (yind yval : list int).
 Context (M : int).
 Hypothesis len_xind : length yind = M :> int.
@@ -279,7 +275,7 @@ Lemma spmspv_spec `{Inhab D}
   }]
   {{ hv, (\exists p, 
     \[hv[`1]((0,0)) = val_loc p] \*
-    harray_fun_int (fun i => Σ_(j <- `[0, Ncol]) hv[`2]((i, j)) * hv[`3]((0, j))) p Nrow (Lab (1,0) (0,0)))
+    harray_fun (fun i => Σ_(j <- `[0, Ncol]) hv[`2]((i, j)) * hv[`3]((0, j))) p Nrow (Lab (1,0) (0,0)))
       \* \Top }}. (* this \Top can be made concrete, if needed *)
 Proof with (try seclocal_fold; seclocal_solver; try lia).
   xin (2,0) : do 3 (xwp; xapp).
@@ -312,7 +308,7 @@ Proof with (try seclocal_fold; seclocal_solver; try lia).
   { rewrite Union_same //; xsimpl*. }
   xwp; xval. xsimpl*. xsimpl; rewrite sum_prod1E; xsimpl.
 Qed.
-
+*)
 End csr.
 
 End csr.

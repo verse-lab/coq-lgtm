@@ -32,20 +32,19 @@ Definition list_of_fun' [A : Type] [def : A] (f : int -> A) (n : int) :
     (length l = abs n :> int /\ (forall i : int, 0 <= i < abs n -> nth (abs i) l def = f i))).
 apply list_of_fun. math. Defined.
 
-Definition intlist_of_intfun := @list_of_fun' int 0.
-
-Fact lof_make_constfun (n c : int) (H : 0 <= n) :
-  (projT1 (intlist_of_intfun (fun=> c) n)) = repeat c (abs n).
+Fact lof_make_constfun [A : Type] [def : A] (c : A) (n : int) :
+  (projT1 (@list_of_fun' _ def (fun=> c) n)) = repeat c (abs n).
 Proof.
-  destruct (intlist_of_intfun _ _) as (l & Hlen & HH). simpl.
-  apply nth_ext with (d:=0) (d':=0).
+  destruct (list_of_fun' _ _) as (l & Hlen & HH). simpl.
+  apply nth_ext with (d:=def) (d':=def).
   1: rewrite repeat_length; math.
   intros i Hi. rewrite -> nth_indep with (l:=repeat _ _) (d':=c) by (rewrite repeat_length; math).
   rewrite -> nth_repeat, <- HH with (i:=i); try math.
   f_equal; math.
 Qed.
 
-Definition lof f N := Eval unfold intlist_of_intfun in projT1 (intlist_of_intfun f N).
+(* TODO possibly change this name? *)
+Definition lof f N := projT1 (@list_of_fun' int 0 f N).
 
 Lemma nth_lof f N i : 
   0 <= i < abs N -> nth (abs i) (lof f N) 0 = f i.
@@ -63,30 +62,41 @@ Lemma length_lof' f N :
   length (lof f N) = abs N :> nat.
 Proof. unfold lof. destruct (list_of_fun' _ _) as (l1 & Hlen1 & Hl1); simpl. math. Qed.
 
-Lemma lof_indices {A : Type} [a : A] (f : int -> A) n :
-  projT1 (@list_of_fun' _ a f n) = List.map f (lof id n).
+Lemma lof_indices {A : Type} [a : A] (f : int -> A) (g : int -> int) n :
+  projT1 (@list_of_fun' _ a (f \o g) n) = List.map f (lof g n).
 Proof.
   destruct (list_of_fun' _ _) as (l1 & Hlen1 & Hl1); simpl.
-  pose proof (length_lof' id n) as Hlen2.
+  pose proof (length_lof' g n) as Hlen2.
   apply (List.nth_ext _ _ a a). 
   1: rewrite List.map_length; math.
   intros n0 Hlt. replace n0 with (abs n0) by math.
   rewrite Hl1 ?(Eval.nth_map_lt 0) ?nth_lof //; try math.
 Qed.
 
+Corollary lof_indices' {A : Type} [a : A] (f : int -> A) n :
+  projT1 (@list_of_fun' _ a f n) = List.map f (lof id n).
+Proof. by rewrite <- lof_indices with (a:=a). Qed.
+
 End list_of_fun.
 
-(* codomain restricted to be int; TODO make n int or nat here? *)
-Definition harray_fun {D : Type} (f:int -> int) (p:loc) (n:int) (d : D) : hhprop D :=
-  harray_int (projT1 (intlist_of_intfun f n)) p d.
+Definition harray_fun {D : Type} (f:int -> val) (p:loc) (n:int) (d : D) : hhprop D :=
+  harray (projT1 (@list_of_fun' _ val_uninit f n)) p d.
 
-Section alloc0.
+Definition harray_fun_int {D : Type} (f:int -> int) (p:loc) (n:int) (d : D) : hhprop D :=
+  harray_int (lof f n) p d.
 
-Definition memset0 : val := Eval cbn zeta beta in
+Definition harray_fun_float {D : Type} (f:int -> binary64) (p:loc) (n:int) (d : D) : hhprop D :=
+  harray_float (projT1 (@list_of_fun' _ float_unit f n)) p d.
+
+Section memset_alloc.
+
+Variable (a : val).
+
+Definition memset : val := Eval cbn zeta beta in
   let whilecond (i len : trm) := <{ let 'o = ! i in let 'c = 'o < len in 'c }> in
   let loopbody (p i : trm) := 
     <{ let 'o = ! i in
-       val_array_set p 'o 0;
+       val_array_set p 'o a;
        ++ i }> in
   let loop := While (whilecond "i" "l") (loopbody "p" "i") in
   <{ fun 'p =>
@@ -104,14 +114,14 @@ Ltac fold' :=
 Import List.
 
 Fact list_update_intermediate (L : list val) (i : int) (H : 0 <= i < length L) :
-  (List.app (repeat (val_int 0) (abs (i+1))) (skipn (abs (i+1)) L)) =
-  LibList.update (abs i) (val_int 0) (List.app (repeat (val_int 0) (abs i)) (skipn (abs i) L)).
+  (List.app (repeat a (abs (i+1))) (skipn (abs (i+1)) L)) =
+  LibList.update (abs i) a (List.app (repeat a (abs i)) (skipn (abs i) L)).
 Admitted.
 
-Lemma htriple_memset0_unary {D : Type} `{Inhab D} (L : list val) (p : loc) (d : D) :
-  htriple (single d tt) (fun=> memset0 p)
+Lemma htriple_memset_unary {D : Type} `{Inhab D} (L : list val) (p : loc) (d : D) :
+  htriple (single d tt) (fun=> memset p)
     (harray L p d) 
-    (fun=> harray_fun (fun=> 0) p (length L) d).
+    (fun=> harray_fun (fun=> a) p (length L) d).
 Proof with fold'.
   xwp; xapp (@htriple_array_length)...
   xwp; xapp=> s...
@@ -119,7 +129,7 @@ Proof with fold'.
   xwp; xwhile1 0 (length L) (match L with nil => false | _ => true end)
     (fun (b : bool) (i : int) => \[i <= (length L) /\ Z.ltb i (length L) = b] \*
       s0 ~(d)~> i \* 
-      harray (List.app (repeat (val_int 0) (abs i)) (skipn (abs i) L)) p d); try math.
+      harray (List.app (repeat a (abs i)) (skipn (abs i) L)) p d); try math.
   { intros b i. xsimpl. intros (Hi & Eb).
     do 2 (xwp; xapp). xwp. xval. xsimpl*. rewrite isTrue_eq_if.
     case_if; rewrite <- ? Z.ltb_ge, <- ? Z.ltb_lt, -> ? Eb in *; by destruct b. }
@@ -130,39 +140,68 @@ Proof with fold'.
     xwp; xapp (@htriple_array_set)...
     1:{ intros _ _... rewrite app_length repeat_length skipn_length; math. }
     xapp @incr1.spec.
-    replace (harray _ p d)  (* TODO why simply rewriting does not work? *)
-      with (harray (List.app (repeat (val_int 0) (abs (i+1))) (skipn (abs (i+1)) L)) p d) at 1.
-    2: f_equal; now apply list_update_intermediate. 
+    rewrite -list_update_intermediate; try math.
     xapp IH; try math.
     1: split; [ math | reflexivity ].
     xsimpl*. }
   { xsimpl*. split; try math. destruct L; by rewrite ? Z.ltb_ge ? Z.ltb_lt. }
   { xsimpl*=> _ _. xwp; xapp. 
     replace (abs _) with (length L) by math. (* ... *)
-    rewrite skipn_all List.app_nil_r /harray_fun /harray_int lof_make_constfun; try math.
-    (* shall we abort LibList.map? *)
-    rewrite map_conversion map_repeat. 
+    rewrite skipn_all List.app_nil_r /harray_fun lof_make_constfun; try math.
     replace (abs _) with (length L) by math. (* ... *) xsimpl*. }
 Qed.
 
-Definition alloc0 : val :=
+Definition alloc : val :=
   <{ fun 'n => 
       let 'p = val_alloc 'n in
-      memset0 'p; 
+      memset 'p; 
       'p }>.
+
+Lemma htriple_alloc_unary {D : Type} `{Inhab D} (n : int) (d : D) :
+  htriple (single d tt) (fun=> alloc n)
+    \[0 <= n]
+    (fun hv => \exists p, \[hv = fun=> val_loc p] \* harray_fun (fun=> a) p n d).
+Proof with fold'.
+  apply wp_equiv. xsimpl. intros HH.
+  assert (n = abs n :> int) as E by math.
+  rewrite -> E.
+  xwp; xapp (@htriple_alloc_nat)=>x p EE... rewrite !EE.
+  xwp; xapp (@htriple_memset_unary). xwp; xval. xsimpl*.
+  rewrite -length_List_length length_make. xsimpl.
+Qed.
+
+End memset_alloc.
+
+Section memset0_alloc0.
+
+Definition memset0 := Eval unfold memset in memset 0.
+
+Definition alloc0 := Eval unfold alloc in alloc 0.
 
 Lemma htriple_alloc0_unary {D : Type} `{Inhab D} (n : int) (d : D) :
   htriple (single d tt) (fun=> alloc0 n)
     \[0 <= n]
-    (fun hv => \exists p, \[hv = fun=> val_loc p] \* harray_fun (fun=> 0) p n d).
-(* Proof with fold'. *)
-  (* apply wp_equiv. xsimpl. intros HH.
-  assert (n = abs n :> int) as E by math.
-  rewrite -> E.
-  xwp; xapp (@htriple_alloc_nat)=>x p EE... rewrite !EE.
-  xwp; xapp (@htriple_memset0_unary). xwp; xval. xsimpl*.
-  rewrite -length_List_length length_make. xsimpl.
-Qed. *)
-Admitted.
+    (fun hv => \exists p, \[hv = fun=> val_loc p] \* harray_fun_int (fun=> 0) p n d).
+Proof.
+  eapply htriple_conseq. 1: by apply htriple_alloc_unary. all: xsimpl*=>*.
+  rewrite /harray_fun_int /harray_fun /harray_int !lof_indices map_conversion //.
+Qed.
 
-End alloc0.
+End memset0_alloc0.
+
+Section memsetf0_allocf0.
+
+Definition memsetf0 := Eval unfold memset in memset float_unit.
+
+Definition allocf0 := Eval unfold alloc in alloc float_unit.
+
+Lemma htriple_allocf0_unary {D : Type} `{Inhab D} (n : int) (d : D) :
+  htriple (single d tt) (fun=> allocf0 n)
+    \[0 <= n]
+    (fun hv => \exists p, \[hv = fun=> val_loc p] \* harray_fun_float (fun=> float_unit) p n d).
+Proof.
+  eapply htriple_conseq. 1: by apply htriple_alloc_unary. all: xsimpl*=>*.
+  rewrite /harray_fun_float /harray_fun /harray_float !lof_indices' map_conversion List.map_map //.
+Qed.
+
+End memsetf0_allocf0.
