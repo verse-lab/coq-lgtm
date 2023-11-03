@@ -1,6 +1,6 @@
 Set Implicit Arguments.
-From SLF Require Import Fun LabType Sum.
-From SLF Require Import LibSepReference  LibWP LibSepSimpl Struct.
+From SLF Require Import Fun LabType Sum ListCommon.
+From SLF Require Import LibSepReference LibWP LibSepSimpl Struct.
 From SLF Require Import LibSepTLCbuffer.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
@@ -2015,7 +2015,9 @@ Proof.
   move=> d Hnotin /=. rewrite filter_indom indom_interval /Sum.mem /= in Hnotin. do 2 f_equal. now apply Hpre.
 Qed.
 
-Lemma xfor_lemma_gen_array `{ID : Inhab D}
+(* TODO it might be easier to change some_eq to be on some type A, and use the toval trick again 
+    otherwise its application would be complicated (e.g., for float) *)
+Lemma xfor_lemma_gen_array `{ID : Inhab D} (some_eq : Relation_Definitions.relation val) `{Heqv : @RelationClasses.Equivalence val some_eq}
   Inv 
   (R R' : Dom -> hhprop)
   s fsi1 vr (arrl : loc) (def : val) (arr1 : list val) (arr2 : (D -> val) -> list val) (idx : list int)
@@ -2037,19 +2039,20 @@ Lemma xfor_lemma_gen_array `{ID : Inhab D}
         {i| _  in single s tt  => subst vr l C};
         {j| ld in fsi1 l       => C1 ld}
       }]
-    {{ v, 
+    {{ v, \exists vv : val, 
+        \[some_eq vv (nth (abs (idx[l])) (arr2 v) def)] \*
         Inv (l + 1) \* 
         (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R' d) \* 
-        (arrl + 1 + abs (idx[l]))%nat ~⟨(i,0)%Z, s⟩~> nth (abs (idx[l])) (arr2 v) def }}) ->
+        (arrl + 1 + abs (idx[l]))%nat ~⟨(i,0)%Z, s⟩~> vv }}) ->
   (forall j : int, hlocal (Inv j) ⟨(i,0%Z), single s tt⟩) ->
   (forall i : Dom, hlocal (R i) ⟨(j,0%Z), single i tt⟩) ->
   (forall i : Dom, hlocal (R' i) ⟨(j,0%Z), single i tt⟩) ->
   (forall (hv hv' : D -> val) m,
     0 <= m < N ->
     (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
-    nth (abs (idx[m])) (arr2 hv) def = nth (abs (idx[m])) (arr2 hv') def) ->
+    some_eq (nth (abs (idx[m])) (arr2 hv) def) (nth (abs (idx[m])) (arr2 hv') def)) ->
   (forall (hv : D -> val) m,
-    0 <= m < M -> ~ In m idx -> nth (abs m) arr1 def = nth (abs m) (arr2 hv) def) ->
+    0 <= m < M -> ~ In m idx -> some_eq (nth (abs m) arr1 def) (nth (abs m) (arr2 hv) def)) ->
   (i <> j)%Z ->
   0 <= N <= M ->
   (forall t : val, subst "for" t C = C) -> 
@@ -2062,11 +2065,12 @@ Lemma xfor_lemma_gen_array `{ID : Inhab D}
     Inv 0 \* 
     (\*_(d <- Union `[0,N] fsi1) R d) \*
     harray arr1 arrl (Lab (i,0) s)) ->
-  (forall hv, 
+  (forall hv (vl : int -> val),
+    \[forall i : int, 0 <= i < M -> some_eq (vl i) (nth (abs i) (arr2 hv) def)] \*
     Inv N \* 
     (\*_(d <- Union `[0,N] fsi1) R' d) \* 
-    harray (arr2 hv) arrl (Lab (i,0) s) ==>
-    Post hv) -> 
+    harray (projT1 (list_of_fun' vl M)) arrl (Lab (i,0) s) ==>
+    Post hv) ->
   {{ Pre }}
     [{
       {i| _  in single s tt => For 0 N (trm_fun vr C)};
@@ -2080,16 +2084,22 @@ Proof.
   have Hidx' : forall x : int, In x idx -> 0 <= x < M.
   { intros. eapply In_nth with (d:=0) in H. destruct H as (n & Hn & <-). 
     replace n with (abs n)%nat by math. apply Hidx. math. }
-  apply/ntriple_conseq; last exact/PostH; eauto.
+  apply/ntriple_conseq; [ | apply PreH | apply qimpl_refl ].
   rewrite /harray/hheader ?length_map ?length_List_length.
-  apply/(ntriple_conseq); [|exact: himpl_trans|move=> ?]; first last.
+  (*
+  rewrite /harray/hheader ?length_map ?length_List_length -AL.
+    move=> ?; apply:applys_eq_init; reflexivity.
+  apply/(ntriple_conseq); [|eapply himpl_trans|apply qimpl_refl].
   { rewrite /harray/hheader ?length_map ?length_List_length -AL.
     move=> ?; apply:applys_eq_init; reflexivity. }
-  xframe2 (arrl ~⟨(i, 0%Z), s⟩~> val_header (length arr1)).
-  xframe2 \[(arrl, (⟨(i, 0), s⟩)%arr) <> null (⟨(i, 0), s⟩)%arr].
+  *)
+  (* xframe2 (arrl ~⟨(i, 0%Z), s⟩~> val_header (length arr1)).
+  xframe2 \[(arrl, (⟨(i, 0), s⟩)%arr) <> null (⟨(i, 0), s⟩)%arr]. *)
   rewrite ?(hcellsE _ def) AL2.
   rewrite -> hbig_fset_part with (fs:=`[0, M]) (P:=idx).
-  set (Inv' := hbig_fset _ (_ ∖ _) _).
+  set (Inv'' := hbig_fset _ (_ ∖ _) _).
+  pose (Inv' := \[(arrl, (⟨(i, 0), s⟩)%arr) <> null (⟨(i, 0), s⟩)%arr] \*
+    (arrl ~⟨(i, 0%Z), s⟩~> val_header (length arr1)) \* Inv'').
   rewrite intr_list // (fset_of_list_nodup 0) // ALidx hbig_fset_Union.
   2:{ introv Ha Hb Hc. apply disjoint_single_single. intros Hd. rewrite ! indom_interval in Hb, Hc. apply Ha. enough (abs i0 = abs j0) by lia.
     move: Hd. erewrite -> NoDup_nth in Hnodup. apply Hnodup; math. }
@@ -2097,24 +2107,41 @@ Proof.
   eapply xfor_lemma_gen_bigstr with 
   (Inv := fun i => Inv i \* Inv')
   (H := fun l => (arrl + 1 + abs (idx[l]))%nat ~⟨(i, 0%Z), s⟩~> nth (abs (idx[l])) arr1 def)
-  (H' := fun l v => (arrl + 1 + abs (idx[l]))%nat ~⟨(i, 0%Z), s⟩~> nth (abs (idx[l])) (arr2 v) def)
+  (H' := fun l v => \exists vv : val, 
+    \[some_eq vv (nth (abs (idx[l])) (arr2 v) def)] \*
+    (arrl + 1 + abs (idx[l]))%nat ~⟨(i, 0%Z), s⟩~> vv)
   (R := R) (R' := R'); try eassumption; autos*=> //.
   { move=> l Hl. xframe2 Inv'. rewrite wp_equiv. eapply htriple_conseq. 1: apply wp_equiv, IH=> //. all: xsimpl*. 
     (* xnsimpl will make over simplification *) }
   { rewrite /Inv'. xlocal. autos*. apply hlocal_hstar_fset. xlocal. }
   { xlocal. }
   { xlocal. }
-  { move=> ???? hvE1; erewrite hvE; eauto. }
-  { xsimpl*. }
+  { move=> ???? hvE1. apply himpl_antisym; xsimpl=>?; rewrite hvE; eauto. intros; symmetry; auto. }
+  { rewrite/Inv' /Inv''; xsimpl*. }
   (* TODO the following part is very bad; need improvement *)
-  move=> ?. rewrite /Inv' (hcellsE _ def) AL1 !fun_eta_1. xsimpl*. 
+  move=> hv. rewrite hstar_fset_hexists. xsimpl*=> vl.
+  rewrite hstar_fset_pure_hstar. xsimpl*=> Hvl. setoid_rewrite indom_interval in Hvl.
+  pose (vl' := fun i : int => If In i idx then vl (ListCommon.index i idx) else (nth (abs i) arr1 def)).
+  eapply himpl_trans. 2: apply (PostH hv vl'). 
+  assert (forall i0 : int, 0 <= i0 < M -> some_eq (vl' i0) (nth (abs i0) (arr2 hv) def)) as Htmp.
+  { intros i0 Hi0. rewrite /vl'. case_if.
+    { rewrite Hvl. 2: split; [ apply indexG0 | rewrite -index_mem in C0; math ].
+      rewrite nth_index //. reflexivity. }
+    { apply Hre; try math; auto. } }
+  destruct (list_of_fun' _ _) as (l1 & Hlen1 & Hl1); simpl.
+  xsimpl*. rewrite /harray/hheader/Inv'/Inv'' (hcellsE _ def) ?length_List_length. xsimpl*=>_. 
+  replace (Z.of_nat (length l1)) with M by math. 
+  replace (length l1) with (length arr1) by math. xsimpl*.
   rewrite -> hbig_fset_part with (fs:=`[0, M]) (P:=idx).
   rewrite intr_list // (fset_of_list_nodup 0) // ALidx hbig_fset_Union.
   2:{ introv Ha Hb Hc. apply disjoint_single_single. intros Hd. rewrite ! indom_interval in Hb, Hc. apply Ha. enough (abs i0 = abs j0) by lia.
     move: Hd. erewrite -> NoDup_nth in Hnodup. apply Hnodup; math. }
-  erewrite hbig_fset_eq with (fs:=`[0, N]). 1: xsimpl*. 2: move=> * /=; by rewrite hbig_fset_label_single'.
+  erewrite hbig_fset_eq with (fs:=`[0, N]). 1: xsimpl*. 
+  2: move=> d Hd /=; rewrite indom_interval in Hd; specialize (Hidx d Hd); rewrite hbig_fset_label_single' Hl1 /vl' ?index_nodup //; try math.
+  2: assert (In idx[d] idx) by (apply nth_In; math); case_if; eqsolve.
   erewrite hbig_fset_eq. 1: xsimpl*. 
-  move=> d Hnotin /=. rewrite filter_indom indom_interval /Sum.mem /= in Hnotin. f_equal. now apply Hre.
+  move=> d Hnotin /=. rewrite filter_indom indom_interval /Sum.mem /= in Hnotin. f_equal. 
+  rewrite Hl1 /vl'; try math. case_if; eqsolve.
 Qed.
 
 End WithLoops.

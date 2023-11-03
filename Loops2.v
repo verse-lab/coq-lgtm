@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-From SLF Require Import Fun LabType Sum.
+From SLF Require Import Fun LabType Sum ListCommon.
 From SLF Require Import LibSepReference  LibWP LibSepSimpl Struct.
 From SLF Require Import LibSepTLCbuffer Loops Struct2 Subst.
 From mathcomp Require Import ssreflect ssrfun zify.
@@ -84,14 +84,19 @@ Lemma xfor_lemma_gen_array_fun_aux `{ID : Inhab D}
     }]
   {{ v, Post v }}. 
 Proof.
-  move=>? IH *.
-  eapply xfor_lemma_gen_array with (R := R) (R' := R') (arr1 := LibList.map val_int (lof f M)) (arr2 := fun hv => LibList.map val_int (lof (g hv) M)) (arrl:=arrl) (def:=val_int 0); try eassumption.
+  move=>lenidx nodup_idx idx_bounded IH *.
+  eapply xfor_lemma_gen_array with (R := R) (R' := R') (arr1 := LibList.map val_int (lof f M)) (arr2 := fun hv => LibList.map val_int (lof (g hv) M)) (arrl:=arrl) (def:=val_int 0) (some_eq:=eq); try eassumption.
+  1: constructor; hnf; congruence. 
   { move=> ?; rewrite map_conversion map_length length_lof; math. }
   { rewrite map_conversion map_length length_lof; math. }
   { move=> l P; rewrite map_conversion map_nth nth_lof' //; try math; auto.
-    apply/ntriple_conseq; [ | |move=> v; rewrite map_conversion map_nth nth_lof'//; try math; auto]; try exact:himpl_refl.
-    rewrite -/(ntriple _ _ _). auto. }
-  all: move=> *; rewrite ?map_conversion ?map_nth ?nth_lof' //; f_equal; autos*.
+    apply/ntriple_conseq; [apply (IH l P) | |move=> v; rewrite map_conversion map_nth nth_lof'//; try math; auto]; xsimpl*. }
+  all: try (move=> *; rewrite ?map_conversion ?map_nth ?nth_lof' //; f_equal; try math; auto).
+  xsimpl=>HH. eapply himpl_trans. 2: eauto. xsimpl*.
+  rewrite /harray_fun_int/harray_int map_conversion.
+  rewrite -(lof_indices val_uninit) !(lof_indices' val_uninit) in HH |- *.
+  eapply eq_ind_r with (y:=map _ _); [ xsimpl* | ].
+  apply map_ext_in=> a /In_lof_id Hin /=. rewrite HH ?(nth_map_lt 0) ?nth_lof' ?length_lof' //; try math.
 Qed.
 
 

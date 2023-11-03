@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-From SLF Require Import Fun LabType Sum.
+From SLF Require Import Fun LabType Sum ListCommon.
 From SLF Require Import LibSepReference LibWP LibSepSimpl Struct Loops Struct2 Loops2.
 From SLF Require Import LibSepTLCbuffer.
 From mathcomp Require Import ssreflect ssrfun zify.
@@ -62,7 +62,7 @@ Lemma xfor_big_op_lemma_aux_extended `{INH: Inhab D} {A B : Type} Inv (R R' : Do
   (forall hv, 
     Inv N \* 
     (\*_(d <- Union (interval Z N) fsi1) R' d) \* 
-    p ~⟨(i, 0%Z), s⟩~> (toval (fold_left fa (projT1 (@list_of_fun' B bdef (fun i => op hv (i + Z)) (N - Z))) a0)) \*
+    p ~⟨(i, 0%Z), s⟩~> (toval (fold_left fa (projT1 (list_of_fun' (fun i => op hv (i + Z)) (N - Z))) a0)) \*
     \[forall i, Z <= i < N -> Pb (op hv i)] ==>
     Post hv) -> 
   {{ Pre }}
@@ -83,10 +83,10 @@ Proof.
       Inv q \* 
       (\*_(d <- Union (interval Z q) fsi1) R' d) \*
       (\*_(d <- Union (interval q N) fsi1) R d) \* 
-      p ~⟨(i, 0%Z), s⟩~> (toval (fold_left fa (projT1 (@list_of_fun' B bdef (fun i => op hv (i + Z)) (q - Z))) a0)) \*
+      p ~⟨(i, 0%Z), s⟩~> (toval (fold_left fa (projT1 (list_of_fun' (fun i => op hv (i + Z)) (q - Z))) a0)) \*
       \[forall i, Z <= i < q -> Pb (op hv i)]))
     (hv0:=fun=> 0)=> //; try eassumption.
-  { clear -IH Dj iNj opP.
+  { clear -bdef IH Dj iNj opP.
     move=>l hv ?; move: (IH l).
     rewrite /ntriple /nwp ?fset_of_cons /= ?fset_of_nil.
     rewrite union_empty_r intervalUr; try math.
@@ -126,7 +126,7 @@ Proof.
       split; try math; auto.
     }
     assert (Z <= l < N) as Htmp by math. 
-    specialize (Hwp (fold_left fa (projT1 (@list_of_fun' B bdef (fun i => op hv (i + Z)) (l - Z))) a0) Htmp). clear Htmp.
+    specialize (Hwp (fold_left fa (projT1 (list_of_fun' (fun i => op hv (i + Z)) (l - Z))) a0) Htmp). clear Htmp.
     xsimpl. intros Hpb.
     apply wp_equiv in Hwp. apply wp_equiv.
     eapply htriple_conseq_frame.
@@ -176,8 +176,8 @@ Proof.
       all: intros i1 Hi1; apply hvE.
       all: rewrite indom_Union; exists i0; indomE; split; [ math | auto ]. }
     suff->:
-			projT1 (@list_of_fun' _ bdef (fun i0 : int => op hv (i0 + Z)) (r - Z)) = 
-      projT1 (@list_of_fun' _ bdef (fun i0 : int => op hv' (i0 + Z)) (r - Z)) by xsimpl.
+			projT1 (list_of_fun' (fun i0 : int => op hv (i0 + Z)) (r - Z)) = 
+      projT1 (list_of_fun' (fun i0 : int => op hv' (i0 + Z)) (r - Z)) by xsimpl.
 		destruct (list_of_fun' _ _) as (l1 & Hlen1 & Hl1); simpl.
 		destruct (list_of_fun' _ _) as (l2 & Hlen2 & Hl2); simpl.
 		apply (List.nth_ext _ _ bdef bdef). 1: math.
@@ -251,7 +251,7 @@ Lemma xfor_big_op_lemma_extended `{Inhab D} {A B : Type} Inv (R R' : Dom -> hhpr
   (forall hv, 
     Inv N \* 
     (\*_(d <- Union (interval Z N) fsi1) R' d) \* 
-    p ~⟨(i, 0%Z), s⟩~> (toval (fold_left fa (projT1 (@list_of_fun' B bdef (fun i => op hv (i + Z)) (N - Z))) a0)) \*
+    p ~⟨(i, 0%Z), s⟩~> (toval (fold_left fa (projT1 (list_of_fun' (fun i => op hv (i + Z)) (N - Z))) a0)) \*
     \[forall i, Z <= i < N -> Pb (op hv i)] ==>
     wp ⟨(i,0),single s tt⟩ (fun=> C') (fun hr' => Post (lab_fun_upd hr' hv (i,0)))) -> 
   {{ Pre }}
@@ -280,7 +280,7 @@ Proof.
   { by rewrite lab_eqb_sym E. }
   { move=> ??. remember ((_ \u_ _) _); reflexivity. }
   simpl.
-  apply/xfor_big_op_lemma_aux_extended; eauto.
+  apply/(xfor_big_op_lemma_aux_extended Inv R R' toval a0 bdef); eauto.
   move=> hv. apply: himpl_trans; [|apply/wp_hv].
   move: (H12 hv); rewrite wp_equiv=> ?.
   xapp=> //. move=> Hpb hv'. rewrite -/(lab_fun_upd _ _ _).
@@ -342,7 +342,7 @@ Lemma xfor_big_op_lemma_int `{Inhab D} Inv (R R' : Dom -> hhprop)
   {{ hv, Post hv }}.
 Proof.
   intros.
-	eapply xfor_big_op_lemma_extended with (toval:=val_int) (a0:=0) (bdef:=0) (Pb:=fun=> True) (fa:=Z.add) (R':=R'); eauto.
+  apply/(xfor_big_op_lemma_extended Inv R R' val_int 0 0 Z.add (fun=> True)); eauto.
   1:{ intros. eapply himpl_trans. 1: apply H0; try assumption. apply wp_conseq. xsimpl*. }
 	intros. eapply himpl_trans. 2: apply H12; try assumption. xsimpl=>_.
 	match goal with

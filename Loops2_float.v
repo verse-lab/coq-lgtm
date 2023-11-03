@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-From SLF Require Import Fun LabType Sum.
+From SLF Require Import Fun LabType Sum ListCommon.
 From SLF Require Import LibSepReference  LibWP LibSepSimpl Struct.
 From SLF Require Import LibSepTLCbuffer Loops Struct2 Subst.
 From mathcomp Require Import ssreflect ssrfun zify.
@@ -26,8 +26,6 @@ Definition eld := (@eld Dom).
 
 Local Coercion eld : D >-> Dom.
 
-
-
 Lemma xfor_lemma_gen_array_fun_float_aux `{ID : Inhab D}
   Inv 
   (R R' : Dom -> hhprop)
@@ -48,19 +46,20 @@ Lemma xfor_lemma_gen_array_fun_float_aux `{ID : Inhab D}
         {i| _  in single s tt  => subst vr l C};
         {j| ld in fsi1 l       => C1 ld}
       }]
-    {{ v, 
+    {{ v, \exists vv : binary64, 
+        \[@feq Tdouble vv (g v (idx[l]))] \*
         Inv (l + 1) \* 
         (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R' d) \* 
-        (arrl + 1 + abs (idx[l]))%nat ~⟨(i,0)%Z, s⟩~> g v (idx[l]) }}) ->
+        (arrl + 1 + abs (idx[l]))%nat ~⟨(i,0)%Z, s⟩~> val_float vv }}) ->
   (forall j : int, hlocal (Inv j) ⟨(i,0%Z), single s tt⟩) ->
   (forall i : Dom, hlocal (R i) ⟨(j,0%Z), (single i tt)⟩) ->
   (forall i : Dom, hlocal (R' i) ⟨(j,0%Z), (single i tt)⟩) ->
   (forall (hv hv' : D -> val) m,
     0 <= m < N ->
     (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
-    g hv (idx[m]) = g hv' (idx[m])) ->
+    @feq Tdouble (g hv (idx[m])) (g hv' (idx[m]))) ->
   (forall (hv : D -> val) m,
-    0 <= m < M -> ~ In m idx -> f m = g hv m) ->
+    0 <= m < M -> ~ In m idx -> @feq Tdouble (f m) (g hv m)) ->
   (i <> j)%Z ->
   0 <= N <= M ->
   (forall t : val, subst "for" t C = C) -> 
@@ -73,10 +72,11 @@ Lemma xfor_lemma_gen_array_fun_float_aux `{ID : Inhab D}
     Inv 0 \* 
     (\*_(d <- Union `[0,N] fsi1) R d) \*
     harray_fun_float f arrl M (Lab (i,0) s)) ->
-  (forall hv, 
+  (forall hv (vl : int -> binary64),
+    \[forall i : int, 0 <= i < M -> @feq Tdouble (vl i) (g hv i)] \*
     Inv N \* 
     (\*_(d <- Union `[0,N] fsi1) R' d) \* 
-    harray_fun_float (g hv) arrl M (Lab (i,0) s) ==>
+    harray_fun_float vl arrl M (Lab (i,0) s) ==>
     Post hv) -> 
   {{ Pre }}
     [{
@@ -85,18 +85,32 @@ Lemma xfor_lemma_gen_array_fun_float_aux `{ID : Inhab D}
     }]
   {{ v, Post v }}. 
 Proof.
-  move=>lenidx nodup_idx idx_bounded *.
+  move=>lenidx nodup_idx idx_bounded IH. intros.
   assert (length (lof id M) = M :> int) as ? by (rewrite length_lof; math). 
-  eapply xfor_lemma_gen_array with (R := R) (R' := R') (arr1 := LibList.map val_float (projT1 (@list_of_fun' _ float_unit f M))) (arr2 := fun hv => LibList.map val_float (projT1 (@list_of_fun' _ float_unit (g hv) M))) (arrl:=arrl) (def:=val_float float_unit); try eassumption.
-  { move=> ?; rewrite lof_indices' map_conversion !map_length length_lof; math. }
-  { rewrite lof_indices' map_conversion !map_length length_lof; math. }
+  eapply xfor_lemma_gen_array with (R := R) (R' := R') (arr1 := LibList.map val_float (projT1 (list_of_fun' f M))) (arr2 := fun hv => LibList.map val_float (projT1 (list_of_fun' (g hv) M))) (arrl:=arrl) (def:=val_float float_unit) 
+    (some_eq:=(fun v1 v2 => match v1, v2 with val_float f1, val_float f2 => @feq Tdouble f1 f2 | _, _ => v1 = v2 end)); try eassumption.
+  { constructor; hnf. 1: intros []=> //=. 1: intros [] []=> /= ? //=; by symmetry.
+    intros [] []=> //; intros [] => //. all: intros HH1; by rewrite HH1. }
+  { move=> ?; rewrite (lof_indices' float_unit) map_conversion !map_length length_lof; math. }
+  { rewrite (lof_indices' float_unit) map_conversion !map_length length_lof; math. }
   { move=> l P. specialize (idx_bounded l P).
-    rewrite map_conversion lof_indices' map_map (Eval.nth_map_lt 0) ?nth_lof' //; try math; auto.
-    apply/ntriple_conseq; [ | |move=> v; rewrite map_conversion lof_indices' map_map (Eval.nth_map_lt 0) ?nth_lof'//; try math; auto]; try exact:himpl_refl.
-    rewrite -/(ntriple _ _ _). auto. }
+    apply/ntriple_conseq; [apply (IH l P) | | ]; xsimpl*.
+    2: move=> r x Hfeq /=. 
+    all: rewrite map_conversion (lof_indices' float_unit) map_map (nth_map_lt 0) ?nth_lof' //; try math; auto. }
   { move=>?? m P. specialize (idx_bounded m P). 
-    move=> *; rewrite ?map_conversion ?lof_indices' ?map_map ?(Eval.nth_map_lt 0) ?nth_lof' //; f_equal; try math; auto. }
-  move=> *; rewrite ?map_conversion ?lof_indices' ?map_map ?(Eval.nth_map_lt 0) ?nth_lof' //; try math. f_equal; auto.
+    move=> *; rewrite ?map_conversion ?(lof_indices' float_unit) ?map_map ?(nth_map_lt 0) ?nth_lof' //=; f_equal; try math; auto. }
+  { move=> *; rewrite ?map_conversion ?(lof_indices' float_unit) ?map_map ?(nth_map_lt 0) ?nth_lof' //=; try math. f_equal; auto. }
+  move=> hv vl. xsimpl*=> HH. eapply himpl_trans. 2: apply (H13 hv (to_float \o vl)).
+  assert (forall i, 0 <= i < M -> exists f, vl i = val_float f /\ @feq Tdouble f (g hv i)) as HH'.
+  { move=> i0 Hi0 /=. specialize (HH i0 Hi0).
+    rewrite map_conversion (lof_indices' float_unit) map_map (nth_map_lt 0) ?nth_lof' ?map_length ?length_lof' // in HH; try math.
+    destruct (vl i0); try discriminate; eauto. }
+  xsimpl*.
+  { move=> i0 Hi0 /=. specialize (HH' i0 Hi0). by destruct HH' as (ff & -> & ?). }
+  rewrite /harray_fun_float/harray_float map_conversion (lof_indices' float_unit) (lof_indices' val_uninit) map_map /=. 
+  eapply eq_ind_r with (y:=map _ _); [ xsimpl* | ].
+  apply map_ext_in=> a /In_lof_id Hin /=. assert (0 <= a < M) as Htmp by math.
+  specialize (HH' _ Htmp). by destruct HH' as (ff & -> & ?).
 Qed.
 
 
@@ -120,19 +134,20 @@ Lemma xfor_lemma_gen_array_fun_float `{ID : Inhab D}
         {i| _  in single s tt  => subst vr l C};
         {j| ld in fsi1 l       => C1 ld}
       }]
-    {{ v, 
+    {{ v, \exists vv : binary64, 
+        \[@feq Tdouble vv (g v (idx[l]))] \*
         Inv (l + 1) \* 
         (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R' d) \* 
-        (arrl + 1 + abs (idx[l]))%nat ~⟨(i,0)%Z, s⟩~> g v (idx[l]) }}) ->
+        (arrl + 1 + abs (idx[l]))%nat ~⟨(i,0)%Z, s⟩~> val_float vv }}) ->
   (forall j : int, hlocal (Inv j) ⟨(i,0%Z), single s tt⟩) ->
   (forall i : Dom, hlocal (R i) ⟨(j,0%Z), (single i tt)⟩) ->
   (forall i : Dom, hlocal (R' i) ⟨(j,0%Z), (single i tt)⟩) ->
   (forall (hv hv' : D -> val) m,
     0 <= m < N ->
     (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
-    g hv (idx[m]) = g hv' (idx[m])) ->
+    @feq Tdouble (g hv (idx[m])) (g hv' (idx[m]))) ->
   (forall (hv : D -> val) m,
-    0 <= m < M -> ~ In m idx -> f m = g hv m) ->
+    0 <= m < M -> ~ In m idx -> @feq Tdouble (f m) (g hv m)) ->
   (i <> j)%Z ->
   0 <= N <= M ->
   (forall t : val, subst "for" t C = C) -> 
@@ -145,10 +160,11 @@ Lemma xfor_lemma_gen_array_fun_float `{ID : Inhab D}
     Inv 0 \* 
     (\*_(d <- Union `[0,N] fsi1) R d) \*
     harray_fun_float f arrl M (Lab (i,0) s)) ->
-  (forall hv, 
+  (forall hv (vl : int -> binary64),
+    \[forall i : int, 0 <= i < M -> @feq Tdouble (vl i) (g hv i)] \*
     Inv N \* 
     (\*_(d <- Union `[0,N] fsi1) R' d) \* 
-    harray_fun_float (g hv) arrl M (Lab (i,0) s) ==>
+    harray_fun_float vl arrl M (Lab (i,0) s) ==>
     wp ⟨(i,0),single s tt⟩ (fun=> C') (fun hr' => Post (lab_fun_upd hr' hv (i,0)))) -> 
   {{ Pre }}
     [{
@@ -177,9 +193,10 @@ Proof.
   { move=> ??. remember ((_ \u_ _) _); reflexivity. }
   simpl.
   apply/xfor_lemma_gen_array_fun_float_aux; try eassumption; eauto.
-  move=> hv. apply: himpl_trans; [|apply/wp_hv].
-  move: (H17 hv); rewrite wp_equiv=> ?.
-  xapp=> hv'. rewrite -/(lab_fun_upd _ _ _).
+  move=> hv vl. apply: himpl_trans; [|apply/wp_hv].
+  xsimpl=>Hfeq.
+  move: (H17 hv vl); rewrite wp_equiv=> ?.
+  xapp=> hv'. 1: apply Hfeq. rewrite -/(lab_fun_upd _ _ _).
   xsimpl (lab_fun_upd hv' hv (i, 0))=> ?.
   apply: applys_eq_init; fequals; apply/fun_ext_1=> /=.
   case=> l x.
@@ -205,17 +222,18 @@ Lemma xfor_lemma_gen_array_fun_float_normal `{ID : Inhab D}
         {i| _  in single s tt  => subst vr l C};
         {j| ld in fsi1 l       => C1 ld}
       }]
-    {{ v, 
+    {{ v, \exists vv : binary64, 
+        \[@feq Tdouble vv (g v l)] \*
         Inv (l + 1) \* 
         (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R' d) \* 
-        (arrl + 1 + abs l)%nat ~⟨(i,0)%Z, s⟩~> g v l }}) ->
+        (arrl + 1 + abs l)%nat ~⟨(i,0)%Z, s⟩~> val_float vv }}) ->
   (forall j : int, hlocal (Inv j) ⟨(i,0%Z), single s tt⟩) ->
   (forall i : Dom, hlocal (R i) ⟨(j,0%Z), (single i tt)⟩) ->
   (forall i : Dom, hlocal (R' i) ⟨(j,0%Z), (single i tt)⟩) ->
   (forall (hv hv' : D -> val) m,
     0 <= m < N ->
     (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
-    g hv m = g hv' m) ->
+    @feq Tdouble (g hv m) (g hv' m)) ->
   (i <> j)%Z ->
   0 <= N ->
   (forall t : val, subst "for" t C = C) -> 
@@ -228,10 +246,11 @@ Lemma xfor_lemma_gen_array_fun_float_normal `{ID : Inhab D}
     Inv 0 \* 
     (\*_(d <- Union `[0,N] fsi1) R d) \*
     harray_fun_float f arrl N (Lab (i,0) s)) ->
-  (forall hv, 
+  (forall hv (vl : int -> binary64),
+    \[forall i : int, 0 <= i < N -> @feq Tdouble (vl i) (g hv i)] \*
     Inv N \* 
     (\*_(d <- Union `[0,N] fsi1) R' d) \* 
-    harray_fun_float (g hv) arrl N (Lab (i,0) s) ==>
+    harray_fun_float vl arrl N (Lab (i,0) s) ==>
     wp ⟨(i,0),single s tt⟩ (fun=> C') (fun hr' => Post (lab_fun_upd hr' hv (i,0)))) -> 
   {{ Pre }}
     [{

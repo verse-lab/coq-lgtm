@@ -1,92 +1,19 @@
 Set Implicit Arguments.
-From SLF Require Import Fun LabType.
+From SLF Require Import Fun LabType ListCommon.
 From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer Struct Loops Unary.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
 Open Scope Z_scope.
 
-Section list_of_fun.
-
-Import List.
-
-(* some customized theory of from functions to lists *)
-Lemma list_of_fun [A : Type] [def : A] (f : int -> A) (n : int) (H : 0 <= n) :
-  @sigT (list A) (fun l =>
-    (length l = n :> int /\ (forall i : int, 0 <= i < n -> nth (abs i) l def = f i))).
-Proof.
-  remember (abs n) as nn eqn:E.
-  revert n H E. induction nn as [ | nn IH ]; intros.
-  { assert (n = 0) as -> by math. exists (@nil A). split; auto. intros; math. }
-  { assert (nn = abs (n - 1)) as Hq by math. apply IH in Hq; try math.
-    destruct Hq as (la & H1 & H2). exists (app la (f (n - 1) :: nil)).
-    rewrite -> app_length. split; simpl; try math.
-    intros i Hin. destruct (Z.leb (n - 1) i) eqn:E2.
-    { apply Z.leb_le in E2. replace i with (n-1) in * by math. 
-      replace (abs (n-1)) with (length la) by math. now rewrite nth_middle. }
-    { apply Z.leb_gt in E2. rewrite app_nth1. 1: apply H2. all: math. } }
-Qed.
-
-Definition list_of_fun' [A : Type] [def : A] (f : int -> A) (n : int) :
-  @sigT (list A) (fun l =>
-    (length l = abs n :> int /\ (forall i : int, 0 <= i < abs n -> nth (abs i) l def = f i))).
-apply list_of_fun. math. Defined.
-
-Fact lof_make_constfun [A : Type] [def : A] (c : A) (n : int) :
-  (projT1 (@list_of_fun' _ def (fun=> c) n)) = repeat c (abs n).
-Proof.
-  destruct (list_of_fun' _ _) as (l & Hlen & HH). simpl.
-  apply nth_ext with (d:=def) (d':=def).
-  1: rewrite repeat_length; math.
-  intros i Hi. rewrite -> nth_indep with (l:=repeat _ _) (d':=c) by (rewrite repeat_length; math).
-  rewrite -> nth_repeat, <- HH with (i:=i); try math.
-  f_equal; math.
-Qed.
-
-(* TODO possibly change this name? *)
-Definition lof f N := projT1 (@list_of_fun' int 0 f N).
-
-Lemma nth_lof f N i : 
-  0 <= i < abs N -> nth (abs i) (lof f N) 0 = f i.
-Proof. unfold lof. destruct (list_of_fun' _ _) as (l1 & Hlen1 & Hl1); simpl. auto. Qed.
-
-Lemma nth_lof' f N i :
-  0 <= N -> 0 <= i < N -> nth (abs i) (lof f N) 0 = f i.
-Proof. intros ??. apply nth_lof. math. Qed.
-
-Lemma length_lof f N : 
-  0 <= N -> length (lof f N) = N :> int.
-Proof. unfold lof. destruct (list_of_fun' _ _) as (l1 & Hlen1 & Hl1); simpl. math. Qed.
-
-Lemma length_lof' f N : 
-  length (lof f N) = abs N :> nat.
-Proof. unfold lof. destruct (list_of_fun' _ _) as (l1 & Hlen1 & Hl1); simpl. math. Qed.
-
-Lemma lof_indices {A : Type} [a : A] (f : int -> A) (g : int -> int) n :
-  projT1 (@list_of_fun' _ a (f \o g) n) = List.map f (lof g n).
-Proof.
-  destruct (list_of_fun' _ _) as (l1 & Hlen1 & Hl1); simpl.
-  pose proof (length_lof' g n) as Hlen2.
-  apply (List.nth_ext _ _ a a). 
-  1: rewrite List.map_length; math.
-  intros n0 Hlt. replace n0 with (abs n0) by math.
-  rewrite Hl1 ?(Eval.nth_map_lt 0) ?nth_lof //; try math.
-Qed.
-
-Corollary lof_indices' {A : Type} [a : A] (f : int -> A) n :
-  projT1 (@list_of_fun' _ a f n) = List.map f (lof id n).
-Proof. by rewrite <- lof_indices with (a:=a). Qed.
-
-End list_of_fun.
-
 Definition harray_fun {D : Type} (f:int -> val) (p:loc) (n:int) (d : D) : hhprop D :=
-  harray (projT1 (@list_of_fun' _ val_uninit f n)) p d.
+  harray (projT1 (list_of_fun' f n)) p d.
 
 Definition harray_fun_int {D : Type} (f:int -> int) (p:loc) (n:int) (d : D) : hhprop D :=
   harray_int (lof f n) p d.
 
 Definition harray_fun_float {D : Type} (f:int -> binary64) (p:loc) (n:int) (d : D) : hhprop D :=
-  harray_float (projT1 (@list_of_fun' _ float_unit f n)) p d.
+  harray_float (projT1 (list_of_fun' f n)) p d.
 
 Section memset_alloc.
 
@@ -184,7 +111,7 @@ Lemma htriple_alloc0_unary {D : Type} `{Inhab D} (n : int) (d : D) :
     (fun hv => \exists p, \[hv = fun=> val_loc p] \* harray_fun_int (fun=> 0) p n d).
 Proof.
   eapply htriple_conseq. 1: by apply htriple_alloc_unary. all: xsimpl*=>*.
-  rewrite /harray_fun_int /harray_fun /harray_int !lof_indices map_conversion //.
+  rewrite /harray_fun_int /harray_fun /harray_int !(lof_indices val_uninit) map_conversion //.
 Qed.
 
 End memset0_alloc0.
@@ -201,7 +128,7 @@ Lemma htriple_allocf0_unary {D : Type} `{Inhab D} (n : int) (d : D) :
     (fun hv => \exists p, \[hv = fun=> val_loc p] \* harray_fun_float (fun=> float_unit) p n d).
 Proof.
   eapply htriple_conseq. 1: by apply htriple_alloc_unary. all: xsimpl*=>*.
-  rewrite /harray_fun_float /harray_fun /harray_float !lof_indices' map_conversion List.map_map //.
+  rewrite /harray_fun_float /harray_fun /harray_float (lof_indices' val_uninit) (lof_indices' float_unit) map_conversion List.map_map //.
 Qed.
 
 End memsetf0_allocf0.

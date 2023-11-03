@@ -315,6 +315,12 @@ Qed.
 
 Definition float_unit : binary64 := Zconst Tdouble 0.
 
+Definition to_float (v : val) : binary64 := 
+  match v with 
+  | val_float i => i 
+  | _ => float_unit
+  end.
+
 Lemma hcellsE_float (L : list binary64) p: 
   hcells (LibList.map val_float L) p d = \*_(i <- `[0, List.length L]) (p + (abs i))%nat ~(d)~> List.nth (abs i) L float_unit.
 Proof.

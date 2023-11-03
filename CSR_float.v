@@ -221,7 +221,7 @@ Proof with (try seclocal_fold; seclocal_solver).
     xsubst (snd : _ -> int).
     xnapp sv_float.dotprod_spec...
     1-2: move=> ?/in_interval_list...
-    move=> ?; rewrite -wp_equiv. (* xsimpl=>->.
+    move=> ?; rewrite -wp_equiv. xsimpl=>Hfeq.
     xapp @lhtriple_array_set_pre; try math.
     rewrite sum_prod1E; xsimpl. *) admit. }
   { admit. } 

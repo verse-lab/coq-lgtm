@@ -9,8 +9,6 @@ Declare Custom Entry wp.
 
 Open Scope Z_scope.
 
-Module Fmap := LibSepFmap.
-
 Global Hint Extern 1 (_ = _ :> hheap _) => fmap_eq.
 
 Section I_didnt_come_up_with_a_name.
