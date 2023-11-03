@@ -87,10 +87,8 @@ Lemma xfor_lemma_gen_array_fun_float_aux `{ID : Inhab D}
 Proof.
   move=>lenidx nodup_idx idx_bounded IH. intros.
   assert (length (lof id M) = M :> int) as ? by (rewrite length_lof; math). 
-  eapply xfor_lemma_gen_array with (R := R) (R' := R') (arr1 := LibList.map val_float (projT1 (list_of_fun' f M))) (arr2 := fun hv => LibList.map val_float (projT1 (list_of_fun' (g hv) M))) (arrl:=arrl) (def:=val_float float_unit) 
-    (some_eq:=(fun v1 v2 => match v1, v2 with val_float f1, val_float f2 => @feq Tdouble f1 f2 | _, _ => v1 = v2 end)); try eassumption.
-  { constructor; hnf. 1: intros []=> //=. 1: intros [] []=> /= ? //=; by symmetry.
-    intros [] []=> //; intros [] => //. all: intros HH1; by rewrite HH1. }
+  eapply xfor_lemma_gen_array with (R := R) (R' := R') (arr1 := LibList.map val_float (projT1 (list_of_fun' f M))) (arr2 := fun hv => LibList.map val_float (projT1 (list_of_fun' (g hv) M))) (arrl:=arrl) (def:=val_float float_unit) (some_eq:=feq_val); try eassumption.
+  { apply feq_val_eqrel. }
   { move=> ?; rewrite (lof_indices' float_unit) map_conversion !map_length length_lof; math. }
   { rewrite (lof_indices' float_unit) map_conversion !map_length length_lof; math. }
   { move=> l P. specialize (idx_bounded l P).

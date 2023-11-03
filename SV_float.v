@@ -115,6 +115,20 @@ Proof.
   move=>*. rewrite H /=; tauto.
 Qed.
 
+Lemma Sum_fma_feq_base {A : Type} (s s' : binary64) (l : list A) (f : A -> binary64 * binary64) :
+  @feq Tdouble s s' -> @feq Tdouble (Sum_fma s l f) (Sum_fma s' l f).
+Proof. revert s s'. induction l; intros; simpl; auto. by apply IHl, BFMA_mor. Qed.
+
+Lemma Sum_fma_feq {A : Type} (s : binary64) (l : list A) (f g : A -> binary64 * binary64) :
+  (forall a, List.In a l -> @feq Tdouble (f a).1 (g a).1 /\ @feq Tdouble (f a).2 (g a).2) -> 
+  @feq Tdouble (Sum_fma s l f) (Sum_fma s l g).
+Proof.
+  intros H. revert s. induction l; intros; simpl; auto. 
+  pose proof (H a (or_introl eq_refl)) as (H1 & H2).
+  etransitivity. 1: apply Sum_fma_feq_base, BFMA_mor; eauto.
+  apply IHl=> a' Hin. apply H; simpl; auto.
+Qed.
+
 Corollary Sum_fma_filter_If {A : Type} (P : A -> Prop) (s : binary64) (l : list A) (f g : A -> binary64) 
   (Hfinf : forall a, List.In a l -> P a -> @finite Tdouble (f a))
   (Hfing : forall a, List.In a l -> @finite Tdouble (g a)) :
@@ -483,8 +497,9 @@ Lemma dotprod_spec `{Inhab D} (x_ind x_val d_vec : loc) :
     [1| ld in `{0}   => dotprod x_ind x_val d_vec lb rb];
     [2| ld in `[0,M] => get ld x_ind x_val lb rb]
   }]
-  {{ hv, \[@feq Tdouble (to_float (hv[`1](0))) 
-      (Sum_fma float_unit (lof id M) (fun i => (to_float (hv[`2](i)), dvec[i])))] \* 
+  {{ hv, (* \exists ans : binary64, *) (* xnapp cannot handle this *)
+    \[feq_val (hv[`1](0))
+      (val_float (Sum_fma float_unit (lof id M) (fun i => (to_float (hv[`2](i)), dvec[i]))))] \* 
      arr(x_ind, xind)⟨1, 0⟩ \\*
      .arr(x_val, xval)⟨1, 0⟩ \\*
      .arr(d_vec, dvec)⟨1, 0⟩ \\* 
@@ -514,7 +529,7 @@ Proof with fold'.
     enough (abs (i0 - lb) = abs (j0 - lb) :> nat) by math.
     eapply NoDup_nth. 4: apply Hq. all: try math; try assumption. }
   { rewrite -list_interval_nth; try f_equal; lia. }
-  intros Hfin. simpl in Hfin. xwp; xapp... xwp; xapp. xwp; xval. xsimpl*.
+  intros Hfin. simpl in Hfin. xwp; xapp... xwp; xapp. xwp; xval. xsimpl*. simpl.
   erewrite Sum_fma_eq; [ | move=> i0 ?; rewrite to_float_if pair_fst_If; reflexivity ].
   rewrite Sum_fma_filter_If -?sorted_bounded_sublist //; try solve [ intros; by apply finite_suffcond | idtac ].
   2:{ intros a0 _ (n & Hn & <-)%(In_nth _ _ 0). replace n with (abs n) by math. 

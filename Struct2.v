@@ -132,3 +132,13 @@ Proof.
 Qed.
 
 End memsetf0_allocf0.
+
+(* TODO do not know where to put these; temporarily here *)
+Definition feq_val (v1 v2 : val) :=
+  match v1, v2 with val_float f1, val_float f2 => @feq Tdouble f1 f2 | _, _ => v1 = v2 end.
+
+Global Instance feq_val_eqrel : RelationClasses.Equivalence feq_val.
+Proof.
+  constructor; hnf. 1: intros []=> //=. 1: intros [] []=> /= ? //=; by symmetry.
+  intros [] []=> //; intros [] => //. all: unfold feq_val; intros HH1; by rewrite HH1.
+Qed.

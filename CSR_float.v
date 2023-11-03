@@ -202,9 +202,10 @@ Lemma spmv_spec `{Inhab D} (x_mval x_colind x_rowptr x_dvec : loc) :
     [1| ld in `{(0,0)}                 => spmv x_mval x_colind x_rowptr x_dvec];
     {2| ld in `[0, Nrow] \x `[0, Ncol] => get x_mval x_colind x_rowptr ld.1 ld.2}
   }]
-  {{ hv, (\exists p, 
-    \[hv[`1]((0,0)) = val_loc p] \*
-    harray_fun_float (fun i => (Sum_fma float_unit (lof id Ncol) (fun j => (to_float (hv[`2]((i, j))), dvec[j])))) p Nrow (Lab (1,0) (0,0)))
+  {{ hv, (\exists p, \exists vl : int -> binary64, 
+    \[hv[`1]((0,0)) = val_loc p /\ forall i : int, 0 <= i < Nrow ->
+      @feq Tdouble (vl i) (Sum_fma float_unit (lof id Ncol) (fun j => (to_float (hv[`2]((i, j))), dvec[j])))] \*
+    harray_fun_float vl p Nrow (Lab (1,0) (0,0)))
       \* \Top }}. (* this \Top can be made concrete, if needed *)
 Proof with (try seclocal_fold; seclocal_solver).
   rewrite -!hbig_fset_hstar; match goal with
@@ -217,16 +218,17 @@ Proof with (try seclocal_fold; seclocal_solver).
   xfor_specialized_normal_float Inv R R (fun hv i => (Sum_fma float_unit (lof id Ncol) (fun j => (to_float (hv[`2]((i, j))), dvec[j])))) (fun=> float_unit) s.
   { xin (2,0) : rewrite wp_prod_single /=.
     xin (1,0) : do 3 (xwp; xapp)...
-    xframe2 (arr(x_rowptr, rowptr)⟨1, (0, 0)⟩).
-    xsubst (snd : _ -> int).
+    xsubst (snd : _ -> int)...
     xnapp sv_float.dotprod_spec...
     1-2: move=> ?/in_interval_list...
-    move=> ?; rewrite -wp_equiv. xsimpl=>Hfeq.
+    move=> hv; rewrite -wp_equiv. xsimpl=>Hfeq.
     xapp @lhtriple_array_set_pre; try math.
-    rewrite sum_prod1E; xsimpl. *) admit. }
-  { admit. } 
+    xsimpl (to_float (hv[`1](0))). xsubst_rew' H1. (* TODO this may be merged into xsubst. or maybe hard, since things are in exists? *)
+    (* here, must guarantee that the return value of sv_float.dotprod_spec is a float *)
+    destruct (hv[`1](0)); try discriminate. xsimpl*. }
+  { apply Sum_fma_feq=>? /In_lof_id ? /=. split; auto. rewrite hvE //; autorewrite with indomE; simpl; split; auto; try math. }
   { xwp; xval. xsimpl*. }
-Abort.
+Qed.
 (*
 Context (yind yval : list int).
 Context (M : int).

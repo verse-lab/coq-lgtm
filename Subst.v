@@ -637,6 +637,15 @@ Proof.
   by rewrite /hfsubst /fsubst filter_id // fsubst_empty.
 Qed.
 
+Lemma hexists_hsub {A : Type} (P : A -> hhprop D1) : 
+  hsub (@hexists D1 A P) = @hexists D2 A (fun v => hsub (P v)).
+Proof.
+  extens=> h; split.
+  { case=> h' []<-[] /hexists_inv [] x Hx Hl.
+    apply/(hexists_intro x). hnf. eauto. }
+  case=> x [] h' []<-[] Hx Hl. hnf. eexists. split; [ reflexivity | split; [ by apply/(hexists_intro x) | assumption ] ].
+Qed.
+
 Lemma harray_hsub L l d : 
   indom fs d ->
   hsub (harray L l d) = harray L l (f d).
@@ -764,9 +773,25 @@ Lemma foo {D} H1 H2 H3 H4 : H1 = H2 -> H3 = H4 -> H1 \* H3 = H2 \* H4 :> hhprop 
 by move=> ->->.
 Qed.
 
+Ltac xsubst_rew' H :=
+  do ? match goal with 
+  | |- context[hsub _ _ (_ \* _)] => rewrite (@hstar_hsub _ _ _ _ H)
+  | |- context[hsub _ _ (hsingle _ _ _)] => erewrite hsingle_hsub; try (simpl; indomE; simpl; auto)
+  | |- context[hsub _ _ (@hexists _ _ _)] => erewrite hexists_hsub
+  | |- context[hsub _ _ (harray_int _ _ _)] => rewrite (@harray_hsub _ _ _ _ H); try (simpl; indomE; simpl; auto)
+  | |- context[hsub _ _ (harray_float _ _ _)] => rewrite (@harray_hsub _ _ _ _ H); try (simpl; indomE; simpl; auto)
+  | |- context[hsub _ _ (@hbig_fset _ _ hstar ?fss ?hdd)] => 
+    rewrite (@hstar_fset_hsub _ _ _ _ H _ hdd fss); 
+    erewrite (@hbig_fset_eq _ _ hstar fss (fun a => hsub _ _ (hdd a))) 
+      by (let itv := fresh "Hitv" in intros ? itv; autorewrite with indomE in itv; xsubst_rew' H; try reflexivity)
+  | |- context[hsub _ _ \[]] => rewrite hempty_hsub
+  | |- context[hsub _ _ (hpure _)] => rewrite hpure_hsub
+  end.
+
 Ltac xsubst_rew H :=
   do ? match goal with 
   | |- hsub _ _ (hsingle _ _ _) = _ => erewrite hsingle_hsub; simpl; eauto
+  | |- hsub _ _ (@hexists _ _ _) = _ => erewrite hexists_hsub; simpl; eauto
   | |- hsub _ _ (harray_int _ _ _) = _ => rewrite (@harray_hsub _ _ _ _ H); simpl; eauto
   | |- hsub _ _ (harray_float _ _ _) = _ => rewrite (@harray_hsub _ _ _ _ H); simpl; eauto
   | |- hsub _ _ (_ \* _) = _ => rewrite (@hstar_hsub _ _ _ _ H); apply/foo
