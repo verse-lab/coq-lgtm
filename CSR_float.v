@@ -1,21 +1,11 @@
 Set Implicit Arguments.
 From SLF Require Import LabType Fun LibSepFmap Sum.
 From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer ListCommon.
-From SLF Require Import Struct Loops Unary_IndexWithBounds Subst NTriple Loops2 Struct2 Loops2_float SV_float.
+From SLF Require Import Struct Loops Unary_IndexWithBounds Subst NTriple Loops2 Struct2 Loops2_float Struct SV_float.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
 Open Scope Z_scope.
-
-Definition to_int (v : val) : int := 
-  match v with 
-  | val_int i => i 
-  | _ => 0
-  end.
-
-Coercion to_int : val >-> Z.
-
-(* Module Export AD := WithUnary(Int2Dom). *)
 
 Module csr.
 
@@ -101,8 +91,8 @@ Definition sum :=
 *)
 Tactic Notation "seclocal_fold" := 
   rewrite ?label_single ?wp_single
-    -/(harray_float _ _ _)
-    -/(harray_int _ _ _)
+    -?/(harray_float _ _ _)
+    -?/(harray_int _ _ _)
     -/(For_aux _ _) 
     -/(For _ _ _) //=.
 
@@ -229,6 +219,124 @@ Proof with (try seclocal_fold; seclocal_solver).
   { apply Sum_fma_feq=>? /In_lof_id ? /=. split; auto. rewrite hvE //; autorewrite with indomE; simpl; split; auto; try math. }
   { xwp; xval. xsimpl*. }
 Qed.
+
+Section spmv_monolithic.
+
+Import Loops_float.
+
+(* simulating the crs_matrix_vector_multiply function in LAProof *)
+Definition spmv_monolithic := 
+  <{
+  fun mval colind rowptr dvec =>
+  let "ans" = allocf0 Nrow in
+  let "row_ptr[0]" = read_array rowptr 0 in
+  let "next" = ref "row_ptr[0]" in
+  for i <- [0, Nrow] {
+    let s = ref float_unit in
+    let h = ! "next" in
+    let "i + 1" = i + 1 in
+    let "row_ptr[i + 1]" = read_array rowptr "i + 1" in
+    "next" := "row_ptr[i + 1]";
+    for j <- [h, "row_ptr[i + 1]"] {
+      let x = mval[.j] in 
+      let c = colind[j] in 
+      let v = dvec[.c] in 
+      fma.func s x v
+    };
+    let "res" = ! s in
+    free s;
+    val_array_set "ans" i "res"
+  }; 
+  "ans"
+}>.
+
+Lemma spmv_monolithic_spec `{Inhab D} (x_mval x_colind x_rowptr x_dvec : loc) : 
+  {{ .arr(x_mval, mval)⟨1, (0,0)⟩ \*
+     arr(x_colind, colind)⟨1, (0,0)⟩ \*
+     arr(x_rowptr, rowptr)⟨1, (0,0)⟩ \*
+     .arr(x_dvec, dvec)⟨1, (0,0)⟩ \* 
+     (\*_(i <- `[0, Nrow] \x `[0, Ncol]) .arr(x_mval, mval)⟨2, i⟩) \*
+     (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_colind, colind)⟨2, i⟩) \*
+     (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_rowptr, rowptr)⟨2, i⟩) \*
+     (\*_(i <- `[0, Nrow] \x `[0, Ncol]) .arr(x_dvec, dvec)⟨2, i⟩) }}
+  [{
+    [1| ld in `{(0,0)}                 => spmv_monolithic x_mval x_colind x_rowptr x_dvec];
+    {2| ld in `[0, Nrow] \x `[0, Ncol] => get x_mval x_colind x_rowptr ld.1 ld.2}
+  }]
+  {{ hv, (\exists p, \exists vl : int -> binary64, 
+    \[hv[`1]((0,0)) = val_loc p /\ forall i : int, 0 <= i < Nrow ->
+      @feq Tdouble (vl i) (Sum_fma float_unit (lof id Ncol) (fun j => (to_float (hv[`2]((i, j))), dvec[j])))] \*
+    harray_fun_float vl p Nrow (Lab (1,0) (0,0)))
+      \* \Top }}. (* this \Top can be made concrete, if needed *)
+Proof with (try seclocal_fold; seclocal_solver).
+  rewrite -!hbig_fset_hstar; match goal with
+    |- context[?a \* ?b \* ?c \* ?d \* hbig_fset _ _ ?ff] =>
+      pose (Inv (p : loc) (i : int) := a \* b \* c \* d \* (p ~⟨(1%Z, 0%Z), (0, 0)⟩~> rowptr[i])); pose (R := ff)
+  end; rewrite -> ! hbig_fset_hstar.
+  xin (2,0) : do 3 (xwp; xapp).
+  xin (1,0) : (xwp; xapp (@htriple_allocf0_unary)=> // s; do 2 (xwp; xapp); move=> nxt)...
+  rewrite prod_cascade.
+  xfor_specialized_normal_float (Inv nxt) R R (fun hv i => (Sum_fma float_unit (lof id Ncol) (fun j => (to_float (hv[`2]((i, j))), dvec[j])))) (fun=> float_unit) s.
+  { xin (2,0) : rewrite wp_prod_single /=.
+    xin (1,0) : (xwp; xapp=> tmp; do 4 (xwp; xapp))...
+    xsubst (snd : _ -> int)...
+    (* SV as subpart *)
+    have Hl : length (colind_seg l0) = rowptr[l0 + 1] - rowptr[l0] :> int.
+    1: rewrite /colind_seg list_interval_length...
+    xfocus (2,0) (colind_seg l0).
+    rewrite (hbig_fset_part (`[0, Ncol]) (colind_seg l0)).
+    (* label has been distributed, so need to recover; otherwise it is hard to apply sv_float.get_spec_out *)
+    replace (hbig_fset hstar (_ ∖ _) _) with (hbig_fset hstar ⟨(2, 0), `[0, Ncol] ∖ colind_seg l0⟩ 
+      (fun d : labeled int => 
+      harray_float mval x_mval d \*
+      harray_int colind x_colind d \*
+      harray_int rowptr x_rowptr d \*
+      harray_float dvec x_dvec d)) by (rewrite hstar_fset_Lab; auto).
+    rewrite -> ! hbig_fset_hstar with (fs:=⟨(2, 0), `[0, Ncol] ∖ colind_seg l0⟩).
+    xapp sv_float.get_spec_out=> //...
+    { case=> ?? /[! @indom_label_eq]-[_]/=; rewrite /intr filter_indom; autos*. }
+    xin (1,0) : idtac.
+    rewrite intr_list ?(fset_of_list_nodup 0) ?Hl ?sv_float.Union_interval_change2 //; auto.
+    2: intros x0 Hin; eapply colind_leq, in_interval_list; eauto.
+    set (R2 (i : int) := arr(x_colind, colind)⟨2, i⟩ \* .arr(x_mval, mval)⟨2, i⟩ \* .arr(x_dvec, dvec)⟨2, i⟩).
+    (* a bad thing here is that the \exists prevents us from using xframe2 to clear unused heaps! so Inv would get complicated *)
+    rewrite -> ! hbig_fset_hstar.
+    match goal with
+      |- context[?u1 \* ?u2 \* ?u3 \* ?u4 \* _ \* ?u6 \* ?u7 \* ?u8 \* (_ \* _ \* ?u9 \* _) \* ?u10 \* ?u11 \* ?u12] =>
+        pose (Inv2' (i : int) := u1 \* u2 \* u3 \* u4 \* u9 \* u10 \* u11 \* u12);
+        pose (Inv2 (i : int) := u6 \* u7 \* u8 \* Inv2' i)
+    end.
+    xfor_sum_fma Inv2 R2 R2 (fun hv i => (to_float (hv[`2](colind[i])), dvec[colind[i] ])) tmp.
+    { rewrite /Inv2 /R2.
+      xin (1,0) : xwp; xapp(@lhtriple_array_read_float); xwp; xapp(@lhtriple_array_read); xwp; xapp(@lhtriple_array_read_float). (* TODO why simply xapp does not work here? *)
+      (xin (1,0): xapp (@fma.spec)=> y)... 
+      xapp (@sv_float.get_spec_in)=> //; try math... xsimpl*.
+      all: rewrite -list_interval_nth; try math...
+      all: replace (_ + (l4 - _)) with l4 by math.
+      1: split; by apply finite_suffcond. xsimpl*. }
+    { intros Hneq Hi Hj Hq. apply Hneq. 
+      enough (abs (i0 - rowptr[l0]) = abs (j0 - rowptr[l0]) :> nat) by math.
+      eapply NoDup_nth. 4: apply Hq. all: try math; try assumption. by apply nodup_eachcol. }
+    { rewrite /colind_seg -list_interval_nth; try f_equal; try math... }
+    intros Hfin. simpl in Hfin. xwp; xapp... xwp; xapp (@sv_float.lhtriple_free). 
+    rewrite /Inv2'. xapp (@lhtriple_array_set_pre). 
+    match goal with |- context[_ ~⟨(1%Z, 0%Z), 0⟩~> val_float ?aa] => xsimpl aa end. xsubst_rew' H1. xsimpl*.
+    { erewrite Sum_fma_eq; [ | move=> i0 ?; rewrite to_float_if pair_fst_If; reflexivity ].
+      rewrite Sum_fma_filter_If -?sorted_bounded_sublist //; try solve [ intros; by apply finite_suffcond | idtac ].
+      2: by apply sorted_eachcol. 2: intros x0 Hin; eapply colind_leq, in_interval_list; eauto.
+      2:{ intros a0 _ (n & Hn & <-)%(In_nth _ _ 0). replace n with (abs n) by math. 
+        rewrite -list_interval_nth; try math... apply Hfin; math. }
+      rewrite -/(Sum_fma _ _ _) (Sum_fma_lof (float_unit, float_unit)) /= Sum_fma_list_interval //=... }
+    { (* TODO slightly repeating proof due to the form of invariant *)
+      rewrite (hbig_fset_part (`[0, Ncol]) (colind_seg l0)). xsimpl*.
+      rewrite intr_list ?(fset_of_list_nodup 0) ?Hl ?sv_float.Union_interval_change2 //.
+      2: by apply nodup_eachcol. 2: intros x0 Hin; eapply colind_leq, in_interval_list; eauto. xsimpl*. } }
+  { apply Sum_fma_feq=>? /In_lof_id ? /=. split; auto. rewrite hvE //; autorewrite with indomE; simpl; split; auto; try math. }
+  { xwp; xval. xsimpl*. }
+Qed.
+
+End spmv_monolithic.
+
 (*
 Context (yind yval : list int).
 Context (M : int).
