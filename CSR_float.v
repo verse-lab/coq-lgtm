@@ -370,18 +370,10 @@ Lemma NoDup_nthZ {A : Type} {i j l} {z : A}:
   NoDup l ->
   ((0<= i < Datatypes.length l) ->
   (0<= j < Datatypes.length l) -> nth (abs i) l z = nth (abs j) l z -> i = j).
-Admitted.
+Proof. intros H Ha Hb Hc. enough (abs i = abs j) by math. revert Hc. rewrite NoDup_nth in H. apply H; math. Qed.
 
 Hint Resolve sv_float.lhtriple_free : lhtriple.
 Hint Resolve lhtriple_array_set_pre : lhtriple.
-
-Corollary Sum_fma_filter_If {A : Type} (P : A -> Prop) (s : binary64) (l : list A) (f : A -> val) g
-  (Hfinf : forall a, List.In a l -> P a -> @finite Tdouble (to_float (f a)))
-  (Hfing : forall a, List.In a l -> @finite Tdouble ( (g a))) :
-  @feq Tdouble (Sum_fma s l (fun i => (to_float (If P i then f i else float_unit), (g i)))) 
-    (Sum_fma s (List.filter (fun i => isTrue (P i)) l) (fun i => (to_float (f i), g i))).
-Proof.
-Admitted.
 
 Tactic Notation "xset_Inv_core1" ident(Inv) constr(h) constr(H) := 
     (* idtac h; *)
@@ -439,7 +431,7 @@ Tactic Notation "xset_R_core" constr(dom) ident(R) constr(i) :=
         set (f' := f);
         let R' := fresh "R" in 
         let t := eval unfold R in R in 
-        idtac t;
+        (* idtac t; *)
         match t with 
         | fun=> \[] => set (R' := fun d => f d)
         | _  => set (R' := fun d => f d \* R d)
@@ -452,11 +444,6 @@ Tactic Notation "xset_R_core" constr(dom) ident(R) constr(i) :=
 
 Tactic Notation "xset_R" constr(dom) ident(Inv) ident(R) constr(i) := 
   xset_R_core dom R i; xset_clean R Inv.
-
-Lemma In_lof_id x n : 
-  In x (lof id n) <-> (0 <= x < n).
-Proof.
-Admitted. 
 
 Lemma spmv_spec' `{Inhab (labeled int)} `{Inhab D} (x_mval x_colind x_rowptr x_dvec : loc) : 
   {{ .arr(x_mval, mval)⟨1, (0,0)⟩ \*
@@ -478,7 +465,7 @@ Lemma spmv_spec' `{Inhab (labeled int)} `{Inhab D} (x_mval x_colind x_rowptr x_d
 Proof with (try seclocal_fold; seclocal_solver; try lia).
   xset_Inv Inv 1; xset_R Dom Inv R 2.
   xin (2,0) : do 3 (xwp; xapp).
-  xin (1,0) : (xwp; xapp (@htriple_allocf0_unary')=> // s; xwp; xapp)...
+  xin (1,0) : (xwp; xapp (@htriple_allocf0_unary)=> // s; xwp; xapp)...
   rewrite prod_cascade.
   xfor_specialized_normal_float' Inv R R (fun hv i => (Sum_fma float_unit (lof id Ncol) (fun j => (to_float (hv[`2]((i, j))), dvec[j])))) (fun=> float_unit) s.
   { xin (2,0) : rewrite wp_prod_single /=...
@@ -502,7 +489,7 @@ Proof with (try seclocal_fold; seclocal_solver; try lia).
     { move=> ??? /(NoDup_nthZ (nodup_eachcol _))... }
     { rewrite /colind_seg -list_interval_nth; try f_equal; try math... }
     move=> /= Hfin; xwp; xapp... xwp; xapp; xapp; xsimpl.
-    rewrite -/(Sum_fma _ _ _) Sum_fma_lof ?Sum_fma_filter_If; try intro;
+    rewrite -/(Sum_fma _ _ _) Sum_fma_lof ?Sum_fma_filter_If'; try intro;
     rewrite -?sorted_bounded_sublist ?Sum_fma_list_interval ?In_lof_id //...
     { move=> ? /in_interval_list... }
     all: move: (indexG0 a0 (colind_seg l0)); rewrite /Sum.mem=> ??.

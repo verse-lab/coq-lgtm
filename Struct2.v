@@ -140,14 +140,15 @@ Proof.
   eapply htriple_conseq. 1: by apply htriple_alloc_unary. all: xsimpl*=>*.
   rewrite /harray_fun_float /harray_fun /harray_float (lof_indices') (lof_indices') map_conversion List.map_map //.
 Qed.
-
+(*
 Lemma htriple_allocf0_unary' {D : Type} `{Inhab D} (n : int) (d : D) :
   htriple (single d tt) (fun=> allocf0 n)
     \[0 <= n]
     (fun hv => \exists p, \[hv = fun=> val_loc p] \* harray_fun_float' (fun=> float_unit) p n d).
 Proof.
-Admitted.
-
+  eapply htriple_conseq. 1: by apply htriple_allocf0_unary. all: xsimpl*=>*. apply harray_floatP.
+Qed.
+*)
 End memsetf0_allocf0.
 
 (* TODO do not know where to put these; temporarily here *)

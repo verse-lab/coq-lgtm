@@ -143,6 +143,16 @@ Proof.
   reflexivity.
 Qed.
 
+Corollary Sum_fma_filter_If' {A : Type} (P : A -> Prop) (s : binary64) (l : list A) (f : A -> val) g
+  (Hfinf : forall a, List.In a l -> P a -> @finite Tdouble (to_float (f a)))
+  (Hfing : forall a, List.In a l -> @finite Tdouble ( (g a))) :
+  @feq Tdouble (Sum_fma s l (fun i => (to_float (If P i then f i else float_unit), (g i)))) 
+    (Sum_fma s (List.filter (fun i => isTrue (P i)) l) (fun i => (to_float (f i), g i))).
+Proof.
+  erewrite Sum_fma_eq; [ | move=> i0 ?; rewrite to_float_if pair_fst_If; reflexivity ].
+  rewrite Sum_fma_filter_If -?sorted_bounded_sublist //.
+Qed.
+
 Lemma Sum_fma_list_interval (s : binary64) (l : list int) (f : int -> binary64 * binary64) 
   lb rb (H1 : 0 <= lb) (H2 : lb <= rb) (H3 : rb <= List.length l) :
   Sum_fma s (list_interval (abs lb) (abs rb) l) f = Sum_fma s (lof id (rb - lb)) (fun i => f (l[i + lb])).

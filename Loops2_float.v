@@ -311,7 +311,7 @@ Lemma xfor_lemma_gen_array_fun_float_normal' `{ID : Inhab D}
   (Pre ==> 
     Inv 0 \* 
     (\*_(d <- Union `[0,N] fsi1) R d) \*
-    harray_fun_float' f arrl N (Lab (i,0) s)) ->
+    harray_fun_float f arrl N (Lab (i,0) s)) ->
   (forall (hv : labeled Dom -> val),
     Inv N \* 
     (\*_(d <- Union `[0,N] fsi1) R' d) \* 
@@ -324,7 +324,14 @@ Lemma xfor_lemma_gen_array_fun_float_normal' `{ID : Inhab D}
     }]
   {{ v, Post v }}.
 Proof.
-Admitted.
+  intros. eapply xfor_lemma_gen_array_fun_float_normal with (R:=R) (R':=R') (f:=f) (arrl:=arrl); eauto.
+  { intros l Hl. eapply ntriple_conseq. 1: apply (H _ Hl). all: xsimpl*. }
+  { intros hv vl. xsimpl*=> Hveq. eapply himpl_trans. 2: apply H13. xsimpl*.
+    rewrite /harray_fun_float/harray_fun_float'. 
+    destruct (list_of_fun' _ _) as (l1 & Hlen1 & Hl1); simpl.
+    destruct (list_of_fun' _ _) as (l2 & Hlen2 & Hl2); simpl.
+    apply harray_floatP'; try math. intros i0 Hi0. rewrite -> (Hl1 i0), -> (Hl2 i0); try math. apply Hveq; math. } 
+Qed.
 
 End WithLoops.
 

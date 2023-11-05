@@ -3,6 +3,7 @@
 Set Implicit Arguments.
 From SLF Require Import LibSepSimpl LibSepReference LibSepTLCbuffer.
 From SLF Require Import Fun LabType LibSepReference LibWP.
+From SLF Require ListCommon.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
@@ -14,6 +15,14 @@ Fact map_conversion [A B : Type] (l : list A) (f : A -> B) :
 Proof.
   induction l; simpl; rewrite ?LibList.map_cons ?LibList.map_nil; auto; f_equal; auto.
 Qed.
+
+Definition float_unit : binary64 := Zconst Tdouble 0.
+
+Definition to_float (v : val) : binary64 := 
+  match v with 
+  | val_float i => i 
+  | _ => float_unit
+  end.
 
 Ltac hlocal := 
   repeat (intros; 
@@ -79,6 +88,30 @@ Definition harray_float (L:list binary64) (p:loc) (d : D) : hhprop :=
 Definition harray_float' (L:list binary64) (p:loc) (d : D) : hhprop :=
   hheader (length L) p d \* hcells_float L (p+1)%nat d.
 
+Fact harray_floatP (L:list binary64) p d :
+  harray_float L p d ==> harray_float' L p d.
+Proof.
+  rewrite /harray_float/harray_float'/harray length_map. xsimpl*.
+  set (pp := (p + 1)%nat); clearbody pp; revert pp.
+  induction L as [ | x L IH ]; intros; rewrite ?map_cons ?map_nil; xsimpl*.
+  xsimpl x; auto.
+Qed.
+
+Fact harray_floatP' (L L':list binary64) p d :
+  (List.length L = List.length L') ->
+  (forall i, 0 <= i < (List.length L) -> @feq Tdouble (List.nth (abs i) L float_unit) (List.nth (abs i) L' float_unit)) ->
+  harray_float L p d ==> harray_float' L' p d.
+Proof.
+  intros Hl Hfeq.
+  rewrite /harray_float/harray_float'/harray length_map !length_List_length Hl. xsimpl*.
+  set (pp := (p + 1)%nat); clearbody pp; revert pp.
+  assert (List.Forall2 (@feq Tdouble) L L') as Hf2.
+  { eapply ListCommon.Forall2_nth_pointwise. 
+    split; [ assumption | intros i Hi; replace i with (abs i) by math; apply Hfeq ].
+    apply inj_lt in Hi. split; try lia; auto. }
+  clear Hfeq Hl. induction Hf2; intros; auto; rewrite ?map_cons; simpl.
+  xsimpl x=> //.
+Qed.
 
 Definition val_array_length : val := val_length.
 
@@ -324,14 +357,6 @@ Proof.
   rewrite (hcellsE 0) map_conversion List.map_length. 
   apply hbig_fset_eq=> ??. by rewrite List.map_nth.
 Qed.
-
-Definition float_unit : binary64 := Zconst Tdouble 0.
-
-Definition to_float (v : val) : binary64 := 
-  match v with 
-  | val_float i => i 
-  | _ => float_unit
-  end.
 
 Lemma hcellsE_float (L : list binary64) p: 
   hcells (LibList.map val_float L) p d = \*_(i <- `[0, List.length L]) (p + (abs i))%nat ~(d)~> List.nth (abs i) L float_unit.

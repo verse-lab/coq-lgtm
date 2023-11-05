@@ -3,6 +3,33 @@ From SLF Require Import Sum Fun LabType.
 
 Import List.
 
+Fact Forall2_nth_pointwise [A B : Type] (da : A) (db : B) (la : list A) (lb : list B) (P : A -> B -> Prop) :
+  List.Forall2 P la lb <-> (List.length la = List.length lb /\ forall i : nat, (i < List.length la)%nat ->
+    P (List.nth i la da) (List.nth i lb db)).
+Proof.
+  revert lb. induction la as [ | a la' IH ] using List.rev_ind; intros.
+  { split; [ intros H | intros (Hl & HP) ].
+    { inversion_clear H. simpl. split; auto. intros. lia. }
+    { destruct lb; try discriminate. constructor. } }
+  { split; [ intros H | intros (Hl & HP) ].
+    { pose proof (List.Forall2_length H) as Hl. split; auto.
+      apply List.Forall2_app_inv_l in H. destruct H as (lb' & bb & (_ & Hfeq)%IH & Hab & ->).
+      inversion Hab; subst. inversion H3; subst. rename y into b.
+      rewrite ?List.app_length /= ?Nat.add_1_r in Hl |- *. injection Hl as Hl.
+      intros i Hi. destruct (Nat.ltb i (List.length la')) eqn:E.
+      { apply Nat.ltb_lt in E. rewrite !List.app_nth1; try lia. now apply Hfeq. }
+      { apply Nat.ltb_ge in E. assert (i = List.length lb') as -> by lia.
+        rewrite <- Hl at 1. rewrite !List.nth_middle; try lia. assumption. } }
+    { rewrite ?List.app_length /= ?Nat.add_1_r in Hl |- *.
+      assert (lb <> nil) as (lb' & b & ->)%List.exists_last by (destruct lb; simpl in Hl; eqsolve).
+      rewrite ?List.app_length /= ?Nat.add_1_r in Hl, HP. injection Hl as Hl.
+      apply List.Forall2_app.
+      { apply IH. split; auto. intros i Hi. specialize (HP _ (Peano.le_S _ _ Hi)).
+        rewrite !List.app_nth1 in HP; try lia. exact HP. }
+      { constructor. 2: constructor. specialize (HP _ (Peano.le_n _)).
+        rewrite -> Hl in HP at 2. rewrite !List.nth_middle in HP; try lia. exact HP. } } }
+Qed.
+
 Fact nth_map_lt : forall [A B : Type] (da : A) (db : B) (f : A -> B) (l : list A) (n : nat)
   (H : (n < length l)%nat),
   nth n (map f l) db = f (nth n l da).
@@ -122,11 +149,13 @@ Lemma length_lof' f N :
   length (lof f N) = abs N :> nat.
 Proof. unfold lof. destruct (list_of_fun' _ _) as (l1 & Hlen1 & Hl1); simpl. math. Qed.
 
-Lemma In_lof_id N a : In a (lof id N) -> 0 <= a < abs N.
+Lemma In_lof_id N a : In a (lof id N) <-> 0 <= a < abs N.
 Proof.
   unfold lof. destruct (list_of_fun' _ _) as (l1 & Hlen1 & Hl1); simpl.
-  intros H. apply In_nth with (d:=0) in H. destruct H as (n & Hlt & <-).
-  replace n with (abs n) by math. rewrite Hl1; math.
+  split; intros H.
+  { apply In_nth with (d:=0) in H. destruct H as (n & Hlt & <-).
+    replace n with (abs n) by math. rewrite Hl1; math. }
+  { pose proof H as HH%(Hl1 _ 0). rewrite -HH. apply nth_In. math. }
 Qed.
 
 Lemma lof_indices {A : Type} (f : int -> A) (g : int -> int) n :
