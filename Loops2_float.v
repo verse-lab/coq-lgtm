@@ -89,23 +89,23 @@ Proof.
   assert (length (lof id M) = M :> int) as ? by (rewrite length_lof; math). 
   eapply xfor_lemma_gen_array with (R := R) (R' := R') (arr1 := LibList.map val_float (projT1 (list_of_fun' f M))) (arr2 := fun hv => LibList.map val_float (projT1 (list_of_fun' (g hv) M))) (arrl:=arrl) (def:=val_float float_unit) (some_eq:=feq_val); try eassumption.
   { apply feq_val_eqrel. }
-  { move=> ?; rewrite (lof_indices' float_unit) map_conversion !map_length length_lof; math. }
-  { rewrite (lof_indices' float_unit) map_conversion !map_length length_lof; math. }
+  { move=> ?; rewrite (lof_indices') map_conversion !map_length length_lof; math. }
+  { rewrite (lof_indices') map_conversion !map_length length_lof; math. }
   { move=> l P. specialize (idx_bounded l P).
     apply/ntriple_conseq; [apply (IH l P) | | ]; xsimpl*.
     2: move=> r x Hfeq /=. 
-    all: rewrite map_conversion (lof_indices' float_unit) map_map (nth_map_lt 0) ?nth_lof' //; try math; auto. }
+    all: rewrite map_conversion (lof_indices') map_map (nth_map_lt 0) ?nth_lof' //; try math; auto. }
   { move=>?? m P. specialize (idx_bounded m P). 
-    move=> *; rewrite ?map_conversion ?(lof_indices' float_unit) ?map_map ?(nth_map_lt 0) ?nth_lof' //=; f_equal; try math; auto. }
-  { move=> *; rewrite ?map_conversion ?(lof_indices' float_unit) ?map_map ?(nth_map_lt 0) ?nth_lof' //=; try math. f_equal; auto. }
+    move=> *; rewrite ?map_conversion ?(lof_indices') ?map_map ?(nth_map_lt 0) ?nth_lof' //=; f_equal; try math; auto. }
+  { move=> *; rewrite ?map_conversion ?(lof_indices') ?map_map ?(nth_map_lt 0) ?nth_lof' //=; try math. f_equal; auto. }
   move=> hv vl. xsimpl*=> HH. eapply himpl_trans. 2: apply (H13 hv (to_float \o vl)).
   assert (forall i, 0 <= i < M -> exists f, vl i = val_float f /\ @feq Tdouble f (g hv i)) as HH'.
   { move=> i0 Hi0 /=. specialize (HH i0 Hi0).
-    rewrite map_conversion (lof_indices' float_unit) map_map (nth_map_lt 0) ?nth_lof' ?map_length ?length_lof' // in HH; try math.
+    rewrite map_conversion (lof_indices') map_map (nth_map_lt 0) ?nth_lof' ?map_length ?length_lof' // in HH; try math.
     destruct (vl i0); try discriminate; eauto. }
   xsimpl*.
   { move=> i0 Hi0 /=. specialize (HH' i0 Hi0). by destruct HH' as (ff & -> & ?). }
-  rewrite /harray_fun_float/harray_float map_conversion (lof_indices' float_unit) (lof_indices' val_uninit) map_map /=. 
+  rewrite /harray_fun_float/harray_float map_conversion (lof_indices') (lof_indices') map_map /=. 
   eapply eq_ind_r with (y:=map _ _); [ xsimpl* | ].
   apply map_ext_in=> a /In_lof_id Hin /=. assert (0 <= a < M) as Htmp by math.
   specialize (HH' _ Htmp). by destruct HH' as (ff & -> & ?).
@@ -271,11 +271,94 @@ Proof.
     apply nth_In. math. }
 Qed.
 
+Lemma xfor_lemma_gen_array_fun_float_normal' `{ID : Inhab D}
+  Inv 
+  (R R' : Dom -> hhprop)
+  s fsi1 vr (arrl : loc) (f : int -> binary64) (g : _ -> _ -> binary64)
+  (N: Z) (C1 : Dom -> trm) (C C' : trm)
+  (i j : Z)
+  Pre Post: 
+  (forall (l : int), 
+    (0 <= l < N) ->
+    {{ (arrl + 1 + abs l)%nat ~⟨(i,0)%Z, s⟩~> f l \*
+        Inv l \* 
+        (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R d) }}
+      [{
+        {i| _  in single s tt  => subst vr l C};
+        {j| ld in fsi1 l       => C1 ld}
+      }]
+    {{ v,  
+        (\exists vv : binary64, 
+        \[@feq Tdouble vv (g v l)] \*
+        (arrl + 1 + abs l)%nat ~⟨(i,0)%Z, s⟩~> val_float vv) \*
+        Inv (l + 1) \* 
+        (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R' d)}}) ->
+  (forall j : int, hlocal (Inv j) ⟨(i,0%Z), single s tt⟩) ->
+  (forall i : Dom, hlocal (R i) ⟨(j,0%Z), (single i tt)⟩) ->
+  (forall i : Dom, hlocal (R' i) ⟨(j,0%Z), (single i tt)⟩) ->
+  (forall (hv hv' : D -> val) m,
+    0 <= m < N ->
+    (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
+    @feq Tdouble (g hv m) (g hv' m)) ->
+  (i <> j)%Z ->
+  0 <= N ->
+  (forall t : val, subst "for" t C = C) -> 
+  (forall t : val, subst "cnt" t C = C) ->
+  (forall t : val, subst "cond" t C = C) ->
+  var_eq vr "cnt" = false ->
+  var_eq vr "for" = false ->
+  var_eq vr "cond" = false ->
+  (Pre ==> 
+    Inv 0 \* 
+    (\*_(d <- Union `[0,N] fsi1) R d) \*
+    harray_fun_float' f arrl N (Lab (i,0) s)) ->
+  (forall (hv : labeled Dom -> val),
+    Inv N \* 
+    (\*_(d <- Union `[0,N] fsi1) R' d) \* 
+    harray_fun_float' (g hv) arrl N (Lab (i,0) s) ==>
+    wp ⟨(i,0),single s tt⟩ (fun=> C') (fun hr' => Post (lab_fun_upd hr' hv (i,0)))) -> 
+  {{ Pre }}
+    [{
+      {i| _  in single s tt => trm_seq (For 0 N (trm_fun vr C)) C'};
+      {j| ld in Union `[0,N] fsi1 => C1 ld}
+    }]
+  {{ v, Post v }}.
+Proof.
+Admitted.
+
 End WithLoops.
 
 (* TODO possibly, reuse some parts from xfor_sum? *)
 Global Tactic Notation "xfor_specialized_normal_float" constr(Inv) constr(R) uconstr(R') uconstr(op) uconstr(f) constr(s) :=
   eapply (@xfor_lemma_gen_array_fun_float_normal _ _ Inv R R' _ _ _ s f op);
+  [ intros ??; rewrite ?/Inv ?/R ?/R';
+    xnsimpl
+  | 
+  |
+  |
+  | let hvE := fresh "hvE" in
+    let someindom := fresh "someindom" in
+    intros ???? hvE; rewrite ?/op; indomE;
+    match goal with 
+    | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
+    | _ => idtac
+    end; try (setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
+      (first [ apply someindom | idtac ])])
+  |
+  | try lia
+  |
+  |
+  |
+  |
+  |
+  |
+  | rewrite ?/Inv ?/R; rewrite -> ?hbig_fset_hstar; xsimpl
+  | intros ?; rewrite ?/Inv ?/R' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl
+  ]=> //; try (solve [ rewrite ?/Inv ?/R ?/R' /=; xlocal ]); autos*.
+
+
+Global Tactic Notation "xfor_specialized_normal_float'" constr(Inv) constr(R) uconstr(R') uconstr(op) uconstr(f) constr(s) :=
+  eapply (@xfor_lemma_gen_array_fun_float_normal' _ _ Inv R R' _ _ _ s f op);
   [ intros ??; rewrite ?/Inv ?/R ?/R';
     xnsimpl
   | 

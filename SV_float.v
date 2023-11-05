@@ -161,7 +161,7 @@ Proof.
   rewrite (nth_map_lt 0) -?list_interval_nth ?nth_lof; try math. f_equal. math.
 Qed.
 
-Lemma Sum_fma_lof {A} (a : A) (f : int -> A) s n (g : A -> _) : 
+Lemma Sum_fma_lof {A} (f : int -> A) s n (g : A -> _) : 
   Sum_fma s (projT1 (list_of_fun' f n)) g = 
   Sum_fma s (lof id n) (fun x => g (f x)).
 Proof.
@@ -169,7 +169,7 @@ Proof.
   match goal with 
     |- List.fold_left ?ff _ _ = _ => pose proof (fold_left_map (lof id n) f ff s) as Htmp
   end.
-  simpl in Htmp. rewrite Htmp. f_equal. apply (lof_indices' a).
+  simpl in Htmp. rewrite Htmp. f_equal. apply lof_indices'.
 Qed.
 
 (*
@@ -534,7 +534,7 @@ Proof with fold'.
   rewrite Sum_fma_filter_If -?sorted_bounded_sublist //; try solve [ intros; by apply finite_suffcond | idtac ].
   2:{ intros a0 _ (n & Hn & <-)%(In_nth _ _ 0). replace n with (abs n) by math. 
     rewrite -list_interval_nth; try math. apply Hfin; math. }
-  rewrite -/(Sum_fma _ _ _) (Sum_fma_lof (float_unit, float_unit)) /= Sum_fma_list_interval //=.
+  rewrite -/(Sum_fma _ _ _) (Sum_fma_lof) /= Sum_fma_list_interval //=.
 Qed.
 
 End sv. 

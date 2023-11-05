@@ -129,18 +129,18 @@ Proof.
   replace n with (abs n) by math. rewrite Hl1; math.
 Qed.
 
-Lemma lof_indices {A : Type} (a : A) (f : int -> A) (g : int -> int) n :
+Lemma lof_indices {A : Type} (f : int -> A) (g : int -> int) n :
   projT1 (list_of_fun' (f \o g) n) = map f (lof g n).
 Proof.
   destruct (list_of_fun' _ _) as (l1 & Hlen1 & Hl1); simpl.
   pose proof (length_lof' g n) as Hlen2.
-  apply (nth_ext _ _ a a). 
+  apply (nth_ext _ _ (f 0) (f 0)). 
   1: rewrite map_length; math.
   intros n0 Hlt. replace n0 with (abs n0) by math.
   rewrite Hl1 ?(nth_map_lt 0) ?nth_lof //; try math.
 Qed.
 
-Corollary lof_indices' {A : Type} (a : A) (f : int -> A) n :
+Corollary lof_indices' {A : Type} (f : int -> A) n :
   projT1 (list_of_fun' f n) = map f (lof id n).
 Proof. by rewrite <- lof_indices. Qed.
 

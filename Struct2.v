@@ -15,6 +15,10 @@ Definition harray_fun_int {D : Type} (f:int -> int) (p:loc) (n:int) (d : D) : hh
 Definition harray_fun_float {D : Type} (f:int -> binary64) (p:loc) (n:int) (d : D) : hhprop D :=
   harray_float (projT1 (list_of_fun' f n)) p d.
 
+Definition harray_fun_float' {D : Type} (f:int -> binary64) (p:loc) (n:int) (d : D) : hhprop D :=
+  harray_float' (projT1 (list_of_fun' f n)) p d.
+
+
 Section memset_alloc.
 
 Variable (a : val).
@@ -111,7 +115,7 @@ Lemma htriple_alloc0_unary {D : Type} `{Inhab D} (n : int) (d : D) :
     (fun hv => \exists p, \[hv = fun=> val_loc p] \* harray_fun_int (fun=> 0) p n d).
 Proof.
   eapply htriple_conseq. 1: by apply htriple_alloc_unary. all: xsimpl*=>*.
-  rewrite /harray_fun_int /harray_fun /harray_int !(lof_indices val_uninit) map_conversion //.
+  rewrite /harray_fun_int /harray_fun /harray_int !(lof_indices) map_conversion //.
 Qed.
 
 End memset0_alloc0.
@@ -122,14 +126,27 @@ Definition memsetf0 := Eval unfold memset in memset float_unit.
 
 Definition allocf0 := Eval unfold alloc in alloc float_unit.
 
+Definition to_loc (v : val) : loc := 
+  match v with 
+  | val_loc v => v 
+  | _         => 0%nat 
+  end.
+
 Lemma htriple_allocf0_unary {D : Type} `{Inhab D} (n : int) (d : D) :
   htriple (single d tt) (fun=> allocf0 n)
     \[0 <= n]
     (fun hv => \exists p, \[hv = fun=> val_loc p] \* harray_fun_float (fun=> float_unit) p n d).
 Proof.
   eapply htriple_conseq. 1: by apply htriple_alloc_unary. all: xsimpl*=>*.
-  rewrite /harray_fun_float /harray_fun /harray_float (lof_indices' val_uninit) (lof_indices' float_unit) map_conversion List.map_map //.
+  rewrite /harray_fun_float /harray_fun /harray_float (lof_indices') (lof_indices') map_conversion List.map_map //.
 Qed.
+
+Lemma htriple_allocf0_unary' {D : Type} `{Inhab D} (n : int) (d : D) :
+  htriple (single d tt) (fun=> allocf0 n)
+    \[0 <= n]
+    (fun hv => \exists p, \[hv = fun=> val_loc p] \* harray_fun_float' (fun=> float_unit) p n d).
+Proof.
+Admitted.
 
 End memsetf0_allocf0.
 

@@ -50,6 +50,14 @@ Fixpoint hcells (L:list val) (p:loc) (d : D) : hhprop :=
   | x::L' => (p ~(d)~> x) \* (hcells L' (p+1)%nat d)
   end.
 
+Fixpoint hcells_float (L:list binary64) (p:loc) (d : D) : hhprop :=
+  match L with
+  | nil => \[]
+  | x::L' => \exists y, \[@feq Tdouble y x] \* 
+    (p ~(d)~> val_float y) \* (hcells_float L' (p+1)%nat d) 
+  end.
+
+
 Definition hheader := 
   (fun (k:nat) (p:loc) (d : D) => p ~(d)~> (val_header k) \* \[(p, d) <> null d]).
 Fact hheader_def :
@@ -67,6 +75,10 @@ Notation "'arr(' x ',' y ')⟨' l ',' d '⟩'" :=
 
 Definition harray_float (L:list binary64) (p:loc) (d : D) : hhprop :=
   harray (LibList.map val_float L) p d.
+
+Definition harray_float' (L:list binary64) (p:loc) (d : D) : hhprop :=
+  hheader (length L) p d \* hcells_float L (p+1)%nat d.
+
 
 Definition val_array_length : val := val_length.
 
@@ -812,3 +824,6 @@ Global Notation "'arr(' x ',' y ')⟨' l ',' d '⟩'" :=
 
 Global Notation "'.arr(' x ',' y ')⟨' l ',' d '⟩'" := 
 (harray_float y x (Lab (l,0) d)) (at level 32, format ".arr( x ,  y )⟨ l ,  d ⟩") : hprop_scope.
+
+Global Notation "'arrf(' x ',' y ')⟨' l ',' d '⟩'" := 
+(harray_float' y x (Lab (l,0) d)) (at level 32, format "arrf( x ,  y )⟨ l ,  d ⟩") : hprop_scope.

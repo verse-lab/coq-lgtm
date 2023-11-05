@@ -94,7 +94,7 @@ Proof.
   all: try (move=> *; rewrite ?map_conversion ?map_nth ?nth_lof' //; f_equal; try math; auto).
   xsimpl=>HH. eapply himpl_trans. 2: eauto. xsimpl*.
   rewrite /harray_fun_int/harray_int map_conversion.
-  rewrite -(lof_indices val_uninit) !(lof_indices' val_uninit) in HH |- *.
+  rewrite -(lof_indices) !(lof_indices') in HH |- *.
   eapply eq_ind_r with (y:=map _ _); [ xsimpl* | ].
   apply map_ext_in=> a /In_lof_id Hin /=. rewrite HH ?(nth_map_lt 0) ?nth_lof' ?length_lof' //; try math.
 Qed.

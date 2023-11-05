@@ -773,6 +773,10 @@ Lemma foo {D} H1 H2 H3 H4 : H1 = H2 -> H3 = H4 -> H1 \* H3 = H2 \* H4 :> hhprop 
 by move=> ->->.
 Qed.
 
+Lemma foo1 {D A} (J J' : A -> hhprop D) : 
+  (forall x, J x = J' x) -> hexists J = hexists J'.
+Proof. move=> *; f_equal; exact/fun_ext_1. Qed.
+
 Ltac xsubst_rew' H :=
   do ? match goal with 
   | |- context[hsub _ _ (_ \* _)] => rewrite (@hstar_hsub _ _ _ _ H)
@@ -791,7 +795,7 @@ Ltac xsubst_rew' H :=
 Ltac xsubst_rew H :=
   do ? match goal with 
   | |- hsub _ _ (hsingle _ _ _) = _ => erewrite hsingle_hsub; simpl; eauto
-  | |- hsub _ _ (@hexists _ _ _) = _ => erewrite hexists_hsub; simpl; eauto
+  | |- hsub _ _ (@hexists _ _ _) = _ => erewrite hexists_hsub; apply/foo1; intros ?; simpl; eauto
   | |- hsub _ _ (harray_int _ _ _) = _ => rewrite (@harray_hsub _ _ _ _ H); simpl; eauto
   | |- hsub _ _ (harray_float _ _ _) = _ => rewrite (@harray_hsub _ _ _ _ H); simpl; eauto
   | |- hsub _ _ (_ \* _) = _ => rewrite (@hstar_hsub _ _ _ _ H); apply/foo
