@@ -2813,6 +2813,13 @@ Proof.
   { exists (i - c). split; try math; auto. }
 Qed.
 
+Corollary Union_interval_change2 [A : Type] (f : int -> fset A) (a b : int) :
+  Union (interval 0 (b - a)) f = Union (interval a b) (fun i => f (i - a)).
+Proof. 
+  rewrite -> Union_interval_change with (c := a).
+  do ? f_equal; lia.
+Qed.
+
 Lemma update_union_not_r' [A B : Type] `{Inhab B} (h1 : fmap A B) [h2 : fmap A B] [x : A] (v : B) :
   update (h1 \+ h2) x v = update h1 x v \+ h2.
 Proof.

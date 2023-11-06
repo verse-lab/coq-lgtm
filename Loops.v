@@ -2366,6 +2366,10 @@ Tactic Notation "xsum_normalize" :=
     (* probably, use autorewrite instead *)
     | (fun _ => (If _ then _ else _)) => rewrite -> SumIf with (fs:=ffs)
     | (fun _ => 0) => rewrite Sum0s ?Z.add_0_r ?Z.add_0_l
+    | _ => first [ simpl; rewrite Sum0s ?Z.add_0_r ?Z.add_0_l ]
     (* | (fun _ => ?c) => is_const c; rewrite SumConst ?interval_size *)
     end
   end.
+
+Tactic Notation "xsum_normalize" uconstr(f) :=
+  xsum_normalize; rewrite (SumIf' f); xsum_normalize.

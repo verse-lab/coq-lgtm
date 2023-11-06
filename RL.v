@@ -362,8 +362,7 @@ Ltac abbrv :=
   end.
 
 Lemma not_isTrueE (P: Prop) : (~ isTrue P) = ~ P.
-Proof.
-Admitted.
+Proof. by rewrite istrue_isTrue_eq. Qed.
 
 Ltac bool_rew := 
   rewrite ?false_eq_isTrue_eq ?istrue_isTrue_eq 

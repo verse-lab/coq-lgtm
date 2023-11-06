@@ -101,7 +101,7 @@ Lemma get_spec_out_unary {D : Type} `{Inhab D} (x_midx x_mval x_colind x_rowptr 
       harray_int rowptr x_rowptr d).
 Proof with seclocal_solver.
   rewrite -wp_equiv; xsimpl=> Hnotin.
-  apply (Unary.memNindex 0) in Hnotin.
+  apply memNindex in Hnotin.
   xwp; xapp @Unary.index.spec... xwp; xapp.
   xwp; xif=> HQ; try math.
   xwp; xval. xsimpl*.
@@ -198,7 +198,7 @@ Proof with (try seclocal_fold; seclocal_solver).
     xsubst (snd : _ -> int).
     xfocus (2,0); rewrite -> ! hbig_fset_hstar.
     xwp; xapp (@Unary.index.Spec `[0, Ncol] Nidx (2,0) midx x_midx (fun=> midx[l0]))=> //.
-    rewrite Unary.index_nodup //; try math.
+    rewrite index_nodup //; try math.
     xwp; xapp. xwp; xif=> ?; [ | math ].
     do 3 (xwp; xapp).
     xunfocus; xin (1,0) : idtac. (* reformat *)
@@ -267,7 +267,7 @@ Proof with (try seclocal_fold; seclocal_solver).
     xsubst (snd : _ -> int).
     xfocus (2,0); rewrite -> ! hbig_fset_hstar.
     xwp; xapp (@Unary.index.Spec `[0, Ncol] Nidx (2,0) midx x_midx (fun=> midx[l0]))=> //.
-    rewrite Unary.index_nodup; try math; try assumption.
+    rewrite index_nodup; try math; try assumption.
     xwp; xapp. xwp; xif=> ?; [ | math ].
     do 3 (xwp; xapp).
     xunfocus; xin (1,0) : idtac. (* reformat *)
@@ -278,10 +278,10 @@ Proof with (try seclocal_fold; seclocal_solver).
   move=> i Hi /=. xsum_normalize.
   case_if.
   { rewrite csr.sum_prod1E /=; apply SumEq=> >; indomE.
-    case: classicT=> // /[swap]? []; exists (Unary.index i midx); indomE=> /=.
+    case: classicT=> // /[swap]? []; exists (index i midx); indomE=> /=.
     splits; try tauto. 
-    { rewrite -len_midx Unary.index_mem //; splits*; exact/(Unary.indexG0). }
-    { by rewrite Unary.nth_index. } }
+    { rewrite -len_midx index_mem //; splits*; exact/(indexG0). }
+    { by rewrite nth_index. } }
   { rewrite -> SumEq with (G:=fun=> 0)=> [|?]; first by rewrite Sum0s.
     indomE; case: classicT=> // -[?]; indomE=> /=-[?][*]. 
     case: C; subst; apply/nth_In; math. }
@@ -356,7 +356,7 @@ Proof with (try seclocal_fold; seclocal_solver).
     xsubst (snd : _ -> int).
     xfocus (2,0); rewrite -> ! hbig_fset_hstar.
     xwp; xapp (@Unary.index.Spec `[0, Ncol] Nidx (2,0) midx x_midx (fun=> midx[l0]))=> //.
-    rewrite Unary.index_nodup; try math; try assumption.
+    rewrite index_nodup; try math; try assumption.
     xwp; xapp. xwp; xif=> ?; [ | math ].
     do 3 (xwp; xapp).
     xunfocus; xin (1,0) : idtac. (* reformat *)
@@ -371,10 +371,10 @@ Proof with (try seclocal_fold; seclocal_solver).
   move=> i Hi /=. xsum_normalize.
   case_if.
   { rewrite csr.sum_prod1E /=; apply SumEq=> >; indomE.
-    case: classicT=> // /[swap]? []; exists (Unary.index i midx); indomE=> /=.
+    case: classicT=> // /[swap]? []; exists (index i midx); indomE=> /=.
     splits; try tauto. 
-    { rewrite -len_midx Unary.index_mem //; splits*; exact/(Unary.indexG0). }
-    { by rewrite Unary.nth_index. } }
+    { rewrite -len_midx index_mem //; splits*; exact/(indexG0). }
+    { by rewrite nth_index. } }
   { rewrite -> SumEq with (G:=fun=> 0)=> [|?]; first by rewrite Sum0s.
     indomE; case: classicT=> // -[?]; indomE=> /=-[?][*]. 
     case: C; subst; apply/nth_In; math. }

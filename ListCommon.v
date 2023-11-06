@@ -1,9 +1,19 @@
 Set Implicit Arguments.
-From mathcomp Require Import ssreflect seq ssrbool eqtype choice.
-From SLF Require Import Sum Fun LabType Unary_IndexWithBounds LibSepFmap.
+From mathcomp Require Import ssreflect ssrfun zify.
+From SLF Require Import Fun LabType LibSepFmap.
 
 
 Import List.
+
+Notation "x '[' i ']'" := (List.nth (abs i) x 0) (at level 5, format "x [ i ]").
+
+Fact nth_error_some_inrange {A : Type} (i : nat) (al : list A) a : 
+  nth_error al i = Some a -> i < length al.
+Proof.
+  revert i a. induction al as [ | a' al IH ]; intros; simpl in *.
+  all: destruct i; simpl in *; try discriminate; try lia.
+  apply IH in H. lia.
+Qed.
 
 Fact Forall2_nth_pointwise [A B : Type] (da : A) (db : B) (la : list A) (lb : list B) (P : A -> B -> Prop) :
   List.Forall2 P la lb <-> (List.length la = List.length lb /\ forall i : nat, (i < List.length la)%nat ->
@@ -94,6 +104,11 @@ Lemma list_interval_nth (def : A) (x lb rb : int) l :
   0 <= lb <= rb -> rb <= length l -> 0 <= x < rb - lb ->
   nth (abs (lb + x)) l def = nth (abs x) (list_interval (abs lb) (abs rb) l) def.
 Admitted.
+
+Corollary list_interval_nth' (def : A) (x lb rb : int) l :
+  0 <= lb -> rb <= length l -> lb <= x < rb ->
+  nth (abs (x - lb)) (list_interval (abs lb) (abs rb) l) def = nth (abs x) l def.
+Proof. intros. rewrite -list_interval_nth; try math. f_equal; math. Qed.
 
 End pure_facts.
 
@@ -270,25 +285,20 @@ Lemma merge_nth0 l1 l2 :
   (merge l1 l2)[0] = Z.min l1[0] l2[0].
 Admitted.
 
-Lemma NoDup_nthZ {A : Type} i j l (z : A): 
+Lemma NoDup_nthZ {A : Type} l (z : A): 
   NoDup l <->
-  ((0<= i < Datatypes.length l) ->
+  (forall i j, (0<= i < Datatypes.length l) ->
   (0<= j < Datatypes.length l) -> nth (abs i) l z = nth (abs j) l z -> i = j).
-Admitted.
+Proof. 
+  etransitivity. 1: apply NoDup_nth with (d:=z). 
+  split; intros H i j Ha Hb Hc. 
+  { enough (abs i = abs j) by math. revert Hc. apply H; math. }
+  { enough (Z.of_nat i = Z.of_nat j) by math. apply H; try math.
+    replace (abs i) with i by math. replace (abs j) with j by math. assumption. }
+Qed.
 
 Lemma in_combineE {A B : Type} (l : list A) (l' : list B) (x : A) (y : B) :
   In (x, y) (combine l l') = (In x l /\ In y l').
-Admitted.
-
-Fact Sum_list_interval  (f : int -> int) (a b : int) l:
-  NoDup (list_interval (abs a) (abs b) l) ->
-  Sum (list_interval (abs a) (abs b) l) f = 
-  Sum `[a, b] (fun i => f l[i]).
-Admitted.
-
-Fact intr_list (a b : int) (l: list int) : 
-  (forall x, In x l -> a <= x < b) ->
-  `[a, b] ∩ l = l.
 Admitted.
 
 Lemma slice_fullE {A : Type} (l : list A) : 

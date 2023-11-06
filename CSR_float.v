@@ -19,12 +19,6 @@ Notation "'lb'" := ("l_b":var) (in custom trm at level 0) : trm_scope.
 Notation "'rb'" := ("r_b":var) (in custom trm at level 0) : trm_scope.
 Notation "'i''" := ("i_'":var) (in custom trm at level 0) : trm_scope.
 
-Notation "'for' i <- '[' Z ',' N ']' '{' t '}'"  :=
-  (For Z N <{ fun_ i => t }>)
-  (in custom trm at level 69,
-    Z, N, i at level 0,
-    format "'[' for  i  <-  [ Z ','  N ] ']'  '{' '/   ' '[' t  '}' ']'") : trm_scope.
-
 Import List Vars.
 
 Context (mval : list binary64).
@@ -62,6 +56,9 @@ Tactic Notation "seclocal_solver" :=
       rewrite <- rowptr_first at 1; apply rowptr_weakly_sorted; math
     | (* for 0 <= rowptr[i] <= rowptr[i + 1] *)
       split; [ rewrite <- rowptr_first at 1 | ]; apply rowptr_weakly_sorted; math
+      (* TODO this could be better? *)
+    | intros; eapply colind_leq, in_interval_list; now eauto
+    | intros; eapply mval_finite, in_interval_list; now eauto
     | idtac ]; auto.
 
 (* Definition indexf := index_bounded.func. *)
@@ -197,11 +194,8 @@ Lemma spmv_spec `{Inhab D} (x_mval x_colind x_rowptr x_dvec : loc) :
       @feq Tdouble (vl i) (Sum_fma float_unit (lof id Ncol) (fun j => (to_float (hv[`2]((i, j))), dvec[j])))] \*
     harray_fun_float vl p Nrow (Lab (1,0) (0,0)))
       \* \Top }}. (* this \Top can be made concrete, if needed *)
-Proof with (try seclocal_fold; seclocal_solver).
-  rewrite -!hbig_fset_hstar; match goal with
-    |- context[?a \* ?b \* ?c \* ?d \* hbig_fset _ _ ?ff] =>
-      pose (Inv (_ : int) := a \* b \* c \* d); pose (R := ff)
-  end; rewrite -> ! hbig_fset_hstar.
+Proof with (try solve [ seclocal_solver ]; seclocal_fold).
+  xset_Inv Inv 1; xset_R int Inv R 2.
   xin (2,0) : do 3 (xwp; xapp).
   xin (1,0) : (xwp; xapp (@htriple_allocf0_unary)=> // s)...
   rewrite prod_cascade.
@@ -209,10 +203,8 @@ Proof with (try seclocal_fold; seclocal_solver).
   { xin (2,0) : rewrite wp_prod_single /=.
     xin (1,0) : do 3 (xwp; xapp)...
     xsubst (snd : _ -> int)...
-    xnapp sv_float.dotprod_spec...
-    1-2: move=> ?/in_interval_list...
-    move=> hv; rewrite -wp_equiv. xsimpl=>Hfeq.
-    xapp @lhtriple_array_set_pre; try math.
+    xnapp sv_float.dotprod_spec hv...
+    xsimpl=>Hfeq. xapp @lhtriple_array_set_pre; try math.
     xsimpl (to_float (hv[`1](0))); move: Hfeq; rewrite /feq_val;
     destruct (hv[`1](0))=> //. }
   { apply Sum_fma_feq=>? /In_lof_id ? /=. split; auto. rewrite hvE //; autorewrite with indomE; simpl; split; auto; try math. }
@@ -297,7 +289,7 @@ Proof with (try seclocal_fold; seclocal_solver).
     xapp sv_float.get_spec_out=> //...
     { case=> ?? /[! @indom_label_eq]-[_]/=; rewrite /intr filter_indom; autos*. }
     xin (1,0) : idtac.
-    rewrite intr_list ?(fset_of_list_nodup 0) ?Hl ?sv_float.Union_interval_change2 //; auto.
+    rewrite intr_list ?(fset_of_list_nodup 0) ?Hl ?Union_interval_change2 //; auto.
     2: intros x0 Hin; eapply colind_leq, in_interval_list; eauto.
     set (R2 (i : int) := arr(x_colind, colind)⟨2, i⟩ \* .arr(x_mval, mval)⟨2, i⟩ \* .arr(x_dvec, dvec)⟨2, i⟩).
     (* a bad thing here is that the \exists prevents us from using xframe2 to clear unused heaps! so Inv would get complicated *)
@@ -319,7 +311,7 @@ Proof with (try seclocal_fold; seclocal_solver).
       enough (abs (i0 - rowptr[l0]) = abs (j0 - rowptr[l0]) :> nat) by math.
       eapply NoDup_nth. 4: apply Hq. all: try math; try assumption. by apply nodup_eachcol. }
     { rewrite /colind_seg -list_interval_nth; try f_equal; try math... }
-    intros Hfin. simpl in Hfin. xwp; xapp... xwp; xapp (@sv_float.lhtriple_free). 
+    intros Hfin. simpl in Hfin. xwp; xapp... xwp; xapp.
     rewrite /Inv2'. xapp (@lhtriple_array_set_pre). 
     match goal with |- context[_ ~⟨(1%Z, 0%Z), 0⟩~> val_float ?aa] => xsimpl aa end.
     erewrite Sum_fma_eq; [ | move=> i0 ?; rewrite to_float_if pair_fst_If; reflexivity ].
@@ -359,14 +351,13 @@ Definition spmv' :=
   "ans"
 }>.
 
-Lemma NoDup_nthZ {A : Type} {i j l} {z : A}: 
-  NoDup l ->
-  ((0<= i < Datatypes.length l) ->
-  (0<= j < Datatypes.length l) -> nth (abs i) l z = nth (abs j) l z -> i = j).
-Proof. intros H Ha Hb Hc. enough (abs i = abs j) by math. revert Hc. rewrite NoDup_nth in H. apply H; math. Qed.
-
-Hint Resolve sv_float.lhtriple_free : lhtriple.
 Hint Resolve lhtriple_array_set_pre : lhtriple.
+
+Tactic Notation "seclocal_solver2" :=
+  first [ rewrite /colind_seg list_interval_nth'; auto; solve [ math | seclocal_solver ]
+    | rewrite /colind_seg list_interval_length; auto; solve [ math | seclocal_solver ]
+    | rewrite /colind_seg -list_interval_nth; auto; solve [ math | seclocal_solver ]
+    | idtac ]; auto.
 
 Lemma spmv_spec' `{Inhab (labeled int)} `{Inhab D} (x_mval x_colind x_rowptr x_dvec : loc) : 
   {{ .arr(x_mval, mval)⟨1, (0,0)⟩ \*
@@ -385,7 +376,7 @@ Lemma spmv_spec' `{Inhab (labeled int)} `{Inhab D} (x_mval x_colind x_rowptr x_d
   harray_fun_float'  
     (fun i => (Sum_fma float_unit (lof id Ncol) (fun j => (to_float (hv[`2]((i, j))), dvec[j]))))
     (hv[`1]((0,0))) Nrow (Lab (1,0) (0,0)) \* \Top }}.
-Proof with (try seclocal_fold; seclocal_solver; try lia).
+Proof with (try solve [ seclocal_solver | seclocal_solver2 | auto using finite_suffcond ]; seclocal_fold; try lia).
   xset_Inv Inv 1; xset_R Dom Inv R 2.
   xin (2,0) : do 3 (xwp; xapp).
   xin (1,0) : (xwp; xapp (@htriple_allocf0_unary)=> // s; xwp; xapp)...
@@ -395,30 +386,23 @@ Proof with (try seclocal_fold; seclocal_solver; try lia).
     xin (1,0) : (xwp; xapp=> tmp; do 3 (xwp; xapp))...
     xsubst (snd : _ -> int)...
     clear Inv R. xset_Inv Inv 1 tmp. xset_R int Inv R 2%Z.
-    xfocus (2,0) (colind_seg l0); rewrite (hbig_fset_part (`[0, Ncol]) (colind_seg l0)).
+    xfocus* (2,0) (colind_seg l0).
     xapp_big sv_float.get_spec_out... 1: case=>??; indomE; autos*.
     xin (1,0) : idtac.
-    have Hl : length (colind_seg l0) = rowptr[l0 + 1] - rowptr[l0] :> int.
-    1: rewrite /colind_seg list_interval_length...
-    rewrite intr_list ?(fset_of_list_nodup 0) ?Hl ?sv_float.Union_interval_change2...
-    2: intros x0 Hin; eapply colind_leq, in_interval_list; eauto.
+    have Hl : length (colind_seg l0) = rowptr[l0 + 1] - rowptr[l0] :> int...
+    rewrite intr_list ?(fset_of_list_nodup 0) ?Hl ?Union_interval_change2...
     xcleanup_unused*. 
-    xfor_sum_fma Inv R R (fun hv i => (to_float (hv[`2](colind[i])), dvec[colind[i] ])) tmp.
-    { rewrite /Inv /R.
-      (xin (1,0): do 3 (xwp; xapp); xapp (@fma.spec)=> y)... 
-      xapp (@sv_float.get_spec_in)=> //; try math... xsimpl*.
-      all: rewrite -list_interval_nth; try replace (_ + (l4 - _)) with l4...
-      split; by apply finite_suffcond. }
-    { move=> ??? /(NoDup_nthZ (nodup_eachcol _))... }
-    { rewrite /colind_seg -list_interval_nth; try f_equal; try math... }
+    xfor_sum_fma Inv R R (fun hv i => (to_float (hv[`2](colind[i])), dvec[colind[i] ])) tmp...
+    { (xin (1,0): do 3 (xwp; xapp); xapp (@fma.spec)=> y)... 
+      xapp (@sv_float.get_spec_in)=> //; try math... xsimpl*...
+      rewrite list_interval_nth'... }
+    { move=> ??? HH. eapply (proj1 (NoDup_nthZ _ _) (nodup_eachcol H1)) in HH... }
     move=> /= Hfin; xwp; xapp... xwp; xapp; xapp; xsimpl.
     rewrite -/(Sum_fma _ _ _) Sum_fma_lof ?Sum_fma_filter_If'; try intro;
     rewrite -?sorted_bounded_sublist ?Sum_fma_list_interval ?In_lof_id //...
-    { move=> ? /in_interval_list... }
-    all: move: (indexG0 a0 (colind_seg l0)); rewrite /Sum.mem=> ??.
-    { move=> /[dup] /(nth_index 0){2}<-; rewrite -index_mem=> ?.
-      rewrite -list_interval_nth; try apply/(Hfin _ _).1... }
-    by apply/finite_suffcond. }
+    move: (indexG0 a0 (colind_seg l0)); rewrite /Sum.mem=> ??.
+    move=> /[dup] /(nth_index 0){2}<-; rewrite -index_mem=> ?.
+    rewrite -list_interval_nth; try apply/(Hfin _ _).1... }
   { apply Sum_fma_feq=>? /In_lof_id ? /= /[! hvE]; indomE... }
   xwp; xval. xsimpl*.
 Qed.

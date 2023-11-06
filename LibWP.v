@@ -9113,7 +9113,13 @@ Proof using.
 intros. unfold htriple. intros H'. applys @hhoare_conseq @hhoare_set; xsimpl*.
 Qed.
 
-Hint Resolve (*htriple_ref_lab*) lhtriple_ref lhtriple_get lhtriple_set : lhtriple.
+Lemma lhtriple_free : forall (p : loc) (v : val) fs,
+  @htriple D fs (fun d => val_free p)
+    (\*_(d <- fs) p ~(d)~> v)
+    (fun _ => \[]).
+Proof using. intros. apply htriple_free. Qed.
+
+Hint Resolve (*htriple_ref_lab*) lhtriple_ref lhtriple_get lhtriple_set lhtriple_free : lhtriple.
 
 Arguments xfocus_lemma _ {_}.
 Arguments xunfocus_lemma _ {_}.
@@ -9204,7 +9210,7 @@ Arguments disjoint_subset {_} _.
 
 Arguments htrm_of : simpl never.
 
-Hint Resolve (*htriple_ref_lab*) lhtriple_ref lhtriple_get lhtriple_set : lhtriple.
+Hint Resolve (*htriple_ref_lab*) lhtriple_ref lhtriple_get lhtriple_set lhtriple_free : lhtriple.
 
 Arguments xfocus_lemma _ {_}.
 Arguments xunfocus_lemma _ {_}.
@@ -9256,7 +9262,7 @@ Tactic Notation "xfocus_split_core" constr(HPP) constr(S) constr(P) :=
     | context[intr _ _] => fail
     | _ =>
       match ff with
-      | context[Lab S] => rewrite -> (hbig_fset_part ffs P) in |- *
+      | context[Lab S] => rewrite -> (fun_eq_1 ff (hbig_fset_part ffs P)) in |- *
       end
     end
   end.

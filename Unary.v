@@ -45,50 +45,6 @@ Proof Build_Inhab (ex_intro (fun=> True) (Lab (0, 0) 0) I). *)
       k++
 *)
 
-Global Instance Inhab_lab_int : Inhab (labeled int).
-split. by exists (Lab (0,0) 0). Qed.
-
-Section pure_facts.
-
-Context {A : Type} (def : A).
-
-Implicit Type l s : list A.
-(* Implicit Type i : A. *)
-
-Export List.
-
-Definition index (i : A) l : int. 
-Proof using.
-Admitted.
-Lemma index_nodup i l : 
-  0 <= i < length l ->
-  List.NoDup l -> 
-    index (nth (abs i) l def) l = i.
-Proof.
-Admitted.
-
-Lemma in_take x l i : 0 <= i <= length l -> (In x (take (abs i) l)) = (index x l < i).
-Proof.
-Admitted.
-
-Lemma nth_index x s : In x s -> nth (abs (index x s)) s def = x.
-Admitted.
-
-Lemma index_mem x s : (index x s < length s) = (In x s).
-Admitted.
-
-Lemma index_size x s : index x s <= length s.
-Proof. Admitted.
-
-Lemma indexG0 x s : 0 <= index x s.
-Proof. Admitted.
-
-Lemma memNindex x s :  ~In x s -> index x s = length s.
-Admitted.
-
-
-End pure_facts.
-
 Module and.
 
 Section and.
@@ -220,7 +176,7 @@ Lemma spec {D : Type} `{Inhab D} (d : D) N (i : int) (xind : list int) (x_ind : 
   htriple (single d tt) 
     (fun=> func N i x_ind)
     (harray_int xind x_ind d \* \[length xind = N :> int] \* \[List.NoDup xind])
-    (fun hv => harray_int xind x_ind d \* \[hv = fun=> index i xind]).
+    (fun hv => harray_int xind x_ind d \* \[hv = fun=> ListCommon.index i xind]).
 Proof with fold'.
   xwp; xsimpl=> ??; xapp=> k...
   set (cond x := isTrue (List.nth (abs x) xind 0 <> i /\ x < N)).
@@ -229,7 +185,7 @@ Proof with fold'.
     \[~ In i (take (abs x) xind)] \*
     k d ~(d)~> x \* harray_int xind x_ind d
     ).
-  xwp; xwhile1 0 (index i xind) (cond 0) Inv; rewrite /Inv.
+  xwp; xwhile1 0 (ListCommon.index i xind) (cond 0) Inv; rewrite /Inv.
   { xsimpl=> ??->??.
     do 5 (xwp; xapp); xapp=> ?->; xsimpl*.
     rewrite /cond. bool_rew... }
@@ -237,12 +193,12 @@ Proof with fold'.
     bool_rew; rewrite not_and_eq.
     case: (classicT (x = N)).
     { move=>-> _ _. rewrite in_take; eauto; last math.
-      move: (index_size 0 i xind); math. }
+      move: (index_size i xind); math. }
     move=> ? [/not_not_inv<- ? _|]; last math.
     rewrite index_nodup //; math. }
   { xsimpl*=> {Inv}k; rewrite /cond; bool_rew.
     case=> xindN ??; rewrite in_take; eauto; last math.
-    suff: (index i xind <> k) by math.
+    suff: (ListCommon.index i xind <> k) by math.
     move=> E; apply/xindN; rewrite -E nth_index // -index_mem; eauto; math. }
   { move=> j ? IH; rewrite /cond; bool_rew.
     xsimpl=> -?? T. xwp; xapp (@incr1.spec _ H); xapp; try math. 
@@ -258,7 +214,7 @@ Lemma Spec (fs : fset int) N l (xind : list int) (x_ind : loc) (f : int -> int) 
   htriple ⟨l, fs⟩
     (fun i => func N (f (el i)) x_ind)
     ((\*_(d <- fs) harray_int xind x_ind (Lab l d)) \* \[length xind = N :> int] \* \[List.NoDup xind])
-    (fun hv => (\*_(d <- fs) harray_int xind x_ind (Lab l d)) \* \[hv = fun i => index (f (el i)) xind]).
+    (fun hv => (\*_(d <- fs) harray_int xind x_ind (Lab l d)) \* \[hv = fun i => ListCommon.index (f (el i)) xind]).
 Proof with fold'.
   apply/htriple_conseq. 1: apply htriple_val_eq. 2-3: xsimpl*.
   apply wp_equiv. xsimpl*. intros. apply wp_equiv.
@@ -329,7 +285,7 @@ Lemma spec d N (i j : int) (xind yind : list int) (x_ind y_ind : loc) :
      harray_int yind y_ind d \*
      \[length xind = N :> int] \*
      \[length yind = N :> int] \* \[List.NoDup (combine xind yind)])
-    (fun hv => \[hv = fun=> index (i, j) (combine xind yind)] \* harray_int xind x_ind d \* harray_int yind y_ind d).
+    (fun hv => \[hv = fun=> ListCommon.index (i, j) (combine xind yind)] \* harray_int xind x_ind d \* harray_int yind y_ind d).
 Proof with fold'.
 xwp; xsimpl=> ???; xapp=> k...
 have ?: Datatypes.length (combine xind yind) = N :> int by rewrite combine_length; lia.
@@ -339,7 +295,7 @@ set (Inv b x :=
   \[~ In (i,j) (take (abs x) (combine xind yind))] \*
   k d ~(d)~> x \* harray_int xind x_ind d \*  harray_int yind y_ind d
   ).
-xwp; xwhile1 0 (index (i,j) (combine xind yind)) (cond 0) Inv; rewrite /Inv.
+xwp; xwhile1 0 (ListCommon.index (i,j) (combine xind yind)) (cond 0) Inv; rewrite /Inv.
 { xsimpl=> ??->??.
   do 6 (xwp; xapp); move=> ?... 
   move->; do 2 (xwp; xapp).
@@ -350,12 +306,12 @@ xwp; xwhile1 0 (index (i,j) (combine xind yind)) (cond 0) Inv; rewrite /Inv.
   bool_rew; rewrite not_and_eq.
   case: (classicT (x = N)).
   { move=>-> _ _; rewrite in_take //; last lia.
-    move: (index_size (0,0) (i,j) (combine xind yind)); lia. }
+    move: (index_size (i,j) (combine xind yind)); lia. }
   move=> ? [/not_not_inv<- ? _|]; last math.
   rewrite index_nodup //; math. }
 { xsimpl*=> {Inv}k; rewrite /cond; bool_rew.
   case=> xindN ??; rewrite in_take; eauto; last math.
-  suff: (index (i, j) (combine xind yind) <> k) by lia.
+  suff: (ListCommon.index (i, j) (combine xind yind) <> k) by lia.
   move=> E; apply/xindN; rewrite -E nth_index // -index_mem; eauto; math. }
 { move=> ?? IH; rewrite /cond; bool_rew...
   xsimpl=> -?? T. xwp; xapp (@incr1.spec _ H); xapp; try math. 

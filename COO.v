@@ -173,12 +173,6 @@ Definition dotprod :=
   ! s
 }>.
 
-Lemma SumIf {A : Type} {P : A -> Prop} {fs F G} (C : A -> int -> int) : 
-  (Σ_(i <- fs) C i (If P i then F i else G i)) = 
-  Σ_(i <- fs ∩ P) C i (F i) + Σ_(i <- fs ∖ P) C i (G i).
-Proof using.
-Admitted.
-
 Lemma dotprod_spec `{Inhab D} (x_ind x_val d_vec : loc) : 
   {{ arr(x_ind, xind)⟨1, 0⟩ \\*
      arr(x_val, xval)⟨1, 0⟩ \\*
@@ -205,7 +199,7 @@ Proof with fold'.
   { move=>Ha Hb Hc; move: Ha; apply contrapose, NoDup_nthZ; autos*; math. }
   xapp; xsimpl.
   xsum_normalize.
-  by rewrite (SumIf (fun=> Z.mul^~ _)) E (SumList 0) // len_xind Sum0s Z.add_0_r.
+  by rewrite (SumIf' (fun=> Z.mul^~ _)) E (SumList 0) // len_xind Sum0s Z.add_0_r.
 Qed.
 
 End coo_vec.
