@@ -185,8 +185,7 @@ Lemma sum_spec `{Inhab D} `{Inhab (labeled int)} (x_mval x_colind x_rowptr x_mid
   {{ hv, \[hv[`1]((0,0)) = Σ_(i <- `[0, Nrow] \x `[0, Ncol]) hv[`2](i)] \* \Top}}.
 Proof with (try seclocal_fold; seclocal_solver).
   xset_Inv Inv 1; xset_R int Inv R 2.
-  xfocus (2,0) (indom (midx \x `[0, Ncol])).
-  rewrite (hbig_fset_part (`[0, Nrow] \x `[0, Ncol]) (indom (midx \x `[0, Ncol]))). (* TODO: move to xfocus *)
+  xfocus* (2,0) (indom (midx \x `[0, Ncol])).
   xapp get_spec_out=> //. 1: case=> ??; indomE; tauto.
   xdrain_unused.
   have E : (`[0, Nrow] \x `[0, Ncol]) ∩ indom (midx \x `[0, Ncol]) = midx \x `[0, Ncol].
@@ -205,14 +204,11 @@ Proof with (try seclocal_fold; seclocal_solver).
     xunfocus; xin (1,0) : idtac. (* reformat *)
     xnapp sv.sum_spec...
     xsimpl=>->. xapp @incr.spec. rewrite csr.sum_prod1E. xsimpl. }
-  { left=> /(NoDup_nth _ _).1 Eq; have: abs i0 <> abs j0 by lia. 
-    rewrite 1?Eq //; lia. }
+  { move=>Ha Hb Hc; left. move: Ha; apply contrapose, NoDup_nthZ; autos*; math. }
   xwp; xapp. xsimpl*. xsum_normalize.
   rewrite SumCascade -?prod_Union_distr -?len_midx -?(fset_of_list_nodup 0) ?E //.
   disjointE.
-  (* repeating proof *)
-  left=> /(NoDup_nth _ _).1 Eq; have: abs i0 <> abs j0 by lia. 
-  rewrite 1?Eq //; lia.
+  move=>Ha Hb Hc; left. move: Ha; apply contrapose, NoDup_nthZ; autos*; math.
 Qed.
 
 Context (dvec : list int).
@@ -255,8 +251,7 @@ Lemma spmv_spec `{Inhab D} `{H__ : Inhab (labeled int)} (x_mval x_midx x_colind 
       \* \Top }}.
 Proof with (try seclocal_fold; seclocal_solver).
   xset_Inv Inv 1; xset_R int Inv R 2.
-  xfocus (2,0) (indom (midx \x `[0, Ncol])).
-  rewrite (hbig_fset_part (`[0, Nrow] \x `[0, Ncol]) (indom (midx \x `[0, Ncol]))). (* TODO: move to xfocus *)
+  xfocus* (2,0) (indom (midx \x `[0, Ncol])).
   xapp get_spec_out=> //. 1: case=> ??; indomE; tauto.
   xdrain_unused.
   have E : (`[0, Nrow] \x `[0, Ncol]) ∩ indom (midx \x `[0, Ncol]) = midx \x `[0, Ncol].
@@ -344,8 +339,7 @@ Lemma spmspv_spec `{Inhab D} `{H__ : Inhab (labeled int)}
       \* \Top }}.
 Proof with (try seclocal_fold; seclocal_solver).
   xset_Inv Inv 1; xset_R_core int R1 2; xset_R_core int R2 3. xset_clean Inv R1 R2.
-  xfocus (2,0) (indom (midx \x `[0, Ncol])).
-  rewrite (hbig_fset_part (`[0, Nrow] \x `[0, Ncol]) (indom (midx \x `[0, Ncol]))). (* TODO: move to xfocus *)
+  xfocus* (2,0) (indom (midx \x `[0, Ncol])).
   xapp get_spec_out=> //. 1: case=> ??; indomE; tauto.
   xdrain_unused.
   have E : (`[0, Nrow] \x `[0, Ncol]) ∩ indom (midx \x `[0, Ncol]) = midx \x `[0, Ncol].

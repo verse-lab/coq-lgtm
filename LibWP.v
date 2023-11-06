@@ -9249,6 +9249,27 @@ Tactic Notation "xfocus" constr(S) constr(P) :=
   let P := constr:(P) in
   apply (@xfocus_pred_lemma' _ P n); simpl; rewrite /uni_pred /=; rewrite -?xntriple1_lemma; try apply xnwp0_lemma.
 
+Tactic Notation "xfocus_split_core" constr(HPP) constr(S) constr(P) :=
+  repeat match HPP with
+  | context[hbig_fset _ ?ffs ?ff] =>
+    match ffs with
+    | context[intr _ _] => fail
+    | _ =>
+      match ff with
+      | context[Lab S] => rewrite -> (hbig_fset_part ffs P) in |- *
+      end
+    end
+  end.
+
+Tactic Notation "xfocus_split" constr(S) constr(P) :=
+  match goal with
+  | |- (?HPP ==> _) => xfocus_split_core HPP S P
+  | |- (ntriple ?HPP _ _) => xfocus_split_core HPP S P
+  end.
+
+Tactic Notation "xfocus" "*" constr(S) constr(P) := 
+  xfocus S P; xfocus_split S P.
+
 Tactic Notation "xframe" constr(H) := 
   let h := constr:(H) in
   eapply (@ntriple_conseq_frame _ h (protect _)); [|xsimpl]; rewrite /protect; eauto.

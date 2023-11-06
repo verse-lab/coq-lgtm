@@ -141,8 +141,7 @@ Lemma sum_spec `{Inhab D} (x_ind x_val : loc) :
   {{ hv, \[hv[`1](0) = Σ_(i <- `[0,M]) hv[`2](i)] \* \Top}}.
 Proof with fold'.
   xset_Inv Inv 1; xset_R int Inv R 2.
-  xfocus (2,0) xind.
-  rewrite (hbig_fset_part `[0, M] xind). (* TODO: move to xfocus *)
+  xfocus* (2,0) xind.
   xapp get_spec_out=> //. 1: case=> ??; indomE; autos*.
   xdrain_unused.
   xin (1,0) : xwp; xapp=> s...
@@ -151,8 +150,7 @@ Proof with fold'.
   xfor_sum Inv R (fun=> \Top) (fun hv i => hv[`2](xind[i])) s.
   { (xin (1,0): (xwp; xapp; xapp (@incr.spec _ H)=> y))...
     xapp get_spec_in=> //; xsimpl*. }
-  { move=> Neq ???; apply/Neq. 
-    move/NoDup_nthZ: nodup_xind; apply; autos*; math. }
+  { move=>Ha Hb Hc; move: Ha; apply contrapose, NoDup_nthZ; autos*; math. }
   xapp; xsimpl.
   xsum_normalize.
   by rewrite E (SumList 0) // len_xind.
@@ -195,8 +193,7 @@ Lemma dotprod_spec `{Inhab D} (x_ind x_val d_vec : loc) :
   {{ hv, \[hv[`1](0) = Σ_(i <- `[0,M]) (hv[`2](i) * dvec[i])] \* \Top}}.
 Proof with fold'.
   xset_Inv Inv 1; xset_R int Inv R 2.
-  xfocus (2,0) xind.
-  rewrite (hbig_fset_part `[0, M] xind). (* TODO: move to xfocus *)
+  xfocus* (2,0) xind.
   xapp get_spec_out=> //. 1: case=> ??; indomE; autos*.
   xdrain_unused.
   xin (1,0) : xwp; xapp=> s...
@@ -205,8 +202,7 @@ Proof with fold'.
   xfor_sum Inv R (fun=> \Top) (fun hv i => (hv[`2](xind[i]) * dvec[xind[i] ])) s.
   { (xin (1,0): do 4 (xwp; xapp); xapp (@incr.spec _ H)=> y)...
     xapp get_spec_in=> //; xsimpl*. }
-  { move=> Neq ???; apply/Neq. 
-    move/NoDup_nthZ: nodup_xind; apply; autos*; math. }
+  { move=>Ha Hb Hc; move: Ha; apply contrapose, NoDup_nthZ; autos*; math. }
   xapp; xsimpl.
   xsum_normalize.
   by rewrite (SumIf (fun=> Z.mul^~ _)) E (SumList 0) // len_xind Sum0s Z.add_0_r.
@@ -359,8 +355,7 @@ Lemma sum_spec `{Inhab D} (x_row x_col x_val : loc) :
 Proof with fold'.
   xset_Inv Inv 1; xset_R int Inv R 2.
   have lE: length (combine xrow xcol) = N :> int by rewrite combine_length; lia.
-  xfocus (2,0) (combine xrow xcol).
-  rewrite (hbig_fset_part (`[0, Nrow] \x `[0, Ncol]) (combine xrow xcol)). (* TODO: move to xfocus *)
+  xfocus* (2,0) (combine xrow xcol).
   xapp get_spec_out=> //. 1: case=> ??; indomE; autos*.
   xdrain_unused.
   xin (1,0) : xwp; xapp=> s...
@@ -372,8 +367,7 @@ Proof with fold'.
   { (xin (1,0): (xwp; xapp; xapp (@incr.spec _ H)=> y))...
     rewrite ?combine_nth /=; try lia.
     xapp get_spec_in=> //; xsimpl*. }
-  { move=> Neq ???; apply/Neq. 
-    move/NoDup_nthZ: nodup_xrowcol; apply; autos*; math. }
+  { move=>Ha Hb Hc; move: Ha; apply contrapose, NoDup_nthZ; autos*; math. }
   { rewrite combine_nth //; lia. }
   xapp; xsimpl.
   xsum_normalize.
