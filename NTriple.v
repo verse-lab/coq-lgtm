@@ -176,7 +176,7 @@ Tactic Notation "xnapp" constr(E) :=
          let hp := fresh "hp" in 
          let HE := fresh "HE" in 
         remember hpure as hp eqn:HE;
-       xapp_simpl=> ?; rewrite HE; exact: himpl_refl]|]; eauto; simpl.
+       xapp_simpl=> ?; rewrite HE; exact: himpl_refl]|move=> ?; rewrite -wp_equiv]; eauto; simpl.
 
 Lemma wp_prod_single {A B : Type} s fs Q ht (l : labType):
   @wp (labeled (A * B)) (label (Lab l (`{s} \x fs))) ht Q = 

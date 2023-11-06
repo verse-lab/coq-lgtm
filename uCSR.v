@@ -7,16 +7,6 @@ Hint Rewrite conseq_cons' : rew_listx.
 
 Open Scope Z_scope.
 
-Definition to_int (v : val) : int := 
-  match v with 
-  | val_int i => i 
-  | _ => 0
-  end.
-
-Coercion to_int : val >-> Z.
-
-(* Module Export AD := WithUnary(Int2Dom). *)
-
 Module unordered_csr.
 
 Import sv.
@@ -77,6 +67,7 @@ Tactic Notation "seclocal_solver" :=
       rewrite <- rowptr_first at 1; apply rowptr_weakly_sorted; math
     | (* for 0 <= rowptr[i] <= rowptr[i + 1] *)
       split; [ rewrite <- rowptr_first at 1 | ]; apply rowptr_weakly_sorted; math
+    | intros; eapply colind_leq, in_interval_list; now eauto
     | idtac ]; auto.
 
 Definition indexf := Unary.index.func Nidx.
@@ -193,45 +184,31 @@ Lemma sum_spec `{Inhab D} `{Inhab (labeled int)} (x_mval x_colind x_rowptr x_mid
   }]
   {{ hv, \[hv[`1]((0,0)) = Σ_(i <- `[0, Nrow] \x `[0, Ncol]) hv[`2](i)] \* \Top}}.
 Proof with (try seclocal_fold; seclocal_solver).
+  xset_Inv Inv 1; xset_R int Inv R 2.
   xfocus (2,0) (indom (midx \x `[0, Ncol])).
-  (* now xapp can no longer handle so many conjunctions; some tweak is needed *)
   rewrite (hbig_fset_part (`[0, Nrow] \x `[0, Ncol]) (indom (midx \x `[0, Ncol]))). (* TODO: move to xfocus *)
-  xapp get_spec_out=> [[?][>]|].
-  { rewrite /(_ ∖ _). do ? indomE=> //=; autos*. }
-  repeat (set (HHQ := hbig_fset hstar (_ ∖ _) _); xframe HHQ; clear HHQ).
+  xapp get_spec_out=> //. 1: case=> ??; indomE; tauto.
+  xdrain_unused.
   have E : (`[0, Nrow] \x `[0, Ncol]) ∩ indom (midx \x `[0, Ncol]) = midx \x `[0, Ncol].
   { rewrite -prod_intr_list_on_1. f_equal. now apply intr_list. }
   rewrite E (fset_of_list_nodup 0 nodup_midx) len_midx prod_Union_distr.
   xin (1,0) : xwp; xapp=> s...
-  rewrite -?hbig_fset_hstar.
-  match goal with 
-    |- context [(_ \* ?a \* ?b \* ?c \* ?d \* (hbig_fset _ _ ?f))] => 
-      pose (Inv (i : int) := a \* b \* c \* d); pose (R := f) 
-  end. (* smart!! *)
   xfor_sum Inv R R (fun hv i => Σ_(j <- `{midx[i]} \x `[0, Ncol]) hv[`2](j)) s.
-  { rewrite /Inv /R.
-    xin (2,0) : rewrite wp_prod_single /=.
+  { xin (2,0) : rewrite wp_prod_single /=.
     xin (1,0) : do 3 (xwp; xapp)...
     xsubst (snd : _ -> int).
     xfocus (2,0); rewrite -> ! hbig_fset_hstar.
     xwp; xapp (@Unary.index.Spec `[0, Ncol] Nidx (2,0) midx x_midx (fun=> midx[l0]))=> //.
     rewrite Unary.index_nodup //; try math.
     xwp; xapp. xwp; xif=> ?; [ | math ].
-    (* TODO raw xapp will fail here. guess the reason is that it cannot switch between different doms? *)
-    (* Yes, just add Inhab (labeled int) as a hypothesis  *)
     do 3 (xwp; xapp).
     xunfocus; xin (1,0) : idtac. (* reformat *)
     xnapp sv.sum_spec...
-    { move=> ?/in_interval_list... }
-    move=> ?; rewrite -wp_equiv. xsimpl=>->.
-    xapp @incr.spec. rewrite csr.sum_prod1E. xsimpl. }
+    xsimpl=>->. xapp @incr.spec. rewrite csr.sum_prod1E. xsimpl. }
   { left=> /(NoDup_nth _ _).1 Eq; have: abs i0 <> abs j0 by lia. 
     rewrite 1?Eq //; lia. }
-  xwp; xapp. xsimpl*. 
-  f_equal; under (@SumEq _ _ _ (`[0, Nrow] \x `[0, Ncol])).
-  { move=>*; rewrite to_int_if; over. }
-  rewrite Sum.SumIf Sum0s Z.add_0_r SumCascade.
-  1: rewrite -prod_Union_distr -len_midx -(fset_of_list_nodup 0) ?E //.
+  xwp; xapp. xsimpl*. xsum_normalize.
+  rewrite SumCascade -?prod_Union_distr -?len_midx -?(fset_of_list_nodup 0) ?E //.
   disjointE.
   (* repeating proof *)
   left=> /(NoDup_nth _ _).1 Eq; have: abs i0 <> abs j0 by lia. 
@@ -277,27 +254,20 @@ Lemma spmv_spec `{Inhab D} `{H__ : Inhab (labeled int)} (x_mval x_midx x_colind 
     harray_fun_int (fun i => Σ_(j <- `[0, Ncol]) hv[`2]((i, j)) * dvec[j]) p Nrow (Lab (1,0) (0,0)))
       \* \Top }}.
 Proof with (try seclocal_fold; seclocal_solver).
+  xset_Inv Inv 1; xset_R int Inv R 2.
   xfocus (2,0) (indom (midx \x `[0, Ncol])).
-  (* now xapp can no longer handle so many conjunctions; some tweak is needed *)
   rewrite (hbig_fset_part (`[0, Nrow] \x `[0, Ncol]) (indom (midx \x `[0, Ncol]))). (* TODO: move to xfocus *)
-  xapp get_spec_out=> [[?][>]|].
-  { rewrite /(_ ∖ _). do ? indomE=> //=; autos*. }
-  repeat (set (HHQ := hbig_fset hstar (_ ∖ _) _); xframe HHQ; clear HHQ).
+  xapp get_spec_out=> //. 1: case=> ??; indomE; tauto.
+  xdrain_unused.
   have E : (`[0, Nrow] \x `[0, Ncol]) ∩ indom (midx \x `[0, Ncol]) = midx \x `[0, Ncol].
   { rewrite -prod_intr_list_on_1. f_equal. now apply intr_list. }
   rewrite E (fset_of_list_nodup 0 nodup_midx) len_midx prod_Union_distr.
   xin (1,0) : (xwp; xapp (@htriple_alloc0_unary)=> // s)...
-  rewrite -?hbig_fset_hstar.
-  match goal with 
-    |- context [(_ \* ?a \* ?b \* ?c \* ?d \* ?e \* (hbig_fset _ _ ?f))] => 
-      pose (Inv (i : int) := a \* b \* c \* d \* e); pose (R := f) 
-  end.
   xfor_specialized Inv R R 
     (fun hv (i : int) => (If (In i midx) then Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * dvec[j.2]) else 0)) (fun=> 0) midx s.
   { intros. apply midx_leq, nth_In; math. }
   { case: classicT=> [?|/(_ (nth_In _ _ _))]; last lia.
     xin (2,0) : rewrite wp_prod_single /=.
-    rewrite /Inv.
     xin (1,0) : do 4 (xwp; xapp)...
     xsubst (snd : _ -> int).
     xfocus (2,0); rewrite -> ! hbig_fset_hstar.
@@ -307,26 +277,17 @@ Proof with (try seclocal_fold; seclocal_solver).
     do 3 (xwp; xapp).
     xunfocus; xin (1,0) : idtac. (* reformat *)
     xnapp sv.dotprod_spec...
-    { move=> ?/in_interval_list... }
-    move=> ?; rewrite -wp_equiv. xsimpl=>->.
-    xapp @lhtriple_array_set_pre.
-    rewrite csr.sum_prod1E. xsimpl. }
+    xsimpl=>->. xapp @lhtriple_array_set_pre. rewrite csr.sum_prod1E. xsimpl. }
   { intros. now case_if. }
-  xwp; xval. xsimpl*.
-  match goal with
-    |- _ ==> harray_fun_int ?ff _ _ _ \\* _ => eapply eq_ind_r with (y:=ff)
-  end.
-  1: xsimpl*.
-  extens=> i. 
-  under (@SumEq _ _ _ (`[0, Ncol])).
-  { move=>*; rewrite to_int_if; over. }
+  xwp; xval. xsimpl*. erewrite -> harray_fun_int_congr; try assumption; first xsimpl*.
+  move=> i Hi /=. xsum_normalize.
   case_if.
   { rewrite csr.sum_prod1E /=; apply SumEq=> >; indomE.
     case: classicT=> // /[swap]? []; exists (Unary.index i midx); indomE=> /=.
     splits; try tauto. 
     { rewrite -len_midx Unary.index_mem //; splits*; exact/(Unary.indexG0). }
     { by rewrite Unary.nth_index. } }
-  { erewrite SumEq=> [|?]; first exact/Sum0s.
+  { rewrite -> SumEq with (G:=fun=> 0)=> [|?]; first by rewrite Sum0s.
     indomE; case: classicT=> // -[?]; indomE=> /=-[?][*]. 
     case: C; subst; apply/nth_In; math. }
 Qed.
@@ -370,8 +331,8 @@ Lemma spmspv_spec `{Inhab D} `{H__ : Inhab (labeled int)}
      (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_midx, midx)⟨2, i⟩) \*
      (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_colind, colind)⟨2, i⟩) \*
      (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_rowptr, rowptr)⟨2, i⟩) \*
-     (\*_(i <- `[0, Ncol]) arr(y_ind, yind)⟨3, (0,i)⟩) \* 
-     (\*_(i <- `[0, Ncol]) arr(y_val, yval)⟨3, (0,i)⟩) }}
+     (\*_(i <- `{0} \x `[0, Ncol]) arr(y_ind, yind)⟨3, i⟩) \* 
+     (\*_(i <- `{0} \x `[0, Ncol]) arr(y_val, yval)⟨3, i⟩) }}
   [{
     {1| ld in `{(0,0)}                 => spmspv x_colind y_ind x_mval y_val x_rowptr x_midx};
     {2| ld in `[0, Nrow] \x `[0, Ncol] => get x_mval x_midx x_colind x_rowptr ld.1 ld.2};
@@ -382,29 +343,21 @@ Lemma spmspv_spec `{Inhab D} `{H__ : Inhab (labeled int)}
     harray_fun_int (fun i => Σ_(j <- `[0, Ncol]) hv[`2]((i, j)) * hv[`3]((0, j))) p Nrow (Lab (1,0) (0,0)))
       \* \Top }}.
 Proof with (try seclocal_fold; seclocal_solver).
+  xset_Inv Inv 1; xset_R_core int R1 2; xset_R_core int R2 3. xset_clean Inv R1 R2.
   xfocus (2,0) (indom (midx \x `[0, Ncol])).
   rewrite (hbig_fset_part (`[0, Nrow] \x `[0, Ncol]) (indom (midx \x `[0, Ncol]))). (* TODO: move to xfocus *)
-  xapp get_spec_out=> [[?][>]|].
-  { rewrite /(_ ∖ _). do ? indomE=> //=; autos*. }
-  repeat (set (HHQ := hbig_fset hstar (_ ∖ _) _); xframe HHQ; clear HHQ).
+  xapp get_spec_out=> //. 1: case=> ??; indomE; tauto.
+  xdrain_unused.
   have E : (`[0, Nrow] \x `[0, Ncol]) ∩ indom (midx \x `[0, Ncol]) = midx \x `[0, Ncol].
   { rewrite -prod_intr_list_on_1. f_equal. now apply intr_list. }
   rewrite E (fset_of_list_nodup 0 nodup_midx) len_midx prod_Union_distr.
   rewrite -(Union_same Nidx (`{0} \x `[0, Ncol])) //.
   xin (1,0) : (xwp; xapp (@htriple_alloc0_unary)=> // s)...
-  rewrite -?hbig_fset_hstar -3?(hstar_assoc _ _ (hbig_fset hstar _ (fun _ => _ \* _))).
-  rewrite -?hbig_fset_hstar.
-  match goal with 
-    |- context [(_ \* ?a \* ?b \* ?c \* ?d \* ?e \* ?h \* (hbig_fset _ _ ?f) \* (hbig_fset _ _ ?g))] => 
-      pose (Inv (i : int) := a \* b \* c \* d \* e \* h); pose (R1 := f)
-  end.
-  set (R2 := fun i : Dom => arr(y_ind, yind)⟨3, i⟩ \* arr(y_val, yval)⟨3, i⟩).
   xfor_specialized2 Inv R1 R1 R2 R2 
     (fun hv (i : int) => (If (In i midx) then Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * hv[`3]((0,j.2))) else 0)) (fun=> 0) midx s.
   { intros. apply midx_leq, nth_In; math. }
   { case: classicT=> [?|/(_ (nth_In _ _ _))]; last lia.
     xin (2,0) : rewrite wp_prod_single /=.
-    rewrite /Inv.
     xin (1,0) : do 4 (xwp; xapp)...
     xsubst (snd : _ -> int).
     xfocus (2,0); rewrite -> ! hbig_fset_hstar.
@@ -416,28 +369,19 @@ Proof with (try seclocal_fold; seclocal_solver).
     xnapp sv.sv_dotprod_spec...
     1-3: lia. 
     { by rewrite /slice -len_xind slice_fullE. }
-    { move=> ?/in_interval_list... }
     { move=> ?; rewrite /slice -len_xind slice_fullE... }
-    move=> ?; rewrite -wp_equiv. xsimpl=>->.
-    xapp @lhtriple_array_set_pre.
-    rewrite csr.sum_prod1E. xsimpl. }
+    xsimpl=>->. xapp @lhtriple_array_set_pre. rewrite csr.sum_prod1E. xsimpl. }
   { intros. now case_if. }
-  { rewrite Union_same //; xsimpl*. }
-  xwp; xval. xsimpl*.
-  match goal with
-    |- _ ==> harray_fun_int ?ff _ _ _ \\* _ => eapply eq_ind_r with (y:=ff)
-  end.
-  1: xsimpl*.
-  extens=> i. 
-  under (@SumEq _ _ _ (`[0, Ncol])).
-  { move=>*; rewrite to_int_if; over. }
+  { rewrite Union_same //; xsimpl*. xsimpl*. }
+  xwp; xval. xsimpl*. erewrite -> harray_fun_int_congr; try assumption; first xsimpl*.
+  move=> i Hi /=. xsum_normalize.
   case_if.
   { rewrite csr.sum_prod1E /=; apply SumEq=> >; indomE.
     case: classicT=> // /[swap]? []; exists (Unary.index i midx); indomE=> /=.
     splits; try tauto. 
     { rewrite -len_midx Unary.index_mem //; splits*; exact/(Unary.indexG0). }
     { by rewrite Unary.nth_index. } }
-  { erewrite SumEq=> [|?]; first exact/Sum0s.
+  { rewrite -> SumEq with (G:=fun=> 0)=> [|?]; first by rewrite Sum0s.
     indomE; case: classicT=> // -[?]; indomE=> /=-[?][*]. 
     case: C; subst; apply/nth_In; math. }
 Qed. 

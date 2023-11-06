@@ -2174,7 +2174,7 @@ Tactic Notation "xfor_sum_cong_solve" uconstr(op) :=
 Tactic Notation "xfor_sum" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(s) :=
   eapply (@xfor_big_op_lemma _ _ Inv R R' op s); 
   [ let L := fresh in 
-    intros ?? L;
+    intros ?? L; rewrite ?/Inv ?/R ?/R';
     xnsimpl
   | disjointE
   | xfor_sum_cong_solve op
@@ -2306,20 +2306,21 @@ Ltac xset_Inv_core Inv i H :=
     xset_Inv_core1 Inv ((@harray_float _ L p (Lab (i%Z, 0) x))) H
   end.
 
-Ltac xset_clean Inv R := 
+Tactic Notation "xset_clean" ident(ia) ident(ib) ident(ic) := 
   repeat multimatch goal with 
   | H := ?b |- _ => 
     (* idtac H; *)
-    tryif constr_eq_strict H Inv then fail else
-    tryif constr_eq_strict H R then fail else
+    tryif constr_eq_strict H ia then fail else
+    tryif constr_eq_strict H ib then fail else
+    tryif constr_eq_strict H ic then fail else
     unfold H; clear H
   end.
 
 Tactic Notation "xset_Inv" ident(Inv) constr(i) uconstr(H) := 
-  xset_Inv_core Inv i H; xset_clean Inv Inv.
+  xset_Inv_core Inv i H; xset_clean Inv Inv Inv.
 
 Tactic Notation "xset_Inv" ident(Inv) constr(i) := 
-  xset_Inv_core Inv i (239); xset_clean Inv Inv.
+  xset_Inv_core Inv i (239); xset_clean Inv Inv Inv.
 
 Tactic Notation "xset_R_core" constr(dom) ident(R) constr(i) := 
  set (R := fun (t : dom) => \[] : hhprop (labeled dom));
@@ -2333,7 +2334,7 @@ Tactic Notation "xset_R_core" constr(dom) ident(R) constr(i) :=
       let t := eval unfold R in R in 
       (* idtac t; *)
       match t with 
-      | fun=> \[] => set (R' := fun d => f d)
+      | (fun _ => \[]) => set (R' := f)
       | _  => set (R' := fun d => f d \* R d)
       end;
       unfold R in R';
@@ -2343,7 +2344,7 @@ Tactic Notation "xset_R_core" constr(dom) ident(R) constr(i) :=
   end.
 
 Tactic Notation "xset_R" constr(dom) ident(Inv) ident(R) constr(i) := 
-  xset_R_core dom R i; xset_clean R Inv.
+  xset_R_core dom R i; xset_clean R R Inv.
 
 Definition to_int (v : val) : int := 
   match v with 

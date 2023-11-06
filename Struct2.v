@@ -18,6 +18,24 @@ Definition harray_fun_float {D : Type} (f:int -> binary64) (p:loc) (n:int) (d : 
 Definition harray_fun_float' {D : Type} (f:int -> binary64) (p:loc) (n:int) (d : D) : hhprop D :=
   harray_float' (projT1 (list_of_fun' f n)) p d.
 
+Fact harray_fun_congr {D : Type} (f g:int -> val) (p:loc) (n:int) (d : D) (Hn : 0 <= n)
+  (Hcong : forall i, 0 <= i < n -> f i = g i) : harray_fun f p n d = harray_fun g p n d.
+Proof.
+  rewrite /harray_fun/harray.
+  destruct (list_of_fun' _ _) as (l1 & Hlen1 & Hl1); simpl.
+  destruct (list_of_fun' _ _) as (l2 & Hlen2 & Hl2); simpl.
+  rewrite !length_List_length. do 2 f_equal; try math.
+  apply (List.nth_ext _ _ val_uninit val_uninit); try math.
+  intros i Hi. replace i with (abs i) by math. rewrite -> Hl1, -> Hl2; try math.
+  apply Hcong. math.
+Qed.
+
+Fact harray_fun_int_congr {D : Type} (f g:int -> int) (p:loc) (n:int) (d : D) (Hn : 0 <= n)
+  (Hcong : forall i, 0 <= i < n -> f i = g i) : harray_fun_int f p n d = harray_fun_int g p n d.
+Proof. 
+  rewrite /harray_fun_int/harray_int ?map_conversion -?lof_indices -?/(harray_fun _ _ _ _). 
+  apply harray_fun_congr; auto. intros. simpl. f_equal. by apply Hcong.
+Qed.
 
 Section memset_alloc.
 

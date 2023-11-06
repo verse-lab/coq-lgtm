@@ -149,8 +149,7 @@ Proof with fold'.
   have E : `[0,M] ∩ xind = xind by apply intr_list.
   rewrite E (fset_of_list_nodup 0) // len_xind.
   xfor_sum Inv R (fun=> \Top) (fun hv i => hv[`2](xind[i])) s.
-  { rewrite /Inv/R.
-    (xin (1,0): (xwp; xapp; xapp (@incr.spec _ H)=> y))...
+  { (xin (1,0): (xwp; xapp; xapp (@incr.spec _ H)=> y))...
     xapp get_spec_in=> //; xsimpl*. }
   { move=> Neq ???; apply/Neq. 
     move/NoDup_nthZ: nodup_xind; apply; autos*; math. }
@@ -204,8 +203,7 @@ Proof with fold'.
   have E : `[0,M] ∩ xind = xind by apply intr_list.
   rewrite E (fset_of_list_nodup 0) // len_xind.
   xfor_sum Inv R (fun=> \Top) (fun hv i => (hv[`2](xind[i]) * dvec[xind[i] ])) s.
-  { rewrite /Inv /R.
-    (xin (1,0): do 4 (xwp; xapp); xapp (@incr.spec _ H)=> y)...
+  { (xin (1,0): do 4 (xwp; xapp); xapp (@incr.spec _ H)=> y)...
     xapp get_spec_in=> //; xsimpl*. }
   { move=> Neq ???; apply/Neq. 
     move/NoDup_nthZ: nodup_xind; apply; autos*; math. }
@@ -223,13 +221,6 @@ End coo_vec.
 
 
 Module coo. 
-Lemma hbig_fset_part {D A : Type} (fs : fset A) (P : A -> Prop) : 
-  @hbig_fset D _ hstar fs = 
-  fun H => hbig_fset hstar (fs ∩ P) H \* @hbig_fset D _ hstar (fs ∖ P) H.
-Proof.
-  apply/fun_ext_1=> ?; rewrite -hbig_fset_union // ?fs_pred_part //.
-  exact/fs_pred_part_disj.
-Qed.
 
 Notation "H1 '\\*' H2" := (hstar H1 H2)
   (at level 42, right associativity, format "H1  \\* '//' H2") : hprop_scope.
@@ -378,8 +369,7 @@ Proof with fold'.
     indomE. rewrite -fset_of_list_in /Sum.mem in_combineE /=. tauto. }
   rewrite ?E (fset_of_list_nodup (0,0)) // lE.
   xfor_sum Inv R (fun=> \Top) (fun hv i => hv[`2]((xrow[i], xcol[i]))) s.
-  { rewrite /Inv /R.
-    (xin (1,0): (xwp; xapp; xapp (@incr.spec _ H)=> y))...
+  { (xin (1,0): (xwp; xapp; xapp (@incr.spec _ H)=> y))...
     rewrite ?combine_nth /=; try lia.
     xapp get_spec_in=> //; xsimpl*. }
   { move=> Neq ???; apply/Neq. 

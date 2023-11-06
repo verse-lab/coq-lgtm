@@ -7,17 +7,8 @@ Hint Rewrite conseq_cons' : rew_listx.
 Open Scope Z_scope.
 
 
-Definition to_int (v : val) : int := 
-  match v with 
-  | val_int i => i 
-  | _ => 0
-  end.
 
 Coercion to_int : val >-> Z.
-
-Lemma to_int_if P a b : 
-  to_int (If P then a else b) = If P then a else b.
-Proof. by case: classicT. Qed.
 
 Section pure_facts.
 
