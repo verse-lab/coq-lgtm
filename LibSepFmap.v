@@ -2826,6 +2826,20 @@ Proof.
   rewrite ?fmapU_nin1 // ?indom_union_eq ?indom_single_eq; autos*.
 Qed.
 
+Lemma interval_union y x z : 
+  x <= y -> 
+  y <= z -> interval x y \+ interval y z = interval x z.
+Proof.
+  move=> +?.
+  induction_wf IH: (upto y) x; rewrite /upto le_zarith lt_zarith in IH.
+  move=> ?.
+  case: (prop_inv (x = y))=> [->|?].
+  { rewrite intervalgt; rew_fmap=> //; lia. }
+  rewrite intervalU -?update_union_not_r' ?IH -?intervalU  //; try by lia.
+Qed.
+
+Arguments interval_union : clear implicits.
+
 Lemma fsubst_union_valid {A B C : Type}  `{Inhab B} (fm1 fm2 : fmap A B) (f : A -> C) :
   valid_subst fm1 f ->
   valid_subst fm2 f ->

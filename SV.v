@@ -190,7 +190,7 @@ Lemma sum_spec `{Inhab D} (x_ind x_val : loc) (s : int) :
      (\*_(i <- `[0, M]) arr(x_val, xval)⟨2, i⟩) }}
   [{
     [1| ld in `{0}         => sum x_ind x_val lb rb];
-    {2| ld in `[0, M]          => get ld x_ind x_val lb rb}
+    {2| ld in `[0, M]      => get ld x_ind x_val lb rb}
   }]
   {{ hv, (\[hv[`1](0) = Σ_(i <- `[0, M]) hv[`2](i)] \* 
       arr(x_ind, xind)⟨1, 0⟩ \*
@@ -647,8 +647,8 @@ Proof with fold'.
           rewrite In_merge=> -[/xind_leq|/yind_leq]; lia. }
         rewrite /cond; bool_rew; do ? split; rewrite ?xindE ?yindE ?Z.sub_diag...
         { rewrite merge_nth0... }
-        { move=> ?/(In_le_0 _ _ sorted_xind); rewrite -/sxind; lia. }
-        move=> ?/(In_le_0 _ _ sorted_yind); rewrite -/syind; lia. }
+        { move=> ?/(In_le_0 _ sorted_xind); rewrite -/sxind; lia. }
+        move=> ?/(In_le_0 _ sorted_yind); rewrite -/syind; lia. }
     rewrite /H2/H1 ?E (fset_of_list_nodup 0) // /R1 /R2.
     rewrite -> ?hbig_fset_hstar; xsimpl*. }
   simpl=> v; rewrite /op/R1/R2/Inv/arr1/arrs/H2/H1 E -fset_of_list_nodup //.
