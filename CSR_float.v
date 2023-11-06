@@ -332,16 +332,9 @@ Proof with (try seclocal_fold; seclocal_solver).
     { xwp; xval. xsimpl*. }
 Qed.
 
-Hint Resolve htriple_allocf0_unary' : htriple.
-Hint Rewrite @filter_indom : indomE.
 Ltac xapp_big E := 
   rewrite -> ! hbig_fset_hstar;
   xapp E=> //; rewrite -?hbig_fset_hstar.
-
-Ltac xcleanup_unsued := 
-  rewrite -> ! hbig_fset_hstar;
-  (repeat let HH := fresh "uselessheap" in set (HH := hbig_fset hstar (_ ∖ _) _); xframe2 HH; clear HH; xsimpl);
-  rewrite -!hbig_fset_hstar.
 
 Definition spmv' := 
   <{
@@ -375,76 +368,6 @@ Proof. intros H Ha Hb Hc. enough (abs i = abs j) by math. revert Hc. rewrite NoD
 Hint Resolve sv_float.lhtriple_free : lhtriple.
 Hint Resolve lhtriple_array_set_pre : lhtriple.
 
-Tactic Notation "xset_Inv_core1" ident(Inv) constr(h) constr(H) := 
-    (* idtac h; *)
-    let Inv1 := fresh "Inv" in 
-    set (Inv1 := h);
-    match constr:(h) with 
-    | context[H] => idtac
-    | _ =>
-      let Inv_tmp := fresh "Inv" in 
-      (* idtac "AA"; *)
-      set (Inv_tmp := fun d => Inv1 \* Inv d);
-      (* idtac "BB"; *)
-      unfold Inv1, Inv in Inv_tmp;
-      clear Inv; rename Inv_tmp into Inv
-    end.
-Ltac xset_Inv_core Inv i H := 
-repeat match goal with 
-| |- context[@hsingle _ ?p (Lab (i%Z, 0) ?x) ?v] =>
-  let t := type of x in
-  (try set (Inv := fun (k: int) => \[] : (hhprop (labeled t))));
-  xset_Inv_core1 Inv ((@hsingle _ p (Lab (i%Z, 0) x) v)) H
-| |- context[@harray_int _ ?L ?p (Lab (i%Z, 0) ?x)] =>
-  let t := type of x in
-  (* idtac "AA";  *)
-  (try set (Inv := fun (k: int) => \[] : (hhprop (labeled t))));
-  (* idtac "BB";  *)
-  xset_Inv_core1 Inv ((@harray_int _ L p (Lab (i%Z, 0) x))) H
-| |- context[@harray_float _ ?L ?p (Lab (i%Z, 0) ?x)] =>
-  let t := type of x in
-  (try set (Inv := fun (k: int) => \[] : (hhprop (labeled t))));
-  xset_Inv_core1 Inv ((@harray_float _ L p (Lab (i%Z, 0) x))) H
-end.
-Ltac xset_clean Inv R := 
-repeat multimatch goal with 
-| H := ?b |- _ => 
-  (* idtac H; *)
-  tryif constr_eq_strict H Inv then fail else
-  tryif constr_eq_strict H R then fail else
-  unfold H; clear H
-end.
-
-Tactic Notation "xset_Inv" ident(Inv) constr(i) uconstr(H) := 
-  xset_Inv_core Inv i H; xset_clean Inv Inv.
-
-Tactic Notation "xset_Inv" ident(Inv) constr(i) := 
-  xset_Inv_core Inv i (239); xset_clean Inv Inv.
-
-Tactic Notation "xset_R_core" constr(dom) ident(R) constr(i) := 
-   set (R := fun (t : dom) => \[] : hhprop (labeled dom));
-    repeat match goal with 
-    | |- context[hbig_fset _ _ ?f] =>
-      match f with 
-      | context[(i, 0)] =>
-        let f' := fresh "f" in 
-        set (f' := f);
-        let R' := fresh "R" in 
-        let t := eval unfold R in R in 
-        (* idtac t; *)
-        match t with 
-        | fun=> \[] => set (R' := fun d => f d)
-        | _  => set (R' := fun d => f d \* R d)
-        end;
-        unfold R in R';
-        clear R; rename R' into R
-      | _ => fail
-      end
-    end.
-
-Tactic Notation "xset_R" constr(dom) ident(Inv) ident(R) constr(i) := 
-  xset_R_core dom R i; xset_clean R Inv.
-
 Lemma spmv_spec' `{Inhab (labeled int)} `{Inhab D} (x_mval x_colind x_rowptr x_dvec : loc) : 
   {{ .arr(x_mval, mval)⟨1, (0,0)⟩ \*
      arr(x_colind, colind)⟨1, (0,0)⟩ \*
@@ -470,16 +393,16 @@ Proof with (try seclocal_fold; seclocal_solver; try lia).
   xfor_specialized_normal_float' Inv R R (fun hv i => (Sum_fma float_unit (lof id Ncol) (fun j => (to_float (hv[`2]((i, j))), dvec[j])))) (fun=> float_unit) s.
   { xin (2,0) : rewrite wp_prod_single /=...
     xin (1,0) : (xwp; xapp=> tmp; do 3 (xwp; xapp))...
-    xsubst (snd : _ -> int)... 
+    xsubst (snd : _ -> int)...
+    clear Inv R. xset_Inv Inv 1 tmp. xset_R int Inv R 2%Z.
     xfocus (2,0) (colind_seg l0); rewrite (hbig_fset_part (`[0, Ncol]) (colind_seg l0)).
-    xapp_big sv_float.get_spec_out...    
-    { case=> >; rewrite /LibSepFmap.intr; indomE=> //; autos*. }
-    xin (1,0) : idtac; clear Inv.
+    xapp_big sv_float.get_spec_out... 1: case=>??; indomE; autos*.
+    xin (1,0) : idtac.
     have Hl : length (colind_seg l0) = rowptr[l0 + 1] - rowptr[l0] :> int.
     1: rewrite /colind_seg list_interval_length...
     rewrite intr_list ?(fset_of_list_nodup 0) ?Hl ?sv_float.Union_interval_change2...
     2: intros x0 Hin; eapply colind_leq, in_interval_list; eauto.
-    xcleanup_unsued; xset_Inv Inv 1 tmp; xset_R int Inv R 2%Z.
+    xcleanup_unused*. 
     xfor_sum_fma Inv R R (fun hv i => (to_float (hv[`2](colind[i])), dvec[colind[i] ])) tmp.
     { rewrite /Inv /R.
       (xin (1,0): do 3 (xwp; xapp); xapp (@fma.spec)=> y)... 

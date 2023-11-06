@@ -502,7 +502,6 @@ Qed.
 
 End WithLoops.
 
-(* TODO possibly, reuse some parts from xfor_sum? *)
 Global Tactic Notation "xfor_specialized_normal" constr(Inv) constr(R) uconstr(R') uconstr(op) uconstr(f) constr(s) :=
   eapply (@xfor_lemma_gen_array_fun_normal _ _ Inv R R' _ _ _ s f op);
   [ intros ??; rewrite ?/Inv ?/R ?/R';
@@ -510,14 +509,7 @@ Global Tactic Notation "xfor_specialized_normal" constr(Inv) constr(R) uconstr(R
   | 
   |
   |
-  | let hvE := fresh "hvE" in
-    let someindom := fresh "someindom" in
-    intros ???? hvE; rewrite ?/op; indomE;
-    match goal with 
-    | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
-    | _ => idtac
-    end; try setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
-      (first [ apply someindom | idtac ])]
+  | xfor_sum_cong_solve op
   |
   | try lia
   |

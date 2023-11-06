@@ -2947,17 +2947,28 @@ Definition intr {A : Type} (fs : fset A) (b : A -> Prop) : fset A := (filter (fu
 Infix "∩" := intr (at level 30).
 Notation "fs '∖' p" := (intr fs (not \o p)) (at level 30).
 
+Lemma intr_indom {A : Type} (fs : fset A) (P : A -> Prop) y : 
+  indom (fs ∩ P) y = (indom fs y /\ P y).
+Proof. extens. rewrite /intr ?filter_indom //=. Qed.
+
+Lemma intr_neg_indom {A : Type} (fs : fset A) (P : A -> Prop) y : 
+  indom (fs ∖ P) y = (indom fs y /\ ~ P y).
+Proof. extens. rewrite /intr ?filter_indom //=. Qed.
+
+Definition intr_indom_both {A : Type} (fs : fset A) (P : A -> Prop) y := 
+  pair (@intr_indom A fs P y) (@intr_neg_indom A fs P y).
+
 Lemma fs_pred_part {A : Type} (fs : fset A) (p : A -> Prop) : 
   fs ∩ p \+ fs ∖ p = fs.
 Proof.
-  apply/fset_extens=> x; split; rewrite indom_union_eq /intr ?filter_indom /=; firstorder.
+  apply/fset_extens=> x; split; rewrite indom_union_eq ?intr_indom_both /=; firstorder.
   case: (classicT (p x)); firstorder.
 Qed.
 
 Lemma fs_pred_part_disj {A : Type} (fs : fset A) (p : A -> Prop) : 
   \# (fs ∩ p) (fs ∖ p).
 Proof.
-  apply/disjoint_of_not_indom_both=> ?; rewrite /intr ?filter_indom/=; firstorder.
+  apply/disjoint_of_not_indom_both=> ?; rewrite ?intr_indom_both/=; firstorder.
 Qed.
 
 Notation "'`{' i '}'" := (single i tt) (at level 10, format "`{ i }").

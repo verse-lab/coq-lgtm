@@ -630,18 +630,18 @@ Proof.
   apply/wp_equiv/htriple_conseq; last apply/Impl; eauto.
   apply/htriple_union=> //.
   { introv hE. xsimpl=> hf ?? /[dup]/hf<- // ? /[! hE] //.
-    by rewrite /intr filter_indom. }
+    by rewrite intr_indom_both. }
   { introv hE. xsimpl=> hf ?? /[dup]/hf<- // ? /[! hE] //.
-    by rewrite /intr filter_indom. }
+    by rewrite intr_indom_both. }
   { rewrite -wp_equiv (wp_ht_eq _ t1) 1?wp_equiv.
     { apply/htriple_conseq; eauto. 
       by xsimpl=> ? E ?? /E. }
-    move=> ?; rewrite /intr filter_indom=> -[?].
+    move=> ?; rewrite intr_indom_both=> -[?].
     by case: (b _). }
   rewrite -wp_equiv (wp_ht_eq _ t2) 1?wp_equiv.
   { apply/htriple_conseq; eauto. 
     by xsimpl=> ? E ?? /E. }
-  move=> ?; rewrite /intr filter_indom=> -[?] /=.
+  move=> ?; rewrite intr_indom_both=> -[?] /=.
   by case: (b _).
 Qed.
 
@@ -703,7 +703,7 @@ rewrite wp_equiv.
 apply/htriple_if_dep; rewrite -wp_equiv.
 { apply/xapp_lemma.
   { apply/(htriple_array_get _ _ _ L); last reflexivity.
-    move=> ?. rewrite /intr filter_indom=> -[] ?; math. }
+    move=> ?. rewrite intr_indom_both=> -[] ?; math. }
   unfold protect.
   xsimpl=> f-> d.
   replace (abs (abs (i d))) with (abs (i d)); [| math].

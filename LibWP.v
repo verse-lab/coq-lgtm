@@ -8898,7 +8898,7 @@ Lemma xfocus_pred_lemma (p : D -> Prop) (l : labType) fs_hts (Q : (HD -> val) ->
 Proof.
   move=> fs_ht fs ht.
   have sb: forall x P, indom ⟨l, intr fs P⟩ x -> indom ⟨l, fs⟩ x.
-  { case=> ???; by rewrite ?indom_label_eq /intr filter_indom=> -[->][]. }
+  { case=> ???; by rewrite ?indom_label_eq intr_indom_both=> -[->][]. }
   rewrite (@wp_ht_eq HD _ _ (ht_of (el (lookup fs_hts l)))).
   { apply: himpl_trans_r.
     rewrite /nwp (fset_htrm_lookup_remove l fs_hts) -/fs_ht -/fs. 
@@ -8914,7 +8914,7 @@ Proof.
           { rewrite /lookup/lookup' /=.
             rewrite htrm_of''E // -fset_of''E.
             move: IN; rewrite /fs /fs_ht /lookup' /=.
-            rewrite /intr filter_indom; autos*. }
+            rewrite intr_indom_both; autos*. }
           apply/sb; rewrite indom_label_eq; eauto. }
         rewrite indom_union_eq=> /[swap]-[].
         { by rewrite indom_label_eq=> -[->]?[]. }
@@ -8959,10 +8959,10 @@ Proof.
     { rewrite uni_nin.
       { rewrite /uni; do ? case: classicT=> //=.
         by rewrite eqbxx. }
-      rewrite indom_label_eq /intr filter_indom /=. autos*. }
+      rewrite indom_label_eq intr_indom_both /=. autos*. }
     rewrite /uni; case: classicT=> // ?.
     case: classicT=> //=.
-    { rewrite indom_union_eq indom_label_eq /intr filter_indom=> -[]; autos*.
+    { rewrite indom_union_eq indom_label_eq intr_indom_both=> -[]; autos*.
       by move/indom_remove. }
     rewrite ?eqbxx; by case: classicT. }
   rewrite lab_fun_upd_neq; eauto.

@@ -2149,7 +2149,7 @@ End WithLoops.
 Global Hint Rewrite @disjoint_single disjoint_interval disjoint_single_interval 
   disjoint_interval_single @disjoint_eq_label @disjoint_label @disjoint_prod : disjointE.
 
-Hint Rewrite @indom_label_eq @indom_union_eq @indom_prod @indom_interval @indom_single_eq : indomE.
+Hint Rewrite @indom_label_eq @indom_union_eq @indom_prod @indom_interval @indom_single_eq @intr_indom @intr_neg_indom : indomE.
 
 Ltac indomE := autorewrite with indomE.
 
@@ -2161,20 +2161,23 @@ Ltac disjointE :=
   indomE;
   autorewrite with disjointE; try lia; try eqsolve.
 
-  Tactic Notation "xfor_sum" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(s) :=
-  eapply (@xfor_big_op_lemma _ _ Inv R R' op s); 
-  [ let L := fresh in 
-    intros ?? L;
-    xnsimpl
-  | disjointE
-  | let hvE := fresh "hvE" in
+Tactic Notation "xfor_sum_cong_solve" uconstr(op) :=
+  let hvE := fresh "hvE" in
   let someindom := fresh "someindom" in
   intros ???? hvE; rewrite ?/op; indomE;
   match goal with 
   | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
   | _ => idtac
-  end; try setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
-    (first [ apply someindom | idtac ])]
+  end; try (setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
+    (first [ apply someindom | idtac ])]).
+
+Tactic Notation "xfor_sum" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(s) :=
+  eapply (@xfor_big_op_lemma _ _ Inv R R' op s); 
+  [ let L := fresh in 
+    intros ?? L;
+    xnsimpl
+  | disjointE
+  | xfor_sum_cong_solve op
   |
   | try lia
   |
@@ -2223,6 +2226,18 @@ Tactic Notation "xframe2" uconstr(QH) :=
     ]; clear Q HEQ
   ).
 
+Tactic Notation "xcleanup_unused" := 
+  (repeat let HH := fresh "uselessheap" in set (HH := hbig_fset hstar (_ ∖ _) _); xframe2 HH; clear HH).
+
+Tactic Notation "xcleanup_unused" "*" :=
+  rewrite -> ! hbig_fset_hstar; xcleanup_unused; rewrite -!hbig_fset_hstar; xsimpl.
+
+Tactic Notation "xdrain_unused" := 
+  (repeat let HH := fresh "uselessheap" in set (HH := hbig_fset hstar (_ ∖ _) _); xframe HH; clear HH).
+
+Tactic Notation "xdrain_unused" "*" :=
+  rewrite -> ! hbig_fset_hstar; xdrain_unused; rewrite -!hbig_fset_hstar.
+
 Ltac xwhile1 Z N b Inv := 
   let N := constr:(N) in
   let Z := constr:(Z) in 
@@ -2257,3 +2272,99 @@ Tactic Notation "xwhile_sum"
   |
   |
   ].
+
+Tactic Notation "xset_Inv_core1" ident(Inv) constr(h) constr(H) := 
+  (* idtac h; *)
+  let Inv1 := fresh "Inv" in 
+  set (Inv1 := h);
+  match constr:(h) with 
+  | context[H] => idtac
+  | _ =>
+    let Inv_tmp := fresh "Inv" in 
+    (* idtac "AA"; *)
+    set (Inv_tmp := fun d => Inv1 \* Inv d);
+    (* idtac "BB"; *)
+    unfold Inv1, Inv in Inv_tmp;
+    clear Inv; rename Inv_tmp into Inv
+  end.
+
+Ltac xset_Inv_core Inv i H := 
+  repeat match goal with 
+  | |- context[@hsingle _ ?p (Lab (i%Z, 0) ?x) ?v] =>
+    let t := type of x in
+    (try set (Inv := fun (k: int) => \[] : (hhprop (labeled t))));
+    xset_Inv_core1 Inv ((@hsingle _ p (Lab (i%Z, 0) x) v)) H
+  | |- context[@harray_int _ ?L ?p (Lab (i%Z, 0) ?x)] =>
+    let t := type of x in
+    (* idtac "AA";  *)
+    (try set (Inv := fun (k: int) => \[] : (hhprop (labeled t))));
+    (* idtac "BB";  *)
+    xset_Inv_core1 Inv ((@harray_int _ L p (Lab (i%Z, 0) x))) H
+  | |- context[@harray_float _ ?L ?p (Lab (i%Z, 0) ?x)] =>
+    let t := type of x in
+    (try set (Inv := fun (k: int) => \[] : (hhprop (labeled t))));
+    xset_Inv_core1 Inv ((@harray_float _ L p (Lab (i%Z, 0) x))) H
+  end.
+
+Ltac xset_clean Inv R := 
+  repeat multimatch goal with 
+  | H := ?b |- _ => 
+    (* idtac H; *)
+    tryif constr_eq_strict H Inv then fail else
+    tryif constr_eq_strict H R then fail else
+    unfold H; clear H
+  end.
+
+Tactic Notation "xset_Inv" ident(Inv) constr(i) uconstr(H) := 
+  xset_Inv_core Inv i H; xset_clean Inv Inv.
+
+Tactic Notation "xset_Inv" ident(Inv) constr(i) := 
+  xset_Inv_core Inv i (239); xset_clean Inv Inv.
+
+Tactic Notation "xset_R_core" constr(dom) ident(R) constr(i) := 
+ set (R := fun (t : dom) => \[] : hhprop (labeled dom));
+  repeat match goal with 
+  | |- context[hbig_fset _ _ ?f] =>
+    match f with 
+    | context[(i, 0)] =>
+      let f' := fresh "f" in 
+      set (f' := f);
+      let R' := fresh "R" in 
+      let t := eval unfold R in R in 
+      (* idtac t; *)
+      match t with 
+      | fun=> \[] => set (R' := fun d => f d)
+      | _  => set (R' := fun d => f d \* R d)
+      end;
+      unfold R in R';
+      clear R; rename R' into R
+    | _ => fail
+    end
+  end.
+
+Tactic Notation "xset_R" constr(dom) ident(Inv) ident(R) constr(i) := 
+  xset_R_core dom R i; xset_clean R Inv.
+
+Definition to_int (v : val) : int := 
+  match v with 
+  | val_int i => i 
+  | _ => 0
+  end.
+
+Lemma to_int_if P a b : 
+  to_int (If P then a else b) = If P then to_int a else to_int b.
+Proof. by case: classicT. Qed.
+
+Tactic Notation "xsum_normalize" :=
+  repeat match goal with
+  | |- val_int _ = val_int _ => f_equal
+  | |- context[@Sum ?A ?ffs ?ff] => 
+    match ff with
+    | context[to_int (If _ then _ else _)] => 
+      erewrite (@SumEq A ff _ ffs) by (move=>*; rewrite -> to_int_if; simpl to_int; reflexivity)
+    (* probably, use autorewrite instead *)
+    | (fun _ => (If _ then _ else _)) => rewrite -> SumIf with (fs:=ffs)
+    | (fun _ => 0) => rewrite Sum0s ?Z.add_0_r ?Z.add_0_l
+    (* | (fun _ => ?c) => is_const c; rewrite SumConst ?interval_size *)
+    end
+  end.

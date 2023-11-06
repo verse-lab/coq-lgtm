@@ -365,14 +365,7 @@ Tactic Notation "xfor_sum_float" constr(Inv) constr(R) uconstr(R') uconstr(op) c
     intros ?? L;
     xnsimpl
   | disjointE
-  | let hvE := fresh "hvE" in
-    let someindom := fresh "someindom" in
-    intros ???? hvE; rewrite ?/op; indomE;
-    match goal with 
-    | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
-    | _ => idtac
-    end; try (setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
-      (first [ apply someindom | idtac ])])
+  | xfor_sum_cong_solve op
   |
   | try lia
   |
@@ -392,14 +385,7 @@ Tactic Notation "xfor_sum_fma" constr(Inv) constr(R) uconstr(R') uconstr(op) con
     intros ?? L;
     xnsimpl
   | disjointE
-  | let hvE := fresh "hvE" in
-    let someindom := fresh "someindom" in
-    intros ???? hvE; rewrite ?/op; indomE;
-    match goal with 
-    | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
-    | _ => idtac
-    end; try (setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
-      (first [ apply someindom | idtac ])])
+  | xfor_sum_cong_solve op
   |
   | try lia
   |
