@@ -5617,6 +5617,78 @@ Proof using.
   }
   { auto. }
 Qed.
+
+Lemma eval_like_app_fun4 {D:Type} : forall fs (x1 x2 x3 x4 : D -> var) (t1 : D -> trm) (v1 v2 v3 v4 : D -> val),
+  (forall d, indom fs d -> 
+    ~ eq (x1 d) (x2 d) /\ 
+    ~ eq (x1 d) (x3 d) /\ 
+    ~ eq (x1 d) (x4 d) /\ 
+    ~ eq (x2 d) (x3 d) /\ 
+    ~ eq (x2 d) (x4 d) /\ 
+    ~ eq (x3 d) (x4 d)) ->
+  eval_like fs 
+    (fun d => (subst (x4 d) (v4 d) (subst (x3 d) (v3 d) (subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t1 d))))))
+    (fun d => (val_fun (x1 d) (trm_fun (x2 d) (trm_fun (x3 d) (trm_fun (x4 d) (t1 d))))) (v1 d) (v2 d) (v3 d) (v4 d)).
+Proof using.
+  introv N H. unfolds eval. destruct H as (H1 & H2). split; auto.
+  introv Hin. applys* eval1_app_args.
+  { applys* eval1_app_args.
+    { applys* eval1_app_args.
+      { applys eval1_app_fun. 1: reflexivity. 
+        simpl. specializes N Hin. repeat (case_var; try eqsolve).
+        applys eval1_fun. }
+      { applys* eval1_val. }
+      { applys eval1_app_fun. 1: reflexivity. 
+        simpl. specializes N Hin. repeat (case_var; try eqsolve).
+        applys eval1_fun. } }
+    { applys* eval1_val. }
+    { applys eval1_app_fun. 1: reflexivity. 
+      simpl. specializes N Hin. repeat (case_var; try eqsolve).
+      applys eval1_fun. } }
+  { applys* eval1_val. }
+  { applys* eval1_app_fun. }
+Qed.
+
+Lemma eval_like_app_fun5 {D:Type} : forall fs (x1 x2 x3 x4 x5 : D -> var) (t1 : D -> trm) (v1 v2 v3 v4 v5 : D -> val),
+  (forall d, indom fs d -> 
+      ~ eq (x1 d) (x2 d) /\
+      ~ eq (x1 d) (x3 d) /\
+      ~ eq (x1 d) (x4 d) /\
+      ~ eq (x1 d) (x5 d) /\
+      ~ eq (x2 d) (x3 d) /\
+      ~ eq (x2 d) (x4 d) /\
+      ~ eq (x2 d) (x5 d) /\
+      ~ eq (x3 d) (x4 d) /\
+      ~ eq (x3 d) (x5 d) /\
+      ~ eq (x4 d) (x5 d)) ->
+  eval_like fs 
+    (fun d => (subst (x5 d) (v5 d) (subst (x4 d) (v4 d) (subst (x3 d) (v3 d) (subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t1 d)))))))
+    (fun d => (val_fun (x1 d) (trm_fun (x2 d) (trm_fun (x3 d) (trm_fun (x4 d) (trm_fun (x5 d) (t1 d)))))) (v1 d) (v2 d) (v3 d) (v4 d) (v5 d)).
+Proof using.
+  introv N H. unfolds eval. destruct H as (H1 & H2). split; auto.
+  introv Hin. applys* eval1_app_args.
+  { applys* eval1_app_args.
+    { applys* eval1_app_args.
+      { applys* eval1_app_args.
+        { applys eval1_app_fun. 1: reflexivity. 
+          simpl. specializes N Hin. repeat (case_var; try eqsolve).
+          applys eval1_fun. }
+        { applys* eval1_val. }
+        { applys eval1_app_fun. 1: reflexivity. 
+          simpl. specializes N Hin. repeat (case_var; try eqsolve).
+          applys eval1_fun. } }
+      { applys* eval1_val. }
+      { applys eval1_app_fun. 1: reflexivity. 
+        simpl. specializes N Hin. repeat (case_var; try eqsolve).
+        applys eval1_fun. } }
+    { applys* eval1_val. }
+    { applys eval1_app_fun. 1: reflexivity. 
+      simpl. specializes N Hin. repeat (case_var; try eqsolve).
+      applys eval1_fun. } }
+  { applys* eval1_val. }
+  { applys* eval1_app_fun. }
+Qed.
+
 (*
 Definition is_binop (v : val) : bool := 
   match v with
@@ -5677,19 +5749,25 @@ Proof using.
   by apply eval_like_app_fun2. 
 Qed.
 
+Lemma wp_app_fun3 {D:Type} fs : forall v0 (v1 : D -> val) v2 v3 x1 x2 x3 t Q,
+  (v0 = fun d => val_fun (x1 d) (trm_fun (x2 d) (trm_fun (x3 d) (t d)))) ->
+  (forall d, var_eq (x1 d) (x2 d) = false /\ var_eq (x1 d) (x3 d) = false /\ var_eq (x2 d) (x3 d) = false) ->
+  wp fs (fun d => subst (x3 d) (v3 d) (subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t d)))) Q ==>
+  wp fs (fun d => (v0 d) (v1 d) (v2 d) (v3 d)) Q.
+Proof using.
+  introv EQ1 N. applys @wp_eval_like. 
+  rewrite EQ1.
+  apply eval_like_app_fun3.
+  all: intros d ?; rewrite -isTrue_eq_false_eq -var_eq_spec; apply N.
+Qed.
+
 (* Lemma wp_app_fix2 fs : forall f x1 x2 v0 v1 v2 t1 Q,
   (v0 = fun d => val_fix (f d) (x1 d) (trm_fun (x2 d) (t1 d))) ->
   (forall d, x1 d <> x2 d /\ f d <> x2 d) ->
   wp fs (fun d => subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (subst (f d) (v0 d) (t1 d)))) Q ==> wp fs (fun d => trm_app (v0 d) (v1 d) (v2 d)) Q.
 Proof using. introv EQ1 N. applys wp_eval_like. applys* eval_like_app_fix2. Qed. *)
 
-(* Lemma wp_app_fun3 : forall x1 x2 x3 v0 v1 v2 v3 t1 Q,
-  v0 = val_fun x1 (trm_fun x2 (trm_fun x3 t1)) ->
-  (x1 <> x2 /\ x1 <> x3 /\ x2 <> x3) ->
-  wp (subst x3 v3 (subst x2 v2 (subst x1 v1 t1))) Q ==> wp (trm_app v0 v1 v2 v3) Q.
-Proof using. introv EQ1 N. applys wp_eval_like. applys* eval_like_app_fun3. Qed.
-
-Lemma wp_app_fix3 : forall f x1 x2 x3 v0 v1 v2 v3 t1 Q,
+(* Lemma wp_app_fix3 : forall f x1 x2 x3 v0 v1 v2 v3 t1 Q,
   v0 = val_fix f x1 (trm_fun x2 (trm_fun x3 t1)) ->
   (x1 <> x2 /\ f <> x2 /\ f <> x3 /\ x1 <> x3 /\ x2 <> x3) ->
   wp (subst x3 v3 (subst x2 v2 (subst x1 v1 (subst f v0 t1)))) Q ==> wp (trm_app v0 v1 v2 v3) Q.
@@ -5721,7 +5799,10 @@ Lemma xwp_lemma_wp_fun2 {D:Type} : forall v0 v1 (v2 : D -> _) x1 x2 t H Q fs,
   H ==> wpgen fs (fun d => subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t d))) Q ->
   H ==> wp fs (fun d => (v0 d) (v1 d) (v2 d)) Q.
 Proof using.
-Admitted.
+  introv E M1 M2. eapply himpl_trans. 1: apply M2.
+  eapply himpl_trans. 2: apply wp_app_fun2; eauto. 2: intros d; rewrite -isTrue_eq_false_eq -var_eq_spec; apply M1.
+  by apply wpgen_sound.
+Qed.
 (*
 
 Lemma xwp_lemma_fix2 fs : forall f v0 v1 v2 x1 x2 t H Q,
@@ -5748,7 +5829,11 @@ Lemma xwp_lemma_fun3 {D:Type} : forall v0 (v1 : D -> val) v2 v3 x1 x2 x3 t H Q f
   H ==> wpgen fs (fun d => subst (x3 d) (v3 d) (subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t d)))) Q ->
   htriple fs (fun d => (v0 d) (v1 d) (v2 d) (v3 d)) H Q.
 Proof using.
-Admitted.
+  introv E M1 M2. rewrite <- wp_equiv. xchange M2.
+  set (w := @wpgen_sound D).
+  xchange (>> w (fun d => subst (x3 d) (v3 d) (subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t d)))) Q).
+  applys* @wp_app_fun3.
+Qed.
 
 Lemma xwp_lemma_fun4 {D:Type} : forall v0 v1 (v2 : D -> _) v3 v4 x1 x2 x3 x4 t H Q fs,
   (v0 = fun d => val_fun (x1 d) (trm_fun (x2 d) (trm_fun (x3 d) (trm_fun (x4 d) (t d))))) ->
@@ -5763,7 +5848,14 @@ Lemma xwp_lemma_fun4 {D:Type} : forall v0 v1 (v2 : D -> _) v3 v4 x1 x2 x3 x4 t H
   H ==> wpgen fs (fun d => subst (x4 d) (v4 d) (subst (x3 d) (v3 d) (subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t d))))) Q ->
   htriple fs (fun d => (v0 d) (v1 d) (v2 d) (v3 d) (v4 d)) H Q.
 Proof using.
-Admitted.
+  introv E M1 M2. rewrite <- wp_equiv. xchange M2.
+  set (w := @wpgen_sound D).
+  xchange (>> w (fun d => subst (x4 d) (v4 d) (subst (x3 d) (v3 d) (subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t d))))) Q).
+  applys @wp_eval_like. 
+  rewrite E.
+  apply eval_like_app_fun4.
+  all: intros d ?; rewrite -?isTrue_eq_false_eq -?var_eq_spec; apply M1.
+Qed.
 
 Lemma xwp_lemma_fun5 {D:Type} : forall v0 v1 (v2 : D -> _) v3 v4 v5 x1 x2 x3 x4 x5 t H Q fs,
   (v0 = fun d => val_fun (x1 d) (trm_fun (x2 d) (trm_fun (x3 d) (trm_fun (x4 d) (trm_fun (x5 d) (t d)))))) ->
@@ -5788,15 +5880,21 @@ Lemma xwp_lemma_fun5 {D:Type} : forall v0 v1 (v2 : D -> _) v3 v4 v5 x1 x2 x3 x4 
             (t d)))))) Q ->
   htriple fs (fun d => (v0 d) (v1 d) (v2 d) (v3 d) (v4 d) (v5 d)) H Q.
 Proof using.
-Admitted.
+  introv E M1 M2. rewrite <- wp_equiv. xchange M2.
+  set (w := @wpgen_sound D).
+  xchange (>> w (fun d => subst (x5 d) (v5 d) (subst (x4 d) (v4 d) (subst (x3 d) (v3 d) (subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t d)))))) Q).
+  applys @wp_eval_like. 
+  rewrite E.
+  apply eval_like_app_fun5.
+  all: intros d ?; rewrite -?isTrue_eq_false_eq -?var_eq_spec; apply M1.
+Qed.
 
 Lemma xwp_lemma_wp_fun3{D:Type}  : forall v0 v1 v2 (v3 : D -> _) x1 x2 x3 t H Q fs,
   (v0 = fun d => val_fun (x1 d) (trm_fun (x2 d) (trm_fun (x3 d) (t d)))) ->
   (forall d, var_eq (x1 d) (x2 d) = false /\ var_eq (x1 d) (x3 d) = false /\ var_eq (x2 d) (x3 d) = false) ->
   H ==> wpgen fs (fun d => subst (x3 d) (v3 d) (subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t d)))) Q ->
   H ==> wp fs (fun d => (v0 d) (v1 d) (v2 d) (v3 d)) Q.
-Proof using.
-Admitted.
+Proof using. introv E M1 M2. eapply wp_equiv, xwp_lemma_fun3; eauto. Qed.
 
 Lemma xwp_lemma_wp_fun4 {D:Type} : forall v0 v1 v2 (v3 : D -> _) v4 x1 x2 x3 x4 t H Q fs,
   (v0 = fun d => val_fun (x1 d) (trm_fun (x2 d) (trm_fun (x3 d) (trm_fun (x4 d) (t d))))) ->
@@ -5810,8 +5908,7 @@ Lemma xwp_lemma_wp_fun4 {D:Type} : forall v0 v1 v2 (v3 : D -> _) v4 x1 x2 x3 x4 
     ) ->
   H ==> wpgen fs (fun d => subst (x4 d) (v4 d) (subst (x3 d) (v3 d) (subst (x2 d) (v2 d) (subst (x1 d) (v1 d) (t d))))) Q ->
   H ==> wp fs (fun d => (v0 d) (v1 d) (v2 d) (v3 d) (v4 d)) Q.
-Proof using.
-Admitted.
+Proof using. introv E M1 M2. eapply wp_equiv, xwp_lemma_fun4; eauto. Qed.
 
 Lemma xwp_lemma_wp_fun5 {D:Type} : forall (v0 : D -> _) v1 v2 v3 v4 v5 x1 x2 x3 x4 x5 t H Q fs,
   (v0 = fun d => val_fun (x1 d) (trm_fun (x2 d) (trm_fun (x3 d) (trm_fun (x4 d) (trm_fun (x5 d) (t d)))))) ->
@@ -5835,9 +5932,7 @@ Lemma xwp_lemma_wp_fun5 {D:Type} : forall (v0 : D -> _) v1 v2 v3 v4 v5 x1 x2 x3 
             subst (x1 d) (v1 d) 
             (t d)))))) Q ->
   H ==> wp fs (fun d => (v0 d) (v1 d) (v2 d) (v3 d) (v4 d) (v5 d)) Q.
-Proof using.
-Admitted.
-
+Proof using. introv E M1 M2. eapply wp_equiv, xwp_lemma_fun5; eauto. Qed.
 (*
 
 

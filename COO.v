@@ -311,12 +311,6 @@ Proof.
   xsimpl*.
 Qed.
 
-(* Lemma SumIf {A : Type} {P : A -> Prop} {fs F G} (C : A -> int -> int) : 
-  (Σ_(i <- fs) C i (If P i then F i else G i)) = 
-  Σ_(i <- fs ∩ P) C i (F i) + Σ_(i <- fs ∖ P) C i (G i).
-Proof using.
-Admitted. *)
-
 Definition sum := 
   <{
   fun xval =>

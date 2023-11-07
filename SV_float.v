@@ -214,41 +214,6 @@ Notation "'xlb'" := ("l_b":var) (in custom trm at level 0) : trm_scope.
 Notation "'xrb'" := ("r_b":var) (in custom trm at level 0) : trm_scope.
 
 Import List Vars.
-(*
-(* TODO maybe move these somewhere else *)
-Section pure_facts.
-
-Variable (M : int) (l : list int).
-Hypothesis (HM : 0 <= M) (* avoid the case where l is nil and M can be anything *). 
-Hypotheses (Hnodup : NoDup l) (Hbounded : forall x, In x l -> 0 <= x < M).
-
-Fact nodup_bounded_saturate : length l = M :> int -> Permutation (lof id M) l.
-Admitted.
-
-Fact nodup_bounded_saturate' : length l = M :> int -> forall x : int, 0 <= x < M -> In x l.
-Admitted.
-
-Fact nodup_bounded_makeperm_bysuf : exists l' : list int, 
-  NoDup (List.app l l') /\ (forall x, In x (List.app l l') -> 0 <= x < M) /\ (length (List.app l l') = M :> int).
-Admitted.
-
-Fact nodup_bounded_makeperm_bypre : exists l' : list int, 
-  NoDup (List.app l' l) /\ (forall x, In x (List.app l' l) -> 0 <= x < M) /\ (length (List.app l' l) = M :> int).
-Admitted.
-
-Fact nodup_bounded_length_le : length l <= M.
-Proof.
-  (*
-  destruct (Z.leb (Z.of_nat (length l)) M) eqn:E.
-  1: apply Z.leb_le in E; math.
-  apply Z.leb_gt in E. destruct l as [ | x l' ]; clear l; simpl in E; try math.
-  assert (M <= length l') as Hle by math.
-  inversion_clear Hnodup. false H.
-  simpl in Hbounded. 
-  *)
-Admitted.
-End pure_facts.
-*)
 
 Context (xind : list int).
 Context (xval : list binary64).
