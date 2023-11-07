@@ -7,6 +7,13 @@ Import List.
 
 Notation "x '[' i ']'" := (List.nth (abs i) x 0) (at level 5, format "x [ i ]").
 
+Fact take_conversion [A : Type] (n : nat) (l : list A) : take n l = firstn n l.
+Proof.
+  revert n. induction l; intros; simpl in *; rewrite ?take_nil; auto.
+  all: destruct n; auto.
+  simpl. rewrite ?take_cons. now rewrite IHl.
+Qed.
+
 Fact nth_error_some_inrange {A : Type} (i : nat) (al : list A) a : 
   nth_error al i = Some a -> i < length al.
 Proof.
@@ -56,61 +63,76 @@ Fact nth_In_int (l : list int) (n : int) :
   (0 <= n < length l) -> In (nth (abs n) l 0) l.
 Proof. intros H. apply nth_In. math. Qed.
 
-(* TODO change the name of this section *)
-Section pure_facts.
+Section index.
 
 Context {A : Type}.
 
 Implicit Type l s : list A.
 (* Implicit Type i : A. *)
 
-Definition index (i : A) l : int. 
-Proof using.
-Admitted.
+Fixpoint index (i : A) l : int :=
+  match l with
+  | nil => 0
+  | x :: l' => If x = i then 0 else (index i l' + 1)
+  end.
+
 Lemma index_nodup (def : A) i l : 
   0 <= i < length l ->
   List.NoDup l -> 
     index (nth (abs i) l def) l = i.
 Proof.
-Admitted.
-
-Lemma in_take x l i : 0 <= i <= length l -> (In x (take (abs i) l)) = (index x l < i).
-Proof.
-Admitted.
-
-Lemma nth_index (def : A) x s : In x s -> nth (abs (index x s)) s def = x.
-Admitted.
+  revert i. induction l as [ | x l IH ]; intros i Hi Hnodup; simpl in Hi |- *; try math.
+  inversion_clear Hnodup.
+  remember (abs i) as n eqn:E. destruct n.
+  { case_if. math. }
+  { replace n with (abs (i-1)) by math. rewrite IH; try math; auto. 
+    case_if; try math.
+    subst x. false H. apply nth_In. math. }
+Qed.
 
 Lemma index_mem x s : (index x s < length s) = (In x s).
-Admitted.
+Proof.
+  induction s as [ | y s IH ]; simpl; try math. rewrite -IH. clear IH. case_if; extens; intuition lia.
+Qed.
 
 Lemma index_size x s : index x s <= length s.
-Proof. Admitted.
+Proof. induction s; simpl; auto; try case_if; try math. Qed.
 
 Lemma indexG0 x s : 0 <= index x s.
-Proof. Admitted.
+Proof. induction s; simpl; auto; try case_if; try math. Qed.
 
-Lemma memNindex x s :  ~In x s -> index x s = length s.
-Admitted.
+Lemma nth_index (def : A) x s : In x s -> nth (abs (index x s)) s def = x.
+Proof.
+  induction s as [ | y s IH ]; simpl; intros; try contradiction. 
+  case_if; auto. destruct H; try contradiction.
+  pose proof (indexG0 x s).
+  replace (abs (index x s + 1)) with (S (abs (index x s)))%nat by math. auto.
+Qed.
 
-Definition list_interval (lb rb : nat) l :=
-  take (rb - lb)%nat (drop lb l).
+Lemma index_app1 x s1 s2 : index x s1 < length s1 -> index x (List.app s1 s2) = index x s1.
+Proof.
+  induction s1 as [ | y s1 IH ]; simpl; intros; auto; try lia.
+  case_if; auto. rewrite IH; math.
+Qed.
 
-Lemma list_interval_length (lb rb : int) l :
-  0 <= lb <= rb -> rb <= length l -> length (list_interval (abs lb) (abs rb) l) = rb - lb :> int.
-Admitted.
+Lemma index_app_le x s1 s2 : index x s1 <= index x (List.app s1 s2).
+Proof.
+  induction s1 as [ | y s1 IH ]; simpl; intros; auto; try lia.
+  1: apply indexG0. case_if; try math.
+Qed.
 
-Lemma list_interval_nth (def : A) (x lb rb : int) l :
-  0 <= lb <= rb -> rb <= length l -> 0 <= x < rb - lb ->
-  nth (abs (lb + x)) l def = nth (abs x) (list_interval (abs lb) (abs rb) l) def.
-Admitted.
+Corollary in_take x l i : 0 <= i <= length l -> (In x (take (abs i) l)) = (index x l < i).
+Proof.
+  intros Hi. pose proof (firstn_skipn (abs i) l).
+  assert (length (firstn (abs i) l) = abs i :> nat) by (rewrite firstn_length_le; math).
+  rewrite -> take_conversion. rewrite <- H at 2.
+  extens. split; intros HH.
+  { rewrite -index_mem in HH. rewrite index_app1; math. }
+  { rewrite -index_mem H0. pose proof (index_app_le x (firstn (abs i) l) (skipn (abs i) l)). math. }
+Qed.
 
-Corollary list_interval_nth' (def : A) (x lb rb : int) l :
-  0 <= lb -> rb <= length l -> lb <= x < rb ->
-  nth (abs (x - lb)) (list_interval (abs lb) (abs rb) l) def = nth (abs x) l def.
-Proof. intros. rewrite -list_interval_nth; try math. f_equal; math. Qed.
-
-End pure_facts.
+Corollary memNindex x s :  ~In x s -> index x s = length s.
+Proof. rewrite -index_mem. pose proof (index_size x s). math. Qed.
 
 Section list_of_fun.
 
@@ -191,6 +213,27 @@ Corollary lof_indices' {A : Type} (f : int -> A) n :
 Proof. by rewrite <- lof_indices. Qed.
 
 End list_of_fun.
+
+Section list_interval.
+
+Definition list_interval (lb rb : nat) l :=
+  take (rb - lb)%nat (drop lb l).
+
+Lemma list_interval_length (lb rb : int) l :
+  0 <= lb <= rb -> rb <= length l -> length (list_interval (abs lb) (abs rb) l) = rb - lb :> int.
+Admitted.
+
+Lemma list_interval_nth (def : A) (x lb rb : int) l :
+  0 <= lb <= rb -> rb <= length l -> 0 <= x < rb - lb ->
+  nth (abs (lb + x)) l def = nth (abs x) (list_interval (abs lb) (abs rb) l) def.
+Admitted.
+
+Corollary list_interval_nth' (def : A) (x lb rb : int) l :
+  0 <= lb -> rb <= length l -> lb <= x < rb ->
+  nth (abs (x - lb)) (list_interval (abs lb) (abs rb) l) def = nth (abs x) l def.
+Proof. intros. rewrite -list_interval_nth; try math. f_equal; math. Qed.
+
+End index.
 
 Definition sorted (l : list int) : Prop. Admitted.
 Definition max (l : list int) : int. Admitted.
