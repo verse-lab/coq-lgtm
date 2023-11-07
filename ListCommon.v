@@ -526,8 +526,60 @@ End merge.
 
 Section search_leastupperbound.
 
-Lemma search (x : int) (l : list int) : int.
-Admitted. (*find 0 (> x)*)
+(* TODO compare with the sigT search function below? *)
+Definition search_core (x : int) (l : list int) := find (Z.ltb x) l.
+
+Definition search (x : int) (l : list int) : int :=
+  match search_core x l with
+  | Some y => y
+  | None => x + 1
+  end.
+
+Fact search_core_neccond x l (H : sorted l) y :
+  search_core x l = Some y -> 
+    exists i, 0 <= i < length l /\ y = l[i] /\ x < y /\
+      (forall j, 0 <= j < i -> l[j] <= x).
+Proof.
+  revert y. rewrite /search_core. induction l as [ | q l IH ]; intros; simpl; try discriminate.
+  simpl in H0. destruct (Z.ltb x q) eqn:E.
+  { injection H0 as ->. apply Z.ltb_lt in E.
+    exists 0. split; try math. simpl. do 2 (split; auto).
+    intros. math. }
+  { apply IH in H0. 2: eapply sorted_cons; eauto.
+    destruct H0 as (i & Hi & -> & Hlt & HH).
+    exists (i + 1). split; try math. replace (abs (i + 1)) with (S (abs i)) by math.
+    do 2 (split; auto). intros. apply Z.ltb_ge in E.
+    case (classicT (j = 0))=> [ -> | Hneq ] //.
+    assert (0 < j) by math. 
+    replace (abs j) with (S (abs (j - 1))) by math.
+    apply HH; math. }
+Qed.
+
+Fact search_core_sufcond x l (H : sorted l) :
+  forall i, 0 <= i < length l -> x < l[i] ->
+    (forall j, 0 <= j < i -> l[j] <= x) -> 
+    search_core x l = Some l[i].
+Proof.
+  induction l as [ | q l IH ]; simpl; intros; try math.
+  specialize (IH (sorted_cons H)).
+  destruct (Z.ltb x q) eqn:E.
+  { apply Z.ltb_lt in E. f_equal.
+    enough (i = 0) by (subst i; reflexivity).
+    case (classicT (i = 0))=> [ | Hneq ] //.
+    assert (0 <= 0 < i) as Htmp by math.
+    specialize (H2 0 Htmp). simpl in H2. math. }
+  { apply Z.ltb_ge in E.
+    case (classicT (i = 0))=> [ ? | Hneq ].  
+    1: subst i; simpl in H1; try math.
+    assert (0 < i) as Htmp by math.
+    replace (abs i) with (S (abs (i-1))) in H1 |- * by math.
+    apply IH; try math. intros.
+    assert (0 <= j + 1 < i) as Htmp2 by math.
+    apply H2 in Htmp2. replace (abs (j + 1)) with (S (abs j)) in Htmp2 by math. auto. }
+Qed.
+
+Fact search_sufcond l x y : search_core l x = Some y -> search l x = y.
+Proof. unfold search. now intros ->. Qed.
 
 Lemma search_lt_nth l i x : 
   sorted l -> 
@@ -535,13 +587,20 @@ Lemma search_lt_nth l i x :
     (forall y, In y l -> y < l[i] -> y <= x) ->
     x < l[i] ->
     search x l = l[i].
-Admitted.
+Proof.
+  intros. apply search_sufcond, search_core_sufcond; auto.
+  intros. apply H1. 1: apply nth_In_int; math. apply sorted_le; try math; auto.
+Qed.
 
 Lemma search_nth l i : 
   sorted l -> 
   0 < i + 1 < length l ->
     search l[i] l = l[i + 1].
-Admitted.
+Proof.
+  intros. apply search_sufcond, search_core_sufcond; auto; try math.
+  1: apply sorted_le; try math; auto. 
+  intros. apply sorted_leq; try math; auto.
+Qed. 
 
 Lemma merge_nthS l1 l2 i :
   sorted l1 -> sorted l2 ->
@@ -554,7 +613,10 @@ Lemma search_nth_pred l i x :
   0 < i < length l ->
     l[i-1] <= x < l[i] ->
     search x l = l[i].
-Admitted.
+Proof.
+  intros. apply search_sufcond, search_core_sufcond; auto; try math.
+  intros. etransitivity. 2: apply H1. apply sorted_leq; try math; auto.
+Qed.
 
 End search_leastupperbound.
 
@@ -686,12 +748,14 @@ Proof.
 Qed.
 
 Lemma IILG0 i : L[i] >= 0.
-Proof.
-Admitted.
+Proof. 
+  enough (0 <= L[i]) by math. 
+  case (classicT (abs i < length L))=> C. 2: rewrite (@nth_overflow _ _ (abs i)); try math.
+  rewrite <- IIL_L_first at 1. replace (abs i) with (abs (abs i)) by math. apply IIL_L_inc'; math.
+Qed.
 
 Lemma IIL_sorted : sorted L.
-Proof.
-Admitted.
+Proof. unfold sorted. apply IIL_L_inc. Qed.
 
 Section segmentation.
 
