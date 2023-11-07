@@ -1,7 +1,7 @@
 Set Implicit Arguments.
 From mathcomp Require Import ssreflect ssrfun zify.
 From SLF Require Import Fun LabType LibSepFmap.
-From Coq Require Sorting.
+From Coq Require Sorted.
 
 Import List.
 
@@ -62,6 +62,10 @@ Qed.
 Fact nth_In_int (l : list int) (n : int) :
   (0 <= n < length l) -> In (nth (abs n) l 0) l.
 Proof. intros H. apply nth_In. math. Qed.
+
+Fact In_nth_int (l : list int) (x : int) :
+  In x l -> exists i : int, 0 <= i < length l /\ l[i] = x.
+Proof. intros H. apply In_nth with (d:=0) in H. destruct H as (n & Hn & <-). exists n. split; try math. f_equal; math. Qed.
 
 Lemma NoDup_nthZ {A : Type} l (z : A): 
   NoDup l <->
@@ -286,37 +290,173 @@ End list_interval.
 
 Section sorted_max.
 
+Import Sorted.
+
 Definition sorted (l : list int) : Prop :=
   forall (i j : int), 
     (0 <= i < length l) -> 
-    (0 <= i < length l) -> 
+    (0 <= j < length l) -> 
     (i < j) -> l[i] < l[j].
 
-Definition max (l : list int) : int. Admitted.
+(* TODO is fold_right good? *)
+Definition max (l : list int) : int := 
+  match l with
+  | nil => (-1)%Z
+  | x :: _ => fold_right Z.max x l
+  end.
+
+Fact fold_right_max_base_le (l : list int) (a : int) :
+  a <= fold_right Z.max a l.
+Proof. induction l; simpl; try math. Qed.
+
+Fact fold_right_max_base_dup (l : list int) (a : int) :
+  Z.max a (fold_right Z.max a l) = fold_right Z.max a l.
+Proof. induction l; simpl; try math. Qed.
+
+Fact fold_right_max_base_change (l : list int) (a b : int) :
+  Z.max a (fold_right Z.max b l) = Z.max b (fold_right Z.max a l).
+Proof. induction l; simpl; try math. Qed.
+
+Fact fold_right_max_base_change' (l : list int) (a b : int) :
+  (fold_right Z.max a (b :: l)) = (fold_right Z.max b (a :: l)).
+Proof. simpl. by rewrite fold_right_max_base_change. Qed.
+
+Fact fold_right_max_basele_le (l : list int) (a b : int) (H : a <= b) :
+  fold_right Z.max a l <= fold_right Z.max b l.
+Proof. induction l; simpl; try math. Qed.
+
+Fact fold_right_max_appr_le (l l' : list int) (a : int) :
+  fold_right Z.max a l <= fold_right Z.max a (List.app l l').
+Proof. induction l; simpl; try math. apply fold_right_max_base_le. Qed.
+
+Fact fold_right_max_appl_le (l l' : list int) (a : int) :
+  fold_right Z.max a l <= fold_right Z.max a (List.app l' l).
+Proof. induction l'; simpl; try math. Qed.
+
+Fact sorted_cons l x : sorted (x :: l) -> sorted l.
+Proof.
+  intros H. rewrite /sorted /= in H |- *. intros.
+  specialize (H (i+1) (j+1)).
+  replace (abs (i + 1)) with (S (abs i)) in H by math.
+  replace (abs (j + 1)) with (S (abs j)) in H by math.
+  apply H; math.
+Qed.
+
+Fact sorted_StronglySorted l : sorted l <-> StronglySorted Z.lt l.
+Proof.
+  induction l as [ | x l IH ].
+  { rewrite /sorted /=. split; intros; try math. constructor. }
+  { split; intros.
+    { constructor. 
+      { eapply IH, sorted_cons. apply H. }  
+      { apply Forall_nth=> i d HH.
+        rewrite -> nth_indep with (d':=0) by math.
+        replace (nth i l 0) with (nth (S i) (x :: l) 0) by reflexivity.
+        replace x with (nth 0%nat (x :: l) d) at 1 by reflexivity.
+        rewrite -> nth_indep with (d':=0) by (simpl; math).
+        replace 0%nat with (abs 0) by math. replace (S i) with (abs (i + 1)) by math.
+        apply H; simpl; math. } }
+    { apply StronglySorted_inv in H. destruct H as (H%IH & H0).
+      hnf. simpl. intros.
+      replace (abs j) with (S (abs (j - 1))) by math.
+      case (classicT (i = 0))=> [ -> | Hneq ].
+      { simpl. rewrite Forall_nth in H0. apply H0. math. }
+      { assert (0 < i) by math. 
+        replace (abs i) with (S (abs (i - 1))) by math.
+        apply H; math. } } }
+Qed.
 
 Lemma sorted_nodup l : sorted l -> NoDup l.
-Admitted.
+Proof.
+  intros H%sorted_StronglySorted. induction H; constructor.
+  { intros HH. rewrite Forall_forall in H0. apply H0 in HH. math. }
+  { auto. }
+Qed.
 
-Lemma sorted_max_size l i : 
-  i + 1 = length l -> l[i] = max l.
-Admitted.
+Lemma max_le x l : 
+  In x l -> x <= max l.
+Proof. 
+  induction l; simpl; intros; try contradiction. 
+  destruct H as [ <- | H ]; try math. destruct l as [ | y l ]. 1: destruct H.
+  apply IHl in H. simpl in H.
+  rewrite ?fold_right_max_base_dup in H |- *. rewrite fold_right_max_base_change'. 
+  etransitivity. apply H. change (a :: l) with (List.app (a :: nil) l). apply fold_right_max_appl_le.
+Qed.
 
-Lemma max_sublist l1 l2 : 
-  (forall x, In x l1 -> In x l2) -> max l2 >= max l1.
-Admitted.
-
-Lemma nth_le_max l i :
-  i >= 0 ->
-  sorted l ->
-  l[i] >= max l -> i + 1 = length l.
-Admitted.
+Fact max_cond l x (H : l <> nil) :
+  x = max l <-> (forall y, In y l -> y <= x) /\ In x l.
+Proof.
+  revert x. induction l; simpl; intros; try contradiction.
+  case (classicT (l = nil))=> [ -> | Hneq ].
+  { simpl. rewrite Z.max_id. clear IHl. firstorder. math. }
+  { pose proof (IHl Hneq) as HH. destruct l as [ | y l ]; try contradiction.
+    rewrite fold_right_max_base_dup fold_right_max_base_change'.
+    simpl in HH |- *. rewrite fold_right_max_base_dup in HH.
+    epose proof (@eq_refl int _) as HR. rewrite -> HH in HR.
+    split.
+    { intros ->. split.
+      { intros. destruct H0; try math. apply HR in H0. math. }
+      { case (classicT (a = Z.max a (fold_right Z.max y l)))=> [ ? | Hneq2 ]; auto.
+        have Hlt : Z.max a (fold_right Z.max y l) = (fold_right Z.max y l) by math.
+        rewrite !Hlt. right. apply HR. } }
+    { intros (H1 & H2). 
+      pose proof (H1 _ (or_introl eq_refl)) as HH1. 
+      pose proof (H1 _ (or_intror (or_introl eq_refl))) as HH2.
+      destruct HR as (HR1 & HR2), H2 as [ -> | ].
+      { destruct HR2; try math. assert (fold_right Z.max y l <= x) by (apply H1; auto). math. }
+      { enough (x <= fold_right Z.max y l /\ fold_right Z.max y l <= x) by math.
+        split; [ now apply HR1 | apply H1 ]. now right. } } }
+Qed.
 
 Lemma sorted_le i j l :
   sorted l ->
   0 <= i < length l ->
   0 <= j < length l ->
     i < j -> l[i] < l[j].
-Admitted.
+Proof. unfold sorted. auto. Qed.
+
+Lemma sorted_leq i j l :
+  sorted l ->
+  0 <= i < length l ->
+  0 <= j < length l ->
+    i <= j -> l[i] <= l[j].
+Proof. 
+  intros H. intros. destruct (Z.eqb i j) eqn:E.
+  { rewrite -> Z.eqb_eq in E. subst i. reflexivity. }
+  { rewrite -> Z.eqb_neq in E. assert (i < j) by math.
+    match goal with |- (?a <= ?b) => enough (a < b); try math end. 
+    apply H; math. }
+Qed.
+
+Lemma sorted_le_rev i j l :
+  sorted l ->
+  0 <= i < length l ->
+  0 <= j < length l ->
+    l[i] < l[j] -> i < j.
+Proof. 
+  intros. case (classicT (i < j))=> [ | Hge ] //. have Hq : j <= i by math.
+  enough (l[j] <= l[i]) by math. revert Hq. now apply sorted_leq. 
+Qed.
+
+Lemma sorted_max_size l i (Hi : 0 <= i) : 
+  sorted l -> i + 1 = length l -> l[i] = max l.
+Proof. 
+  intros. apply max_cond. 1: destruct l; simpl in *; math. split.
+  { intros. apply In_nth_int in H1. destruct H1 as (j & Hj & <-).
+    apply sorted_leq; try math; auto. }
+  { apply nth_In_int. math. }
+Qed. 
+
+Lemma nth_le_max l i :
+  0 <= i < length l ->
+  sorted l ->
+  l[i] >= max l -> i + 1 = length l.
+Proof.
+  intros. case (classicT (i + 1 = Datatypes.length l))=> [ | Hneq ]; auto.
+  have Hlt : i < length l - 1 by math.
+  rewrite <- sorted_max_size with (i:=length l - 1) in H1; try math; auto.
+  eapply sorted_le in Hlt; eauto. all: math.
+Qed.
 
 Lemma max_takeS i l : 
   0 <= i < length l ->
@@ -325,42 +465,26 @@ Admitted.
 
 Lemma In_lt x i l :
   0 <= i < length l - 1 ->
-  sorted l ->
-    In x l -> x < l[i+1] -> x <= l[i].
-Admitted.
+  sorted l -> In x l -> x < l[i+1] -> x <= l[i].
+Proof. 
+  intros. apply In_nth_int in H1. destruct H1 as (j & Hj & <-). 
+  apply sorted_le_rev in H2; try math; auto. apply sorted_leq; try math; auto.
+Qed.
 
-Lemma max_le x l : 
-  In x l -> x <= max l.
-Proof.
+(* TODO false *)
+Lemma max_sublist l1 l2 :
+  (forall x, In x l1 -> In x l2) -> max l2 >= max l1.
 Admitted.
 
 Lemma max0 : max nil = -1.
-Proof.
-Admitted.
+Proof. reflexivity. Qed.
 
 Lemma In_le_0 l x :
   sorted l -> In x l -> x >= l[0].
-Admitted.
-
-Lemma sorted_le_rev i j l :
-  sorted l ->
-  0 <= i < length l ->
-  0 <= j < length l ->
-    l[i] < l[j] -> i < j.
-Admitted.
-
-Lemma sorted_leq i j l :
-  sorted l ->
-  0 <= i < length l ->
-  0 <= j < length l ->
-    i <= j -> l[i] <= l[j].
-Admitted.
-
-Lemma sorted_max_le l i : 
-  0 <= i < length l ->
-  sorted l ->
-  l[i] >= max l -> i +1 = length l.
-Admitted. 
+Proof. 
+  intros. apply In_nth_int in H0. enough (l[0] <= x) by math. 
+  destruct H0 as (i & Hi & <-). apply sorted_leq; try math; auto. 
+Qed.
 
 Lemma interval_unionE (l : list int) N : 
   sorted l -> 
@@ -443,7 +567,7 @@ Class IncreasingIntList (L : list int) := {
   IIL_L_notnil : (0 < length L);
   IIL_L_inc : forall (i j : int), 
     (0 <= i < length L) -> 
-    (0 <= i < length L) -> 
+    (0 <= j < length L) -> 
     (i < j) -> 
     (List.nth (abs i) L 0 < List.nth (abs j) L 0)
 }.
