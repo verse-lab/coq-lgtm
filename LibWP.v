@@ -3435,83 +3435,6 @@ Proof.
   by case: (fmap_data _ _).
 Qed.
 
-Lemma fmapU_in1 {A B : Type} (fm1 fm2 : fmap A B) x : 
-  indom fm1 x -> fmap_data (fm1 \u fm2) x = fmap_data fm1 x.
-Proof.
-  rewrite /indom/map_indom/= /map_union.
-  by case: (fmap_data _ _).
-Qed.
-
-Lemma fmapU_nin2 {A B : Type} (fm1 fm2 : fmap A B) x : 
-  ~ indom fm2 x -> fmap_data (fm1 \u fm2) x = fmap_data fm1 x.
-Proof.
-  move/not_not_inv=> E; rewrite /= /map_union E.
-  by case: (fmap_data _ _).
-Qed.
-
-Lemma fmapU_nin1 {A B : Type} (fm1 fm2 : fmap A B) x : 
-  ~ indom fm1 x -> fmap_data (fm1 \u fm2) x = fmap_data fm2 x.
-Proof.
-  by move/not_not_inv=> E; rewrite /= /map_union E.
-Qed.
-
-Lemma Union_fmap_indomE {A B T : Type} t (fmi : T -> fmap A B) (fs : fset T) x : 
-  (forall t t', t <> t' -> disjoint (fmi t) (fmi t')) ->
-  indom fs t ->
-  indom (fmi t) x ->
-    fmap_data (Union fs fmi) x = fmap_data (fmi t) x.
-Proof.
-  move=> dj.
-  elim/fset_ind: fs t=> // fs y IHfs ? t.
-  rewrite indom_update_eq=> -[<-|].
-  { rewrite Union_upd //; autos*; exact/fmapU_in1. }
-  move=> ind1 ind2; rewrite Union_upd //; autos*; 
-  rewrite fmapU_nin1 ?(IHfs t) //.
-  move: ind2; apply/disjoint_inv_not_indom_both/dj=> ?; by subst.
-Qed.
-
-Lemma Union_fmap_nindomE {A B T : Type} (fmi : T -> fmap A B) (fs : fset T) x : 
-  (forall t, indom fs t -> ~ indom (fmi t) x) ->
-    fmap_data (Union fs fmi) x = None.
-Proof. by move=> nin; rewrite fmapNone // indom_Union=> -[]?[]/nin. Qed.
-
-Lemma Union_fmap_inv {A B T : Type} (fmi : T -> fmap A B) (fs : fset T) x y : 
-  (forall t t', t <> t' -> disjoint (fmi t) (fmi t')) ->
-  fmap_data (Union fs fmi) x = Some y -> 
-  exists t : T, indom fs t /\ fmap_data (fmi t) x = Some y.
-Proof.
-  intros Hdj. pattern fs. apply fset_ind; clear fs; intros.
-  { rewrite Union0 in H. simpl in H. eqsolve. }
-  { rewrite Union_upd in H1; autos*.
-    simpl in H1. unfold map_union in H1.
-    setoid_rewrite indom_update_eq.
-    destruct (fmap_data (fmi x0) x) eqn:E.
-    { injection H1 as <-.
-      exists x0. tauto.
-    }
-    { apply H in H1.
-      destruct H1 as (t & Hin & H1).
-      exists t. tauto.
-    }
-  }
-Qed.
-
-Lemma Union_fmap_none_inv {A B T : Type} (fmi : T -> fmap A B) (fs : fset T) x : 
-  (forall t t', t <> t' -> disjoint (fmi t) (fmi t')) ->
-  fmap_data (Union fs fmi) x = None -> 
-  forall t : T, indom fs t -> fmap_data (fmi t) x = None.
-Proof.
-  intros Hdj. pattern fs. apply fset_ind; clear fs; intros.
-  { rewrite Union0 in H. unfolds indom, map_indom. by simpl in *. }
-  { rewrite Union_upd in H1; auto.
-    simpl in H1. unfold map_union in H1.
-    destruct (fmap_data (fmi x0) x) eqn:E; try eqsolve.
-    rewrite indom_update_eq in H2. destruct H2 as [ <- | ]; auto.
-  }
-Qed.
-
-Arguments Union_fmap_indomE {_ _ _} _.
-
 Lemma exists_valid h (f : D -> D) (fs : fset D) : 
   (forall d d', d <> d' -> f d = f d' -> indom fs d /\ indom fs d') ->
   local fs h ->
@@ -7708,6 +7631,7 @@ Lemma hlocal_single_hsub (f : D -> D) x H:
 Proof. by move=> lc ?[h'][]<-[_]/lc/(local_single_fsubst f). Qed.
 
 (* this could also be done with hsub_hstar_fset; but still need hsub_hsingle_merge *)
+(*
 Fact hsub_hsingle_groupmerge_himpl {A : Type} (fs : fset A) (f : D -> D) (d1 d2 : D) (Hn : d1 <> d2)
   (H1 : f d1 = d1) (H2 : f d2 = d1) 
   (Hdom : forall d, f d = d1 -> d = d1 \/ d = d2)
@@ -7863,7 +7787,7 @@ Proof.
     }
   }
 Qed.
-
+*)
 Lemma hsub_squash f fs R x y R':
   (f y = x) ->
   indom fs y ->

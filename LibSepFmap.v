@@ -2820,6 +2820,112 @@ Proof.
   do ? f_equal; lia.
 Qed.
 
+Lemma Union_fmap_indomE {A B T : Type} t (fmi : T -> fmap A B) (fs : fset T) x : 
+  (forall t t', t <> t' -> disjoint (fmi t) (fmi t')) ->
+  indom fs t ->
+  indom (fmi t) x ->
+    fmap_data (Union fs fmi) x = fmap_data (fmi t) x.
+Proof.
+  move=> dj.
+  elim/fset_ind: fs t=> // fs y IHfs ? t.
+  rewrite indom_update_eq=> -[<-|].
+  { rewrite Union_upd //; autos*; exact/fmapU_in1. }
+  move=> ind1 ind2; rewrite Union_upd //; autos*; 
+  rewrite fmapU_nin1 ?(IHfs t) //.
+  move: ind2; apply/disjoint_inv_not_indom_both/dj=> ?; by subst.
+Qed.
+
+Lemma Union_fmap_nindomE {A B T : Type} (fmi : T -> fmap A B) (fs : fset T) x : 
+  (forall t, indom fs t -> ~ indom (fmi t) x) ->
+    fmap_data (Union fs fmi) x = None.
+Proof. by move=> nin; rewrite fmapNone // indom_Union=> -[]?[]/nin. Qed.
+
+Lemma Union_fmap_inv {A B T : Type} (fmi : T -> fmap A B) (fs : fset T) x y : 
+  fmap_data (Union fs fmi) x = Some y -> 
+  exists t : T, indom fs t /\ fmap_data (fmi t) x = Some y.
+Proof.
+  rewrite /Union/fset_fold. destruct (fmap_exact_dom fs) as (l & HH); simpl.
+  revert fs HH. induction l as [ | (q, []) l IH ]; intros; rewrite ?fold_right_nil ?fold_right_cons ?map_nil ?map_cons in H.
+  { discriminate. }
+  { simpl in H. unfold map_union in H.
+    destruct (fmap_data (fold_right _ _ _) x) eqn:E in H.
+    { injection H as ->. 
+      apply supp_remove, IH in HH; auto. destruct HH as (t & Hin & ?). exists t. split; auto.
+      now rewrite indom_remove_eq in Hin. }
+    { exists q. split; auto. unfold is_map_supp in HH. destruct HH as (_ & _ & HH).
+      specialize (HH (q, tt)). simpl in HH. enough (fmap_data fs q = Some tt) by eqsolve.
+      apply HH. auto. } }
+Qed.
+
+Lemma Union_fmap_none_inv {A B T : Type} (fmi : T -> fmap A B) (fs : fset T) x : 
+  fmap_data (Union fs fmi) x = None -> 
+  forall t : T, indom fs t -> fmap_data (fmi t) x = None.
+Proof.
+  intros H_. assert (~ indom (Union fs fmi) x) as H by eqsolve. clear H_.
+  rewrite indom_Union in H. intros. enough (~ indom (fmi t) x) as Htmp.
+  1: rewrite /indom/map_indom in Htmp; destruct (fmap_data (fmi t) x); eqsolve. 
+  revert H. apply contrapose=> H. eauto.
+Qed.
+
+Arguments Union_fmap_indomE {_ _ _} _.
+
+Lemma agree_Union {T A B} (fs : fset T) (fsi : T -> fmap A B) fs' :
+  (forall i, indom fs i -> agree (fsi i) fs') -> agree (Union fs fsi) fs'.
+Proof.
+  intros. rewrite /agree/map_agree=> x v1 v2 H1 H2.
+  apply Union_fmap_inv in H1. destruct H1 as (t & Hin & H1).
+  apply H in Hin. revert H1 H2. apply Hin.
+Qed.
+
+Lemma Union_upd_pre_by_agree {T A B} (x : T) (fs : fset T) (fsi : T -> fmap A B) : 
+  (forall i j, i <> j -> indom (update fs x tt) i -> indom (update fs x tt) j -> agree (fsi i) (fsi j)) ->
+  ~ indom fs x ->
+  Union (update fs x tt) fsi = fsi x \+ Union fs fsi.
+Proof.
+  intros.
+  unfold Union.
+  rewrite -> (snd (@fset_foldE _ _ _ _)).
+  { rewrite -> union_comm_of_agree; auto.
+    fold (Union fs fsi).
+    apply agree_Union.
+    intros. apply H=> //. 
+    { unfolds indom, map_indom. eqsolve. }
+    all: rewrite* indom_update_eq.
+  }
+  { intros. destruct (classicT (a = b)) as [ -> | Hneq ]; auto.
+    rewrite -> union_assoc, -> union_comm_of_agree with (h1:=fsi b).
+    2: apply H; auto.
+    rewrite <- union_assoc. auto.
+  }
+  { eqsolve. }
+Qed.
+
+Lemma Union_upd_by_agree {T A B} (x : T) (fs : fset T) (fsi : T -> fmap A B) : 
+  (forall i j, i <> j -> indom (update fs x tt) i -> indom (update fs x tt) j -> agree (fsi i) (fsi j)) ->
+  Union (update fs x tt) fsi = fsi x \+ Union fs fsi.
+Proof.
+  intros.
+  destruct (fmap_data fs x) eqn:E.
+  { destruct u.
+    pose proof (@remove_update_self _ _ _ _ _ E) as Eh. 
+    rewrite -> Eh, -> update_updatexx.
+    rewrite -> ! Union_upd_pre_by_agree; auto.
+    3:{ rewrite -> indom_remove_eq. eqsolve. }
+    { rewrite <- union_assoc, -> union_self. reflexivity. }
+    introv N IN1 IN2; apply/H=> //; move: IN1 IN2; rewrite ?indom_update_eq ?indom_remove_eq; autos*.
+  }
+  { apply Union_upd_pre_by_agree; auto. }
+Qed.
+
+Lemma Union_same {B C : Type} (v : int) (f : fmap B C) : 
+  0 < v -> Union (interval 0 v) (fun=> f) = f.
+Proof.
+  intros. apply fmap_extens=>x. 
+  destruct (fmap_data (Union _ _) x) eqn:E.
+  { apply Union_fmap_inv in E. firstorder. }
+  { eapply Union_fmap_none_inv with (t:=0) in E; auto. rewrite indom_interval. lia. }
+Qed.
+
 Lemma update_union_not_r' [A B : Type] `{Inhab B} (h1 : fmap A B) [h2 : fmap A B] [x : A] (v : B) :
   update (h1 \+ h2) x v = update h1 x v \+ h2.
 Proof.

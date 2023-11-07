@@ -1,7 +1,7 @@
 Set Implicit Arguments.
 From mathcomp Require Import ssreflect ssrfun zify.
 From SLF Require Import Fun LabType LibSepFmap.
-
+From Coq Require Sorting.
 
 Import List.
 
@@ -62,6 +62,26 @@ Qed.
 Fact nth_In_int (l : list int) (n : int) :
   (0 <= n < length l) -> In (nth (abs n) l 0) l.
 Proof. intros H. apply nth_In. math. Qed.
+
+Lemma NoDup_nthZ {A : Type} l (z : A): 
+  NoDup l <->
+  (forall i j, (0<= i < Datatypes.length l) ->
+  (0<= j < Datatypes.length l) -> nth (abs i) l z = nth (abs j) l z -> i = j).
+Proof. 
+  etransitivity. 1: apply NoDup_nth with (d:=z). 
+  split; intros H i j Ha Hb Hc. 
+  { enough (abs i = abs j) by math. revert Hc. apply H; math. }
+  { enough (Z.of_nat i = Z.of_nat j) by math. apply H; try math.
+    replace (abs i) with i by math. replace (abs j) with j by math. assumption. }
+Qed.
+
+Lemma in_combineE {A B : Type} (l : list A) (l' : list B) (x : A) (y : B) :
+  In (x, y) (combine l l') -> (In x l /\ In y l').
+Proof.
+  revert l'. induction l as [ | a l IH ]; simpl; intros; try tauto.
+  destruct l' as [ | b l' ]; simpl in H |- *; try contradiction.  
+  rewrite pair_equal_spec in H. firstorder.
+Qed.
 
 Section index.
 
@@ -218,37 +238,63 @@ End list_of_fun.
 
 Section list_interval.
 
+Context {A : Type}.
+
+Implicit Type l : list A.
+
 Definition list_interval (lb rb : nat) l :=
-  take (rb - lb)%nat (drop lb l).
+  firstn (rb - lb)%nat (skipn lb l).
 
 Lemma list_interval_length (lb rb : int) l :
   0 <= lb <= rb -> rb <= length l -> length (list_interval (abs lb) (abs rb) l) = rb - lb :> int.
-Admitted.
+Proof. intros. rewrite /list_interval firstn_length_le ?skipn_length; try math. Qed.
 
 Lemma list_interval_nth (def : A) (x lb rb : int) l :
   0 <= lb <= rb -> rb <= length l -> 0 <= x < rb - lb ->
   nth (abs (lb + x)) l def = nth (abs x) (list_interval (abs lb) (abs rb) l) def.
-Admitted.
+Proof.
+  intros. rewrite /list_interval.
+  pose proof (firstn_skipn (abs lb) l) as HH1.
+  rewrite <- HH1 at 1. rewrite app_nth2. all: rewrite firstn_length_le; try math.
+  replace (abs _ - abs _)%nat with (abs x) by math.
+  remember (skipn _ _) as l' eqn:E.
+  pose proof (firstn_skipn (abs rb - abs lb) l') as HH2.
+  rewrite <- HH2 at 1. rewrite app_nth1; auto. 
+  rewrite firstn_length_le; try math. subst l'; rewrite skipn_length; math.
+Qed.
 
 Corollary list_interval_nth' (def : A) (x lb rb : int) l :
   0 <= lb -> rb <= length l -> lb <= x < rb ->
   nth (abs (x - lb)) (list_interval (abs lb) (abs rb) l) def = nth (abs x) l def.
 Proof. intros. rewrite -list_interval_nth; try math. f_equal; math. Qed.
 
-End index.
+Lemma slice_fullE l : list_interval (abs 0) (abs (length l)) l = l.
+Proof. 
+  rewrite /list_interval. etransitivity. 2: apply firstn_all.
+  simpl. f_equal. math.
+Qed. 
 
-Definition sorted (l : list int) : Prop. Admitted.
+Lemma in_interval_list l lb rb x :
+  In x (list_interval lb rb l) -> In x l.
+Proof.
+  rewrite /list_interval. intros. 
+  rewrite -(firstn_skipn lb l) in_app_iff. right.
+  rewrite -(firstn_skipn (rb - lb)%nat (skipn lb l)) in_app_iff. tauto.
+Qed.
+
+End list_interval.
+
+Section sorted_max.
+
+Definition sorted (l : list int) : Prop :=
+  forall (i j : int), 
+    (0 <= i < length l) -> 
+    (0 <= i < length l) -> 
+    (i < j) -> l[i] < l[j].
+
 Definition max (l : list int) : int. Admitted.
 
-Definition merge (l1 l2 : list int) : list int. Admitted.
-
-Lemma In_merge l1 l2 x : In x (merge l1 l2) = (In x l1 \/ In x l2).
-Proof. Admitted.
-
 Lemma sorted_nodup l : sorted l -> NoDup l.
-Admitted.
-
-Lemma sorted_merge l1 l2 : sorted l1 -> sorted l2 -> sorted (merge l1 l2).
 Admitted.
 
 Lemma sorted_max_size l i : 
@@ -288,11 +334,6 @@ Lemma max_le x l :
 Proof.
 Admitted.
 
-Lemma size_merge l1 l2: 
-  length (merge l1 l2) >= Z.max (length l1) (length l2).
-Proof.
-Admitted.
-
 Lemma max0 : max nil = -1.
 Proof.
 Admitted.
@@ -300,6 +341,66 @@ Admitted.
 Lemma In_le_0 l x :
   sorted l -> In x l -> x >= l[0].
 Admitted.
+
+Lemma sorted_le_rev i j l :
+  sorted l ->
+  0 <= i < length l ->
+  0 <= j < length l ->
+    l[i] < l[j] -> i < j.
+Admitted.
+
+Lemma sorted_leq i j l :
+  sorted l ->
+  0 <= i < length l ->
+  0 <= j < length l ->
+    i <= j -> l[i] <= l[j].
+Admitted.
+
+Lemma sorted_max_le l i : 
+  0 <= i < length l ->
+  sorted l ->
+  l[i] >= max l -> i +1 = length l.
+Admitted. 
+
+Lemma interval_unionE (l : list int) N : 
+  sorted l -> 
+  max l = N ->
+  `[0, N] = \U_(i <- `[0, length l -1]) `[l[i], l[i+1] ].
+Admitted.
+
+End sorted_max.
+
+Section merge.
+
+Definition merge (l1 l2 : list int) : list int. Admitted.
+
+Lemma In_merge l1 l2 x : In x (merge l1 l2) = (In x l1 \/ In x l2).
+Proof. Admitted.
+
+Lemma sorted_merge l1 l2 : sorted l1 -> sorted l2 -> sorted (merge l1 l2).
+Admitted.
+
+Lemma size_merge l1 l2: 
+  length (merge l1 l2) >= Z.max (length l1) (length l2).
+Proof.
+Admitted.
+
+Lemma merge_nth0 l1 l2 :
+  length l1 > 0 ->
+  length l2 > 0 ->
+  (merge l1 l2)[0] = Z.min l1[0] l2[0].
+Admitted.
+
+Lemma max_merge l1 l2 : 
+  sorted l1 -> 
+  sorted l2 ->
+    max (merge l1 l2) = Z.max (max l1) (max l2).
+Proof.
+Admitted.
+
+End merge.
+
+Section search_leastupperbound.
 
 Lemma search (x : int) (l : list int) : int.
 Admitted. (*find 0 (> x)*)
@@ -324,69 +425,6 @@ Lemma merge_nthS l1 l2 i :
     (merge l1 l2)[i+1] = Z.min (search (merge l1 l2)[i] l1) (search (merge l1 l2)[i] l2).
 Admitted.
 
-Lemma merge_nth0 l1 l2 :
-  length l1 > 0 ->
-  length l2 > 0 ->
-  (merge l1 l2)[0] = Z.min l1[0] l2[0].
-Admitted.
-
-Lemma NoDup_nthZ {A : Type} l (z : A): 
-  NoDup l <->
-  (forall i j, (0<= i < Datatypes.length l) ->
-  (0<= j < Datatypes.length l) -> nth (abs i) l z = nth (abs j) l z -> i = j).
-Proof. 
-  etransitivity. 1: apply NoDup_nth with (d:=z). 
-  split; intros H i j Ha Hb Hc. 
-  { enough (abs i = abs j) by math. revert Hc. apply H; math. }
-  { enough (Z.of_nat i = Z.of_nat j) by math. apply H; try math.
-    replace (abs i) with i by math. replace (abs j) with j by math. assumption. }
-Qed.
-
-Lemma in_combineE {A B : Type} (l : list A) (l' : list B) (x : A) (y : B) :
-  In (x, y) (combine l l') = (In x l /\ In y l').
-Admitted.
-
-Lemma slice_fullE {A : Type} (l : list A) : 
-  list_interval (abs 0) (abs (length l)) l = l.
-Admitted.
-
-Lemma Union_same {B C} (v : int) (f : fmap B C) : 
-  v > 0 -> 
-    Union `[0, v] (fun _ => f) = f.
-Admitted.
-
-Lemma in_interval_list {A : Type} (l : list A) lb rb x: 
-   In x (list_interval lb rb l) -> In x l.
-Proof.
-Admitted.
-
-Lemma interval_unionE (l : list int) N : 
-  sorted l -> 
-  max l = N ->
-  `[0, N] = \U_(i <- `[0, length l -1]) `[l[i], l[i+1] ].
-Admitted.
-
-Lemma sorted_le_rev i j l :
-  sorted l ->
-  0 <= i < length l ->
-  0 <= j < length l ->
-    l[i] < l[j] -> i < j.
-Admitted.
-
-Lemma sorted_leq i j l :
-  sorted l ->
-  0 <= i < length l ->
-  0 <= j < length l ->
-    i <= j -> l[i] <= l[j].
-Admitted.
-
-Lemma max_merge l1 l2 : 
-  sorted l1 -> 
-  sorted l2 ->
-    max (merge l1 l2) = Z.max (max l1) (max l2).
-Proof.
-Admitted.
-
 Lemma search_nth_pred l i x : 
   sorted l -> 
   0 < i < length l ->
@@ -394,11 +432,7 @@ Lemma search_nth_pred l i x :
     search x l = l[i].
 Admitted.
 
-Lemma sorted_max_le l i : 
-  0 <= i < length l ->
-  sorted l ->
-  l[i] >= max l -> i +1 = length l.
-Admitted. 
+End search_leastupperbound.
 
 Section search_pure_facts.
 

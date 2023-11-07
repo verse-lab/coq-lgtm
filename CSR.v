@@ -253,7 +253,7 @@ Proof with (try seclocal_fold; seclocal_solver; try lia).
   xset_Inv Inv 1; xset_R_core Dom R1 2; xset_R_core Dom R2 3. xset_clean R1 R2 Inv.
   xin (2,0) : do 3 (xwp; xapp).
   xin (1,0) : (xwp; xapp (@htriple_alloc0_unary)=> // s)...
-  rewrite prod_cascade -(Union_same Nrow (`{0} \x `[0, Ncol])) //.
+  rewrite prod_cascade -(Union_same Nrow (`{0} \x `[0, Ncol])) //; try math.
   xfor_specialized_normal2 Inv R1 R1 R2 R2 
     (fun hv i => Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * hv[`3]((0, j.2)))) (fun=> 0) s.
   { xin (2,0) : rewrite wp_prod_single /=.
@@ -264,7 +264,7 @@ Proof with (try seclocal_fold; seclocal_solver; try lia).
     { move=> ?; rewrite -len_xind /slice slice_fullE... }
     xsimpl=>->. xapp @lhtriple_array_set_pre; try math.
     rewrite sum_prod1E; xsimpl. }
-  { rewrite Union_same //; xsimpl*. xsimpl*. }
+  { rewrite Union_same //; try math; xsimpl*. xsimpl*. }
   xwp; xval. xsimpl*. xsimpl; rewrite sum_prod1E; xsimpl.
 Qed.
 

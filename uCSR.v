@@ -345,7 +345,7 @@ Proof with (try seclocal_fold; seclocal_solver).
   have E : (`[0, Nrow] \x `[0, Ncol]) ∩ indom (midx \x `[0, Ncol]) = midx \x `[0, Ncol].
   { rewrite -prod_intr_list_on_1. f_equal. now apply intr_list. }
   rewrite E (fset_of_list_nodup 0 nodup_midx) len_midx prod_Union_distr.
-  rewrite -(Union_same (v:=Nidx) (`{0} \x `[0, Ncol])) //.
+  rewrite -(Union_same (v:=Nidx) (`{0} \x `[0, Ncol])) //; try math.
   xin (1,0) : (xwp; xapp (@htriple_alloc0_unary)=> // s)...
   xfor_specialized2 Inv R1 R1 R2 R2 
     (fun hv (i : int) => (If (In i midx) then Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * hv[`3]((0,j.2))) else 0)) (fun=> 0) midx s.
@@ -366,7 +366,7 @@ Proof with (try seclocal_fold; seclocal_solver).
     { move=> ?; rewrite /slice -len_xind slice_fullE... }
     xsimpl=>->. xapp @lhtriple_array_set_pre. rewrite csr.sum_prod1E. xsimpl. }
   { intros. now case_if. }
-  { rewrite Union_same //; xsimpl*. xsimpl*. }
+  { rewrite Union_same //; try math; xsimpl*. xsimpl*. }
   xwp; xval. xsimpl*. erewrite -> harray_fun_int_congr; try assumption; first xsimpl*.
   move=> i Hi /=. xsum_normalize.
   case_if.
