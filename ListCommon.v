@@ -134,6 +134,8 @@ Qed.
 Corollary memNindex x s :  ~In x s -> index x s = length s.
 Proof. rewrite -index_mem. pose proof (index_size x s). math. Qed.
 
+End index.
+
 Section list_of_fun.
 
 (* some customized theory of from functions to lists *)
