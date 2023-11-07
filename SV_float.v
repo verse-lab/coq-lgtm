@@ -255,7 +255,6 @@ Lemma get_spec {D} `{Inhab D} (x_ind x_val : loc) d (l : int):
       harray_int xind x_ind d \* 
       harray_float xval x_val d).
 Proof.
-  rewrite -wp_equiv; xsimpl.
   xwp; xapp @index_bounded.spec=> //.
   xwp; xapp; xwp; xif=> ?; [xapp|xwp;xval]; xsimpl.
 Qed.
