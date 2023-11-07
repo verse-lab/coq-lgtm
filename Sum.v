@@ -237,8 +237,12 @@ Proof.
   do ? f_equal; lia.
 Qed.
 
-Fact Sum_list_interval  (f : int -> int) (a b : int) l:
+Fact Sum_list_interval  (f : int -> int) (a b : int) l (H1 : 0 <= a <= b) (H2 : b <= List.length l) :
   NoDup (list_interval (abs a) (abs b) l) ->
   Sum (list_interval (abs a) (abs b) l) f = 
   Sum `[a, b] (fun i => f l[i]).
-Admitted.
+Proof. 
+  intros. rewrite (SumList 0) // list_interval_length // ?Sum_interval_change2.
+  apply SumEq=> x. rewrite indom_interval. intros.
+  rewrite list_interval_nth' //. tauto.
+Qed.

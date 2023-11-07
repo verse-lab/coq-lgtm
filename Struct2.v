@@ -62,11 +62,6 @@ Ltac fold' :=
 
 Import List.
 
-Fact list_update_intermediate (L : list val) (i : int) (H : 0 <= i < length L) :
-  (List.app (repeat a (abs (i+1))) (skipn (abs (i+1)) L)) =
-  LibList.update (abs i) a (List.app (repeat a (abs i)) (skipn (abs i) L)).
-Admitted.
-
 Lemma htriple_memset_unary {D : Type} `{Inhab D} (L : list val) (p : loc) (d : D) :
   htriple (single d tt) (fun=> memset p)
     (harray L p d) 
@@ -89,7 +84,7 @@ Proof with fold'.
     xwp; xapp (@htriple_array_set)...
     1:{ intros _ _... rewrite app_length repeat_length skipn_length; math. }
     xapp @incr1.spec.
-    rewrite -list_update_intermediate; try math.
+    rewrite -list_update_intermediate__; try math.
     xapp IH; try math.
     1: split; [ math | reflexivity ].
     xsimpl*. }

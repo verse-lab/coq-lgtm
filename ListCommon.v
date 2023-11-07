@@ -14,6 +14,9 @@ Proof.
   simpl. rewrite ?take_cons. now rewrite IHl.
 Qed.
 
+Fact listapp_conversion [A : Type] (l1 l2 : list A) : LibList.app l1 l2 = List.app l1 l2.
+Proof. revert l2. induction l1; intros; simpl; auto. now rewrite app_cons_l IHl1. Qed.
+
 Fact nth_error_some_inrange {A : Type} (i : nat) (al : list A) a : 
   nth_error al i = Some a -> i < length al.
 Proof.
@@ -85,6 +88,48 @@ Proof.
   revert l'. induction l as [ | a l IH ]; simpl; intros; try tauto.
   destruct l' as [ | b l' ]; simpl in H |- *; try contradiction.  
   rewrite pair_equal_spec in H. firstorder.
+Qed.
+
+Fact list_update_intermediate__ {A : Type} (a : A) (L : list A) (n : nat) (H : (n < length L)%nat) :
+  (List.app (repeat a (S n)) (skipn (S n) L)) =
+  LibList.update n a (List.app (repeat a n) (skipn n L)).
+Proof.
+  pose proof (firstn_skipn n L). rewrite <- H0 at 1.
+  rewrite -> skipn_app. rewrite -> skipn_all2 at 1.
+  all: rewrite firstn_length_le; try math.
+  replace (S n - n)%nat with 1%nat by math.
+  rewrite -Nat.add_1_r repeat_app. 
+  pose proof (skipn_length n L).
+  remember (skipn n L) as l eqn:E. destruct l. 1: simpl in H1; math. simpl.
+  rewrite -!listapp_conversion. erewrite update_middle.
+  3: now rewrite length_List_length repeat_length.
+  2: constructor; now exists a0.
+  reflexivity.
+Qed.
+
+Fact filter_all_false {A : Type} (f : A -> bool) (l : list A) 
+  (H : forall x, In x l -> f x = false) : filter f l = nil.
+Proof.
+  induction l as [ | y l IH ]; simpl in *; auto.
+  pose proof (H _ (or_introl eq_refl)) as ->.
+  f_equal; auto.
+Qed.
+
+Fact nth_firstn {A : Type} [def : A] (l : list A) (n i : nat) (H : (i < n)%nat) :
+  nth i (firstn n l) def = nth i l def.
+Proof.
+  destruct (Nat.ltb n (length l)) eqn:E.
+  { apply Nat.ltb_lt in E. 
+    pose proof (firstn_skipn n l) as HH. rewrite <- HH at 2.
+    rewrite app_nth1 ?firstn_length_le; try math; auto. }
+  { apply Nat.ltb_ge in E. rewrite firstn_all2; try math; auto. }
+Qed.
+
+Fact nth_skipn {A : Type} [def : A] (l : list A) (n i : nat) (H : (n < length l)%nat) :
+  nth i (skipn n l) def = nth (i + n)%nat l def.
+Proof.
+  pose proof (firstn_skipn n l) as HH. rewrite <- HH at 2.
+  rewrite app_nth2 ?firstn_length_le; try math; auto. f_equal; math.
 Qed.
 
 Section index.
@@ -325,13 +370,17 @@ Fact fold_right_max_basele_le (l : list int) (a b : int) (H : a <= b) :
   fold_right Z.max a l <= fold_right Z.max b l.
 Proof. induction l; simpl; try math. Qed.
 
+Fact fold_right_max_app (l l' : list int) (a : int) :
+  fold_right Z.max a (List.app l l') = Z.max (fold_right Z.max a l) (fold_right Z.max a l').
+Proof. induction l; simpl; try math. by rewrite fold_right_max_base_dup. Qed.
+
 Fact fold_right_max_appr_le (l l' : list int) (a : int) :
   fold_right Z.max a l <= fold_right Z.max a (List.app l l').
-Proof. induction l; simpl; try math. apply fold_right_max_base_le. Qed.
+Proof. rewrite fold_right_max_app. math. Qed.
 
 Fact fold_right_max_appl_le (l l' : list int) (a : int) :
   fold_right Z.max a l <= fold_right Z.max a (List.app l' l).
-Proof. induction l'; simpl; try math. Qed.
+Proof. rewrite fold_right_max_app. math. Qed.
 
 Fact sorted_cons l x : sorted (x :: l) -> sorted l.
 Proof.
@@ -438,6 +487,67 @@ Proof.
   enough (l[j] <= l[i]) by math. revert Hq. now apply sorted_leq. 
 Qed.
 
+Fact sorted_bounded_sublist (l : list int) (Hs : sorted l) (M : int) (Hb : forall x, List.In x l -> 0 <= x < M) :
+  l = List.filter (fun x => isTrue (List.In x l)) (lof id M).
+Proof.
+  revert M Hb. induction l as [ | x l IH ] using rev_ind; intros.
+  { simpl. rewrite filter_all_false //. intros. exact isTrue_False. }
+  { setoid_rewrite in_app_iff in Hb. simpl in Hb.
+    pose proof (firstn_skipn (abs x) (lof id M)).
+    rewrite -H. rewrite filter_app.
+    pose proof (Hb _ (or_intror (or_introl eq_refl))) as Hx.
+    rewrite -> IH with (M:=x).
+    { f_equal.
+      { replace (firstn _ _) with (lof id x).
+        { apply filter_ext_in. intros a H0%In_lof_id. 
+          rewrite isTrue_eq_isTrue_eq in_app_iff filter_In In_lof_id isTrue_eq_true_eq /=.
+          intuition. }
+        apply (nth_ext _ _ 0 0).
+        { rewrite firstn_length_le ?length_lof' //. math. }
+        { intros ?. rewrite length_lof'. intros.
+          rewrite nth_firstn //.
+          replace n with (abs n) by math.
+          rewrite ?nth_lof; try math; auto. } }
+      { pose proof (skipn_length (abs x) (lof id M)) as Hlen.
+        rewrite length_lof' in Hlen. 
+        rewrite -> filter_ext_in with (g:=fun x0 => isTrue (x = x0)).
+        { remember (skipn (abs x) (lof id M)) as ll eqn:E. destruct ll. 1: simpl in Hlen; math. simpl.
+          assert (x = z) as <-.
+          { replace z with (skipn (abs x) (lof id M))[0] by now rewrite -E.
+            rewrite nth_skipn. 2: rewrite length_lof'; try math.
+            rewrite nth_lof; try math. }
+          case_if. f_equal.
+          rewrite filter_all_false //.
+          intros. rewrite isTrue_eq_false_eq. 
+          apply In_nth_int in H0. destruct H0 as (i & Hi & <-).
+          destruct ll eqn:EE; simpl in Hi, Hlen; try math.
+          rewrite <- ! EE in *.
+          assert (ll = skipn (1 + (abs x))%nat (lof id M)) as ->.
+          { rewrite -skipn_skipn -E //. }
+          rewrite nth_skipn ?nth_lof ?length_lof'; try math.
+          replace (abs i + (1 + abs x))%nat with (abs (x + i + 1))%nat by math.
+          rewrite nth_lof; math. }
+        { intros. rewrite isTrue_eq_isTrue_eq in_app_iff filter_In In_lof_id isTrue_eq_true_eq /=.
+          apply In_nth_int in H0. destruct H0 as (i & Hi & <-).
+          rewrite Hlen in Hi.
+          rewrite nth_skipn ?nth_lof ?length_lof'; try math.
+          replace (abs i + abs x)%nat with (abs (i+x)) by math.
+          rewrite ?nth_lof'; try math. intuition math. } } }
+    { hnf in Hs |- *. intros.
+      replace l[i] with (List.app l (x :: nil))[i].
+      1: replace l[j] with (List.app l (x :: nil))[j].
+      2-3: rewrite app_nth1; try math.
+      apply Hs; rewrite ?app_length /=; math. }
+    { intros. split. 1: apply Hb; auto.
+      apply In_nth_int in H0. destruct H0 as (i & Hi & <-).
+      replace x with (List.app l (x :: nil))[length l].
+      2: rewrite app_nth2; try math.
+      2: replace (abs _ - _)%nat with 0%nat; auto; math.
+      replace l[i] with (List.app l (x :: nil))[i].
+      2: rewrite app_nth1; try math.
+      apply Hs; rewrite ?app_length /=; math. } }
+Qed.
+
 Lemma sorted_max_size l i (Hi : 0 <= i) : 
   sorted l -> i + 1 = length l -> l[i] = max l.
 Proof. 
@@ -461,6 +571,17 @@ Qed.
 Lemma max_takeS i l : 
   0 <= i < length l ->
   max (take (abs (i + 1)) l) = Z.max l[i] (max (take (abs i) l)).
+Proof. 
+  rewrite !take_conversion.
+  intros. assert (length (firstn (abs (i+1)) l) = abs (i+1)) as Hlen by (rewrite firstn_length_le; math).
+  case (classicT ((firstn (abs (i + 1)) l) = nil)); [ intros C; rewrite C in Hlen | intros (l' & a & E)%exists_last ]; 
+    simpl in Hlen; try math.
+  pose proof (@removelast_firstn _ (abs i) l ltac:(math)) as Hq.
+  replace (S (abs i)) with (abs (i+1)) in Hq by math. rewrite E removelast_last in Hq. subst l'.
+  assert (a = l[i]) as ->.
+  { replace a with (firstn (abs (i + 1)) l)[i].
+    { rewrite nth_firstn; math. }
+    rewrite E app_nth2 ?firstn_length_le; try math. replace (abs i - abs i)%nat with 0%nat by math. auto. }
 Admitted.
 
 Lemma In_lt x i l :

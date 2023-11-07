@@ -195,10 +195,6 @@ Fact finite_suffcond (l : list binary64) n (H : forall x, List.In x l -> @finite
   @finite Tdouble (List.nth n l float_unit).
 Proof. destruct (List.nth_in_or_default n l float_unit) as [ | -> ]; auto. by compute. Qed.
 
-Fact sorted_bounded_sublist (l : list int) (Hs : sorted l) (M : int) (Hb : forall x, List.In x l -> 0 <= x < M) :
-  l = List.filter (fun x => isTrue (List.In x l)) (lof id M).
-Admitted.
-
 Module sv_float.
 
 Notation "H1 '\\*' H2" := (hstar H1 H2)
