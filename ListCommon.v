@@ -503,6 +503,44 @@ Proof.
   enough (l[j] <= l[i]) by math. revert Hq. now apply sorted_leq. 
 Qed.
 
+Lemma sorted_app_l l1 l2 : sorted (List.app l1 l2) -> sorted l1.
+Proof.
+  intros. hnf in H |- *.
+  intros. rewrite app_length in H.
+  have Ha : 0 <= i < (length l1 + length l2)%nat by math.
+  have Hb : 0 <= j < (length l1 + length l2)%nat by math.
+  specialize (H _ _ Ha Hb H2).
+  rewrite !app_nth1 in H; auto; math.
+Qed.
+
+Lemma sorted_app_r l1 l2 : sorted (List.app l1 l2) -> sorted l2.
+Proof.
+  intros. hnf in H |- *.
+  intros. rewrite app_length in H.
+  have Ha : 0 <= i + length l1 < (length l1 + length l2)%nat by math.
+  have Hb : 0 <= j + length l1 < (length l1 + length l2)%nat by math.
+  have HH : i + length l1 < j + length l1 by math.
+  specialize (H _ _ Ha Hb HH).
+  rewrite !app_nth2 in H; auto; try math.
+  replace (abs (i + _) - _)%nat with (abs i) in H by math.
+  replace (abs (j + _) - _)%nat with (abs j) in H by math. auto.
+Qed.
+
+Lemma sorted_app_lt l1 l2 : sorted (List.app l1 l2) -> 
+  forall x y, In x l1 -> In y l2 -> x < y.
+Proof.
+  intros. apply In_nth_int in H0, H1.
+  destruct H0 as (i & Hi & <-), H1 as (j & Hj & <-).
+  hnf in H. rewrite app_length in H.
+  have Ha : 0 <= i < (length l1 + length l2)%nat by math.
+  have Hb : 0 <= j + length l1 < (length l1 + length l2)%nat by math.
+  have HH : i < j + length l1 by math.
+  specialize (H _ _ Ha Hb HH).
+  rewrite -> app_nth1 in H at 1. 2: math.
+  rewrite -> app_nth2 in H at 1. 2: math.
+  eapply eq_ind_r with (y:=l2[j]). 1: apply H. f_equal. math.
+Qed.
+
 Fact sorted_bounded_sublist (l : list int) (Hs : sorted l) (M : int) (Hb : forall x, List.In x l -> 0 <= x < M) :
   l = List.filter (fun x => isTrue (List.In x l)) (lof id M).
 Proof.
@@ -760,6 +798,40 @@ Proof.
       all: rewrite In_merge; tauto. } }
 Qed.
 
+Lemma max_merge_last_ge1 l1 l2 def : 
+  l1 <> nil ->
+  sorted l1 -> 
+  sorted l2 ->
+    last (merge l1 l2) def >= last l1 def.
+Proof.
+  intros.
+  assert (0 < length l1) as Hq by (destruct l1; try contradiction; simpl; math).
+  pose proof (size_merge l1 l2) as HH.
+  assert (merge l1 l2 <> nil) as Hq2 by (destruct (merge l1 l2); simpl in HH; auto; math).
+  rewrite !sorted_last_max //. 
+  2: apply sorted_merge; auto.
+  case (classicT (l2 = nil))=> [ -> | Hneq ].
+  { rewrite merge_nil_r. math. }
+  { enough (max (merge l1 l2) = Z.max (max l1) (max l2)) by math. by apply max_merge. }
+Qed.
+
+Lemma max_merge_last_ge2 l1 l2 def : 
+  l2 <> nil ->
+  sorted l1 -> 
+  sorted l2 ->
+    last (merge l1 l2) def >= last l2 def.
+Proof.
+  intros.
+  assert (0 < length l2) as Hq by (destruct l2; try contradiction; simpl; math).
+  pose proof (size_merge l1 l2) as HH.
+  assert (merge l1 l2 <> nil) as Hq2 by (destruct (merge l1 l2); simpl in HH; auto; math).
+  rewrite !sorted_last_max //. 
+  2: apply sorted_merge; auto.
+  case (classicT (l1 = nil))=> [ -> | Hneq ].
+  { rewrite merge_nil_l. math. }
+  { enough (max (merge l1 l2) = Z.max (max l1) (max l2)) by math. by apply max_merge. }
+Qed.
+
 Lemma merge_split (n : nat) : forall l1 l2 (H : (n <= length (merge l1 l2))%nat)
   (Hs1 : StronglySorted Z.lt l1) (Hs2 : StronglySorted Z.lt l2),
   exists pre1 suf1 pre2 suf2, 
@@ -958,13 +1030,6 @@ Proof.
   intros. apply sorted_leq; try math; auto.
 Qed. 
 
-Lemma merge_nthS l1 l2 i :
-  sorted l1 -> sorted l2 ->
-  0 < i + 1 < length (merge l1 l2) ->
-    (merge l1 l2)[i+1] = Z.min (search (merge l1 l2)[i] l1) (search (merge l1 l2)[i] l2).
-Proof.
-
-
 Lemma search_nth_pred l i x : 
   sorted l -> 
   0 < i < length l ->
@@ -974,6 +1039,149 @@ Proof.
   intros. apply search_sufcond, search_core_sufcond; auto; try math.
   intros. etransitivity. 2: apply H1. apply sorted_leq; try math; auto.
 Qed.
+
+Lemma merge_nthS l1 l2 i :
+  sorted l1 -> sorted l2 ->
+  0 < i + 1 < length (merge l1 l2) ->
+    (merge l1 l2)[i+1] = Z.min (search (merge l1 l2)[i] l1) (search (merge l1 l2)[i] l2).
+Proof.
+  intros. pose proof H as HH%sorted_StronglySorted. pose proof H0 as HH0%sorted_StronglySorted.
+  assert (sorted (merge l1 l2)) as Hsom by now apply sorted_merge.
+  have Hle : ((abs (i + 1)) <= length (merge l1 l2))%nat by math.
+  pose proof (merge_split Hle HH HH0) as (pre1 & suf1 & pre2 & suf2 & E1 & E2 & Hfirst & Hskip & Hgood1 & Hgood2).
+  replace (abs (i+1)) with (0 + (abs (i+1)))%nat by math.
+  rewrite <- nth_skipn with (l:=merge l1 l2); try lia. rewrite Hskip.
+  assert (length (merge pre1 pre2) = abs (i + 1) :> nat) as Hgt.
+  1: rewrite -Hfirst firstn_length_le; math.
+  pose proof Hgt as Hgt'. rewrite -Hfirst in Hgt.
+  replace (abs i) with (length (firstn (abs (i + 1)) (merge l1 l2)) - 1)%nat; try lia.
+  rewrite <- (nth_firstn (merge l1 l2)) with (n:=abs (i+1)); try lia.
+  rewrite Hfirst (nth_last _ 0). 2: destruct (merge pre1 pre2); simpl in Hgt'; try discriminate; try math.
+  pose proof H as Hsp1. rewrite E1 in Hsp1. pose proof Hsp1 as Hss1%sorted_app_r. apply sorted_app_l in Hsp1.
+  pose proof H0 as Hsp2. rewrite E2 in Hsp2. pose proof Hsp2 as Hss2%sorted_app_r. apply sorted_app_l in Hsp2.
+  assert (length (merge suf1 suf2) > 0) as Hgt0.
+  { rewrite -Hskip skipn_length. math. }
+  assert (pre1 <> nil -> last (merge pre1 pre2) 0 >= last pre1 0) as HH1.
+  { intros Hq. apply max_merge_last_ge1; auto. }
+  assert (pre2 <> nil -> last (merge pre1 pre2) 0 >= last pre2 0) as HH2.
+  { intros Hq. apply max_merge_last_ge2; auto. }
+  pose proof (firstn_skipn (abs (i + 1)) (merge l1 l2)) as Htmp.
+  match type of Htmp with (List.app ?ll1 ?ll2) = _ => 
+    pose proof (sorted_app_lt ll1 ll2) as Htmp2 end.
+  rewrite Htmp Hfirst Hskip in Htmp2. specialize (Htmp2 Hsom).
+  setoid_rewrite In_merge in Htmp2.
+  assert (forall l (P : int -> Prop), l <> nil -> (forall x, In x l -> P x) -> P (last l 0)) as Hlst_suff.
+  { clear. intros l P Hneq. induction l; simpl; intros; try contradiction.
+    destruct l.
+    { apply H. auto. }
+    { apply IHl; auto. discriminate. } }
+
+  assert (search (last (merge pre1 pre2) 0) l1 = 
+    match suf1 with
+    | nil => (last (merge pre1 pre2) 0) + 1
+    | x :: _ => x
+    end) as Hq1.
+  { destruct suf1 as [ | x suf1 ].
+    { rewrite app_nil_r in E1. subst l1.
+      case (classicT (pre1 = nil))=> [ -> | Hneq ] //.
+      pose proof Hneq as Hneq'.
+      apply HH1 in Hneq; auto.
+      unfold search. destruct (search_core _ _) eqn:E; auto.
+      apply find_some in E. rewrite Z.ltb_lt in E.
+      pose proof Hneq' as Hneq''.
+      apply sorted_last_max with (def:=0) in Hneq'; auto. rewrite max_cond // in Hneq'.
+      destruct E as (E & Hlt). apply Hneq' in E. math. }
+    { case (classicT (pre1 = nil))=> [ El1 | Hneq ].
+      { subst pre1 l1. rewrite merge_nil_l.
+        simpl. unfold search. simpl.
+        case (classicT (pre2 = nil))=> [ El2 | Hneq2 ].
+        1: subst pre2; simpl in Hgt'; math.
+        apply exists_last in Hneq2. destruct Hneq2 as (pre2' & lst & ->).
+        rewrite last_last.
+        specialize (Htmp2 lst x). rewrite in_app_iff /= in Htmp2. 
+        assert (lst < x) as Hltt%Z.ltb_lt by (apply Htmp2; auto). now rewrite Hltt. }
+      { assert (x = l1[length pre1]) as ->.
+        { rewrite E1. replace (abs _) with (length pre1) by math. by rewrite nth_middle. }
+        assert (0 < length pre1) as HHH by (destruct pre1; try contradiction; simpl; math).
+        apply search_nth_pred; auto. 
+        1: rewrite E1; rewrite app_length; simpl; math.
+        split.
+        { rewrite E1 app_nth1; try math. 
+          replace (abs (length pre1 - 1)) with (length pre1 - 1)%nat by math. 
+          rewrite -> nth_last with (b:=0); auto.
+          apply HH1 in Hneq. math. }
+        { apply Hlst_suff. 1: destruct (merge pre1 pre2); simpl in Hgt'; math.
+          intros x. rewrite In_merge. intros. apply Htmp2; simpl; auto. } } } }
+  assert (search (last (merge pre1 pre2) 0) l2 = 
+    match suf2 with
+    | nil => (last (merge pre1 pre2) 0) + 1
+    | x :: _ => x
+    end) as Hq2.
+  { destruct suf2 as [ | x suf2 ].
+    { rewrite app_nil_r in E2. subst l2.
+      case (classicT (pre2 = nil))=> [ -> | Hneq ] //.
+      pose proof Hneq as Hneq'.
+      apply HH2 in Hneq; auto.
+      unfold search. destruct (search_core _ _) eqn:E; auto.
+      apply find_some in E. rewrite Z.ltb_lt in E.
+      pose proof Hneq' as Hneq''.
+      apply sorted_last_max with (def:=0) in Hneq'; auto. rewrite max_cond // in Hneq'.
+      destruct E as (E & Hlt). apply Hneq' in E. math. }
+    { case (classicT (pre2 = nil))=> [ El2 | Hneq ].
+      { subst pre2 l2. rewrite merge_nil_r.
+        simpl. unfold search. simpl.
+        case (classicT (pre1 = nil))=> [ El1 | Hneq1 ].
+        1: subst pre1; simpl in Hgt'; math.
+        apply exists_last in Hneq1. destruct Hneq1 as (pre1' & lst & ->).
+        rewrite last_last.
+        specialize (Htmp2 lst x). rewrite in_app_iff /= in Htmp2. 
+        assert (lst < x) as Hltt%Z.ltb_lt by (apply Htmp2; auto). now rewrite Hltt. }
+      { assert (x = l2[length pre2]) as ->.
+        { rewrite E2. replace (abs _) with (length pre2) by math. by rewrite nth_middle. }
+        assert (0 < length pre2) as HHH by (destruct pre2; try contradiction; simpl; math).
+        apply search_nth_pred; auto. 
+        1: rewrite E2; rewrite app_length; simpl; math.
+        split.
+        { rewrite E2 app_nth1; try math. 
+          replace (abs (length pre2 - 1)) with (length pre2 - 1)%nat by math. 
+          rewrite -> nth_last with (b:=0); auto.
+          apply HH2 in Hneq. math. }
+        { apply Hlst_suff. 1: destruct (merge pre1 pre2); simpl in Hgt'; math.
+          intros x. rewrite In_merge. intros. apply Htmp2; simpl; auto. } } } }
+
+  
+
+
+        
+        
+        rewrite -> sorted_last_max with (def:=0); auto.
+
+          
+      
+      
+      destruct pre1
+
+
+  destruct suf1 as [ | b1 suf1 ].
+  { destruct suf2 as [ | b2 suf2 ].
+    1: simpl in Hgt0; math.
+    rewrite merge_nil_l. simpl.
+    destruct pre1.
+    { 
+
+
+  search
+  
+
+
+
+  assert ((merge l1 l2)[i] = last )
+
+
+
+  rewrite -(nth_firstn (merge l1 l2) (n:=length (merge l1 l2))); try lia.
+
+
 
 End search_leastupperbound.
 
