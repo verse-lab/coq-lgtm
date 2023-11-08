@@ -742,62 +742,7 @@ Proof.
   destruct l1, l2; simpl; try math. move=> _ _.
   case_if; simpl; try math. case_if; simpl; try math.
 Qed. 
-(*
-Lemma merge_last l1 l2 :
-  sorted l1 -> 
-  sorted l2 ->
-  l1 <> nil ->
-  l2 <> nil ->
-  last (merge l1 l2) 0 = Z.max (last l1 0) (last l2 0).
-Proof.
-  intros Hs1 Hs2 Hl1 Hl2. revert l2 Hs2 Hl2.
-  induction l1 as [ | a l1 IH ]; intros; cbn delta [merge] beta iota zeta; try contradiction.
-  specialize (IH (sorted_cons Hs1)).
-  induction l2 as [ | b l2 IH2 ]; cbn delta [merge] beta iota zeta; try contradiction.
-  specialize (IH2 (sorted_cons Hs2)).
-  case (classicT (l1 = nil))=> [ HH | Hneq1 ].
-  { subst l1. clear IH.
-    case (classicT (l2 = nil))=> [ HH | Hneq2 ].
-    { subst l2. case_if; simpl; try math. case_if; simpl; try math. }
-    { specialize (IH2 Hneq2). rewrite !merge_nil_l.
-      rewrite -?/(merge (a :: nil) l2) in IH2 |- *.
-      case_if.
-      { subst a.
-        apply sorted_last_max with (def:=0) in Hs2; auto.
-        rewrite Hs2 ?(last_notnil _ _ (l:=l2)). simpl. math. }
-      { case_if.
-        { apply sorted_last_max with (def:=0) in Hs2; auto.
-          rewrite -> last_notnil at 1. 2: auto.
-          rewrite Hs2. simpl. math. }
-        { rewrite -> last_notnil at 1. 
-          2: destruct l2; try contradiction; simpl; do 2 (try case_if; try discriminate).
-          rewrite (last_notnil _ _ (l:=l2)) //. } } } }
-  { specialize (IH Hneq1). 
-    case (classicT (l2 = nil))=> [ HH | Hneq2 ].
-    { subst l2. clear IH2. rewrite !merge_nil_r.
-      case_if.
-      { subst a.
-        apply sorted_last_max with (def:=0) in Hs1; auto.
-        rewrite Hs1 ?(last_notnil _ _ (l:=l1)). simpl. math. }
-      { case_if.
-        { rewrite -> last_notnil at 1. 
-          2: destruct l1; try contradiction; simpl; do 2 (try case_if; try discriminate).
-          rewrite (last_notnil _ _ (l:=l1)) //. now apply IH. }
-        { apply sorted_last_max with (def:=0) in Hs1; auto.
-          rewrite -> last_notnil at 1. 2: auto.
-          rewrite Hs1. simpl. math. } } }
-    { specialize (IH2 Hneq2).
-      rewrite -?/(merge (a :: l1) l2) in IH2 |- *.
-      case_if.
-      { rewrite ?last_notnil //. 1: apply IH; try eapply sorted_cons; eauto.
-        destruct l1, l2; try contradiction; simpl; do 2 (try case_if; try discriminate). }
-      { case_if.
-        { rewrite -> ?last_notnil with (a:=a); auto.
-          destruct l1; try contradiction; simpl; do 2 (try case_if; try discriminate). }
-        { rewrite -> ?last_notnil with (a:=b); auto.
-          destruct l2; try contradiction; simpl; do 2 (try case_if; try discriminate). } } } }
-Qed.
-*)
+
 Lemma max_merge l1 l2 : 
   l1 <> nil ->
   l2 <> nil ->
@@ -813,6 +758,124 @@ Proof.
     { intros. rewrite In_merge in H3. destruct H3; [ apply HH1 in H3 | apply HH2 in H3 ]; math. }
     { destruct (Z.max_spec_le (max l1) (max l2)) as [ (_ & ->) | (_ & ->) ].
       all: rewrite In_merge; tauto. } }
+Qed.
+
+Lemma merge_split (n : nat) : forall l1 l2 (H : (n <= length (merge l1 l2))%nat)
+  (Hs1 : StronglySorted Z.lt l1) (Hs2 : StronglySorted Z.lt l2),
+  exists pre1 suf1 pre2 suf2, 
+    l1 = pre1 ++ suf1 /\
+    l2 = pre2 ++ suf2 /\
+    (firstn n (merge l1 l2)) = merge pre1 pre2 /\
+    (skipn n (merge l1 l2)) = merge suf1 suf2 /\
+    (pre1 <> nil -> suf2 <> nil -> last pre1 0 <> hd 0 suf2) /\
+    (pre2 <> nil -> suf1 <> nil -> last pre2 0 <> hd 0 suf1).
+Proof.
+  induction n as [ | n IH ]; intros.
+  { exists (@nil int), l1, (@nil int), l2. do 4 (split; auto). }
+  { destruct l1 as [ | a l1 ].
+    { destruct l2 as [ | b l2 ].
+      1: simpl in H; math.
+      rewrite merge_nil_l in H. simpl in H. apply le_S_n in H.
+      specialize (IH nil l2). rewrite merge_nil_l in IH.
+      specialize (IH H).
+      apply StronglySorted_inv in Hs2. destruct Hs2 as (Hs2 & Hnotin). specialize (IH Hs1 Hs2).
+      destruct IH as (pre1 & suf1 & pre2 & suf2 & Enn & -> & Hfirst & Hskip & _ & Hgood2).
+      destruct suf1. 2: exfalso; revert Enn; apply app_cons_not_nil.
+      destruct pre1; try discriminate.
+      rewrite app_comm_cons.
+      exists (@nil int), (@nil int), (b :: pre2), suf2.
+      do 2 (split; auto). 
+      rewrite -> merge_nil_l in *. rewrite !merge_nil_l. 
+      simpl. rewrite Hfirst Hskip. do 3 (split; auto). }
+    { destruct l2 as [ | b l2 ].
+      { rewrite merge_nil_r in H. simpl in H. apply le_S_n in H.
+        specialize (IH l1 nil). rewrite merge_nil_r in IH.
+        specialize (IH H).
+        apply StronglySorted_inv in Hs1. destruct Hs1 as (Hs1 & Hnotin). specialize (IH Hs1 Hs2).
+        destruct IH as (pre1 & suf1 & pre2 & suf2 & -> & Enn & Hfirst & Hskip & Hgood1 & _).
+        destruct suf2. 2: exfalso; revert Enn; apply app_cons_not_nil.
+        destruct pre2; try discriminate.
+        rewrite app_comm_cons.
+        exists (a :: pre1), suf1, (@nil int), (@nil int).
+        do 2 (split; auto). 
+        rewrite -> merge_nil_r in *. rewrite !merge_nil_r. 
+        simpl. rewrite Hfirst Hskip. do 3 (split; auto). }
+      { simpl in H. case_if.
+        { subst a.
+          simpl in H. apply le_S_n in H.
+          specialize (IH _ _ H (proj1 (StronglySorted_inv Hs1)) (proj1 (StronglySorted_inv Hs2))).
+          apply sorted_StronglySorted, sorted_nodup, NoDup_cons_iff in Hs1, Hs2. 
+          destruct Hs1 as (Hnotin1 & Hs1), Hs2 as (Hnotin2 & Hs2).
+          destruct IH as (pre1 & suf1 & pre2 & suf2 & -> & -> & Hfirst & Hskip & Hgood1 & Hgood2).
+          rewrite !in_app_iff in Hnotin1, Hnotin2.
+          rewrite !app_comm_cons.
+          do 4 eexists. do 2 (split; [ reflexivity | ]).
+          rewrite -!app_comm_cons. 
+          simpl merge. simpl firstn. simpl skipn. case_if.
+          rewrite Hfirst Hskip. do 2 (split; auto).
+          split=> Ha Hb.
+          { destruct pre1. 
+            { simpl. destruct suf2 as [ | yy ? ]; try contradiction.
+              simpl in Hnotin2 |- *. intros ->; apply Hnotin2; tauto. }
+            { rewrite -> 1 last_notnil. 2: discriminate.
+              apply Hgood1; auto; discriminate. } }
+          { destruct pre2. 
+            { simpl. destruct suf1 as [ | yy ? ]; try contradiction.
+              simpl in Hnotin1 |- *. intros ->; apply Hnotin1; tauto. }
+            { rewrite -> 1 last_notnil. 2: discriminate.
+              apply Hgood2; auto; discriminate. } } }
+        { case_if.
+          { simpl length in H. apply le_S_n in H.
+            specialize (IH _ _ H (proj1 (StronglySorted_inv Hs1)) Hs2).
+            apply StronglySorted_inv in Hs2.
+            destruct Hs2 as (_ & Hnotin2). rewrite Forall_forall in Hnotin2.
+            destruct IH as (pre1 & suf1 & pre2 & suf2 & -> & E2 & Hfirst & Hskip & Hgood1 & Hgood2).
+            rewrite !app_comm_cons.
+            do 4 eexists. rewrite -> E2 at 1. do 2 (split; [ reflexivity | ]).
+            rewrite -!app_comm_cons.
+            simpl merge. case_if. case_if. simpl firstn. simpl skipn.
+            rewrite Hfirst Hskip.
+            rewrite -/(merge (a :: pre1) pre2). split. 2: split; auto.
+            { destruct pre2.
+              1: by rewrite !merge_nil_r.
+              rewrite -app_comm_cons in E2. assert (b = z) as <- by congruence.
+              simpl. case_if. case_if. auto. }
+            split; auto. intros Ha Hb.
+            destruct pre1.
+            { simpl. destruct suf2 as [ | yy ? ]; try contradiction.
+              simpl. intros ->. 
+              destruct pre2. 1: simpl in E2; congruence.
+              simpl in E2. inversion E2. subst b l2.
+              specialize (Hnotin2 yy). rewrite in_app_iff /= in Hnotin2.
+              enough (z < yy) by math. apply Hnotin2. auto. }
+            { rewrite -> 1 last_notnil. 2: discriminate.
+              apply Hgood1; auto; discriminate. } }
+          { simpl length in H. apply le_S_n in H.
+            rewrite -/(merge (a :: l1) l2) in H. 
+            specialize (IH _ _ H Hs1 (proj1 (StronglySorted_inv Hs2))).
+            apply StronglySorted_inv in Hs1.
+            destruct Hs1 as (_ & Hnotin1). rewrite Forall_forall in Hnotin1.
+            destruct IH as (pre1 & suf1 & pre2 & suf2 & E1 & -> & Hfirst & Hskip & Hgood1 & Hgood2).
+            rewrite !app_comm_cons.
+            do 4 eexists. rewrite -> E1 at 1. do 2 (split; [ reflexivity | ]).
+            rewrite -!app_comm_cons.
+            simpl merge. case_if. case_if. simpl firstn. simpl skipn.
+            rewrite Hfirst Hskip.
+            split. 2: split; auto.
+            { destruct pre1.
+              1: by rewrite !merge_nil_l.
+              rewrite -app_comm_cons in E1. assert (a = z) as <- by congruence.
+              simpl. case_if. case_if. auto. }
+            split; auto. intros Ha Hb.
+            destruct pre2.
+            { simpl. destruct suf1 as [ | yy ? ]; try contradiction.
+              simpl. intros ->. 
+              destruct pre1. 1: simpl in E1; congruence.
+              simpl in E1. inversion E1. subst a l1.
+              specialize (Hnotin1 yy). rewrite in_app_iff /= in Hnotin1.
+              enough (z < yy) by math. apply Hnotin1. auto. }
+            { rewrite -> 1 last_notnil. 2: discriminate.
+              apply Hgood2; auto; discriminate. } } } } } }
 Qed.
 
 End merge.
@@ -899,7 +962,8 @@ Lemma merge_nthS l1 l2 i :
   sorted l1 -> sorted l2 ->
   0 < i + 1 < length (merge l1 l2) ->
     (merge l1 l2)[i+1] = Z.min (search (merge l1 l2)[i] l1) (search (merge l1 l2)[i] l2).
-Admitted.
+Proof.
+
 
 Lemma search_nth_pred l i x : 
   sorted l -> 
