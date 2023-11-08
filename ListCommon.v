@@ -625,24 +625,91 @@ End sorted_max.
 
 Section merge.
 
-Definition merge (l1 l2 : list int) : list int. Admitted.
+Import Sorted.
+
+(*
+Definition merge' (l1 l2 : list int) (f : list int -> list int -> list int) : list int :=
+  match l1, l2 with
+  | x :: l1', y :: l2' => 
+    If x = y 
+    then x :: (f l1' l2') 
+    else (If x < y then x :: (f l1' l2) else y :: (f l1 l2'))
+  | _ :: _, nil => l1
+  | nil, _ => l2
+  end.
+*)
+Fixpoint merge (l1 l2 : list int) : list int :=
+  let fix merge_aux (l2 : list int) : list int :=
+  match l1, l2 with
+  | x :: l1', y :: l2' => 
+    If x = y 
+    then x :: (merge l1' l2') 
+    else (If x < y then x :: (merge l1' l2) else y :: (merge_aux l2'))
+  | _ :: _, nil => l1
+  | nil, _ => l2
+  end in merge_aux l2.
 
 Lemma In_merge l1 l2 x : In x (merge l1 l2) = (In x l1 \/ In x l2).
-Proof. Admitted.
+Proof.
+  extens. revert l2.
+  induction l1 as [ | a l1 IH ]; intros; simpl.
+  { destruct l2; simpl; tauto. }
+  { induction l2 as [ | b l2 IH2 ]; intros; simpl.
+    { tauto. }
+    { case_if. 
+      { simpl. rewrite IH. subst a. tauto. }
+      { case_if.
+        { simpl. rewrite IH. simpl. tauto. }
+        { simpl. rewrite IH2. tauto. } } } }
+Qed.
 
 Lemma sorted_merge l1 l2 : sorted l1 -> sorted l2 -> sorted (merge l1 l2).
-Admitted.
+Proof.
+  rewrite !sorted_StronglySorted.
+  revert l2. induction l1 as [ | x l1 IH ]; intros; simpl.
+  { destruct l2; simpl; assumption. }
+  { induction l2 as [ | y l2 IH2 ]; intros; simpl.
+    { assumption. }
+    { case_if. 
+      { subst x. apply StronglySorted_inv in H, H0. destruct H, H0.
+        constructor. 1: apply IH; tauto.
+        rewrite -> Forall_forall in *. intros x. rewrite In_merge.
+        intros [ | ]; auto. }
+      { case_if.
+        { apply StronglySorted_inv in H. constructor. 1: apply IH; tauto.
+          apply StronglySorted_inv in H0. destruct H, H0.
+          rewrite -> Forall_forall in *. intros z. rewrite In_merge.
+          simpl. intros [ | [ -> | ] ]; auto. transitivity y; auto. }
+        { rewrite -/(merge (x :: l1) l2). have CC : y < x by math.
+          apply StronglySorted_inv in H0. specialize (IH2 (proj1 H0)). constructor; auto.
+          apply StronglySorted_inv in H. destruct H, H0.
+          rewrite -> Forall_forall in *. intros z. rewrite In_merge.
+          simpl. intros [ [ -> | ] | ]; auto. transitivity x; auto. } } } }
+Qed.
 
 Lemma size_merge l1 l2: 
   length (merge l1 l2) >= Z.max (length l1) (length l2).
 Proof.
-Admitted.
+  revert l2.
+  induction l1 as [ | a l1 IH ]; intros; simpl.
+  { destruct l2; simpl; math. }
+  { induction l2 as [ | b l2 IH2 ]; intros; simpl.
+    { math. }
+    { case_if. 
+      { simpl. specialize (IH l2). math. }
+      { case_if; simpl.
+        { specialize (IH (b :: l2)). simpl in IH. math. }
+        { rewrite -?/(merge (_ :: l1) l2) in IH2 |- *; try math. } } } }
+Qed.
 
 Lemma merge_nth0 l1 l2 :
   length l1 > 0 ->
   length l2 > 0 ->
   (merge l1 l2)[0] = Z.min l1[0] l2[0].
-Admitted.
+Proof.
+  destruct l1, l2; simpl; try math. move=> _ _.
+  case_if; simpl; try math. case_if; simpl; try math.
+Qed. 
 
 Lemma max_merge l1 l2 : 
   sorted l1 -> 
