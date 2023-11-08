@@ -132,6 +132,22 @@ Proof.
   rewrite app_nth2 ?firstn_length_le; try math; auto. f_equal; math.
 Qed.
 
+Fact last_notnil {A : Type} (a b : A) (l : list A) (H : l <> nil) :
+  last (a :: l) b = last l b.
+Proof. 
+  revert a. induction l; intros; try contradiction.
+  destruct l; auto.
+Qed.
+
+Fact nth_last {A : Type} (a b : A) (l : list A) (H : l <> nil) :
+  nth (length l - 1)%nat l a = last l b.
+Proof.
+  induction l; intros; try contradiction.
+  simpl. destruct l as [ | aa l ]; auto.
+  simpl in IHl |- *. assert (aa :: l <> nil) as Htmp by now intros.
+  specialize (IHl Htmp). now rewrite Nat.sub_0_r in IHl.
+Qed. 
+
 Section index.
 
 Context {A : Type}.
@@ -557,6 +573,16 @@ Proof.
   { apply nth_In_int. math. }
 Qed. 
 
+Lemma sorted_last_max l def (H : l <> nil) : 
+  sorted l -> last l def = max l.
+Proof.
+  intros. 
+  have HH : 0 <= length l - 1.
+  { destruct l; try contradiction. simpl length. lia. }
+  rewrite -(sorted_max_size (i:=(length l - 1)%Z)) //; try math.
+  rewrite -(nth_last 0 def) //. f_equal. math.
+Qed.
+
 Lemma nth_le_max l i :
   0 <= i < length l ->
   sorted l ->
@@ -649,6 +675,12 @@ Fixpoint merge (l1 l2 : list int) : list int :=
   | nil, _ => l2
   end in merge_aux l2.
 
+Fact merge_nil_l l : merge nil l = l.
+Proof. destruct l; auto. Qed.
+
+Fact merge_nil_r l : merge l nil = l.
+Proof. destruct l; auto. Qed.
+
 Lemma In_merge l1 l2 x : In x (merge l1 l2) = (In x l1 \/ In x l2).
 Proof.
   extens. revert l2.
@@ -710,13 +742,78 @@ Proof.
   destruct l1, l2; simpl; try math. move=> _ _.
   case_if; simpl; try math. case_if; simpl; try math.
 Qed. 
-
+(*
+Lemma merge_last l1 l2 :
+  sorted l1 -> 
+  sorted l2 ->
+  l1 <> nil ->
+  l2 <> nil ->
+  last (merge l1 l2) 0 = Z.max (last l1 0) (last l2 0).
+Proof.
+  intros Hs1 Hs2 Hl1 Hl2. revert l2 Hs2 Hl2.
+  induction l1 as [ | a l1 IH ]; intros; cbn delta [merge] beta iota zeta; try contradiction.
+  specialize (IH (sorted_cons Hs1)).
+  induction l2 as [ | b l2 IH2 ]; cbn delta [merge] beta iota zeta; try contradiction.
+  specialize (IH2 (sorted_cons Hs2)).
+  case (classicT (l1 = nil))=> [ HH | Hneq1 ].
+  { subst l1. clear IH.
+    case (classicT (l2 = nil))=> [ HH | Hneq2 ].
+    { subst l2. case_if; simpl; try math. case_if; simpl; try math. }
+    { specialize (IH2 Hneq2). rewrite !merge_nil_l.
+      rewrite -?/(merge (a :: nil) l2) in IH2 |- *.
+      case_if.
+      { subst a.
+        apply sorted_last_max with (def:=0) in Hs2; auto.
+        rewrite Hs2 ?(last_notnil _ _ (l:=l2)). simpl. math. }
+      { case_if.
+        { apply sorted_last_max with (def:=0) in Hs2; auto.
+          rewrite -> last_notnil at 1. 2: auto.
+          rewrite Hs2. simpl. math. }
+        { rewrite -> last_notnil at 1. 
+          2: destruct l2; try contradiction; simpl; do 2 (try case_if; try discriminate).
+          rewrite (last_notnil _ _ (l:=l2)) //. } } } }
+  { specialize (IH Hneq1). 
+    case (classicT (l2 = nil))=> [ HH | Hneq2 ].
+    { subst l2. clear IH2. rewrite !merge_nil_r.
+      case_if.
+      { subst a.
+        apply sorted_last_max with (def:=0) in Hs1; auto.
+        rewrite Hs1 ?(last_notnil _ _ (l:=l1)). simpl. math. }
+      { case_if.
+        { rewrite -> last_notnil at 1. 
+          2: destruct l1; try contradiction; simpl; do 2 (try case_if; try discriminate).
+          rewrite (last_notnil _ _ (l:=l1)) //. now apply IH. }
+        { apply sorted_last_max with (def:=0) in Hs1; auto.
+          rewrite -> last_notnil at 1. 2: auto.
+          rewrite Hs1. simpl. math. } } }
+    { specialize (IH2 Hneq2).
+      rewrite -?/(merge (a :: l1) l2) in IH2 |- *.
+      case_if.
+      { rewrite ?last_notnil //. 1: apply IH; try eapply sorted_cons; eauto.
+        destruct l1, l2; try contradiction; simpl; do 2 (try case_if; try discriminate). }
+      { case_if.
+        { rewrite -> ?last_notnil with (a:=a); auto.
+          destruct l1; try contradiction; simpl; do 2 (try case_if; try discriminate). }
+        { rewrite -> ?last_notnil with (a:=b); auto.
+          destruct l2; try contradiction; simpl; do 2 (try case_if; try discriminate). } } } }
+Qed.
+*)
 Lemma max_merge l1 l2 : 
+  l1 <> nil ->
+  l2 <> nil ->
   sorted l1 -> 
   sorted l2 ->
     max (merge l1 l2) = Z.max (max l1) (max l2).
-Proof.
-Admitted.
+Proof. 
+  intros. symmetry. apply max_cond.
+  { destruct l1, l2; try contradiction; simpl; do 2 (try case_if; try discriminate). }
+  { epose proof (@eq_refl int _) as HH1. rewrite -> (max_cond (l:=l1)) in HH1; auto.
+    epose proof (@eq_refl int _) as HH2. rewrite -> (max_cond (l:=l2)) in HH2; auto.
+    split.
+    { intros. rewrite In_merge in H3. destruct H3; [ apply HH1 in H3 | apply HH2 in H3 ]; math. }
+    { destruct (Z.max_spec_le (max l1) (max l2)) as [ (_ & ->) | (_ & ->) ].
+      all: rewrite In_merge; tauto. } }
+Qed.
 
 End merge.
 
