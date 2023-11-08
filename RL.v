@@ -395,9 +395,11 @@ Proof with (fold'; try abbrv).
   have ndind: NoDup ind by exact/sorted_nodup.
   xin (1,0): (xwp;xapp=> ans); (xwp;xapp=> iX); 
     (xwp;xapp=> iY); (xwp;xapp=> step)...
-  have maxindE: max ind = N.
-  { move: (max_merge sxind yxind)->.
-    rewrite -(sorted_max_size _ (i:=Mx)) -?(sorted_max_size _ (i:=My))... }
+  have xind_notnil : xind <> nil by destruct xind; try discriminate; simpl in *; try math.
+  have yind_notnil : yind <> nil by destruct yind; try discriminate; simpl in *; try math.
+  have maxxindE: max xind = N by rewrite -(sorted_max_size _ (i:=Mx)) //; try math.
+  have maxyindE: max yind = N by rewrite -(sorted_max_size _ (i:=My)) //; try math.
+  have maxindE: max ind = N by rewrite max_merge //; try math.
   rewrite (@interval_unionE ind)=> //.
   set (Inv (b : bool) (i : int) := 
     arr(x_ind, xind)⟨1, 0⟩ \* arr(y_ind, yind)⟨1, 0⟩ \\*

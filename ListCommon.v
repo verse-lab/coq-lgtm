@@ -146,7 +146,10 @@ Proof.
   simpl. destruct l as [ | aa l ]; auto.
   simpl in IHl |- *. assert (aa :: l <> nil) as Htmp by now intros.
   specialize (IHl Htmp). now rewrite Nat.sub_0_r in IHl.
-Qed. 
+Qed.
+
+Fact nth_nil {A : Type} [d : A] n : List.nth n (@nil A) d = d.
+Proof. destruct n; auto. Qed.
 
 Section index.
 
@@ -1050,7 +1053,7 @@ Proof.
   intros. etransitivity. 2: apply H1. apply sorted_leq; try math; auto.
 Qed.
 
-Lemma merge_nthS l1 l2 i :
+Lemma merge_nthS l1 l2 i (Hnotnil1 : l1 <> nil) (Hnotnil2 : l2 <> nil) (Hm : max l1 = max l2) :
   sorted l1 -> sorted l2 ->
   0 < i + 1 < length (merge l1 l2) ->
     (merge l1 l2)[i+1] = Z.min (search (merge l1 l2)[i] l1) (search (merge l1 l2)[i] l2).
@@ -1159,12 +1162,24 @@ Proof.
           intros x. rewrite In_merge. intros. apply Htmp2; simpl; auto. } } } }
 
   destruct suf1 as [ | x suf1 ].
-  { destruct suf2 as [ | y suf2 ].
+  { rewrite app_nil_r in E1. subst l1.
+    destruct suf2 as [ | y suf2 ].
     1: simpl in Hgt0; math.
     rewrite merge_nil_l. simpl. unfold search at 2. rewrite Hq1 Hq2.
-    apply find_some in Hq2. destruct Hq2 as (_ & Hq2%Z.ltb_lt).
-    (* at this point, one can see that this lemma cannot be proved, unless it has some very strong condition *)
-Admitted.
+    pose proof Hnotnil1 as Hlst%HH1. rewrite (sorted_last_max (l:=pre1)) // Hm in Hlst.
+    apply find_some, proj1 in Hq2. 
+    epose proof (@eq_refl int _) as Htmp3. rewrite -> (@max_cond l2) in Htmp3; auto.
+    apply Htmp3 in Hq2. math. }
+  { destruct suf2 as [ | y suf2 ].
+    { rewrite app_nil_r in E2. subst l2.
+      rewrite merge_nil_r. simpl. unfold search at 1. rewrite Hq1 Hq2.
+      pose proof Hnotnil2 as Hlst%HH2. rewrite (sorted_last_max (l:=pre2)) // -Hm in Hlst.
+      apply find_some, proj1 in Hq1. 
+      epose proof (@eq_refl int _) as Htmp3. rewrite -> (@max_cond l1) in Htmp3; auto.
+      apply Htmp3 in Hq1. math. }
+    { replace 0%nat with (abs 0) by math. rewrite merge_nth0; simpl; try math.
+      by rewrite /search Hq1 Hq2. } }
+Qed.
 
 End search_leastupperbound.
 
