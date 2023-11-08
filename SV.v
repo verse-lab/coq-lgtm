@@ -351,11 +351,13 @@ Proof with fold'.
   set (syind := (slice yind lby rby)).
   set (sxval := (slice xval lbx rbx)).
   set (syval := (slice yval lby rby)).
-  set (ind := merge sxind syind).
+  pose proof (size_merge sxind syind) as indlen.
+  set (ind := merge sxind syind) in indlen |- *.
+  have indsorted : sorted ind by rewrite /sxind/syind; apply sorted_merge.
   have?: NoDup sxind by exact/sorted_nodup.
   have?: NoDup syind by exact/sorted_nodup.
+  have ndind: NoDup ind by exact/sorted_nodup.
   rewrite -/(arr1 _ _ _ _).
-  have ndind: NoDup ind by exact/sorted_nodup/sorted_merge.
   xfocus* (2,0) (ind).
   xapp (@get_spec_out xind xval); eauto. 
   1: case=> ??; indomE; rewrite /Sum.mem/ind In_merge; autos*.
@@ -366,10 +368,8 @@ Proof with fold'.
   xcleanup_unused.
   set (H1 := _ \* hbig_fset _ _ _); set (H2 := _ \* H1); set (arrs := _ \* H2).
   xin (1,0) : xwp; xapp=> ans; xwp; xapp=> iX; xwp; xapp=> iY...
-  have Hlx : length sxind = rbx - lbx :> int.
-  1: rewrite /sxind list_interval_length; try math.
-  have Hly : length syind = rby - lby :> int.
-  1: rewrite /syind list_interval_length; try math.
+  have Hlx : length sxind = rbx - lbx :> int by apply list_interval_length.
+  have Hly : length syind = rby - lby :> int by apply list_interval_length.
   have E : `[0,M] ∩ ind = ind.
   { apply intr_list=> x. rewrite In_merge /sxind/syind. case; [ apply xind_leq | apply yind_leq ]; auto. }
   rewrite ?E (fset_of_list_nodup 0) //.
@@ -389,20 +389,23 @@ Proof with fold'.
   set (op hv i := hv[`2](ind[i]) * hv[`3](ind[i])).
   set (R1 (i : int) := arr(y_ind, yind)⟨3,i⟩ \* arr(y_val, yval)⟨3,i⟩).
   set (R2 (i : int) := arr(x_ind, xind)⟨2,i⟩ \* arr(x_val, xval)⟨2,i⟩).
-  have xindE : forall i, lbx <= i < rbx -> xind[i] = sxind[i-lbx].
-  { move=> *; rewrite -list_interval_nth; try f_equal... }
-  have yindE : forall i, lby <= i < rby -> yind[i] = syind[i-lby].
-  { move=> *; rewrite -list_interval_nth; try f_equal... }
-  have xvalE : forall i, lbx <= i < rbx -> xval[i] = sxval[i-lbx].
-  { move=> *; rewrite -list_interval_nth; try f_equal... }
-  have yvalE : forall i, lby <= i < rby -> yval[i] = syval[i-lby].
-  { move=> *; rewrite -list_interval_nth; try f_equal... }
+  enough (xindE : forall i, lbx <= i < rbx -> xind[i] = sxind[i-lbx]).
+  enough (yindE : forall i, lby <= i < rby -> yind[i] = syind[i-lby]).
+  enough (xvalE : forall i, lbx <= i < rbx -> xval[i] = sxval[i-lbx]).
+  enough (yvalE : forall i, lby <= i < rby -> yval[i] = syval[i-lby]).
+  2-5: move=> *; rewrite list_interval_nth'...
+  have xind_ge_0 : forall i, lbx <= i < rbx -> 0 <= xind[i].
+  { move=> *. rewrite xindE //. apply xind_leq, nth_In_int. rewrite Hlx. math. } 
+  have yind_ge_0 : forall i, lby <= i < rby -> 0 <= yind[i].
+  { move=> *. rewrite yindE //. apply yind_leq, nth_In_int. rewrite Hly. math. }
   have sE : forall a b, a - b + 1 = a + 1 - b by lia.
   xwhile_sum Inv R1 R2 R1 R2 op ans=> //.
   { move=> l s ?.
     rewrite {1}/Inv; xnsimpl=> ix iy[?][?][?][LM1][LM2][].
     rewrite /cond. bool_rew=> -[??]/(_ eq_refl)-[]indlE[L1 L2].
     rewrite /arr1; clear arrs H1 H2.
+    have max_ind_ge_max_sxind : max ind >= max sxind by apply/max_sublist; try math; move=>?; rewrite In_merge; left.
+    have max_ind_ge_max_syind : max ind >= max syind by apply/max_sublist; try math; move=>?; rewrite In_merge; right.
     xin (1,0): do 5 (xwp; xapp); xwp; xif=> C.
     { xin (1,0): 
         do 3 (xwp; xapp); xwp; xapp @incr.spec; 
@@ -417,22 +420,19 @@ Proof with fold'.
       have SlE: 
         l + 1 = size ind -> 
           ~ (ix - lbx + 1 < rbx - lbx /\ iy - lby + 1 < rby - lby). 
-      { move: C indlE=>-> /[! Z.min_id]/[swap]/sorted_max_size->; bool_rew.
-        have: max ind >= max syind by apply/max_sublist=>?; rewrite In_merge; right.
+      { move: C indlE=>-> /[! Z.min_id]/[swap]/sorted_max_size->; bool_rew; try math; try assumption.
         rewrite yindE...
-        move=>/[swap]->/nth_le_max-> //; lia. }
+        move: max_ind_ge_max_syind=>/[swap]->/nth_le_max-> //; lia. }
       rewrite -xvalE -?yvalE...
       xsimpl (ix + 1) (iy + 1); splits; [|lia|lia| | |autos*|]...
       { bool_rew... }
-      { move=> ?; rewrite -sE max_takeS -?xindE... 
+      { move=> ?; rewrite -sE max_takeS -?xindE; auto... 
         suff: ind[l] < ind[l+1] by lia.
-        apply/sorted_le; autos*; try lia.
-        exact/sorted_merge. }
+        apply/sorted_le; autos*; try lia. }
       { replace (iy + 1 - lby) with (iy - lby + 1) by lia.
-        move=> ?; rewrite max_takeS -?yindE...
+        move=> ?; rewrite max_takeS -?yindE; auto...
         suff: ind[l] < ind[l+1] by lia.
-        apply/sorted_le; autos*; try lia.
-        exact/sorted_merge. }
+        apply/sorted_le; autos*; try lia. }
       bool_rew=> -[]??; splits*.
       { rewrite merge_nthS // -/ind; try lia.
         rewrite indlE {2}C -{1}C ?Z.min_id xindE ?yindE ?search_nth...
@@ -459,18 +459,15 @@ Proof with fold'.
         l + 1 = size ind -> 
           ~ (ix - lbx + 1 < rbx - lbx /\ iy - lby < rby - lby). 
       { move: indlE=> /[!Z.min_l] //; last lia. 
-        move=>/[swap]/sorted_max_size->; bool_rew.
-        have: max ind >= max sxind by apply/max_sublist=>?; rewrite In_merge; left.
-        move=>/[swap]->; rewrite xindE... move/nth_le_max->... }
+        move=>/[swap]/sorted_max_size->; bool_rew; try math; try assumption.
+        move: max_ind_ge_max_sxind=>/[swap]->; rewrite xindE... move/nth_le_max->... }
       xsimpl (ix + 1) (iy); splits; [|lia|lia| | |autos*|].
       { bool_rew... }
-      { move=> ?; rewrite -sE max_takeS -?xindE...
+      { move=> ?; rewrite -sE max_takeS -?xindE; auto...
         suff: ind[l] < ind[l+1] by lia.
-        apply/sorted_le; autos*; try lia.
-        exact/sorted_merge. }
+        apply/sorted_le; autos*; try lia. }
       { move=> ?. suff: ind[l] < ind[l+1] by lia.
-        apply/sorted_le; autos*; try lia.
-        exact/sorted_merge. }
+        apply/sorted_le; autos*; try lia. }
       bool_rew=> -[]??; splits*.
       { rewrite merge_nthS -/ind ?indlE 1?(Z.min_l (_[_]))...
         rewrite xindE ?search_nth ?sE -?xindE ?yindE...
@@ -494,19 +491,16 @@ Proof with fold'.
     l + 1 = size ind -> 
       ~ (ix - lbx < rbx - lbx /\ iy - lby + 1 < rby - lby). 
     { move: indlE=> /[!Z.min_r] //; last lia. 
-      move=>/[swap]/sorted_max_size->; bool_rew.
-      have: max ind >= max syind by apply/max_sublist=>?; rewrite In_merge; right.
-      move=>/[swap]->; rewrite yindE... move/nth_le_max->... }
+      move=>/[swap]/sorted_max_size->; bool_rew; try math; try assumption.
+      move: max_ind_ge_max_syind=>/[swap]->; rewrite yindE... move/nth_le_max->... }
     rewrite val_int_eq in C.
     rewrite /Heap /Inv /arr1/cond; xsimpl (ix) (iy+1); splits; [|lia|lia| | |autos*|].
     { bool_rew... }
     { move=> ?. suff: ind[l] < ind[l+1] by lia.
-      apply/sorted_le; autos*; try lia.
-      exact/sorted_merge. }
-    { move=> ?; rewrite -sE max_takeS -?yindE...
+      apply/sorted_le; autos*; try lia. }
+    { move=> ?; rewrite -sE max_takeS -?yindE; auto...
       suff: ind[l] < ind[l+1] by lia.
-      apply/sorted_le; autos*; try lia.
-      exact/sorted_merge. }
+      apply/sorted_le; autos*; try lia. }
     bool_rew=> -[]??; splits*.
     { rewrite merge_nthS -/ind ?indlE 1?(Z.min_r (_[_]))...
       rewrite yindE ?search_nth ?sE -?yindE ?xindE...
@@ -530,11 +524,9 @@ Proof with fold'.
       xsimpl; try math.
       splits*=> //.
       { move=> ?. suff: ind[l] < ind[l+1] by lia.
-        apply/sorted_le; autos*; try lia.
-        exact/sorted_merge. }
+        apply/sorted_le; autos*; try lia. }
       { move=> ?. suff: ind[l] < ind[l+1] by lia.
-        apply/sorted_le; autos*; try lia.
-        exact/sorted_merge. }
+        apply/sorted_le; autos*; try lia. }
         bool_rew; lia. }
     rewrite /R2.
     xin (2,0): fold'; xapp get_spec=> *...
@@ -545,11 +537,9 @@ Proof with fold'.
     xsimpl; try lia.
     splits*=> //.
     { move=> ?. suff: ind[l] < ind[l+1] by lia.
-      apply/sorted_le; autos*; try lia.
-      exact/sorted_merge. }
+      apply/sorted_le; autos*; try lia. }
     { move=> ?. suff: ind[l] < ind[l+1] by lia.
-      apply/sorted_le; autos*; try lia.
-      exact/sorted_merge. }
+      apply/sorted_le; autos*; try lia. }
     bool_rew; lia. }
   { move=> ???. rewrite /ntriple -xnwp1_lemma /=.
     rewrite /Inv; xpull=> ix iy C.

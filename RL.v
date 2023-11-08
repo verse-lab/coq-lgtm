@@ -385,7 +385,8 @@ Lemma alpha_blend_spec `{Inhab (labeled int)} (x_ind x_val y_ind y_val : loc) :
   {{ hv, \[hv[`1](0) = Σ_(i <- `[0,N]) (α * hv[`2](i) + β * hv[`3](i))] 
       \* \Top}}.
 Proof with (fold'; try abbrv).
-  set (ind := merge xind yind).
+  pose proof (size_merge xind yind) as indlen.
+  set (ind := merge xind yind) in indlen |- *.
   have sxind: sorted xind by exact/IIL_sorted. 
   have yxind: sorted yind by exact/IIL_sorted.
   have?: NoDup xind by exact/sorted_nodup. 
@@ -396,7 +397,7 @@ Proof with (fold'; try abbrv).
     (xwp;xapp=> iY); (xwp;xapp=> step)...
   have maxindE: max ind = N.
   { move: (max_merge sxind yxind)->.
-    rewrite -(sorted_max_size _ Mx) -?(sorted_max_size _ My)... }
+    rewrite -(sorted_max_size _ (i:=Mx)) -?(sorted_max_size _ (i:=My))... }
   rewrite (@interval_unionE ind)=> //.
   set (Inv (b : bool) (i : int) := 
     arr(x_ind, xind)⟨1, 0⟩ \* arr(y_ind, yind)⟨1, 0⟩ \\*
@@ -509,13 +510,12 @@ Proof with (fold'; try abbrv).
   { move=> l _ ?; rewrite /Inv; xnsimpl.
     move=> ?? [?][?][]; bool_rew=> ?.
     suff: (l + 1 = size ind) by lia. 
-    apply/sorted_max_le... }
+    apply/nth_le_max... }
   { move=> ???; rewrite /Inv{}/cnd.
     xnsimpl=> *; xin (1,0): do ? (xwp; xapp).
     xsimpl*. apply/eq_sym/f_equal. autos*. }
   { move=> ??[?][?][->]*; apply/isTrue_eq_false...
     rewrite sorted_max_size... }
-  { rewrite /ind; move: (size_merge xind yind)... }
   { rewrite /Inv/R2/R3 merge_nth0 ?xind0 ?yind0 ?Z.min_id...
     rewrite -> ?hbig_fset_hstar; xsimpl.
     splits*... }

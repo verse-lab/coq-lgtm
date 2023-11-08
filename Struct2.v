@@ -85,6 +85,7 @@ Proof with fold'.
     1:{ intros _ _... rewrite app_length repeat_length skipn_length; math. }
     xapp @incr1.spec.
     rewrite -list_update_intermediate__; try math.
+    replace (S (abs i)) with (abs (i+1)) by math.
     xapp IH; try math.
     1: split; [ math | reflexivity ].
     xsimpl*. }

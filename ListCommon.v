@@ -569,7 +569,7 @@ Proof.
 Qed.
 
 Lemma max_takeS i l : 
-  0 <= i < length l ->
+  0 <= i < length l -> 0 <= l[i] ->
   max (take (abs (i + 1)) l) = Z.max l[i] (max (take (abs i) l)).
 Proof. 
   rewrite !take_conversion.
@@ -582,7 +582,8 @@ Proof.
   { replace a with (firstn (abs (i + 1)) l)[i].
     { rewrite nth_firstn; math. }
     rewrite E app_nth2 ?firstn_length_le; try math. replace (abs i - abs i)%nat with 0%nat by math. auto. }
-Admitted.
+  rewrite E. destruct (firstn _ _) in |- *; simpl; rewrite ?fold_right_max_app /=; try math.
+Qed.
 
 Lemma In_lt x i l :
   0 <= i < length l - 1 ->
@@ -592,10 +593,16 @@ Proof.
   apply sorted_le_rev in H2; try math; auto. apply sorted_leq; try math; auto.
 Qed.
 
-(* TODO false *)
-Lemma max_sublist l1 l2 :
+Lemma max_sublist l1 l2 (Hlen : 0 < length l1) :
   (forall x, In x l1 -> In x l2) -> max l2 >= max l1.
-Admitted.
+Proof.
+  have H1 : l1 <> nil by destruct l1; simpl in Hlen; try lia.
+  intros.
+  have H2 : l2 <> nil by destruct l1 as [ | x l1 ]; try contradiction; destruct l2; auto; specialize (H _ (or_introl eq_refl)); simpl in H.
+  epose proof (@eq_refl int _) as H1'. rewrite -> max_cond in H1'. 2: apply H1.
+  epose proof (@eq_refl int _) as H2'. rewrite -> max_cond in H2'. 2: apply H2.
+  pose proof (proj1 H2' _ (H _ (proj2 H1'))). math.
+Qed.
 
 Lemma max0 : max nil = -1.
 Proof. reflexivity. Qed.
@@ -607,6 +614,7 @@ Proof.
   destruct H0 as (i & Hi & <-). apply sorted_leq; try math; auto. 
 Qed.
 
+(* TODO reformulate using ind seg? *)
 Lemma interval_unionE (l : list int) N : 
   sorted l -> 
   max l = N ->
