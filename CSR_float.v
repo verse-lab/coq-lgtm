@@ -213,7 +213,7 @@ Qed.
 
 Section spmv_monolithic.
 
-Import Loops_float.
+Import Loops.
 
 (* simulating the crs_matrix_vector_multiply function in LAProof *)
 Definition spmv_monolithic := 

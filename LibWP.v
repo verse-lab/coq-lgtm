@@ -9401,10 +9401,83 @@ Lemma disjoint_label {T} (l l' : labType) (fs1 fs2 : fset T) :
 Proof.
   *)
 
+Arguments disjoint_inv_not_indom_both {_ _ _ _ _}.
 
-(* Global Hint Rewrite @disjoint_single disjoint_interval disjoint_single_interval 
-  disjoint_interval_single @disjoint_eq_label @disjoint_label : disjointE. *)
-Global Hint Rewrite indom_interval indom_single_eq : indomE.
+Lemma disjoint_single {T} (x y : T) : 
+  disjoint (single x tt) (single y tt) = (x <> y).
+Proof.
+  extens; split; last apply/disjoint_single_single.
+  move/[swap]->; exact/disjoint_single_single_same_inv.
+Qed.
+
+Lemma disjoint_interval (x1 y1 x2 y2 : int) : 
+  disjoint (interval x1 y1) (interval x2 y2) = ((y1 <= x2) \/ (y2 <= x1) \/ (y1 <= x1) \/ (y2 <= x2)).
+Proof.
+  extens; split=> [/(@disjoint_inv_not_indom_both _ _ _ _ _)|].
+  { setoid_rewrite indom_interval=> /[dup]/(_ x1)+/(_ x2).
+   lia. }
+  move=> H; apply/disjoint_of_not_indom_both=> ?; rewrite ?indom_interval.
+  move: H; lia.
+Qed.
+
+Lemma disjoint_single_interval (x1 y1 x : int) : 
+  disjoint (single x tt) (interval x1 y1) = ((x < x1) \/ (y1 <= x)).
+Proof.
+  extens; split=> [/(@disjoint_inv_not_indom_both _ _ _ _ _)|].
+  { move=> /[dup]/(_ x); rewrite indom_interval indom_single_eq.
+    lia. }
+  move=> H; apply/disjoint_single_of_not_indom.
+  rewrite indom_interval. math.
+Qed.
+
+
+Lemma disjoint_interval_single (x1 y1 x : int) : 
+  disjoint (interval x1 y1) (single x tt) = ((x < x1) \/ (y1 <= x)).
+Proof. by rewrite disjoint_comm disjoint_single_interval. Qed.
+
+Lemma disjoint_label {T} (l l' : labType) (fs1 fs2 : fset T) : 
+  disjoint (label (Lab l fs1)) (label (Lab l' fs2)) = ((l <> l') \/ disjoint fs1 fs2).
+Proof.
+  extens; split=> [/(@disjoint_inv_not_indom_both _ _ _ _ _)|].
+  { move=> IN; case: (classicT (l = l')); [right|left]=> //; subst.
+    apply/disjoint_of_not_indom_both=> x.
+    move: (IN (Lab l' x)); rewrite ?indom_label_eq; autos*. }
+  case: (classicT (l = l'))=> [<-|? _].
+  { rewrite*  @disjoint_eq_label. }
+  apply/disjoint_of_not_indom_both=> -[??]; rewrite ?indom_label_eq.
+  case=><-; autos*.
+Qed.
+
+Lemma disjoint_prod {A B : Type} (fs1 fs2 : fset A) (fr1 fr2 : fset B): 
+  disjoint (fs1 \x fr1) (fs2 \x fr2) = (disjoint fs1 fs2 \/ disjoint fr1 fr2).
+Proof.
+  extens; splits.
+  { move/disjoint_inv_not_indom_both=> Dj.
+    case: (prop_inv (disjoint fs1 fs2)); autos*.
+    move=> NDj; right; apply/disjoint_of_not_indom_both=> x ??.
+    have: ~ (forall p : A, indom (fs1) p -> indom (fs2) p -> False).
+    { by move=> ?; apply/NDj/disjoint_of_not_indom_both. }
+    rewrite not_forall_eq=> -[]y IN.
+    apply/(Dj (y,x)); rewrite indom_prod=> /=; splits=>//.
+    all: apply:not_not_inv=> ?; apply/IN; autos*. }
+  case=> /disjoint_inv_not_indom_both=> Dj.
+  all: apply/disjoint_of_not_indom_both=> -[]??; rewrite ?indom_prod/=; autos*.
+Qed.
+
+Global Hint Rewrite @disjoint_single disjoint_interval disjoint_single_interval 
+  disjoint_interval_single @disjoint_eq_label @disjoint_label @disjoint_prod : disjointE.
+
+Global Hint Rewrite @indom_label_eq @indom_union_eq @indom_prod @indom_interval @indom_single_eq @intr_indom @intr_neg_indom : indomE.
+
+Ltac indomE := autorewrite with indomE.
+
+Ltac disjointE := 
+  let Neq := fresh in
+  let i   := fresh "i" in
+  let j   := fresh "j" in 
+  try intros i j; 
+  indomE;
+  autorewrite with disjointE; try lia; try eqsolve.
 
 Definition Get {A} Z N (fsi : int -> fset A) (x : A)  :=
   match classicT (exists i, indom (interval Z N) i /\ indom (fsi i) x) with 

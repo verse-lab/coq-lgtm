@@ -13,89 +13,6 @@ Section WithLoops.
 
 (* Context {D : Type}. *)
 
-Arguments disjoint_inv_not_indom_both {_ _ _ _ _}.
-
-Lemma disjoint_single {T} (x y : T) : 
-  disjoint (single x tt) (single y tt) = (x <> y).
-Proof.
-  extens; split; last apply/disjoint_single_single.
-  move/[swap]->; exact/disjoint_single_single_same_inv.
-Qed.
-
-Lemma disjoint_interval (x1 y1 x2 y2 : int) : 
-  disjoint (interval x1 y1) (interval x2 y2) = ((y1 <= x2) \/ (y2 <= x1) \/ (y1 <= x1) \/ (y2 <= x2)).
-Proof.
-  extens; split=> [/(@disjoint_inv_not_indom_both _ _ _ _ _)|].
-  { setoid_rewrite indom_interval=> /[dup]/(_ x1)+/(_ x2).
-   lia. }
-  move=> H; apply/disjoint_of_not_indom_both=> ?; rewrite ?indom_interval.
-  move: H; lia.
-Qed.
-
-Lemma disjoint_single_interval (x1 y1 x : int) : 
-  disjoint (single x tt) (interval x1 y1) = ((x < x1) \/ (y1 <= x)).
-Proof.
-  extens; split=> [/(@disjoint_inv_not_indom_both _ _ _ _ _)|].
-  { move=> /[dup]/(_ x); rewrite indom_interval indom_single_eq.
-    lia. }
-  move=> H; apply/disjoint_single_of_not_indom.
-  rewrite indom_interval. math.
-Qed.
-
-
-Lemma disjoint_interval_single (x1 y1 x : int) : 
-  disjoint (interval x1 y1) (single x tt) = ((x < x1) \/ (y1 <= x)).
-Proof. by rewrite disjoint_comm disjoint_single_interval. Qed.
-
-Lemma disjoint_label {T} (l l' : labType) (fs1 fs2 : fset T) : 
-  disjoint (label (Lab l fs1)) (label (Lab l' fs2)) = ((l <> l') \/ disjoint fs1 fs2).
-Proof.
-  extens; split=> [/(@disjoint_inv_not_indom_both _ _ _ _ _)|].
-  { move=> IN; case: (classicT (l = l')); [right|left]=> //; subst.
-    apply/disjoint_of_not_indom_both=> x.
-    move: (IN (Lab l' x)); rewrite ?indom_label_eq; autos*. }
-  case: (classicT (l = l'))=> [<-|? _].
-  { rewrite*  @disjoint_eq_label. }
-  apply/disjoint_of_not_indom_both=> -[??]; rewrite ?indom_label_eq.
-  case=><-; autos*.
-Qed.
-
-(* Lemma fset_Uinon1 {A : Type} (fs : fset A): 
-  fs = \U_(i <- fs) `{i}.
-Proof.
-  elim/fset_ind: fs. 
-  { by rewrite Union0. }
-  move=> ?? {2}-> ?; rewrite Union_upd //.
-  demo.
-  (* move=> > ?; rewrite indom_update_eq *)
-Qed. *)
-
-
-Lemma disjoint_prod {A B : Type} (fs1 fs2 : fset A) (fr1 fr2 : fset B): 
-  disjoint (fs1 \x fr1) (fs2 \x fr2) = (disjoint fs1 fs2 \/ disjoint fr1 fr2).
-Proof.
-  extens; splits.
-  { move/disjoint_inv_not_indom_both=> Dj.
-    case: (prop_inv (disjoint fs1 fs2)); autos*.
-    move=> NDj; right; apply/disjoint_of_not_indom_both=> x ??.
-    have: ~ (forall p : A, indom (fs1) p -> indom (fs2) p -> False).
-    { by move=> ?; apply/NDj/disjoint_of_not_indom_both. }
-    rewrite not_forall_eq=> -[]y IN.
-    apply/(Dj (y,x)); rewrite indom_prod=> /=; splits=>//.
-    all: apply:not_not_inv=> ?; apply/IN; autos*. }
-  case=> /disjoint_inv_not_indom_both=> Dj.
-  all: apply/disjoint_of_not_indom_both=> -[]??; rewrite ?indom_prod/=; autos*.
-Qed.
-
-
-
-Hint Rewrite @disjoint_single disjoint_interval disjoint_single_interval 
-  disjoint_interval_single @disjoint_eq_label @disjoint_label @disjoint_prod : disjointE.
-
-
-(* Definition is_bool (v : val) := 
-  if v is val_bool _ then true else false. *)
-
 Lemma wp_Q_eq {D : Type} Q2 fs H (Q1 : _ -> hhprop D) : (forall hv, Q1 hv = Q2 hv) -> wp fs H Q1 = wp fs H Q2.
 Proof. move=> ?; f_equal; exact/fun_ext_1. Qed.
 
@@ -792,16 +709,17 @@ Proof.
   apply/Dj2; lia.
 Qed.
 
-Lemma xfor_big_op_lemma_aux `{INH: Inhab D} Inv (R R' : Dom -> hhprop) 
-  (op : (D -> val) -> int -> int) p 
+Lemma xfor_big_op_lemma_aux `{INH: Inhab D} {A B : Type} Inv (R R' : Dom -> hhprop) 
+	(toval : A -> val) (a0 : A) (bdef : B) (fa : A -> B -> A) (Pb : B -> Prop)
+  (op : (D -> val) -> int -> B) p
   s fsi1 vr
   Z N (C1 : Dom -> trm) (i j : int) (C : trm)
   Pre Post: 
-  (forall (l : int) (x : int), 
+  (forall (l : int) (a : A), 
     Z <= l < N ->
     {{ Inv l \* 
        (\*_(d <- ⟨(j, 0%Z), fsi1 l⟩) R d) \* 
-       p ~⟨(i, 0%Z), s⟩~> (val_int x) }}
+       p ~⟨(i, 0%Z), s⟩~> (toval a)}}
       [{
         {i| _  in single s tt  => subst vr l C};
         {j| ld in fsi1 l       => C1 ld}
@@ -809,11 +727,11 @@ Lemma xfor_big_op_lemma_aux `{INH: Inhab D} Inv (R R' : Dom -> hhprop)
     {{ hv, 
         Inv (l + 1) \* 
         (\*_(d <- ⟨(j, 0%Z), fsi1 l⟩) R' d) \* 
-        p ~⟨(i, 0%Z), s⟩~> (val_int (x + (op hv l))) }}) ->
+        p ~⟨(i, 0%Z), s⟩~> (toval (fa a (op hv l))) \*
+        \[Pb (op hv l)] }}) ->
   (forall i0 j0 : int, i0 <> j0 -> Z <= i0 < N -> Z <= j0 < N -> disjoint (fsi1 i0) (fsi1 j0)) ->
   (forall (hv hv' : D -> val) m,
     (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
-    (* Qiyuan: maybe add something like the following line? also, maybe for the other lemmas, either aux or not aux *)
     Z <= m < N ->
     op hv m = op hv' m) ->
   (i <> j) ->
@@ -827,11 +745,12 @@ Lemma xfor_big_op_lemma_aux `{INH: Inhab D} Inv (R R' : Dom -> hhprop)
   (Pre ==> 
     Inv Z \* 
     (\*_(d <- Union (interval Z N) fsi1) R d) \*
-    p ~⟨(i, 0%Z), s⟩~> val_int 0) ->
+    p ~⟨(i, 0%Z), s⟩~> (toval a0)) ->
   (forall hv, 
     Inv N \* 
     (\*_(d <- Union (interval Z N) fsi1) R' d) \* 
-    p ~⟨(i, 0%Z), s⟩~> val_int (Σ_(i <- interval Z N) (op hv i)) ==>
+    p ~⟨(i, 0%Z), s⟩~> (toval (fold_left fa (projT1 (list_of_fun' (fun i => op hv (i + Z)) (N - Z))) a0)) \*
+    \[forall i, Z <= i < N -> Pb (op hv i)] ==>
     Post hv) -> 
   {{ Pre }}
     [{
@@ -851,9 +770,10 @@ Proof.
       Inv q \* 
       (\*_(d <- Union (interval Z q) fsi1) R' d) \*
       (\*_(d <- Union (interval q N) fsi1) R d) \* 
-      p ~⟨(i, 0%Z), s⟩~> Σ_(l <- interval Z q) op hv l))
+      p ~⟨(i, 0%Z), s⟩~> (toval (fold_left fa (projT1 (list_of_fun' (fun i => op hv (i + Z)) (q - Z))) a0)) \*
+      \[forall i, Z <= i < q -> Pb (op hv i)]))
     (hv0:=fun=> 0)=> //; try eassumption.
-  { clear -IH Dj iNj opP.
+  { clear -bdef IH Dj iNj opP.
     move=>l hv ?; move: (IH l).
     rewrite /ntriple /nwp ?fset_of_cons /= ?fset_of_nil.
     rewrite union_empty_r intervalUr; try math.
@@ -893,37 +813,73 @@ Proof.
       split; try math; auto.
     }
     assert (Z <= l < N) as Htmp by math. 
-    specialize (Hwp (Sum (interval Z l) (fun i => op hv i)) Htmp). clear Htmp.
+    specialize (Hwp (fold_left fa (projT1 (list_of_fun' (fun i => op hv (i + Z)) (l - Z))) a0) Htmp). clear Htmp.
+    xsimpl. intros Hpb.
     apply wp_equiv in Hwp. apply wp_equiv.
     eapply htriple_conseq_frame.
     1: apply Hwp.
     1: xsimpl. 1: xsimpl.
-    hnf. intros v.
-    xsimpl. xsimpl.
-    rewrite <- intervalUr; try math. rewrite SumxSx; try math.
-    hnf. intros h Hh. apply hsingle_inv in Hh. subst h.
-    rewrite -> SumEq with (G:=fun i => op hv i).
-    2:{ intros x. rewrite indom_interval. 
-      unfold uni. intros HH. apply opP.
-      intros. rewrite indom_label_eq. case_if; auto.
-      destruct C0 as (_ & H0).
-      false @disjoint_inv_not_indom_both. 2: apply H. 2: apply H0.
-      apply Dj; math. lia.
-    }
-    rewrite -> opP with (hv':=v); auto. 1: apply hsingle_intro.
-    intros. unfold uni. rewrite indom_label_eq. case_if; eqsolve. }
+    hnf. intros v. xsimpl.
+    1:{ intros Hpb0 i0 Hi0.  
+      destruct (Z.ltb i0 l) eqn:E.
+      (* TODO this proof is repeating below *)
+      { apply Z.ltb_lt in E. rewrite <- opP with (hv:=hv); try math. 1: apply Hpb; math.
+        intros i1 Hi1. unfold uni. rewrite /uni indom_label_eq. case_if; auto.
+        destruct C0 as (_ & Hin2).
+				false @disjoint_inv_not_indom_both. 2: apply Hi1. 2: apply Hin2.
+				apply Dj; math. }
+      { apply Z.ltb_ge in E. assert (i0 = l) as -> by math. rewrite <- opP with (hv:=v); try math; try assumption.
+        intros i1 Hi1. unfold uni. rewrite /uni indom_label_eq. case_if; eqsolve. } }
+    intros Hpb0. xsimpl. clear Hwp.
+		destruct (list_of_fun' _ _) as (l1 & Hlen1 & Hl1); simpl.
+		destruct (list_of_fun' _ _) as (l2 & Hlen2 & Hl2); simpl.
+		match goal with 
+			|- _ ==> ?a => eapply eq_ind_r with (y:=a)
+		end; [ xsimpl* | ].
+		do 2 f_equal.  
+		enough (l2 = List.app l1 (op v l :: nil)) by (subst; now rewrite fold_left_app).
+		apply (List.nth_ext _ _ bdef bdef).
+		{ rewrite List.app_length /=. math. }
+		{ intros n Hlt. 
+			destruct (Nat.ltb n (Datatypes.length l1)) eqn:E.
+			{ apply Nat.ltb_lt in E. rewrite app_nth1; try math.
+				replace n with (abs n)%nat by math.
+				rewrite -> Hl1, -> Hl2; try math. apply opP; try math.
+				intros i0 Hin. rewrite /uni indom_label_eq. case_if; auto.
+				destruct C0 as (_ & Hin2).
+				false @disjoint_inv_not_indom_both. 2: apply Hin. 2: apply Hin2.
+				apply Dj; math. }
+			{ apply Nat.ltb_ge in E. 
+				assert (n = Datatypes.length l1) as En by math. 
+				rewrite -> En at 2. rewrite -> nth_middle.
+				replace n with (abs n)%nat by math.
+				rewrite -> Hl2; try math. replace (n+Z) with l by math. apply opP; try math.
+				intros i0 Hin. rewrite /uni indom_label_eq. case_if; eqsolve. } } }
   { move=> r hv hv' ? hvE.
+    do 4 f_equal.
+    2:{ f_equal. extens. split; intros H i0 Hi0. 
+      1: erewrite <- opP with (hv:=hv); try apply H; try math.
+      2: erewrite -> opP with (hv':=hv'); try apply H; try math.
+      all: intros i1 Hi1; apply hvE.
+      all: rewrite indom_Union; exists i0; indomE; split; [ math | auto ]. }
     suff->:
-      Σ_(l <- interval Z r) op hv l = 
-      Σ_(l <- interval Z r) op hv' l by xsimpl.
-    apply/SumEq=> ? /[dup]?. rewrite indom_interval=>?. 
+			projT1 (list_of_fun' (fun i0 : int => op hv (i0 + Z)) (r - Z)) = 
+      projT1 (list_of_fun' (fun i0 : int => op hv' (i0 + Z)) (r - Z)) by xsimpl.
+		destruct (list_of_fun' _ _) as (l1 & Hlen1 & Hl1); simpl.
+		destruct (list_of_fun' _ _) as (l2 & Hlen2 & Hl2); simpl.
+		apply (List.nth_ext _ _ bdef bdef). 1: math.
+		intros n Hlt. replace n with (abs n)%nat by math.
+		rewrite -> Hl1, -> Hl2; try math. 
     apply/opP=> // *; try lia. apply/hvE.
-    rewrite indom_Union; eexists; rewrite indom_label_eq; autos*. }
+    rewrite indom_Union; exists (n+Z); indomE. split; [ math | auto ]. }
   { rewrite [_ Z Z]intervalgt; last math.
-    rewrite Union0 hbig_fset_empty Sum0. xsimpl. }
+		rewrite Union0 hbig_fset_empty. 
+		destruct (list_of_fun' _ _) as (l1 & Hlen1 & Hl1); simpl.
+		replace (abs _) with 0%nat in Hlen1 by math. destruct l1; try discriminate; xsimpl.
+    intros; math. }
   { move=> ?.
     rewrite [_ N N]intervalgt; last math.
-    rewrite Union0 hbig_fset_empty. xsimpl. }
+    rewrite Union0 hbig_fset_empty. xsimpl*. }
   { simpl.
     intros. apply disjoint_of_not_indom_both. 
     intros. destruct x as (?, x). 
@@ -941,165 +897,6 @@ Proof.
   }
   by case=> l d; rewrite indom_label_eq /= /htrm_of; case: classicT.
 Qed.
-
-(* Lemma xfor_specialized_lemma `{INH: Inhab D} (Inv : int -> hhprop) (R R' : Dom -> hhprop) 
-  s fsi1 vr
-  Z N (C1 : Dom -> trm) (i j : int) (C : trm)
-  Pre Post
-  (p : Dom -> loc) : 
-  (forall (l : int),
-    Z <= l < N ->
-    {{ Inv l \* 
-       (\*_(d <- ⟨(j, 0%Z), fsi1 l⟩) R d) \*
-       (\*_(d <- (fsi1 l)) p d ~⟨(i, 0%Z), s⟩~> val_uninit) }}
-      [{
-        {i| _  in single s tt  => subst vr l C};
-        {j| ld in fsi1 l       => C1 ld}
-      }]
-    {{ hv, 
-        Inv (l + 1) \* 
-        (\*_(d <- ⟨(j, 0%Z), fsi1 l⟩) R' d) \*
-        (\*_(d <- (fsi1 l)) p d ~⟨(i, 0%Z), s⟩~> hv (Lab (j, 0%Z) d)) }}) ->
-  (forall i0 j0 : int, i0 <> j0 -> disjoint (fsi1 i0) (fsi1 j0)) ->
-  (i <> j) ->
-  (Z <= N)%Z ->
-  (forall t : val, subst "for" t C = C) -> 
-  (forall t : val, subst "cnt" t C = C) ->
-  (forall t : val, subst "cond" t C = C) ->
-  var_eq vr "cnt" = false ->
-  var_eq vr "for" = false ->
-  var_eq vr "cond" = false ->
-  (Pre ==> 
-    Inv Z \* 
-    (\*_(d <- Union (interval Z N) fsi1) R d) \*
-    (\*_(d <- Union (interval Z N) fsi1) p d ~⟨(i, 0%Z), s⟩~> val_uninit)) ->
-  (forall hv,
-    Inv N \* 
-    (\*_(d <- Union (interval Z N) fsi1) R' d) \*
-    (\*_(d <- Union (interval Z N) fsi1) p d ~⟨(i, 0%Z), s⟩~> hv (Lab (j, 0%Z) d)) ==>
-    Post hv) -> 
-  {{ Pre }}
-    [{
-      {i| _  in single s tt => For Z N (trm_fun vr C)};
-      {j| ld in Union (interval Z N) fsi1 => C1 ld}
-    }]
-  {{ hv, Post hv }}.
-Proof.
-  move=> IH Dj iNj ?? ??? ??? PostH.
-  apply:himpl_trans; first eauto.
-  rewrite /ntriple /nwp ?fset_of_cons /=.
-  apply: himpl_trans; first last.
-  { apply/wp_conseq=> ?; apply PostH. }
-  rewrite ?Union_label union_empty_r.
-  eapply wp_for with 
-    (H:=(fun q hv => 
-      Inv q \* 
-      (\*_(d <- Union (interval Z q) fsi1) R' d) \*
-      (\*_(d <- Union (interval q N) fsi1) R d) \* 
-      (\*_(d <- Union (interval Z q) fsi1) p d ~⟨(i, 0%Z), s⟩~> hv (Lab (j, 0%Z) d)) \*
-      (\*_(d <- Union (interval q N) fsi1) p d ~⟨(i, 0%Z), s⟩~> val_uninit)))
-    (hv0:=fun=> 0) => //; try eassumption.
-  { clear -IH Dj iNj.
-    move=>l hv ?. 
-    move: (IH l).
-    rewrite /ntriple /nwp ?fset_of_cons /= ?fset_of_nil.
-    rewrite union_empty_r intervalUr; try math.
-    rewrite Union_upd //; first last.
-    { introv Neq. rewrite ?indom_union_eq ?indom_interval ?indom_single_eq.
-      case=> [?[?|]|]; first by subst.
-      { subst=> ?; apply/Dj=> //; math. }
-      move=> ? [?|?]; subst; apply/Dj; math. }
-    rewrite hbig_fset_union; first last.
-    2-4: auto.
-    2-3: hnf; auto.
-    { rewrite disjoint_Union=> ? /[! indom_interval] ?.
-      apply/Dj; math. }
-    rewrite (@intervalU l N); last math.
-    rewrite Union_upd; first last. 
-    { introv Neq. rewrite ?indom_union_eq ?indom_interval ?indom_single_eq.
-      case=> [?[?|]|]; first by subst.
-      { subst=> ?; apply/Dj=> //; math. }
-      move=> ? [?|?]; subst; apply/Dj; math. }
-    rewrite hbig_fset_union; first last.
-    2-4: auto.
-    2-3: hnf; auto.
-    { rewrite disjoint_Union=> ? /[! indom_interval] ?.
-      apply/Dj; math. }
-    move=> Hwp.
-    rewrite -> hbig_fset_union.
-    2-3: hnf; auto.
-    2: auto.
-    2: { rewrite disjoint_Union=> ? /[! indom_interval] ?.
-      apply/Dj; math. }
-    erewrite wp_ht_eq with (ht2:=(htrm_of
-      ((Lab (pair i 0) (FH (single s tt) (fun=> subst vr l C))) ::
-        (Lab (pair j 0) (FH (fsi1 l) (fun ld => C1 ld))) ::
-        nil))).
-    2:{
-      intros (ll, d) H. unfold uni, htrm_of. simpl. 
-      rewrite indom_union_eq ! indom_label_eq in H |- *.
-      rewrite indom_single_eq in H |- *. 
-      repeat case_if; try eqsolve.
-      destruct C3 as (<- & HH). false C2. split; auto.
-      rewrite indom_Union. exists l. rewrite indom_interval.
-      split; try math; auto.
-    }
-    assert (Z <= l < N) as Htmp by math. specialize (Hwp Htmp). clear Htmp.
-    apply wp_equiv in Hwp. apply wp_equiv.
-    eapply htriple_conseq_frame.
-    1: apply Hwp.
-    1: xsimpl. 1: xsimpl.
-    hnf. intros v.
-    xsimpl. xsimpl.
-    rewrite -> hbig_fset_union.
-    2-3: hnf; auto.
-    2: auto.
-    2: { rewrite disjoint_Union=> ? /[! indom_interval] ?.
-      apply/Dj; math. }
-    unfold uni.
-    apply himpl_frame_lr.
-    { apply hbig_fset_himpl.
-      intros. case_if; auto.
-      rewrite indom_label_eq in C0. eqsolve.
-    }
-    { apply hbig_fset_himpl.
-      intros. case_if; auto.
-      rewrite indom_label_eq in C0. destruct C0 as (_ & H1).
-      rewrite indom_Union in H. 
-      destruct H as (f & H & H2). rewrite -> indom_interval in H.
-      false. revert H1 H2. apply disjoint_inv_not_indom_both, Dj.
-      math.
-    }
-  }
-  { intros. f_equal. f_equal. f_equal. f_equal. apply hbig_fset_eq.
-    intros. rewrite -> H; auto.
-    rewrite indom_Union in H0. rewrite indom_Union.
-    destruct H0 as (f & H0 & H2). 
-    exists f. rewrite indom_label_eq. intuition.
-  }
-  { rewrite [_ Z Z]intervalgt; last math.
-    rewrite Union0 ! hbig_fset_empty. xsimpl. }
-  { move=> ?.
-    rewrite [_ N N]intervalgt; last math.
-    rewrite Union0 ! hbig_fset_empty. xsimpl. }
-  { simpl.
-    intros. apply disjoint_of_not_indom_both. 
-    intros. destruct x as (?, x).
-    rewrite indom_label_eq in H2. rewrite indom_label_eq in H3.
-    destruct H2 as (_ & H2), H3 as (_ & H3). 
-    revert H2 H3. by apply disjoint_inv_not_indom_both, Dj.
-  }
-  { rewrite disjoint_Union=> ??. 
-    apply disjoint_of_not_indom_both. 
-    intros. destruct x as (?, x).
-    simpl in H. rewrite indom_single_eq in H.  
-    injection H as <-.
-    rewrite -> indom_Union in H0.
-    destruct H0 as (? & ? & H0).
-    rewrite indom_label_eq in H0. eqsolve.
-  }
-  by case=> l d; rewrite indom_label_eq /= /htrm_of; case: classicT.
-Qed. *)
 
 Lemma lab_eqbE l1 l2: 
   (lab_eqb l1 l2) = (l1 = l2) :> Prop.
@@ -1257,7 +1054,89 @@ Proof.
   rewrite lab_eqbE. eqsolve.
 Qed.
 
-Lemma xfor_big_op_lemma `{Inhab D} Inv (R R' : Dom -> hhprop) 
+Lemma xfor_big_op_lemma `{Inhab D} {A B : Type} Inv (R R' : Dom -> hhprop) 
+	(toval : A -> val) (a0 : A) (bdef : B) (fa : A -> B -> A) (Pb : B -> Prop)
+  (op : (D -> val) -> int -> B) p 
+  s fsi1 vr
+  Z N (C1 : Dom -> trm) (i j : int) (C : trm) C'
+  Pre Post: 
+  (forall (l : int) (a : A), 
+    Z <= l < N ->
+    {{ Inv l \* 
+       (\*_(d <- ⟨(j, 0%Z), fsi1 l⟩) R d) \* 
+       p ~⟨(i, 0%Z), s⟩~> (toval a) }}
+      [{
+        {i| _  in single s tt  => subst vr l C};
+        {j| ld in fsi1 l       => C1 ld}
+      }]
+    {{ hv, 
+        Inv (l + 1) \* 
+        (\*_(d <- ⟨(j, 0%Z), fsi1 l⟩) R' d) \* 
+        p ~⟨(i, 0%Z), s⟩~> (toval (fa a (op hv l))) \*
+        \[Pb (op hv l)] }}) ->
+  (forall i j : int, i <> j -> Z <= i < N -> Z <= j < N -> disjoint (fsi1 i) (fsi1 j)) ->
+  (forall (hv hv' : D -> val) m,
+     Z <= m < N ->
+    (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
+    op hv m = op hv' m) ->
+  (i <> j) ->
+  (Z <= N)%Z ->
+  (forall t : val, subst "for" t C = C) -> 
+  (forall t : val, subst "cnt" t C = C) ->
+  (forall t : val, subst "cond" t C = C) ->
+  var_eq vr "cnt" = false ->
+  var_eq vr "for" = false ->
+  var_eq vr "cond" = false ->
+  (Pre ==> 
+    Inv Z \* 
+    (\*_(d <- Union (interval Z N) fsi1) R d) \*
+    p ~⟨(i, 0%Z), s⟩~> (toval a0)) ->
+  (forall hv, 
+    Inv N \* 
+    (\*_(d <- Union (interval Z N) fsi1) R' d) \* 
+    p ~⟨(i, 0%Z), s⟩~> (toval (fold_left fa (projT1 (list_of_fun' (fun i => op hv (i + Z)) (N - Z))) a0)) \*
+    \[forall i, Z <= i < N -> Pb (op hv i)] ==>
+    wp ⟨(i,0),single s tt⟩ (fun=> C') (fun hr' => Post (lab_fun_upd hr' hv (i,0)))) -> 
+  {{ Pre }}
+    [{
+      {i| _  in single s tt => trm_seq (For Z N (trm_fun vr C)) C'};
+      {j| ld in Union (interval Z N) fsi1 => C1 ld}
+    }]
+  {{ hv, Post hv }}.
+Proof.
+  intros.
+  xfocus (j,0); rewrite ?eqbxx.
+  have E: (lab_eqb (i, 0) (j,0) = false).
+  { by apply/bool_ext; split=> //; rewrite lab_eqbE=> -[]. }
+  rewrite E/= -xnwp1_lemma /= wp_equiv.
+  apply/htriple_conseq; [|eauto|]; first last.
+  { move=> ?. apply/wp_seq. }
+  rewrite (xnwp1_lemma (FH (single s tt) (fun=> For Z N <{ fun_ {vr} => {C} }>)) ((i,0))).
+  rewrite -wp_equiv.
+  apply/(@xunfocus_lemma _ (fun hr => WP [ _ in ⟨(i, 0), single s tt⟩  => C' ]
+  { hr'0, Post ((hr \u_ ⟨(j, 0), Union (interval Z N) fsi1⟩) hr'0) }))=> /=; autos*.
+  { by rewrite E. }
+  move=> ??; fequals; apply/fun_ext_1=> ?. fequals.
+  extens=> -[]??; rewrite /uni; case: classicT=> //.
+  xfocus (i,0); rewrite ?eqbxx lab_eqb_sym E /=.
+  apply/xunfocus_lemma; autos*=> /=.
+  { by rewrite lab_eqb_sym E. }
+  { move=> ??. remember ((_ \u_ _) _); reflexivity. }
+  simpl.
+  apply/(xfor_big_op_lemma_aux Inv R R' toval a0 bdef); eauto.
+  move=> hv. apply: himpl_trans; [|apply/wp_hv].
+  move: (H12 hv); rewrite wp_equiv=> ?.
+  xapp=> //. move=> Hpb hv'. rewrite -/(lab_fun_upd _ _ _).
+  xsimpl (lab_fun_upd hv' hv (i, 0))=> ?.
+  apply: applys_eq_init; fequals; apply/fun_ext_1=> /=.
+  case=> l x.
+  rewrite /uni ?indom_label_eq; case: classicT.
+  { by case=> <- /=; rewrite lab_eqb_sym E. }
+  case: classicT=> //.
+  case=> <- /=; rewrite eqbxx //.
+Qed.
+
+Lemma xfor_big_op_lemma_int `{Inhab D} Inv (R R' : Dom -> hhprop) 
   (op : (D -> val) -> int -> int) p 
   s fsi1 vr
   Z N (C1 : Dom -> trm) (i j : int) (C : trm) C'
@@ -1305,35 +1184,19 @@ Lemma xfor_big_op_lemma `{Inhab D} Inv (R R' : Dom -> hhprop)
   {{ hv, Post hv }}.
 Proof.
   intros.
-  xfocus (j,0); rewrite ?eqbxx.
-  have E: (lab_eqb (i, 0) (j,0) = false).
-  { by apply/bool_ext; split=> //; rewrite lab_eqbE=> -[]. }
-  rewrite E/= -xnwp1_lemma /= wp_equiv.
-  apply/htriple_conseq; [|eauto|]; first last.
-  { move=> ?. apply/wp_seq. }
-  rewrite (xnwp1_lemma (FH (single s tt) (fun=> For Z N <{ fun_ {vr} => {C} }>)) ((i,0))).
-  rewrite -wp_equiv.
-  apply/(@xunfocus_lemma _ (fun hr => WP [ _ in ⟨(i, 0), single s tt⟩  => C' ]
-  { hr'0, Post ((hr \u_ ⟨(j, 0), Union (interval Z N) fsi1⟩) hr'0) }))=> /=; autos*.
-  { by rewrite E. }
-  move=> ??; fequals; apply/fun_ext_1=> ?. fequals.
-  extens=> -[]??; rewrite /uni; case: classicT=> //.
-  xfocus (i,0); rewrite ?eqbxx lab_eqb_sym E /=.
-  apply/xunfocus_lemma; autos*=> /=.
-  { by rewrite lab_eqb_sym E. }
-  { move=> ??. remember ((_ \u_ _) _); reflexivity. }
-  simpl.
-  apply/xfor_big_op_lemma_aux; eauto.
-  move=> hv. apply: himpl_trans; [|apply/wp_hv].
-  move: (H12 hv); rewrite wp_equiv=> ?.
-  xapp=> hv'. rewrite -/(lab_fun_upd _ _ _).
-  xsimpl (lab_fun_upd hv' hv (i, 0))=> ?.
-  apply: applys_eq_init; fequals; apply/fun_ext_1=> /=.
-  case=> l x.
-  rewrite /uni ?indom_label_eq; case: classicT.
-  { by case=> <- /=; rewrite lab_eqb_sym E. }
-  case: classicT=> //.
-  case=> <- /=; rewrite eqbxx //.
+  apply/(xfor_big_op_lemma Inv R R' val_int 0 0 Z.add (fun=> True)); eauto.
+  1:{ intros. eapply himpl_trans. 1: apply H0; try assumption. apply wp_conseq. xsimpl*. }
+	intros. eapply himpl_trans. 2: apply H12; try assumption. xsimpl=>_.
+	match goal with
+		|- context[fold_left Z.add ?ll 0] => eapply eq_ind_r with (y:=fold_left Z.add ll 0)
+	end; [ xsimpl* | ].
+	destruct (list_of_fun' _ _) as (l1 & Hlen1 & Hl1); simpl.
+	rewrite -> Sum_interval_change with (c:=(-Z)).
+	replace (`[_, _]) with (`[0, N - Z]) by (f_equal; math).
+	replace (N - Z) with (Z.of_nat (List.length l1))%Z in Hl1 |- * by math.
+	erewrite SumEq with (G:=fun i0 => l1[i0]). 
+	2: intros i0; indomE; intros Hi0; rewrite Hl1; try math; f_equal; math.
+	by rewrite -> SumList_fold_eq'.
 Qed.
 
 Lemma xfor_lemma2_hbig_op `{ID : Inhab D}
@@ -2146,21 +2009,6 @@ Qed.
 
 End WithLoops.
 
-Global Hint Rewrite @disjoint_single disjoint_interval disjoint_single_interval 
-  disjoint_interval_single @disjoint_eq_label @disjoint_label @disjoint_prod : disjointE.
-
-Hint Rewrite @indom_label_eq @indom_union_eq @indom_prod @indom_interval @indom_single_eq @intr_indom @intr_neg_indom : indomE.
-
-Ltac indomE := autorewrite with indomE.
-
-Ltac disjointE := 
-  let Neq := fresh in
-  let i   := fresh "i" in
-  let j   := fresh "j" in 
-  try intros i j; 
-  indomE;
-  autorewrite with disjointE; try lia; try eqsolve.
-
 Tactic Notation "xfor_sum_cong_solve" uconstr(op) :=
   let hvE := fresh "hvE" in
   let someindom := fresh "someindom" in
@@ -2172,7 +2020,7 @@ Tactic Notation "xfor_sum_cong_solve" uconstr(op) :=
     (first [ apply someindom | idtac ])]).
 
 Tactic Notation "xfor_sum" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(s) :=
-  eapply (@xfor_big_op_lemma _ _ Inv R R' op s); 
+  eapply (@xfor_big_op_lemma_int _ _ Inv R R' op s); 
   [ let L := fresh in 
     intros ?? L; rewrite ?/Inv ?/R ?/R';
     xnsimpl
@@ -2375,3 +2223,23 @@ Tactic Notation "xsum_normalize" :=
 
 Tactic Notation "xsum_normalize" uconstr(f) :=
   xsum_normalize; rewrite (SumIf' f); xsum_normalize.
+
+Tactic Notation "xfor_sum_fma" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(s) :=
+  eapply (@xfor_big_op_lemma _ _ _ _ Inv R R' val_float float_unit (float_unit, float_unit) (fun a (b : binary64 * binary64) => @BFMA _ Tdouble b.1 b.2 a) 
+    (fun (b : binary64 * binary64) => @finite Tdouble b.1 /\ @finite Tdouble b.2) op s);
+  [ let L := fresh in 
+    intros ?? L; rewrite ?/Inv ?/R ?/R';
+    xnsimpl
+  | disjointE
+  | xfor_sum_cong_solve op
+  |
+  | try lia
+  |
+  |
+  |
+  |
+  |
+  |
+  | rewrite ?/Inv ?/R; rewrite -> ?hbig_fset_hstar; xsimpl
+  | intros ?; rewrite ?/Inv ?/R' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl
+  ]=> //; autos*.
