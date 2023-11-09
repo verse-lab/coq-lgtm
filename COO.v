@@ -143,7 +143,7 @@ Proof with fold'.
   xset_Inv Inv 1; xset_R int Inv R 2.
   xfocus* (2,0) xind.
   xapp get_spec_out=> //. 1: case=> ??; indomE; autos*.
-  xdrain_unused.
+  xclean_heap.
   xin (1,0) : xwp; xapp=> s...
   have E : `[0,M] ∩ xind = xind by apply intr_list.
   rewrite E (fset_of_list_nodup 0) // len_xind.
@@ -189,7 +189,7 @@ Proof with fold'.
   xset_Inv Inv 1; xset_R int Inv R 2.
   xfocus* (2,0) xind.
   xapp get_spec_out=> //. 1: case=> ??; indomE; autos*.
-  xdrain_unused.
+  xclean_heap.
   xin (1,0) : xwp; xapp=> s...
   have E : `[0,M] ∩ xind = xind by apply intr_list.
   rewrite E (fset_of_list_nodup 0) // len_xind.
@@ -345,7 +345,7 @@ Proof with fold'.
   have lE: length (combine xrow xcol) = N :> int by rewrite combine_length; lia.
   xfocus* (2,0) (combine xrow xcol).
   xapp get_spec_out=> //. 1: case=> ??; indomE; autos*.
-  xdrain_unused.
+  xclean_heap.
   xin (1,0) : xwp; xapp=> s...
   have E : (`[0, Nrow] \x `[0, Ncol]) ∩ combine xrow xcol = combine xrow xcol.
   { apply/fset_extens=> -[r c]. specializes xrow_leq r. specializes xcol_leq c. 

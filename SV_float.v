@@ -465,7 +465,7 @@ Proof with (try solve [ seclocal_solver | auto using finite_suffcond ]; fold').
   xset_Inv Inv 1; xset_R int Inv R 2.
   xfocus* (2,0) xind[[lb -- rb]].
   xapp get_spec_out=> //. 1: case=> ??; indomE; autos*.
-  xcleanup_unused.
+  xclean_heap.
   xin (1,0) : xwp; xapp=> q...
   have Hl : length xind[[lb -- rb]] = rb - lb :> int by apply list_interval_length.
   rewrite intr_list ?(fset_of_list_nodup 0) ?Hl ?Union_interval_change2 //.

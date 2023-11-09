@@ -187,7 +187,7 @@ Proof with (try seclocal_fold; seclocal_solver).
   xset_Inv Inv 1; xset_R int Inv R 2.
   xfocus* (2,0) (indom (midx \x `[0, Ncol])).
   xapp get_spec_out=> //. 1: case=> ??; indomE; tauto.
-  xdrain_unused.
+  xclean_heap.
   have E : (`[0, Nrow] \x `[0, Ncol]) ∩ indom (midx \x `[0, Ncol]) = midx \x `[0, Ncol].
   { rewrite -prod_intr_list_on_1. f_equal. now apply intr_list. }
   rewrite E (fset_of_list_nodup 0 nodup_midx) len_midx prod_Union_distr.
@@ -253,7 +253,7 @@ Proof with (try seclocal_fold; seclocal_solver).
   xset_Inv Inv 1; xset_R int Inv R 2.
   xfocus* (2,0) (indom (midx \x `[0, Ncol])).
   xapp get_spec_out=> //. 1: case=> ??; indomE; tauto.
-  xdrain_unused.
+  xclean_heap.
   have E : (`[0, Nrow] \x `[0, Ncol]) ∩ indom (midx \x `[0, Ncol]) = midx \x `[0, Ncol].
   { rewrite -prod_intr_list_on_1. f_equal. now apply intr_list. }
   rewrite E (fset_of_list_nodup 0 nodup_midx) len_midx prod_Union_distr.
@@ -341,7 +341,7 @@ Proof with (try seclocal_fold; seclocal_solver).
   xset_Inv Inv 1; xset_R_core int R1 2; xset_R_core int R2 3. xset_clean Inv R1 R2.
   xfocus* (2,0) (indom (midx \x `[0, Ncol])).
   xapp get_spec_out=> //. 1: case=> ??; indomE; tauto.
-  xdrain_unused.
+  xclean_heap.
   have E : (`[0, Nrow] \x `[0, Ncol]) ∩ indom (midx \x `[0, Ncol]) = midx \x `[0, Ncol].
   { rewrite -prod_intr_list_on_1. f_equal. now apply intr_list. }
   rewrite E (fset_of_list_nodup 0 nodup_midx) len_midx prod_Union_distr.

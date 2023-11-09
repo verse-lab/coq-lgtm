@@ -292,7 +292,6 @@ Proof with (try seclocal_fold; seclocal_solver).
     rewrite intr_list ?(fset_of_list_nodup 0) ?Hl ?Union_interval_change2 //; auto.
     2: intros x0 Hin; eapply colind_leq, in_interval_list; eauto.
     set (R2 (i : int) := arr(x_colind, colind)⟨2, i⟩ \* .arr(x_mval, mval)⟨2, i⟩ \* .arr(x_dvec, dvec)⟨2, i⟩).
-    (* a bad thing here is that the \exists prevents us from using xframe2 to clear unused heaps! so Inv would get complicated *)
     rewrite -> ! hbig_fset_hstar.
     match goal with
       |- context[?u1 \* ?u2 \* ?u3 \* ?u4 \* _ \* ?u6 \* ?u7 \* ?u8 \* (_ \* _ \* ?u9 \* _) \* ?u10 \* ?u11 \* ?u12] =>
@@ -391,7 +390,7 @@ Proof with (try solve [ seclocal_solver | seclocal_solver2 | auto using finite_s
     xin (1,0) : idtac.
     have Hl : length (colind_seg l0) = rowptr[l0 + 1] - rowptr[l0] :> int...
     rewrite intr_list ?(fset_of_list_nodup 0) ?Hl ?Union_interval_change2...
-    xcleanup_unused*. 
+    rewrite -> ! hbig_fset_hstar; xclean_heap.
     xfor_sum_fma Inv R R (fun hv i => (to_float (hv[`2](colind[i])), dvec[colind[i] ])) tmp...
     { (xin (1,0): do 3 (xwp; xapp); xapp (@fma.spec)=> y)... 
       xapp (@sv_float.get_spec_in)=> //; try math... xsimpl*...

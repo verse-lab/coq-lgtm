@@ -166,7 +166,7 @@ Proof with (try solve [ seclocal_solver ]; fold').
   xset_Inv Inv 1; xset_R int Inv R 2.
   xfocus* (2,0) xind[[lb -- rb]].
   xapp get_spec_out=> //. 1: case=> ??; indomE; autos*.
-  xcleanup_unused.
+  xclean_heap.
   xin (1,0) : xwp; xapp=> q...
   have Hl : length xind[[lb -- rb]] = rb - lb :> int by apply list_interval_length.
   rewrite intr_list ?(fset_of_list_nodup 0) ?Hl ?Union_interval_change2 //.
@@ -220,7 +220,7 @@ Proof with (try solve [ seclocal_solver ]; fold').
   xset_Inv Inv 1; xset_R int Inv R 2.
   xfocus* (2,0) xind[[lb -- rb]].
   xapp get_spec_out=> //. 1: case=> ??; indomE; autos*.
-  xcleanup_unused.
+  xclean_heap.
   xin (1,0) : xwp; xapp=> q...
   have Hl : length xind[[lb -- rb]] = rb - lb :> int by apply list_interval_length.
   rewrite intr_list ?(fset_of_list_nodup 0) ?Hl ?Union_interval_change2 //.
@@ -361,11 +361,11 @@ Proof with fold'.
   xfocus* (2,0) (ind).
   xapp (@get_spec_out xind xval); eauto. 
   1: case=> ??; indomE; rewrite /Sum.mem/ind In_merge; autos*.
-  xcleanup_unused.
+  xclean_heap.
   xfocus* (3,0) ind.
   xapp (@get_spec_out yind yval); eauto.
   1: case=> ??; indomE; rewrite /Sum.mem/ind In_merge; autos*.
-  xcleanup_unused.
+  xclean_heap.
   set (H1 := _ \* hbig_fset _ _ _); set (H2 := _ \* H1); set (arrs := _ \* H2).
   xin (1,0) : xwp; xapp=> ans; xwp; xapp=> iX; xwp; xapp=> iY...
   have Hlx : length sxind = rbx - lbx :> int by apply list_interval_length.

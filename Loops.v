@@ -2238,6 +2238,18 @@ Tactic Notation "xdrain_unused" :=
 Tactic Notation "xdrain_unused" "*" :=
   rewrite -> ! hbig_fset_hstar; xdrain_unused; rewrite -!hbig_fset_hstar.
 
+Tactic Notation "xclean_heap_core" constr(Q) :=
+  match Q with
+  | context[htop] => xdrain_unused
+  | _ => try xcleanup_unused
+  end.
+
+Tactic Notation "xclean_heap" := 
+  match goal with
+  | |- (himpl _ (nwp _ ?Q)) => xclean_heap_core Q
+  | |- (ntriple _ _ ?Q) => xclean_heap_core Q
+  end.
+
 Ltac xwhile1 Z N b Inv := 
   let N := constr:(N) in
   let Z := constr:(Z) in 
