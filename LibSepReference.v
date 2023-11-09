@@ -14,6 +14,9 @@ From SLF Require Import Fun LabType.
 
 From mathcomp Require Import ssreflect ssrfun zify.
 
+From Flocq Require Export Binary Bits Core.
+From vcfloat Require Export FPCompCert FPLib.
+
 Open Scope Z_scope.
 
 Module Fmap := LibSepFmap. (* Short name for Fmap module. *)
@@ -69,9 +72,12 @@ Inductive prim : Type :=
   | val_opp : prim
   | val_eq : prim
   | val_add : prim
+  | val_float_add : prim
   | val_neq : prim
   | val_sub : prim
   | val_mul : prim
+  | val_float_mkpair : prim
+  | val_float_fma : prim
   | val_div : prim
   | val_mod : prim
   | val_le : prim
@@ -102,6 +108,8 @@ Inductive val : Type :=
   | val_unit : val
   | val_bool : bool -> val
   | val_int : int -> val
+  | val_float : binary64 -> val
+  | val_floatpair : binary64 -> binary64 -> val
   | val_loc : loc -> val
   | val_prim : prim -> val
   | val_fun : var -> trm -> val
@@ -191,6 +199,7 @@ Proof using. apply (Inhab_of_val val_unit). Defined.
 
 Coercion val_bool : bool >-> val.
 Coercion val_int : Z >-> val.
+Coercion val_float : binary64 >-> val.
 Coercion val_loc : loc >-> val.
 Coercion val_prim : prim >-> val.
 
@@ -225,7 +234,7 @@ Fixpoint subst (y:var) (v':val) (t:trm) : trm :=
 
 Inductive evalunop : prim -> val -> val -> Prop :=
   | evalunop_neg : forall b1,
-      evalunop val_neg (val_bool b1) (val_bool (neg b1))
+      evalunop val_neg (val_bool b1) (val_bool (LibBool.neg b1))
   | evalunop_opp : forall n1,
       evalunop val_opp (val_int n1) (val_int (- n1)).
 
@@ -239,10 +248,16 @@ Inductive evalbinop : val -> val -> val -> val -> Prop :=
       evalbinop val_neq v1 v2 (val_bool (isTrue (v1 <> v2)))
   | evalbinop_add : forall n1 n2,
       evalbinop val_add (val_int n1) (val_int n2) (val_int (n1 + n2))
+  | evalbinop_float_add : forall f1 f2,
+      evalbinop val_float_add (val_float f1) (val_float f2) (val_float (f1 + f2)%F64)
   | evalbinop_sub : forall n1 n2,
       evalbinop val_sub (val_int n1) (val_int n2) (val_int (n1 - n2))
   | evalbinop_mul : forall n1 n2,
       evalbinop val_mul (val_int n1) (val_int n2) (val_int (n1 * n2))
+  | evalbinop_float_mkpair : forall f1 f2,
+      evalbinop val_float_mkpair (val_float f1) (val_float f2) (val_floatpair f1 f2)
+  | evalbinop_float_fma : forall (f1 f2 f3 : ftype Tdouble),
+      evalbinop val_float_fma (val_floatpair f1 f2) (val_float f3) (val_float (BFMA f1 f2 f3))
   | evalbinop_div : forall n1 n2,
       n2 <> 0 ->
       evalbinop val_div (val_int n1) (val_int n2) (val_int (Z.quot n1 n2))

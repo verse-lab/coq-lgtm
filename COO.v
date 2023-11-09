@@ -1,39 +1,12 @@
 Set Implicit Arguments.
-From SLF Require Import LabType Fun LibSepFmap Sum.
+From SLF Require Import LabType Fun LibSepFmap Sum ListCommon.
 From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer Struct Loops Unary.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
 Open Scope Z_scope.
 
-
-Definition to_int (v : val) : int := 
-  match v with 
-  | val_int i => i 
-  | _ => 0
-  end.
-
 Coercion to_int : val >-> Z.
-
-Lemma to_int_if P a b : 
-  to_int (If P then a else b) = If P then a else b.
-Proof. by case: classicT. Qed.
-
-Section pure_facts.
-
-Import List.
-
-Lemma NoDup_nthZ {A : Type} i j l (z : A): 
-  NoDup l <->
-  ((0<= i < Datatypes.length l) ->
-  (0<= j < Datatypes.length l) -> nth (abs i) l z = nth (abs j) l z -> i = j).
-Admitted.
-
-Lemma in_combineE {A B : Type} (l : list A) (l' : list B) (x : A) (y : B) :
-  In (x, y) (combine l l') = (In x l /\ In y l').
-Admitted.
-
-End pure_facts.
 
 Module coo_vec.
 Notation "H1 '\\*' H2" := (hstar H1 H2)
@@ -167,29 +140,20 @@ Lemma sum_spec `{Inhab D} (x_ind x_val : loc) :
   }]
   {{ hv, \[hv[`1](0) = Σ_(i <- `[0,M]) hv[`2](i)] \* \Top}}.
 Proof with fold'.
-  xfocus (2,0) xind.
-  rewrite (hbig_fset_part `[0, M] xind). (* TODO: move to xfocus *)
-  xapp get_spec_out=> //.
-  { case=> ?? /[! @indom_label_eq]-[_]/=; rewrite /intr filter_indom; autos*. }
-  set (H1 := hbig_fset hstar (_ ∖ _) _); set (H2 := hbig_fset hstar (_ ∖ _) _).
-  xframe (H1 \* H2); clear H1 H2.
+  xset_Inv Inv 1; xset_R int Inv R 2.
+  xfocus* (2,0) xind.
+  xapp get_spec_out=> //. 1: case=> ??; indomE; autos*.
+  xdrain_unused.
   xin (1,0) : xwp; xapp=> s...
-  have E : `[0,M] ∩ xind = xind.
-  { apply/fset_extens=> x; rewrite /intr filter_indom -fset_of_list_in; splits*.
-    move=> ?; splits*; rewrite* indom_interval. }
+  have E : `[0,M] ∩ xind = xind by apply intr_list.
   rewrite E (fset_of_list_nodup 0) // len_xind.
-  set (R i := arr(x_ind, xind)⟨2, i⟩ \* arr(x_val, xval)⟨2, i⟩ : hhprop D).
-  set (Inv (i : int) := arr(x_ind, xind)⟨1, 0⟩ \* arr(x_val, xval)⟨1, 0⟩).
   xfor_sum Inv R (fun=> \Top) (fun hv i => hv[`2](xind[i])) s.
-  { rewrite /Inv.
-    (xin (1,0): (xwp; xapp; xapp (@incr.spec _ H)=> y))...
+  { (xin (1,0): (xwp; xapp; xapp (@incr.spec _ H)=> y))...
     xapp get_spec_in=> //; xsimpl*. }
-  { move=> Neq ???; apply/Neq. 
-    move/NoDup_nthZ: nodup_xind; apply; autos*; math. }
+  { move=>Ha Hb Hc; move: Ha; apply contrapose, NoDup_nthZ; autos*; math. }
   xapp; xsimpl.
-  under (@SumEq _ _ _ `[0,M]).
-  { move=>*; rewrite to_int_if; over. }
-  rewrite SumIf E (SumList 0) // len_xind Sum0s. apply/f_equal; math.
+  xsum_normalize.
+  by rewrite E (SumList 0) // len_xind.
 Qed.
 
 Context (dvec : list int).
@@ -209,12 +173,6 @@ Definition dotprod :=
   ! s
 }>.
 
-Lemma SumIf {A : Type} {P : A -> Prop} {fs F G} (C : A -> int -> int) : 
-  (Σ_(i <- fs) C i (If P i then F i else G i)) = 
-  Σ_(i <- fs ∩ P) C i (F i) + Σ_(i <- fs ∖ P) C i (G i).
-Proof using.
-Admitted.
-
 Lemma dotprod_spec `{Inhab D} (x_ind x_val d_vec : loc) : 
   {{ arr(x_ind, xind)⟨1, 0⟩ \\*
      arr(x_val, xval)⟨1, 0⟩ \\*
@@ -228,31 +186,20 @@ Lemma dotprod_spec `{Inhab D} (x_ind x_val d_vec : loc) :
   }]
   {{ hv, \[hv[`1](0) = Σ_(i <- `[0,M]) (hv[`2](i) * dvec[i])] \* \Top}}.
 Proof with fold'.
-  xfocus (2,0) xind.
-  rewrite (hbig_fset_part `[0, M] xind). (* TODO: move to xfocus *)
-  xapp get_spec_out=> //.
-  { case=> ?? /[! @indom_label_eq]-[_]/=; rewrite /intr filter_indom; autos*. }
-  set (H1 := hbig_fset hstar (_ ∖ _) _); 
-  set (H2 := hbig_fset hstar (_ ∖ _) _).
-  set (H3 := hbig_fset hstar (_ ∖ _) _).
-  xframe (H1 \* H2 \* H3); clear H1 H2 H3.
+  xset_Inv Inv 1; xset_R int Inv R 2.
+  xfocus* (2,0) xind.
+  xapp get_spec_out=> //. 1: case=> ??; indomE; autos*.
+  xdrain_unused.
   xin (1,0) : xwp; xapp=> s...
-  have E : `[0,M] ∩ xind = xind.
-  { apply/fset_extens=> x; rewrite /intr filter_indom -fset_of_list_in; splits*.
-    move=> ?; splits*; rewrite* indom_interval. }
+  have E : `[0,M] ∩ xind = xind by apply intr_list.
   rewrite E (fset_of_list_nodup 0) // len_xind.
-  set (R i := arr(x_ind, xind)⟨2, i⟩ \* arr(x_val, xval)⟨2, i⟩ \* arr(d_vec, dvec)⟨2,i⟩ : hhprop D).
-  set (Inv (i : int) := arr(x_ind, xind)⟨1, 0⟩ \* arr(x_val, xval)⟨1, 0⟩ \* arr(d_vec, dvec)⟨1,0⟩).
   xfor_sum Inv R (fun=> \Top) (fun hv i => (hv[`2](xind[i]) * dvec[xind[i] ])) s.
-  { rewrite /Inv /R.
-    (xin (1,0): do 4 (xwp; xapp); xapp (@incr.spec _ H)=> y)...
+  { (xin (1,0): do 4 (xwp; xapp); xapp (@incr.spec _ H)=> y)...
     xapp get_spec_in=> //; xsimpl*. }
-  { move=> Neq ???; apply/Neq. 
-    move/NoDup_nthZ: nodup_xind; apply; autos*; math. }
+  { move=>Ha Hb Hc; move: Ha; apply contrapose, NoDup_nthZ; autos*; math. }
   xapp; xsimpl.
-  under (@SumEq _ _ _ `[0,M]).
-  { move=>*; rewrite to_int_if; over. }
-  rewrite (SumIf (fun=> Z.mul^~ _)) E (SumList 0) // len_xind Sum0s; apply/f_equal; math.
+  xsum_normalize.
+  by rewrite (SumIf' (fun=> Z.mul^~ _)) E (SumList 0) // len_xind Sum0s Z.add_0_r.
 Qed.
 
 End coo_vec.
@@ -264,13 +211,6 @@ End coo_vec.
 
 
 Module coo. 
-Lemma hbig_fset_part {D A : Type} (fs : fset A) (P : A -> Prop) : 
-  @hbig_fset D _ hstar fs = 
-  fun H => hbig_fset hstar (fs ∩ P) H \* @hbig_fset D _ hstar (fs ∖ P) H.
-Proof.
-  apply/fun_ext_1=> ?; rewrite -hbig_fset_union // ?fs_pred_part //.
-  exact/fs_pred_part_disj.
-Qed.
 
 Notation "H1 '\\*' H2" := (hstar H1 H2)
   (at level 42, right associativity, format "H1  \\* '//' H2") : hprop_scope.
@@ -371,12 +311,6 @@ Proof.
   xsimpl*.
 Qed.
 
-(* Lemma SumIf {A : Type} {P : A -> Prop} {fs F G} (C : A -> int -> int) : 
-  (Σ_(i <- fs) C i (If P i then F i else G i)) = 
-  Σ_(i <- fs ∩ P) C i (F i) + Σ_(i <- fs ∖ P) C i (G i).
-Proof using.
-Admitted. *)
-
 Definition sum := 
   <{
   fun xval =>
@@ -407,45 +341,25 @@ Lemma sum_spec `{Inhab D} (x_row x_col x_val : loc) :
   }]
   {{ hv, \[hv[`1]((0,0)) = Σ_(i <- `[0, Nrow] \x `[0, Ncol]) hv[`2](i)] \* \Top}}.
 Proof with fold'.
+  xset_Inv Inv 1; xset_R int Inv R 2.
   have lE: length (combine xrow xcol) = N :> int by rewrite combine_length; lia.
-  xfocus (2,0) (combine xrow xcol).
-  rewrite (hbig_fset_part (`[0, Nrow] \x `[0, Ncol]) (combine xrow xcol)). (* TODO: move to xfocus *)
-  xapp get_spec_out=> //.
-  { case=> ?? /[! @indom_label_eq]-[_]/=. 
-    rewrite /intr filter_indom indom_prod; autos*. }
-  set (H1 := hbig_fset hstar (_ ∖ _) _); 
-  set (H2 := hbig_fset hstar (_ ∖ _) _);
-  set (H3 := hbig_fset hstar (_ ∖ _) _).
-  xframe (H1 \* H2 \* H3); clear H1 H2 H3.
+  xfocus* (2,0) (combine xrow xcol).
+  xapp get_spec_out=> //. 1: case=> ??; indomE; autos*.
+  xdrain_unused.
   xin (1,0) : xwp; xapp=> s...
   have E : (`[0, Nrow] \x `[0, Ncol]) ∩ combine xrow xcol = combine xrow xcol.
-  { apply/fset_extens=> -[??]. 
-    rewrite /intr filter_indom indom_prod -fset_of_list_in; splits*.
-    rewrite /Sum.mem in_combineE /= ?indom_interval=> -[]; autos*. }
+  { apply/fset_extens=> -[r c]. specializes xrow_leq r. specializes xcol_leq c. 
+    indomE. rewrite -fset_of_list_in /Sum.mem /=. split; try tauto. intros HH. pose proof HH as HH2%in_combineE. tauto. }
   rewrite ?E (fset_of_list_nodup (0,0)) // lE.
-  set (R i := 
-    arr(x_row, xrow)⟨2, i⟩ \*
-    arr(x_col, xcol)⟨2, i⟩ \* 
-    arr(x_val, xval)⟨2, i⟩ : hhprop D).
-  set (Inv (i : int) := 
-    arr(x_row, xrow)⟨1, (0,0)⟩ \* 
-    arr(x_col, xcol)⟨1, (0,0)⟩ \* 
-    arr(x_val, xval)⟨1, (0,0)⟩).
   xfor_sum Inv R (fun=> \Top) (fun hv i => hv[`2]((xrow[i], xcol[i]))) s.
-  { rewrite /Inv /R.
-    (xin (1,0): (xwp; xapp; xapp (@incr.spec _ H)=> y))...
+  { (xin (1,0): (xwp; xapp; xapp (@incr.spec _ H)=> y))...
     rewrite ?combine_nth /=; try lia.
     xapp get_spec_in=> //; xsimpl*. }
-  { move=> Neq ???; apply/Neq. 
-    move/NoDup_nthZ: nodup_xrowcol; apply; autos*; math. }
+  { move=>Ha Hb Hc; move: Ha; apply contrapose, NoDup_nthZ; autos*; math. }
   { rewrite combine_nth //; lia. }
   xapp; xsimpl.
-  under (@SumEq _ _ _ (`[0, Nrow] \x `[0, Ncol])).
-  { move=>*; rewrite to_int_if; over. }
-  rewrite SumIf E (SumList (0,0)) // lE Sum0s.
-  under (@SumEq _ _ _ `[0,N]).
-  { move=> ?; rewrite -combine_nth; last lia. over. }
-  apply/f_equal; math.
+  xsum_normalize.
+  rewrite E (SumList (0,0)) // lE. apply SumEq=>*. by rewrite -combine_nth; last lia.
 Qed.
 
 End coo.

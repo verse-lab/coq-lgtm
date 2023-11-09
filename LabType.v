@@ -153,3 +153,6 @@ Lemma labf_ofK' {T S} (f : T -> S) g :
   cancel f g ->
   cancel (labf_of f) (labf_of g).
 Proof. by move=> c [?? /=]; rewrite /labf_of /=; rewrite c. Qed.
+
+Global Instance Inhab_lab_int : Inhab (labeled int).
+split. by exists (Lab (0,0) 0). Qed.

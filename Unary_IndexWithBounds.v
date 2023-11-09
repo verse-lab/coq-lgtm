@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-From SLF Require Import Fun LabType.
+From SLF Require Import Fun LabType ListCommon.
 From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer Struct Loops.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
@@ -34,62 +34,6 @@ Proof Build_Inhab (ex_intro (fun=> True) (Lab (0, 0) 0) I). *)
     while (i != x_ind[k] && i < lenght x_ind)
       k++
 *)
-
-Global Instance Inhab_lab_int : Inhab (labeled int).
-split. by exists (Lab (0,0) 0). Qed.
-
-
-Section pure_facts.
-
-Context {A : Type}.
-
-Implicit Type l s : list A.
-(* Implicit Type i : A. *)
-
-Export List.
-
-Definition index (i : A) l : int. 
-Proof using.
-Admitted.
-Lemma index_nodup (def : A) i l : 
-  0 <= i < length l ->
-  List.NoDup l -> 
-    index (nth (abs i) l def) l = i.
-Proof.
-Admitted.
-
-Lemma in_take x l i : 0 <= i <= length l -> (In x (take (abs i) l)) = (index x l < i).
-Proof.
-Admitted.
-
-Lemma nth_index (def : A) x s : In x s -> nth (abs (index x s)) s def = x.
-Admitted.
-
-Lemma index_mem x s : (index x s < length s) = (In x s).
-Admitted.
-
-Lemma index_size x s : index x s <= length s.
-Proof. Admitted.
-
-Lemma indexG0 x s : 0 <= index x s.
-Proof. Admitted.
-
-Lemma memNindex x s :  ~In x s -> index x s = length s.
-Admitted.
-
-Definition list_interval (lb rb : nat) l :=
-  take (rb - lb)%nat (drop lb l).
-
-Lemma list_interval_length (lb rb : int) l :
-  0 <= lb <= rb -> rb <= length l -> length (list_interval (abs lb) (abs rb) l) = rb - lb :> int.
-Admitted.
-
-Lemma list_interval_nth (def : A) (x lb rb : int) l :
-  0 <= lb <= rb -> rb <= length l -> 0 <= x < rb - lb ->
-  nth (abs (lb + x)) l def = nth (abs x) (list_interval (abs lb) (abs rb) l) def.
-Admitted.
-
-End pure_facts.
 
 Module and.
 Section and.
@@ -208,7 +152,7 @@ Lemma spec {D} `{Inhab D} d N (lb rb i : int) (xind : list int) (x_ind : loc) :
     (harray_int xind x_ind d \* \[length xind = N :> int] 
       \* \[List.NoDup (list_interval (abs lb) (abs rb) xind)] 
       \* \[0 <= lb <= rb] \* \[rb <= N])
-    (fun hv => harray_int xind x_ind d \* \[hv = fun=> lb + index i (list_interval (abs lb) (abs rb) xind)]).
+    (fun hv => harray_int xind x_ind d \* \[hv = fun=> lb + ListCommon.index i (list_interval (abs lb) (abs rb) xind)]).
 Proof with fold'.
   set (xind_sub := list_interval (abs lb) (abs rb) xind).
   set (N_sub := rb - lb).
@@ -220,7 +164,7 @@ Proof with fold'.
     \[~ In i (take (abs x) xind_sub)] \*
     k d ~(d)~> (lb + x) \* harray_int xind x_ind d
     ).
-  xwp; xwhile1 0 (index i xind_sub) (cond 0) Inv; rewrite /Inv.
+  xwp; xwhile1 0 (ListCommon.index i xind_sub) (cond 0) Inv; rewrite /Inv.
   { xsimpl=> ??->??.
     do 5 (xwp; xapp); xapp=> ?->; xsimpl*.
     rewrite /cond /xind_sub /N_sub. bool_rew.
@@ -238,7 +182,7 @@ Proof with fold'.
     rewrite index_nodup //; math. }
   { xsimpl*=> {Inv}k; rewrite /cond; bool_rew.
     case=> xindN ??; rewrite in_take; eauto; last math.
-    suff: (index i xind_sub <> k) by math.
+    suff: (ListCommon.index i xind_sub <> k) by math.
     move=> E; apply/xindN; rewrite -E nth_index // -index_mem; eauto; math. }
   { move=> j ? IH; rewrite /cond; bool_rew.
     xsimpl=> -?? T. xwp; xapp (@incr1.spec _ H).  

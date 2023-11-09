@@ -1,6 +1,6 @@
 Set Implicit Arguments.
-From SLF Require Import Fun LabType Sum.
-From SLF Require Import LibSepReference  LibWP LibSepSimpl Struct.
+From SLF Require Import Fun LabType Sum ListCommon.
+From SLF Require Import LibSepReference LibWP LibSepSimpl Struct.
 From SLF Require Import LibSepTLCbuffer.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
@@ -1984,7 +1984,7 @@ Proof.
     move=> ?; apply:applys_eq_init; reflexivity. }
   xframe2 (arrl ~⟨(i, 0%Z), s⟩~> val_header (length arr1)).
   xframe2 \[(arrl, (⟨(i, 0), s⟩)%arr) <> null (⟨(i, 0), s⟩)%arr].
-  rewrite ?hcellsE AL2.
+  rewrite ?hcellsE_int AL2.
   rewrite -> hbig_fset_part with (fs:=`[0, M]) (P:=idx).
   set (Inv' := hbig_fset _ (_ ∖ _) _).
   rewrite intr_list // (fset_of_list_nodup 0) // ALidx hbig_fset_Union.
@@ -2005,7 +2005,7 @@ Proof.
   { move=> ???? hvE1 hvE2; erewrite hvE; eauto. }
   { xsimpl*=> ?; apply:applys_eq_init. f_equal. extens=> ?. 
    by rewrite hstar_fset_label_single. }
-  move=> ?. rewrite /Inv' hcellsE AL1 !fun_eta_1. xsimpl*. 
+  move=> ?. rewrite /Inv' hcellsE_int AL1 !fun_eta_1. xsimpl*. 
   rewrite -> hbig_fset_part with (fs:=`[0, M]) (P:=idx).
   rewrite intr_list // (fset_of_list_nodup 0) // ALidx hbig_fset_Union.
   2:{ introv Ha Hb Hc. apply disjoint_single_single. intros Hd. rewrite ! indom_interval in Hb, Hc. apply Ha. enough (abs i0 = abs j0) by lia.
@@ -2015,10 +2015,12 @@ Proof.
   move=> d Hnotin /=. rewrite filter_indom indom_interval /Sum.mem /= in Hnotin. do 2 f_equal. now apply Hpre.
 Qed.
 
-Lemma xfor_lemma_gen_array `{ID : Inhab D}
+(* TODO it might be easier to change some_eq to be on some type A, and use the toval trick again 
+    otherwise its application would be complicated (e.g., for float) *)
+Lemma xfor_lemma_gen_array `{ID : Inhab D} (some_eq : Relation_Definitions.relation val) `{Heqv : @RelationClasses.Equivalence val some_eq}
   Inv 
   (R R' : Dom -> hhprop)
-  s fsi1 vr (arrl : loc) (arr1 : list int) arr2 (idx : list int)
+  s fsi1 vr (arrl : loc) (def : val) (arr1 : list val) (arr2 : (D -> val) -> list val) (idx : list int)
   (N M : Z) (C1 : Dom -> trm) (C : trm)
   (i j : Z)
   Pre Post: 
@@ -2032,24 +2034,25 @@ Lemma xfor_lemma_gen_array `{ID : Inhab D}
     (0 <= l < N) ->
     {{ Inv l \* 
         (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R d) \* 
-        (arrl + 1 + abs (idx[l]))%nat ~⟨(i,0)%Z, s⟩~> arr1[(idx[l])] }}
+        (arrl + 1 + abs (idx[l]))%nat ~⟨(i,0)%Z, s⟩~> nth (abs (idx[l])) arr1 def }}
       [{
         {i| _  in single s tt  => subst vr l C};
         {j| ld in fsi1 l       => C1 ld}
       }]
-    {{ v, 
+    {{ v, \exists vv : val, 
+        \[some_eq vv (nth (abs (idx[l])) (arr2 v) def)] \*
         Inv (l + 1) \* 
         (\*_(d <- ⟨(j,0)%Z, fsi1 l⟩) R' d) \* 
-        (arrl + 1 + abs (idx[l]))%nat ~⟨(i,0)%Z, s⟩~> (arr2 v)[(idx[l])] }}) ->
+        (arrl + 1 + abs (idx[l]))%nat ~⟨(i,0)%Z, s⟩~> vv }}) ->
   (forall j : int, hlocal (Inv j) ⟨(i,0%Z), single s tt⟩) ->
   (forall i : Dom, hlocal (R i) ⟨(j,0%Z), single i tt⟩) ->
   (forall i : Dom, hlocal (R' i) ⟨(j,0%Z), single i tt⟩) ->
   (forall (hv hv' : D -> val) m,
     0 <= m < N ->
     (forall i, indom (fsi1 m) i -> hv[`j](i) = hv'[`j](i)) ->
-    (arr2 hv)[(idx[m])] = (arr2 hv')[(idx[m])]) ->
+    some_eq (nth (abs (idx[m])) (arr2 hv) def) (nth (abs (idx[m])) (arr2 hv') def)) ->
   (forall (hv : D -> val) m,
-    0 <= m < M -> ~ In m idx -> arr1[m] = (arr2 hv)[m]) ->
+    0 <= m < M -> ~ In m idx -> some_eq (nth (abs m) arr1 def) (nth (abs m) (arr2 hv) def)) ->
   (i <> j)%Z ->
   0 <= N <= M ->
   (forall t : val, subst "for" t C = C) -> 
@@ -2061,12 +2064,13 @@ Lemma xfor_lemma_gen_array `{ID : Inhab D}
   (Pre ==> 
     Inv 0 \* 
     (\*_(d <- Union `[0,N] fsi1) R d) \*
-    harray_int arr1 arrl (Lab (i,0) s)) ->
-  (forall hv, 
+    harray arr1 arrl (Lab (i,0) s)) ->
+  (forall hv (vl : int -> val),
+    \[forall i : int, 0 <= i < M -> some_eq (vl i) (nth (abs i) (arr2 hv) def)] \*
     Inv N \* 
     (\*_(d <- Union `[0,N] fsi1) R' d) \* 
-    harray_int (arr2 hv) arrl (Lab (i,0) s) ==>
-    Post hv) -> 
+    harray (projT1 (list_of_fun' vl M)) arrl (Lab (i,0) s) ==>
+    Post hv) ->
   {{ Pre }}
     [{
       {i| _  in single s tt => For 0 N (trm_fun vr C)};
@@ -2080,41 +2084,64 @@ Proof.
   have Hidx' : forall x : int, In x idx -> 0 <= x < M.
   { intros. eapply In_nth with (d:=0) in H. destruct H as (n & Hn & <-). 
     replace n with (abs n)%nat by math. apply Hidx. math. }
-  apply/ntriple_conseq; last exact/PostH; eauto.
-  rewrite /harray_int/harray/hheader ?length_map ?length_List_length.
-  apply/(ntriple_conseq); [|exact: himpl_trans|move=> ?]; first last.
-  { rewrite /harray_int/harray/hheader ?length_map ?length_List_length -AL.
+  apply/ntriple_conseq; [ | apply PreH | apply qimpl_refl ].
+  rewrite /harray/hheader ?length_map ?length_List_length.
+  (*
+  rewrite /harray/hheader ?length_map ?length_List_length -AL.
+    move=> ?; apply:applys_eq_init; reflexivity.
+  apply/(ntriple_conseq); [|eapply himpl_trans|apply qimpl_refl].
+  { rewrite /harray/hheader ?length_map ?length_List_length -AL.
     move=> ?; apply:applys_eq_init; reflexivity. }
-  xframe2 (arrl ~⟨(i, 0%Z), s⟩~> val_header (length arr1)).
-  xframe2 \[(arrl, (⟨(i, 0), s⟩)%arr) <> null (⟨(i, 0), s⟩)%arr].
-  rewrite ?hcellsE AL2.
+  *)
+  (* xframe2 (arrl ~⟨(i, 0%Z), s⟩~> val_header (length arr1)).
+  xframe2 \[(arrl, (⟨(i, 0), s⟩)%arr) <> null (⟨(i, 0), s⟩)%arr]. *)
+  rewrite ?(hcellsE _ def) AL2.
   rewrite -> hbig_fset_part with (fs:=`[0, M]) (P:=idx).
-  set (Inv' := hbig_fset _ (_ ∖ _) _).
+  set (Inv'' := hbig_fset _ (_ ∖ _) _).
+  pose (Inv' := \[(arrl, (⟨(i, 0), s⟩)%arr) <> null (⟨(i, 0), s⟩)%arr] \*
+    (arrl ~⟨(i, 0%Z), s⟩~> val_header (length arr1)) \* Inv'').
   rewrite intr_list // (fset_of_list_nodup 0) // ALidx hbig_fset_Union.
   2:{ introv Ha Hb Hc. apply disjoint_single_single. intros Hd. rewrite ! indom_interval in Hb, Hc. apply Ha. enough (abs i0 = abs j0) by lia.
     move: Hd. erewrite -> NoDup_nth in Hnodup. apply Hnodup; math. }
   erewrite hbig_fset_eq with (fs:=`[0, N]). 2: intros; rewrite hbig_fset_label_single'; reflexivity.
   eapply xfor_lemma_gen_bigstr with 
   (Inv := fun i => Inv i \* Inv')
-  (H := fun l => (arrl + 1 + abs (idx[l]))%nat ~⟨(i, 0%Z), s⟩~> arr1[(idx[l])])
-  (H' := fun l v => (arrl + 1 + abs (idx[l]))%nat ~⟨(i, 0%Z), s⟩~> (arr2 v)[(idx[l])])
+  (H := fun l => (arrl + 1 + abs (idx[l]))%nat ~⟨(i, 0%Z), s⟩~> nth (abs (idx[l])) arr1 def)
+  (H' := fun l v => \exists vv : val, 
+    \[some_eq vv (nth (abs (idx[l])) (arr2 v) def)] \*
+    (arrl + 1 + abs (idx[l]))%nat ~⟨(i, 0%Z), s⟩~> vv)
   (R := R) (R' := R'); try eassumption; autos*=> //.
   { move=> l Hl. xframe2 Inv'. rewrite wp_equiv. eapply htriple_conseq. 1: apply wp_equiv, IH=> //. all: xsimpl*. 
     (* xnsimpl will make over simplification *) }
   { rewrite /Inv'. xlocal. autos*. apply hlocal_hstar_fset. xlocal. }
   { xlocal. }
   { xlocal. }
-  { move=> ???? hvE1; erewrite hvE; eauto. }
-  { xsimpl*. }
+  { move=> ???? hvE1. apply himpl_antisym; xsimpl=>?; rewrite hvE; eauto. intros; symmetry; auto. }
+  { rewrite/Inv' /Inv''; xsimpl*. }
   (* TODO the following part is very bad; need improvement *)
-  move=> ?. rewrite /Inv' hcellsE AL1 !fun_eta_1. xsimpl*. 
+  move=> hv. rewrite hstar_fset_hexists. xsimpl*=> vl.
+  rewrite hstar_fset_pure_hstar. xsimpl*=> Hvl. setoid_rewrite indom_interval in Hvl.
+  pose (vl' := fun i : int => If In i idx then vl (ListCommon.index i idx) else (nth (abs i) arr1 def)).
+  eapply himpl_trans. 2: apply (PostH hv vl'). 
+  assert (forall i0 : int, 0 <= i0 < M -> some_eq (vl' i0) (nth (abs i0) (arr2 hv) def)) as Htmp.
+  { intros i0 Hi0. rewrite /vl'. case_if.
+    { rewrite Hvl. 2: split; [ apply indexG0 | rewrite -index_mem in C0; math ].
+      rewrite nth_index //. reflexivity. }
+    { apply Hre; try math; auto. } }
+  destruct (list_of_fun' _ _) as (l1 & Hlen1 & Hl1); simpl.
+  xsimpl*. rewrite /harray/hheader/Inv'/Inv'' (hcellsE _ def) ?length_List_length. xsimpl*=>_. 
+  replace (Z.of_nat (length l1)) with M by math. 
+  replace (length l1) with (length arr1) by math. xsimpl*.
   rewrite -> hbig_fset_part with (fs:=`[0, M]) (P:=idx).
   rewrite intr_list // (fset_of_list_nodup 0) // ALidx hbig_fset_Union.
   2:{ introv Ha Hb Hc. apply disjoint_single_single. intros Hd. rewrite ! indom_interval in Hb, Hc. apply Ha. enough (abs i0 = abs j0) by lia.
     move: Hd. erewrite -> NoDup_nth in Hnodup. apply Hnodup; math. }
-  erewrite hbig_fset_eq with (fs:=`[0, N]). 1: xsimpl*. 2: move=> * /=; by rewrite hbig_fset_label_single'.
+  erewrite hbig_fset_eq with (fs:=`[0, N]). 1: xsimpl*. 
+  2: move=> d Hd /=; rewrite indom_interval in Hd; specialize (Hidx d Hd); rewrite hbig_fset_label_single' Hl1 /vl' ?index_nodup //; try math.
+  2: assert (In idx[d] idx) by (apply nth_In; math); case_if; eqsolve.
   erewrite hbig_fset_eq. 1: xsimpl*. 
-  move=> d Hnotin /=. rewrite filter_indom indom_interval /Sum.mem /= in Hnotin. do 2 f_equal. now apply Hre.
+  move=> d Hnotin /=. rewrite filter_indom indom_interval /Sum.mem /= in Hnotin. f_equal. 
+  rewrite Hl1 /vl'; try math. case_if; eqsolve.
 Qed.
 
 End WithLoops.
@@ -2122,7 +2149,7 @@ End WithLoops.
 Global Hint Rewrite @disjoint_single disjoint_interval disjoint_single_interval 
   disjoint_interval_single @disjoint_eq_label @disjoint_label @disjoint_prod : disjointE.
 
-Hint Rewrite @indom_label_eq @indom_union_eq @indom_prod @indom_interval @indom_single_eq : indomE.
+Hint Rewrite @indom_label_eq @indom_union_eq @indom_prod @indom_interval @indom_single_eq @intr_indom @intr_neg_indom : indomE.
 
 Ltac indomE := autorewrite with indomE.
 
@@ -2130,24 +2157,27 @@ Ltac disjointE :=
   let Neq := fresh in
   let i   := fresh "i" in
   let j   := fresh "j" in 
-  intros i j; 
+  try intros i j; 
   indomE;
   autorewrite with disjointE; try lia; try eqsolve.
 
-  Tactic Notation "xfor_sum" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(s) :=
-  eapply (@xfor_big_op_lemma _ _ Inv R R' op s); 
-  [ let L := fresh in 
-    intros ?? L;
-    xnsimpl
-  | disjointE
-  | let hvE := fresh "hvE" in
+Tactic Notation "xfor_sum_cong_solve" uconstr(op) :=
+  let hvE := fresh "hvE" in
   let someindom := fresh "someindom" in
   intros ???? hvE; rewrite ?/op; indomE;
   match goal with 
   | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
   | _ => idtac
-  end; try setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
-    (first [ apply someindom | idtac ])]
+  end; try (setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
+    (first [ apply someindom | idtac ])]).
+
+Tactic Notation "xfor_sum" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(s) :=
+  eapply (@xfor_big_op_lemma _ _ Inv R R' op s); 
+  [ let L := fresh in 
+    intros ?? L; rewrite ?/Inv ?/R ?/R';
+    xnsimpl
+  | disjointE
+  | xfor_sum_cong_solve op
   |
   | try lia
   |
@@ -2196,6 +2226,18 @@ Tactic Notation "xframe2" uconstr(QH) :=
     ]; clear Q HEQ
   ).
 
+Tactic Notation "xcleanup_unused" := 
+  (repeat let HH := fresh "uselessheap" in set (HH := hbig_fset hstar (_ ∖ _) _); xframe2 HH; clear HH).
+
+Tactic Notation "xcleanup_unused" "*" :=
+  rewrite -> ! hbig_fset_hstar; xcleanup_unused; rewrite -!hbig_fset_hstar; xsimpl.
+
+Tactic Notation "xdrain_unused" := 
+  (repeat let HH := fresh "uselessheap" in set (HH := hbig_fset hstar (_ ∖ _) _); xframe HH; clear HH).
+
+Tactic Notation "xdrain_unused" "*" :=
+  rewrite -> ! hbig_fset_hstar; xdrain_unused; rewrite -!hbig_fset_hstar.
+
 Ltac xwhile1 Z N b Inv := 
   let N := constr:(N) in
   let Z := constr:(Z) in 
@@ -2230,3 +2272,104 @@ Tactic Notation "xwhile_sum"
   |
   |
   ].
+
+Tactic Notation "xset_Inv_core1" ident(Inv) constr(h) constr(H) := 
+  (* idtac h; *)
+  let Inv1 := fresh "Inv" in 
+  set (Inv1 := h);
+  match constr:(h) with 
+  | context[H] => idtac
+  | _ =>
+    let Inv_tmp := fresh "Inv" in 
+    (* idtac "AA"; *)
+    set (Inv_tmp := fun d => Inv1 \* Inv d);
+    (* idtac "BB"; *)
+    unfold Inv1, Inv in Inv_tmp;
+    clear Inv; rename Inv_tmp into Inv
+  end.
+
+Ltac xset_Inv_core Inv i H := 
+  repeat match goal with 
+  | |- context[@hsingle _ ?p (Lab (i%Z, 0) ?x) ?v] =>
+    let t := type of x in
+    (try set (Inv := fun (k: int) => \[] : (hhprop (labeled t))));
+    xset_Inv_core1 Inv ((@hsingle _ p (Lab (i%Z, 0) x) v)) H
+  | |- context[@harray_int _ ?L ?p (Lab (i%Z, 0) ?x)] =>
+    let t := type of x in
+    (* idtac "AA";  *)
+    (try set (Inv := fun (k: int) => \[] : (hhprop (labeled t))));
+    (* idtac "BB";  *)
+    xset_Inv_core1 Inv ((@harray_int _ L p (Lab (i%Z, 0) x))) H
+  | |- context[@harray_float _ ?L ?p (Lab (i%Z, 0) ?x)] =>
+    let t := type of x in
+    (try set (Inv := fun (k: int) => \[] : (hhprop (labeled t))));
+    xset_Inv_core1 Inv ((@harray_float _ L p (Lab (i%Z, 0) x))) H
+  end.
+
+Tactic Notation "xset_clean" ident(ia) ident(ib) ident(ic) := 
+  repeat multimatch goal with 
+  | H := ?b |- _ => 
+    (* idtac H; *)
+    tryif constr_eq_strict H ia then fail else
+    tryif constr_eq_strict H ib then fail else
+    tryif constr_eq_strict H ic then fail else
+    unfold H; clear H
+  end.
+
+Tactic Notation "xset_Inv" ident(Inv) constr(i) uconstr(H) := 
+  xset_Inv_core Inv i H; xset_clean Inv Inv Inv.
+
+Tactic Notation "xset_Inv" ident(Inv) constr(i) := 
+  xset_Inv_core Inv i (239); xset_clean Inv Inv Inv.
+
+Tactic Notation "xset_R_core" constr(dom) ident(R) constr(i) := 
+ set (R := fun (t : dom) => \[] : hhprop (labeled dom));
+  repeat match goal with 
+  | |- context[hbig_fset _ _ ?f] =>
+    match f with 
+    | context[(i, 0)] =>
+      let f' := fresh "f" in 
+      set (f' := f);
+      let R' := fresh "R" in 
+      let t := eval unfold R in R in 
+      (* idtac t; *)
+      match t with 
+      | (fun _ => \[]) => set (R' := f)
+      | _  => set (R' := fun d => f d \* R d)
+      end;
+      unfold R in R';
+      clear R; rename R' into R
+    | _ => fail
+    end
+  end.
+
+Tactic Notation "xset_R" constr(dom) ident(Inv) ident(R) constr(i) := 
+  xset_R_core dom R i; xset_clean R R Inv.
+
+Definition to_int (v : val) : int := 
+  match v with 
+  | val_int i => i 
+  | _ => 0
+  end.
+
+Lemma to_int_if P a b : 
+  to_int (If P then a else b) = If P then to_int a else to_int b.
+Proof. by case: classicT. Qed.
+
+Tactic Notation "xsum_normalize" :=
+  repeat match goal with
+  | |- val_int _ = val_int _ => f_equal
+  | |- context[@Sum ?A ?ffs ?ff] => 
+    match ff with
+    | context[to_int (If _ then _ else _)] => 
+      erewrite (@SumEq A ff _ ffs) by (move=>*; rewrite -> to_int_if; simpl to_int; reflexivity)
+    (* probably, use autorewrite instead *)
+    | (fun _ => (If _ then _ else _)) => rewrite -> SumIf with (fs:=ffs)
+    | (fun _ => 0) => rewrite Sum0s ?Z.add_0_r ?Z.add_0_l
+    | _ => first [ simpl; rewrite Sum0s ?Z.add_0_r ?Z.add_0_l ]
+    (* | (fun _ => ?c) => is_const c; rewrite SumConst ?interval_size *)
+    end
+  end.
+
+Tactic Notation "xsum_normalize" uconstr(f) :=
+  xsum_normalize; rewrite (SumIf' f); xsum_normalize.

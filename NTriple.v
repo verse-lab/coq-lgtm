@@ -169,14 +169,17 @@ Proof using.
   by rewrite -wp_equiv.
 Qed.
 
-Tactic Notation "xnapp" constr(E) := 
+Tactic Notation "xnapp" constr(E) ident(hv) := 
   rewrite -> ?hbig_fset_hstar;
   apply/xletu2=> //=; [eapply xnapp_lemma'; 
        [eapply E|
          let hp := fresh "hp" in 
          let HE := fresh "HE" in 
         remember hpure as hp eqn:HE;
-       xapp_simpl=> ?; rewrite HE; exact: himpl_refl]|]; eauto; simpl.
+       xapp_simpl=> ?; rewrite HE; exact: himpl_refl]|move=> hv; rewrite -wp_equiv]; eauto; simpl.
+
+Tactic Notation "xnapp" constr(E) := 
+  let hv := fresh "hv" in xnapp E hv.
 
 Lemma wp_prod_single {A B : Type} s fs Q ht (l : labType):
   @wp (labeled (A * B)) (label (Lab l (`{s} \x fs))) ht Q = 

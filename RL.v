@@ -6,13 +6,6 @@ Hint Rewrite conseq_cons' : rew_listx.
 
 Open Scope Z_scope.
 
-(* TODO possibly, move to_int to some common place *)
-Definition to_int (v : val) : int := 
-  match v with 
-  | val_int i => i 
-  | _ => 0
-  end.
-
 Coercion to_int : val >-> Z.
 
 Module runlength.
@@ -369,8 +362,7 @@ Ltac abbrv :=
   end.
 
 Lemma not_isTrueE (P: Prop) : (~ isTrue P) = ~ P.
-Proof.
-Admitted.
+Proof. by rewrite istrue_isTrue_eq. Qed.
 
 Ltac bool_rew := 
   rewrite ?false_eq_isTrue_eq ?istrue_isTrue_eq 
@@ -393,7 +385,8 @@ Lemma alpha_blend_spec `{Inhab (labeled int)} (x_ind x_val y_ind y_val : loc) :
   {{ hv, \[hv[`1](0) = Σ_(i <- `[0,N]) (α * hv[`2](i) + β * hv[`3](i))] 
       \* \Top}}.
 Proof with (fold'; try abbrv).
-  set (ind := merge xind yind).
+  pose proof (size_merge xind yind) as indlen.
+  set (ind := merge xind yind) in indlen |- *.
   have sxind: sorted xind by exact/IIL_sorted. 
   have yxind: sorted yind by exact/IIL_sorted.
   have?: NoDup xind by exact/sorted_nodup. 
@@ -402,10 +395,12 @@ Proof with (fold'; try abbrv).
   have ndind: NoDup ind by exact/sorted_nodup.
   xin (1,0): (xwp;xapp=> ans); (xwp;xapp=> iX); 
     (xwp;xapp=> iY); (xwp;xapp=> step)...
-  have maxindE: max ind = N.
-  { move: (max_merge sxind yxind)->.
-    rewrite -(sorted_max_size _ Mx) -?(sorted_max_size _ My)... }
-  rewrite (@interval_unionE ind)=> //.
+  have xind_notnil : xind <> nil by apply notnil_length; try math.
+  have yind_notnil : yind <> nil by apply notnil_length; try math.
+  have maxxindE: max xind = N by rewrite -(sorted_max_size _ (i:=Mx)) //; try math.
+  have maxyindE: max yind = N by rewrite -(sorted_max_size _ (i:=My)) //; try math.
+  have maxindE: max ind = N by rewrite max_merge //; try math.
+  rewrite (@interval_unionE ind) // ?merge_nth0; try math.
   set (Inv (b : bool) (i : int) := 
     arr(x_ind, xind)⟨1, 0⟩ \* arr(y_ind, yind)⟨1, 0⟩ \\*
     arr(x_val, xval)⟨1, 0⟩ \* arr(y_val, yval)⟨1, 0⟩ \\*
@@ -445,7 +440,7 @@ Proof with (fold'; try abbrv).
       move: (indL); rewrite {1}indE {1}ENy {1}C Z.min_id.
       move/(sorted_le_rev yxind)=> ?.
       have indlE: ind[l+1] = Z.min xind[ix + 1] yind[iy + 1].
-      { rewrite merge_nthS -/ind ?indE...
+      { rewrite (merge_nthS (def:=N)) -/ind ?indE...
         rewrite -{1}C Z.min_id {2}C Z.min_id ?search_nth... }
       rewrite /R2/R3.
       xin (2,0): xapp (@get_spec xind xval HindIIL ix)...
@@ -471,9 +466,9 @@ Proof with (fold'; try abbrv).
       { apply/(sorted_le_rev yxind)...
         suff: xind[ix] >= 0 by lia. exact/IILG0. } 
       have indlE: ind[l+1] = Z.min xind[ix + 1] yind[iy].
-      { rewrite merge_nthS -/ind ?indE...
+      { rewrite (merge_nthS (def:=N)) -/ind ?indE...
         rewrite (Z.min_l xind[ix]) ?search_nth...
-        rewrite (@search_nth_pred _ iy)... }
+        rewrite (@search_nth_pred N _ iy)... }
       rewrite /R2/R3.
       xin (2,0): xapp (@get_spec xind xval HindIIL ix)...
       { move=> [>]; indomE=>-[?]/=; lia. }
@@ -498,9 +493,9 @@ Proof with (fold'; try abbrv).
     { apply/(sorted_le_rev sxind)...
       suff: yind[iy] >= 0 by lia. exact/IILG0. } 
     have indlE: ind[l+1] = Z.min xind[ix] yind[iy + 1].
-    { rewrite merge_nthS -/ind ?indE...
+    { rewrite (merge_nthS (def:=N)) -/ind ?indE...
       rewrite (Z.min_r xind[ix]) ?search_nth...
-      rewrite (@search_nth_pred _ ix)... }
+      rewrite (@search_nth_pred N _ ix)... }
     rewrite /R2/R3.
     xin (2,0): xapp (@get_spec xind xval HindIIL (ix-1))...
     { move=> [>]; indomE=>-[?]/=;
@@ -517,13 +512,12 @@ Proof with (fold'; try abbrv).
   { move=> l _ ?; rewrite /Inv; xnsimpl.
     move=> ?? [?][?][]; bool_rew=> ?.
     suff: (l + 1 = size ind) by lia. 
-    apply/sorted_max_le... }
+    apply/nth_le_max... }
   { move=> ???; rewrite /Inv{}/cnd.
     xnsimpl=> *; xin (1,0): do ? (xwp; xapp).
     xsimpl*. apply/eq_sym/f_equal. autos*. }
   { move=> ??[?][?][->]*; apply/isTrue_eq_false...
     rewrite sorted_max_size... }
-  { rewrite /ind; move: (size_merge xind yind)... }
   { rewrite /Inv/R2/R3 merge_nth0 ?xind0 ?yind0 ?Z.min_id...
     rewrite -> ?hbig_fset_hstar; xsimpl.
     splits*... }

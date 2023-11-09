@@ -12,14 +12,6 @@ Hint Rewrite conseq_cons' : rew_listx.
 
 Open Scope Z_scope.
 
-Definition to_int (v : val) : int := 
-  match v with 
-  | val_int i => i 
-  | _ => 0
-  end.
-
-Coercion to_int : val >-> Z.
-
 (* Module Export AD := WithUnary(Int2Dom). *)
 
 Module csr.
@@ -76,6 +68,7 @@ Tactic Notation "seclocal_solver" :=
       rewrite <- rowptr_first at 1; apply rowptr_weakly_sorted; math
     | (* for 0 <= rowptr[i] <= rowptr[i + 1] *)
       split; [ rewrite <- rowptr_first at 1 | ]; apply rowptr_weakly_sorted; math
+    | intros; eapply colind_leq, in_interval_list; now eauto
     | idtac ]; auto.
 
 (* Definition indexf := index_bounded.func. *)
@@ -105,6 +98,7 @@ Definition sum :=
 
 Tactic Notation "seclocal_fold" := 
   rewrite ?label_single ?wp_single
+    -?/(harray_int _ _ _)
     -/(For_aux _ _) 
     -/(For _ _ _) //=.
 
@@ -126,12 +120,7 @@ Qed.
 
 Lemma sum_prod1' {A B :Type} (fs : fset B) Q: 
 (fun x : A => Sum (`{x} \x fs) Q) = fun x => Sum fs (fun i => Q (x, i)).
-Proof.
-extens=> ?.
-unfold prod; rewrite -SumCascade ?Sum1 -?SumCascade; try by disjointE.
-erewrite SumEq with (fs:=fs); eauto.
-move=>* /=; by rewrite Sum1.
-Qed.
+Proof. extens=> ?. by rewrite sum_prod1. Qed.
 
 Definition sum_prod1E := (@sum_prod1, @sum_prod1')%type.
 
@@ -149,27 +138,16 @@ Lemma sum_spec `{Inhab D} (x_mval x_colind x_rowptr : loc) :
   }]
   {{ hv, \[hv[`1]((0,0)) = Σ_(i <- `[0, Nrow] \x `[0, Ncol]) hv[`2](i)] \* \Top}}. (* this \Top can be made concrete, if needed *)
 Proof with (try seclocal_fold; seclocal_solver).
+  xset_Inv Inv 1; xset_R Dom Inv R 2.
   xin (2,0) : do 3 (xwp; xapp).
   xin (1,0) : xwp; xapp=> s...
   rewrite prod_cascade.
-  set (R i := 
-    arr(x_mval, mval)⟨2, i⟩ \*
-    arr(x_colind, colind)⟨2, i⟩ \* 
-    arr(x_rowptr, rowptr)⟨2, i⟩ : hhprop D).
-  set (Inv (i : int) := 
-    arr(x_mval, mval)⟨1, (0,0)⟩ \* 
-    arr(x_colind, colind)⟨1, (0,0)⟩ \* 
-    arr(x_rowptr, rowptr)⟨1, (0,0)⟩).
   xfor_sum Inv R R (fun hv i => Σ_(j <- `{i} \x `[0, Ncol]) hv[`2](j)) s.
-  { rewrite /Inv /R.
-    xin (2,0) : rewrite wp_prod_single /=.
+  { xin (2,0) : rewrite wp_prod_single /=.
     xin (1,0) : do 3 (xwp; xapp)...
-    xframe2 (arr(x_rowptr, rowptr)⟨1, (0, 0)⟩).
     xsubst (snd : _ -> int).
     xnapp sv.sum_spec...
-    { move=> ?/in_interval_list... }
-    move=> ?; rewrite -wp_equiv. xsimpl=>->.
-    xapp @incr.spec; rewrite sum_prod1E; xsimpl. }
+    xsimpl=>->. xapp @incr.spec; rewrite sum_prod1E; xsimpl. }
   { xapp. xsimpl*. rewrite SumCascade //; disjointE. }
 Qed.
 
@@ -205,29 +183,19 @@ Lemma spmv_spec `{Inhab D} (x_mval x_colind x_rowptr x_dvec : loc) :
   }]
   {{ hv, (\exists p, 
     \[hv[`1]((0,0)) = val_loc p] \*
-    harray_fun (fun i => Σ_(j <- `[0, Ncol]) hv[`2]((i, j)) * dvec[j]) p Nrow (Lab (1,0) (0,0)))
+    harray_fun_int (fun i => Σ_(j <- `[0, Ncol]) hv[`2]((i, j)) * dvec[j]) p Nrow (Lab (1,0) (0,0)))
       \* \Top }}. (* this \Top can be made concrete, if needed *)
 Proof with (try seclocal_fold; seclocal_solver).
+  xset_Inv Inv 1; xset_R Dom Inv R 2.
   xin (2,0) : do 3 (xwp; xapp).
   xin (1,0) : (xwp; xapp (@htriple_alloc0_unary)=> // s)...
   rewrite prod_cascade.
-  set (R (i : Dom) := arr(x_mval, mval)⟨2, i⟩ \*
-    arr(x_colind, colind)⟨2, i⟩ \* 
-    arr(x_rowptr, rowptr)⟨2, i⟩ \*
-    arr(x_dvec, dvec)⟨2, i⟩).
-  set (Inv (i : int) := arr(x_mval, mval)⟨1, (0,0)⟩ \* 
-    arr(x_colind, colind)⟨1, (0,0)⟩ \* 
-    arr(x_rowptr, rowptr)⟨1, (0,0)⟩ \*
-    arr(x_dvec, dvec)⟨1, (0,0)⟩).
   xfor_specialized_normal Inv R R (fun hv i => Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * dvec[j.2])) (fun=> 0) s.
   { xin (2,0) : rewrite wp_prod_single /=.
     xin (1,0) : do 3 (xwp; xapp)...
-    xframe2 (arr(x_rowptr, rowptr)⟨1, (0, 0)⟩).
     xsubst (snd : _ -> int).
     xnapp sv.dotprod_spec...
-    { move=> ?/in_interval_list... }
-    move=> ?; rewrite -wp_equiv. xsimpl=>->.
-    xapp @lhtriple_array_set_pre; try math.
+    xsimpl=>->. xapp @lhtriple_array_set_pre; try math.
     rewrite sum_prod1E; xsimpl. }
   { xwp; xval. xsimpl*. xsimpl; rewrite sum_prod1E; xsimpl. }
 Qed.
@@ -270,8 +238,8 @@ Lemma spmspv_spec `{Inhab D}
      (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_mval, mval)⟨2, i⟩) \*
      (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_colind, colind)⟨2, i⟩) \*
      (\*_(i <- `[0, Nrow] \x `[0, Ncol]) arr(x_rowptr, rowptr)⟨2, i⟩) \*
-     (\*_(i <- `[0, Ncol]) arr(y_ind, yind)⟨3, (0,i)⟩) \* 
-     (\*_(i <- `[0, Ncol]) arr(y_val, yval)⟨3, (0,i)⟩) }}
+     (\*_(i <- `{0} \x `[0, Ncol]) arr(y_ind, yind)⟨3, i⟩) \* 
+     (\*_(i <- `{0} \x `[0, Ncol]) arr(y_val, yval)⟨3, i⟩) }}
   [{
     {1| ld in `{(0,0)}                 => spmspv x_colind y_ind x_mval y_val x_rowptr};
     {2| ld in `[0, Nrow] \x `[0, Ncol] => get x_mval x_colind x_rowptr ld.1 ld.2};
@@ -279,37 +247,24 @@ Lemma spmspv_spec `{Inhab D}
   }]
   {{ hv, (\exists p, 
     \[hv[`1]((0,0)) = val_loc p] \*
-    harray_fun (fun i => Σ_(j <- `[0, Ncol]) hv[`2]((i, j)) * hv[`3]((0, j))) p Nrow (Lab (1,0) (0,0)))
+    harray_fun_int (fun i => Σ_(j <- `[0, Ncol]) hv[`2]((i, j)) * hv[`3]((0, j))) p Nrow (Lab (1,0) (0,0)))
       \* \Top }}. (* this \Top can be made concrete, if needed *)
 Proof with (try seclocal_fold; seclocal_solver; try lia).
+  xset_Inv Inv 1; xset_R_core Dom R1 2; xset_R_core Dom R2 3. xset_clean R1 R2 Inv.
   xin (2,0) : do 3 (xwp; xapp).
   xin (1,0) : (xwp; xapp (@htriple_alloc0_unary)=> // s)...
-  rewrite prod_cascade -(Union_same Nrow (`{0} \x `[0, Ncol])) //.
-  set (R1 (i : Dom) := arr(x_mval, mval)⟨2, i⟩ \*
-    arr(x_colind, colind)⟨2, i⟩ \* 
-    arr(x_rowptr, rowptr)⟨2, i⟩).
-  set (R2 (i : Dom) := arr(y_ind, yind)⟨3, i⟩ \*
-    arr(y_val, yval)⟨3, i⟩).
-  set (Inv (i : int) := arr(x_mval, mval)⟨1, (0,0)⟩ \* 
-    arr(x_colind, colind)⟨1, (0,0)⟩ \* 
-    arr(x_rowptr, rowptr)⟨1, (0,0)⟩ \*
-    arr(y_ind, yind)⟨1, (0,0)⟩ \* 
-    arr(y_val, yval)⟨1, (0,0)⟩).
+  rewrite prod_cascade -(Union_same Nrow (`{0} \x `[0, Ncol])) //; try math.
   xfor_specialized_normal2 Inv R1 R1 R2 R2 
-    (fun hv i => Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * hv[`3]((0, j.2))))
-    (fun=> 0) s.
+    (fun hv i => Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * hv[`3]((0, j.2)))) (fun=> 0) s.
   { xin (2,0) : rewrite wp_prod_single /=.
     xin (1,0) : do 3 (xwp; xapp)...
-    xframe2 (arr(x_rowptr, rowptr)⟨1, (0, 0)⟩).
     xsubst (snd : _ -> int).
     xnapp @sv.sv_dotprod_spec... 
     { by rewrite -len_xind /slice slice_fullE. }
-    { move=> ? /in_interval_list... }
     { move=> ?; rewrite -len_xind /slice slice_fullE... }
-    move=> ?; rewrite -wp_equiv. xsimpl=>->.
-    xapp @lhtriple_array_set_pre; try math.
+    xsimpl=>->. xapp @lhtriple_array_set_pre; try math.
     rewrite sum_prod1E; xsimpl. }
-  { rewrite Union_same //; xsimpl*. }
+  { rewrite Union_same //; try math; xsimpl*. xsimpl*. }
   xwp; xval. xsimpl*. xsimpl; rewrite sum_prod1E; xsimpl.
 Qed.
 
