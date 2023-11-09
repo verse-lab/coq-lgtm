@@ -1562,18 +1562,6 @@ Proof.
   by rewrite union_merge // disjoint_valid_subst.
 Qed.
 
-Ltac xlocal := 
-  repeat (intros; 
-  match goal with 
-  | |- hlocal (_ \* _) _ => apply hlocal_hstar
-  | |- hlocal \[] _    => apply hlocal_hempty
-  | |- hlocal (hexists _) _ => apply hlocal_hexists
-  | |- hlocal (hsingle _ _ _) (single _ _) => apply hlocal_hsingle_single
-  | |- hlocal (hsingle _ _ _) (label (Lab _ (single _ _))) => 
-    rewrite label_single; apply hlocal_hsingle_single
-  | |- hlocal (hpure _) _ => apply hlocal_hpure
-  end).
-
 Lemma ntriple_frame X H Q fs_ht H' Q' : 
   (H = H' X) ->
   (forall v, Q v = Q' X v) ->
@@ -1860,9 +1848,7 @@ Proof.
   (R1 := R1) (R2 := R2) (R2' := R2') (R1' := R1'); try eassumption; autos*=> //.
   { move=> l Hl. xframe2 Inv'. rewrite wp_equiv. eapply htriple_conseq. 1: apply wp_equiv, IH=> //. all: xsimpl*. 
     (* xnsimpl will make over simplification *) }
-  { rewrite /Inv'. xlocal. autos*.
-    apply/hlocal_hstar_fset=> ??. apply/hlocal_hsingle.
-    by rewrite indom_label_eq indom_single_eq. }
+  { rewrite /Inv'. xlocal. autos*. }
   { xlocal. }
   { xlocal. }
   { move=> ???? hvE1 hvE2; erewrite hvE; eauto. }

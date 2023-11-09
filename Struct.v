@@ -194,8 +194,12 @@ Proof.
   hnf; intros h Hh; apply hcells_inv in Hh; subst h; apply hconseq_local.
 Qed.
 
-Lemma hlocal_harray (L : list val) p d : hlocal (harray L p d) (single d tt).
+Lemma hlocal_harray_single (L : list val) p d : hlocal (harray L p d) (single d tt).
 Proof. unfold harray. hlocal. apply hlocal_hheader. apply hlocal_hcells. Qed.
+
+Lemma hlocal_harray [L : list val] [p : loc] [d : D] fs: 
+  indom fs d -> hlocal (harray L p d) fs.
+Proof. by move=> ? ? /hlocal_harray_single l > /l/[!indom_single_eq]<-. Qed.
 
 Lemma hconseq_least_fresh (h : hheap D) L d :
   exists p, 
@@ -878,3 +882,25 @@ Global Notation "'.arr(' x ',' y ')⟨' l ',' d '⟩'" :=
 
 Global Notation "'arrf(' x ',' y ')⟨' l ',' d '⟩'" := 
 (harray_float' y x (Lab (l,0) d)) (at level 32, format "arrf( x ,  y )⟨ l ,  d ⟩") : hprop_scope.
+
+Global Tactic Notation "xlocal" := 
+  repeat (intros; 
+  match goal with 
+  | |- hlocal (_ \* _) _ => apply hlocal_hstar
+  | |- hlocal \[] _    => apply hlocal_hempty
+  | |- hlocal (hexists _) _ => apply hlocal_hexists
+  | |- hlocal (hsingle _ _ _) (single _ _) => apply hlocal_hsingle_single
+  | |- hlocal (hsingle _ _ _) (label (Lab _ (single _ _))) => 
+    rewrite label_single; apply hlocal_hsingle_single
+  | |- hlocal (hsingle _ _ _) _ =>
+    apply hlocal_hsingle; indomE; autos*
+  | |- hlocal (harray _ _ _ _) _ => apply hlocal_harray; indomE; autos*
+  | |- hlocal (harray_int _ _ _) _ => apply hlocal_harray; indomE; autos*
+  | |- hlocal (harray_float _ _ _) _ => apply hlocal_harray; indomE; autos*
+  | |- hlocal (harray_fun_int _ _ _) _ => apply hlocal_harray; indomE; autos*
+  | |- hlocal (harray_fun_float _ _ _) _ => apply hlocal_harray; indomE; autos*
+  | |- hlocal (harray_fun_float' _ _ _) _ => apply hlocal_harray; indomE; autos*
+  | |- hlocal (hpure _) _ => apply hlocal_hpure
+  | |- hlocal (@hbig_fset _ _ hstar _ _) _ => 
+    apply hlocal_hstar_fset; intros ?; indomE; intros
+  end).
