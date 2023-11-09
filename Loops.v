@@ -1902,7 +1902,7 @@ End WithLoops.
 Tactic Notation "xfor_sum_cong_solve" uconstr(op) :=
   let hvE := fresh "hvE" in
   let someindom := fresh "someindom" in
-  intros ???? hvE; rewrite ?/op; indomE;
+  intros ???? hvE; (try case_if=> //; [ ]); rewrite ?/op; indomE;
   match goal with 
   | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
   | _ => idtac

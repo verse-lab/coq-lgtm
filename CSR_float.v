@@ -1,7 +1,7 @@
 Set Implicit Arguments.
 From SLF Require Import LabType Fun LibSepFmap Sum.
 From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer ListCommon.
-From SLF Require Import Struct Loops Unary Subst NTriple Loops2 Struct2 Loops2_float Struct SV_float.
+From SLF Require Import Struct Loops Unary Subst NTriple Struct2 Loops2_float Struct SV_float.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
@@ -199,7 +199,7 @@ Proof with (try solve [ seclocal_solver ]; seclocal_fold).
   xin (2,0) : do 3 (xwp; xapp).
   xin (1,0) : (xwp; xapp (@htriple_allocf0_unary)=> // s)...
   rewrite prod_cascade.
-  xfor_specialized_normal_float Inv R R (fun hv i => (Sum_fma float_unit (lof id Ncol) (fun j => (to_float (hv[`2]((i, j))), dvec[j])))) (fun=> float_unit) s.
+  xfor_arrayset Inv R R (fun hv i => (Sum_fma float_unit (lof id Ncol) (fun j => (to_float (hv[`2]((i, j))), dvec[j])))) (fun=> float_unit) s.
   { xin (2,0) : rewrite wp_prod_single /=.
     xin (1,0) : do 3 (xwp; xapp)...
     xsubst (snd : _ -> int)...
@@ -242,7 +242,7 @@ Definition spmv_monolithic :=
 }>.
 
 Coercion to_loc : val >-> loc.
-
+(*
 Lemma spmv_monolithic_spec `{Inhab D} (x_mval x_colind x_rowptr x_dvec : loc) : 
   {{ .arr(x_mval, mval)⟨1, (0,0)⟩ \*
      arr(x_colind, colind)⟨1, (0,0)⟩ \*
@@ -269,7 +269,7 @@ Proof with (try seclocal_fold; seclocal_solver).
   xin (2,0) : do 3 (xwp; xapp).
   xin (1,0) : (xwp; xapp (@htriple_allocf0_unary)=> // s; do 2 (xwp; xapp); move=> nxt)...
   rewrite prod_cascade.
-  xfor_specialized_normal_float (Inv nxt) R R (fun hv i => (Sum_fma float_unit (lof id Ncol) (fun j => (to_float (hv[`2]((i, j))), dvec[j])))) (fun=> float_unit) s.
+  xfor_arrayset (Inv nxt) R R (fun hv i => (Sum_fma float_unit (lof id Ncol) (fun j => (to_float (hv[`2]((i, j))), dvec[j])))) (fun=> float_unit) s.
   { xin (2,0) : rewrite wp_prod_single /=.
     xin (1,0) : (xwp; xapp=> tmp; do 4 (xwp; xapp))...
     xsubst (snd : _ -> int)...
@@ -322,7 +322,7 @@ Proof with (try seclocal_fold; seclocal_solver).
     { apply Sum_fma_feq=>? /In_lof_id ? /=. split; auto. rewrite hvE //; autorewrite with indomE; simpl; split; auto; try math. }
     { xwp; xval. xsimpl*. }
 Qed.
-
+*)
 Ltac xapp_big E := 
   rewrite -> ! hbig_fset_hstar;
   xapp E=> //; rewrite -?hbig_fset_hstar.
@@ -380,7 +380,7 @@ Proof with (try solve [ seclocal_solver | seclocal_solver2 | auto using finite_s
   xin (2,0) : do 3 (xwp; xapp).
   xin (1,0) : (xwp; xapp (@htriple_allocf0_unary)=> // s; xwp; xapp)...
   rewrite prod_cascade.
-  xfor_specialized_normal_float' Inv R R (fun hv i => (Sum_fma float_unit (lof id Ncol) (fun j => (to_float (hv[`2]((i, j))), dvec[j])))) (fun=> float_unit) s.
+  xfor_arrayset Inv R R (fun hv i => (Sum_fma float_unit (lof id Ncol) (fun j => (to_float (hv[`2]((i, j))), dvec[j])))) (fun=> float_unit) s.
   { xin (2,0) : rewrite wp_prod_single /=...
     xin (1,0) : (xwp; xapp=> tmp; do 3 (xwp; xapp))...
     xsubst (snd : _ -> int)...

@@ -190,7 +190,7 @@ Proof with (try seclocal_fold; seclocal_solver).
   xin (2,0) : do 3 (xwp; xapp).
   xin (1,0) : (xwp; xapp (@htriple_alloc0_unary)=> // s)...
   rewrite prod_cascade.
-  xfor_specialized_normal Inv R R (fun hv i => Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * dvec[j.2])) (fun=> 0) s.
+  xfor_arrayset Inv R R (fun hv (i : int) => Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * dvec[j.2])) (fun _ : int => 0) s.
   { xin (2,0) : rewrite wp_prod_single /=.
     xin (1,0) : do 3 (xwp; xapp)...
     xsubst (snd : _ -> int).
@@ -254,8 +254,8 @@ Proof with (try seclocal_fold; seclocal_solver; try lia).
   xin (2,0) : do 3 (xwp; xapp).
   xin (1,0) : (xwp; xapp (@htriple_alloc0_unary)=> // s)...
   rewrite prod_cascade -(Union_same Nrow (`{0} \x `[0, Ncol])) //; try math.
-  xfor_specialized_normal2 Inv R1 R1 R2 R2 
-    (fun hv i => Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * hv[`3]((0, j.2)))) (fun=> 0) s.
+  xfor_arrayset Inv R1 R1 R2 R2 
+    (fun hv (i : int) => Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * hv[`3]((0, j.2)))) (fun _ : int => 0) s.
   { xin (2,0) : rewrite wp_prod_single /=.
     xin (1,0) : do 3 (xwp; xapp)...
     xsubst (snd : _ -> int).

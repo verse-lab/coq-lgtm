@@ -11,16 +11,10 @@ Open Scope Z_scope.
 
 Section WithLoops.
 
-(* Context {D : Type}. *)
-
-Arguments disjoint_inv_not_indom_both {_ _ _ _ _}.
-
 Context {Dom : Type}.
 
 Local Notation D := (labeled Dom).
 Local Notation hhprop := (hhprop D).
-
-(* Definition eld : D -> Dom := el. *)
 
 Definition eld := (@eld Dom).
 
@@ -335,24 +329,19 @@ Qed.
 
 End WithLoops.
 
-(* TODO possibly, reuse some parts from xfor_sum? *)
-Global Tactic Notation "xfor_specialized_normal_float" constr(Inv) constr(R) uconstr(R') uconstr(op) uconstr(f) constr(s) :=
-  eapply (@xfor_lemma_gen_array_fun_float_normal _ _ Inv R R' _ _ _ s f op);
+Ltac xfor_arrayset_float_core mode Inv R R' op f s :=
+  match mode with
+  | true => eapply (@xfor_lemma_gen_array_fun_float_normal _ _ Inv R R' _ _ _ s f op)
+  | false => eapply (@xfor_lemma_gen_array_fun_float_normal' _ _ Inv R R' _ _ _ s f op)
+  end;
   [ intros ??; rewrite ?/Inv ?/R ?/R';
     xnsimpl
   | 
   |
   |
-  | let hvE := fresh "hvE" in
-    let someindom := fresh "someindom" in
-    intros ???? hvE; rewrite ?/op; indomE;
-    match goal with 
-    | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
-    | _ => idtac
-    end; try (setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
-      (first [ apply someindom | idtac ])])
+  | xfor_sum_cong_solve op
   |
-  | try lia
+  | 
   |
   |
   |
@@ -361,32 +350,16 @@ Global Tactic Notation "xfor_specialized_normal_float" constr(Inv) constr(R) uco
   |
   | rewrite ?/Inv ?/R; rewrite -> ?hbig_fset_hstar; xsimpl
   | intros ?; rewrite ?/Inv ?/R' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl
-  ]=> //; try (solve [ rewrite ?/Inv ?/R ?/R' /=; xlocal ]); autos*.
+  ]=> //; try (solve [ rewrite ?/Inv ?/R ?/R' /=; xlocal ]); autos*; try math.
 
+#[local] Ltac xfor_arrayset_float_core1 Q Inv R R' op f s :=
+  match Q with
+  | context[harray_fun_float] => xfor_arrayset_float_core true Inv R R' op f s
+  | context[harray_fun_float'] => xfor_arrayset_float_core false Inv R R' op f s
+  end.
 
-Global Tactic Notation "xfor_specialized_normal_float'" constr(Inv) constr(R) uconstr(R') uconstr(op) uconstr(f) constr(s) :=
-  eapply (@xfor_lemma_gen_array_fun_float_normal' _ _ Inv R R' _ _ _ s f op);
-  [ intros ??; rewrite ?/Inv ?/R ?/R';
-    xnsimpl
-  | 
-  |
-  |
-  | let hvE := fresh "hvE" in
-    let someindom := fresh "someindom" in
-    intros ???? hvE; rewrite ?/op; indomE;
-    match goal with 
-    | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
-    | _ => idtac
-    end; try (setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
-      (first [ apply someindom | idtac ])])
-  |
-  | try lia
-  |
-  |
-  |
-  |
-  |
-  |
-  | rewrite ?/Inv ?/R; rewrite -> ?hbig_fset_hstar; xsimpl
-  | intros ?; rewrite ?/Inv ?/R' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl
-  ]=> //; try (solve [ rewrite ?/Inv ?/R ?/R' /=; xlocal ]); autos*.
+Tactic Notation "xfor_arrayset" constr(Inv) constr(R) uconstr(R') uconstr(op) uconstr(f) constr(s) :=
+  match goal with
+  | |- (himpl _ (nwp _ ?Q)) => xfor_arrayset_float_core1 Q Inv R R' op f s
+  | |- (ntriple _ _ ?Q) => xfor_arrayset_float_core1 Q Inv R R' op f s
+  end.

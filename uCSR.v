@@ -258,8 +258,8 @@ Proof with (try seclocal_fold; seclocal_solver).
   { rewrite -prod_intr_list_on_1. f_equal. now apply intr_list. }
   rewrite E (fset_of_list_nodup 0 nodup_midx) len_midx prod_Union_distr.
   xin (1,0) : (xwp; xapp (@htriple_alloc0_unary)=> // s)...
-  xfor_specialized Inv R R 
-    (fun hv (i : int) => (If (In i midx) then Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * dvec[j.2]) else 0)) (fun=> 0) midx s.
+  xfor_arrayset Inv R R 
+    (fun hv (i : int) => (If (In i midx) then Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * dvec[j.2]) else 0)) (fun _ : int => 0) s midx.
   { intros. apply midx_leq, nth_In; math. }
   { case: classicT=> [?|/(_ (nth_In _ _ _))]; last lia.
     xin (2,0) : rewrite wp_prod_single /=.
@@ -347,8 +347,8 @@ Proof with (try seclocal_fold; seclocal_solver).
   rewrite E (fset_of_list_nodup 0 nodup_midx) len_midx prod_Union_distr.
   rewrite -(Union_same (v:=Nidx) (`{0} \x `[0, Ncol])) //; try math.
   xin (1,0) : (xwp; xapp (@htriple_alloc0_unary)=> // s)...
-  xfor_specialized2 Inv R1 R1 R2 R2 
-    (fun hv (i : int) => (If (In i midx) then Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * hv[`3]((0,j.2))) else 0)) (fun=> 0) midx s.
+  xfor_arrayset Inv R1 R1 R2 R2 
+    (fun hv (i : int) => (If (In i midx) then Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * hv[`3]((0,j.2))) else 0)) (fun _ : int => 0) s midx.
   { intros. apply midx_leq, nth_In; math. }
   { case: classicT=> [?|/(_ (nth_In _ _ _))]; last lia.
     xin (2,0) : rewrite wp_prod_single /=.
