@@ -151,6 +151,17 @@ Qed.
 Fact nth_nil {A : Type} [d : A] n : List.nth n (@nil A) d = d.
 Proof. destruct n; auto. Qed.
 
+Fact last_sufcond : forall def l (P : int -> Prop), l <> nil -> (forall x, In x l -> P x) -> P (last l def).
+Proof.
+  clear. intros def l P Hneq. induction l; simpl; intros; try contradiction.
+  destruct l.
+  { apply H. auto. }
+  { apply IHl; auto. discriminate. }
+Qed.
+
+Fact notnil_length {A : Type} (l : list A) : l <> nil <-> 0 < length l.
+Proof. destruct l; simpl; split; intros; try math; try discriminate; try contradiction. Qed.
+
 Section index.
 
 Context {A : Type}.
@@ -476,6 +487,14 @@ Proof.
         split; [ now apply HR1 | apply H1 ]. now right. } } }
 Qed.
 
+Fact max_upperbound_lt l (H : 0 < length l) q :
+  (forall y, In y l -> y < q) -> max l < q.
+Proof.
+  case (classicT (l = nil))=>[ El | Hneq ]. 1: subst l; simpl in H; math.
+  epose proof (@eq_refl int _) as H'. rewrite -> max_cond in H'. 2: apply Hneq.
+  intros. destruct H' as (_ & H'). by apply H0 in H'.
+Qed.
+
 Lemma sorted_le i j l :
   sorted l ->
   0 <= i < length l ->
@@ -680,13 +699,6 @@ Proof.
   intros. apply In_nth_int in H0. enough (l[0] <= x) by math. 
   destruct H0 as (i & Hi & <-). apply sorted_leq; try math; auto. 
 Qed.
-
-(* TODO reformulate using ind seg? *)
-Lemma interval_unionE (l : list int) N : 
-  sorted l -> 
-  max l = N ->
-  `[0, N] = \U_(i <- `[0, length l -1]) `[l[i], l[i+1] ].
-Admitted.
 
 End sorted_max.
 
@@ -960,12 +972,6 @@ Section search_leastupperbound.
 (* TODO compare with the sigT search function below? *)
 Definition search_core (x : int) (l : list int) := find (Z.ltb x) l.
 
-Definition search (x : int) (l : list int) : int :=
-  match search_core x l with
-  | Some y => y
-  | None => x + 1
-  end.
-
 Fact search_core_neccond x l (H : sorted l) y :
   search_core x l = Some y -> 
     exists i, 0 <= i < length l /\ y = l[i] /\ x < y /\
@@ -1008,6 +1014,14 @@ Proof.
     assert (0 <= j + 1 < i) as Htmp2 by math.
     apply H2 in Htmp2. replace (abs (j + 1)) with (S (abs j)) in Htmp2 by math. auto. }
 Qed.
+
+Variable (def : int).
+
+Definition search (x : int) (l : list int) : int :=
+  match search_core x l with
+  | Some y => y
+  | None => def
+  end.
 
 Fact search_sufcond l x y : search_core l x = Some y -> search l x = y.
 Proof. unfold search. now intros ->. Qed.
@@ -1053,7 +1067,8 @@ Proof.
   intros. etransitivity. 2: apply H1. apply sorted_leq; try math; auto.
 Qed.
 
-Lemma merge_nthS l1 l2 i (Hnotnil1 : l1 <> nil) (Hnotnil2 : l2 <> nil) (Hm : max l1 = max l2) :
+Lemma merge_nthS l1 l2 i (Hnotnil1 : l1 <> nil) (Hnotnil2 : l2 <> nil) 
+  (Hm1 : max l1 <= def) (Hm2 : max l2 <= def) :
   sorted l1 -> sorted l2 ->
   0 < i + 1 < length (merge l1 l2) ->
     (merge l1 l2)[i+1] = Z.min (search (merge l1 l2)[i] l1) (search (merge l1 l2)[i] l2).
@@ -1083,14 +1098,9 @@ Proof.
     pose proof (sorted_app_lt ll1 ll2) as Htmp2 end.
   rewrite Htmp Hfirst Hskip in Htmp2. specialize (Htmp2 Hsom).
   setoid_rewrite In_merge in Htmp2.
-  assert (forall l (P : int -> Prop), l <> nil -> (forall x, In x l -> P x) -> P (last l 0)) as Hlst_suff.
-  { clear. intros l P Hneq. induction l; simpl; intros; try contradiction.
-    destruct l.
-    { apply H. auto. }
-    { apply IHl; auto. discriminate. } }
 
   assert (match suf1 with
-    | nil => search (last (merge pre1 pre2) 0) l1 = (last (merge pre1 pre2) 0) + 1
+    | nil => search (last (merge pre1 pre2) 0) l1 = def
     | x :: _ => search_core (last (merge pre1 pre2) 0) l1 = Some x
     end) as Hq1.
   { destruct suf1 as [ | x suf1 ].
@@ -1122,11 +1132,11 @@ Proof.
           replace (abs (length pre1 - 1)) with (length pre1 - 1)%nat by math. 
           rewrite -> nth_last with (b:=0); auto.
           apply HH1 in Hneq. math. }
-        { apply Hlst_suff. 1: destruct (merge pre1 pre2); simpl in Hgt'; math.
+        { apply (last_sufcond 0). 1: destruct (merge pre1 pre2); simpl in Hgt'; math.
           intros x. rewrite In_merge. intros. apply Htmp2; simpl; auto. } } } }
 
   assert (match suf2 with
-    | nil => search (last (merge pre1 pre2) 0) l2 = (last (merge pre1 pre2) 0) + 1
+    | nil => search (last (merge pre1 pre2) 0) l2 = def
     | x :: _ => search_core (last (merge pre1 pre2) 0) l2 = Some x
     end) as Hq2.
   { destruct suf2 as [ | x suf2 ].
@@ -1158,7 +1168,7 @@ Proof.
           replace (abs (length pre2 - 1)) with (length pre2 - 1)%nat by math. 
           rewrite -> nth_last with (b:=0); auto.
           apply HH2 in Hneq. math. }
-        { apply Hlst_suff. 1: destruct (merge pre1 pre2); simpl in Hgt'; math.
+        { apply (last_sufcond 0). 1: destruct (merge pre1 pre2); simpl in Hgt'; math.
           intros x. rewrite In_merge. intros. apply Htmp2; simpl; auto. } } } }
 
   destruct suf1 as [ | x suf1 ].
@@ -1166,14 +1176,14 @@ Proof.
     destruct suf2 as [ | y suf2 ].
     1: simpl in Hgt0; math.
     rewrite merge_nil_l. simpl. unfold search at 2. rewrite Hq1 Hq2.
-    pose proof Hnotnil1 as Hlst%HH1. rewrite (sorted_last_max (l:=pre1)) // Hm in Hlst.
+    pose proof Hnotnil1 as Hlst%HH1. rewrite (sorted_last_max (l:=pre1)) // in Hlst.
     apply find_some, proj1 in Hq2. 
     epose proof (@eq_refl int _) as Htmp3. rewrite -> (@max_cond l2) in Htmp3; auto.
     apply Htmp3 in Hq2. math. }
   { destruct suf2 as [ | y suf2 ].
     { rewrite app_nil_r in E2. subst l2.
       rewrite merge_nil_r. simpl. unfold search at 1. rewrite Hq1 Hq2.
-      pose proof Hnotnil2 as Hlst%HH2. rewrite (sorted_last_max (l:=pre2)) // -Hm in Hlst.
+      pose proof Hnotnil2 as Hlst%HH2. rewrite (sorted_last_max (l:=pre2)) // in Hlst.
       apply find_some, proj1 in Hq1. 
       epose proof (@eq_refl int _) as Htmp3. rewrite -> (@max_cond l1) in Htmp3; auto.
       apply Htmp3 in Hq1. math. }
@@ -1386,3 +1396,17 @@ End segmentation.
 
 End search_pure_facts.
 
+Corollary interval_unionE (l : list int) N : 
+  sorted l -> l[0] = 0 ->
+  max l = N ->
+  `[0, N] = \U_(i <- `[0, length l -1]) `[l[i], l[i+1] ].
+Proof.
+  intros. case (classicT (l = nil))=> [ E | Hneq ].
+  1: subst l; rewrite !intervalgt ?Union0 //; simpl in *; try math.
+  apply notnil_length in Hneq.
+  assert (IncreasingIntList l) by (constructor; auto).
+  rewrite -> interval_segmentation with (N:=N); auto.
+  replace (abs _) with (length l - 1)%nat by math.
+  apply notnil_length in Hneq.
+  rewrite (nth_last 0 0) // sorted_last_max //.
+Qed.
