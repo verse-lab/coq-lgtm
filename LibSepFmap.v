@@ -598,6 +598,15 @@ Proof using.
   apply disjoint_merge_eq_r.
 Qed.
 
+Lemma disjoint_union_merge h1 h2 (f : B -> B -> B) :
+  disjoint h1 h2 ->
+  union h1 h2 = merge f h1 h2.
+Proof.
+  case: h1 h2=> h1 ? []h2 ?.
+  rewrite /disjoint /union /merge /map_disjoint /map_union /map_merge /=.
+  move=> Dj. apply/make_eq=> x; move: (Dj x).
+  by case=>->.
+Qed.
 
 Lemma disjoint_single_single : forall (x1 x2:A) (v1 v2:B),
   x1 <> x2 ->

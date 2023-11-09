@@ -9184,6 +9184,39 @@ Lemma ntriple_conseq_frame H2 H1 H Q fs_ht:
   xsimpl*.
 Qed.
 
+Lemma ntriple_conseq_frame2 H2 H1 Q1 H Q fs_ht : 
+  ntriple H1 fs_ht Q1 ->
+  H ==> H1 \* H2 ->
+  Q1 \*+ H2 ===> Q -> ntriple H fs_ht Q.
+Proof.
+  rewrite /ntriple /nwp ?wp_equiv=> *.
+  apply/htriple_conseq_frame; eauto.
+Qed.
+
+Lemma ntriple_conseq H1 Q1 H Q fs_ht : 
+  ntriple H1 fs_ht Q1 ->
+  H ==> H1 ->
+  Q1 ===> Q -> ntriple H fs_ht Q.
+Proof.
+  rewrite /ntriple /nwp ?wp_equiv=> *.
+  apply/htriple_conseq; eauto.
+Qed.
+
+Lemma ntriple_frame X H Q fs_ht H' Q' : 
+  (H = H' X) ->
+  (forall v, Q v = Q' X v) ->
+  (H' X ==> (H' hempty) \* X) ->
+  ((Q' \[]) \*+ X ===> Q' X) ->
+  H' \[] ==> nwp fs_ht (fun v => Q' \[] v) ->
+  ntriple H fs_ht Q.
+Proof.
+move=>-> QE ? QI ?.
+apply/ntriple_conseq_frame2; eauto=> hv; rewrite* QE.
+Qed.
+
+Fact hstar0E : hstar \[] = @id hhprop.
+Proof. apply/fun_ext_1=>?. by rewrite hstar_hempty_l. Qed.
+
 Lemma hstar_fset_label_single {A : Type} (x : A) : 
 @hbig_fset D _ hstar (single x tt) = @^~ x.
 Proof. 
@@ -9329,6 +9362,68 @@ Admitted. *)
 Global Hint Rewrite @hstar_fset_label_single @hstar_fset_Lab : hstar_fset.
 
 Arguments lab_fun_upd /.
+
+Global Arguments ntriple_frame _ {_}.
+
+Tactic Notation "xframe2" uconstr(QH) := 
+  (try (xframe QH; [ ]));
+  try (
+    let Q := fresh "Q" in 
+    let HEQ := fresh "Q" in 
+    remember QH as Q eqn: HEQ in |- *;
+    rewrite -?HEQ;
+    eapply (@ntriple_frame _ Q); 
+    [ let h := fresh "h" in 
+      let f := fresh "h" in 
+      match goal with |- ?x = ?y => set (h := x) end;
+      pattern Q in h;
+      set (f := fun _ => _) in h;
+      simpl in h;
+      rewrite /h;
+      reflexivity
+    | let h := fresh "h" in 
+      let f := fresh "h" in 
+      let v := fresh "h" in 
+      intros v; 
+      match goal with |- ?x = ?y => set (h := x) end;
+      pattern Q, v in h;
+      set (f := fun _ _ => _) in h;
+      simpl in h;
+      rewrite /h;
+      reflexivity
+    | simpl; try rewrite HEQ; xsimpl*
+    | simpl=> ?;
+      try (have->: forall f, (fun x : hheap _ => f x) = f by []);
+      try (have->: forall f, (fun x : hheap D => f x) = f by []);
+      try rewrite HEQ;
+      xsimpl*
+    | simpl; rewrite -> ?hstar0E
+    ]; clear Q HEQ
+  ).
+
+Tactic Notation "xcleanup_unused" := 
+  (repeat let HH := fresh "uselessheap" in set (HH := hbig_fset hstar (_ ∖ _) _); xframe2 HH; clear HH).
+
+Tactic Notation "xcleanup_unused" "*" :=
+  rewrite -> ! hbig_fset_hstar; xcleanup_unused; rewrite -!hbig_fset_hstar; xsimpl.
+
+Tactic Notation "xdrain_unused" := 
+  (repeat let HH := fresh "uselessheap" in set (HH := hbig_fset hstar (_ ∖ _) _); xframe HH; clear HH).
+
+Tactic Notation "xdrain_unused" "*" :=
+  rewrite -> ! hbig_fset_hstar; xdrain_unused; rewrite -!hbig_fset_hstar.
+
+Tactic Notation "xclean_heap_core" constr(Q) :=
+  match Q with
+  | context[htop] => xdrain_unused
+  | _ => try xcleanup_unused
+  end.
+
+Tactic Notation "xclean_heap" := 
+  match goal with
+  | |- (himpl _ (nwp _ ?Q)) => xclean_heap_core Q
+  | |- (ntriple _ _ ?Q) => xclean_heap_core Q
+  end.
 
 (* Context (bigop : forall {A}, (int -> int -> int) -> fset A -> (A -> int) -> int).
 Reserved Notation "'\big[' f ']' ( i <- r ) F"

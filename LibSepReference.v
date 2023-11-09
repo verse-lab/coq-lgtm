@@ -995,6 +995,20 @@ Proof using.
     rewrite* merge_empty_r. }
 Qed.
 
+Lemma hmerge_hstar : 
+  hstar = hmerge (fun _ _ => 0) (fun=> False).
+Proof.
+  apply/fun_ext_2=> ??; extens=> ?; splits.
+  { case/hstar_inv=> h1 [h2][?][?][?]->.
+    exists h1 h2; splits*.
+    { by rewrite -disjoint_valid_subst. }
+    by rewrite -disjoint_union_merge. }
+  rewrite /hmerge=> -[]h1[]h2[?][?][?]->.
+  exists h1 h2; splits*.
+  { by rewrite disjoint_valid_subst. }
+  by rewrite -disjoint_union_merge // disjoint_valid_subst.
+Qed.
+
 Lemma hstar_hexists : forall A (J:A->hhprop) H,
   (hexists J) \* H = hexists (fun x => (J x) \* H).
 Proof using.
