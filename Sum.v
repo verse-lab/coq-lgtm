@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-From SLF Require Import Fun LabType LibSepFmap ListCommon.
+From SLF Require Import Fun LabType LibSepReference ListCommon.
 From mathcomp Require Import ssreflect ssrfun zify.
 From Coq Require Import List.
 
@@ -246,3 +246,19 @@ Proof.
   apply SumEq=> x. rewrite indom_interval. intros.
   rewrite list_interval_nth' //. tauto.
 Qed.
+
+Tactic Notation "xsum_normalize" :=
+  repeat match goal with
+  | |- val_int _ = val_int _ => f_equal
+  | |- context[@Sum ?A ?ffs ?ff] => 
+    match ff with
+    | context[to_int (If _ then _ else _)] => 
+      erewrite (@SumEq A ff _ ffs) by (move=>*; rewrite -> to_int_if; simpl to_int; reflexivity)
+    | (fun _ => (If _ then _ else _)) => rewrite -> SumIf with (fs:=ffs)
+    | (fun _ => 0) => rewrite Sum0s ?Z.add_0_r ?Z.add_0_l
+    | _ => first [ simpl; rewrite Sum0s ?Z.add_0_r ?Z.add_0_l ]
+    end
+  end.
+
+Tactic Notation "xsum_normalize" uconstr(f) :=
+  xsum_normalize; rewrite (SumIf' f); xsum_normalize.

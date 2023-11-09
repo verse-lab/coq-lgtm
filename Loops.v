@@ -2201,21 +2201,3 @@ Tactic Notation "xset_R_core" constr(dom) ident(R) constr(i) :=
 
 Tactic Notation "xset_R" constr(dom) ident(Inv) ident(R) constr(i) := 
   xset_R_core dom R i; xset_clean R R Inv.
-
-Tactic Notation "xsum_normalize" :=
-  repeat match goal with
-  | |- val_int _ = val_int _ => f_equal
-  | |- context[@Sum ?A ?ffs ?ff] => 
-    match ff with
-    | context[to_int (If _ then _ else _)] => 
-      erewrite (@SumEq A ff _ ffs) by (move=>*; rewrite -> to_int_if; simpl to_int; reflexivity)
-    (* probably, use autorewrite instead *)
-    | (fun _ => (If _ then _ else _)) => rewrite -> SumIf with (fs:=ffs)
-    | (fun _ => 0) => rewrite Sum0s ?Z.add_0_r ?Z.add_0_l
-    | _ => first [ simpl; rewrite Sum0s ?Z.add_0_r ?Z.add_0_l ]
-    (* | (fun _ => ?c) => is_const c; rewrite SumConst ?interval_size *)
-    end
-  end.
-
-Tactic Notation "xsum_normalize" uconstr(f) :=
-  xsum_normalize; rewrite (SumIf' f); xsum_normalize.
