@@ -2005,8 +2005,12 @@ Tactic Notation "xfor_sum_cong_solve" uconstr(op) :=
   end; try (setoid_rewrite hvE; [eauto|autorewrite with indomE; try math; 
     (first [ apply someindom | idtac ])]).
 
-Tactic Notation "xfor_sum" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(s) :=
-  eapply (@xfor_big_op_lemma_int _ _ Inv R R' op s); 
+Ltac xfor_sum_core is_int_mode Inv R R' op s :=
+  match is_int_mode with
+  | true => eapply (@xfor_big_op_lemma_int _ _ Inv R R' op s)
+  | false => eapply (@xfor_big_op_lemma _ _ _ _ Inv R R' val_float float_unit (float_unit, float_unit) (fun a (b : binary64 * binary64) => @BFMA _ Tdouble b.1 b.2 a) 
+    (fun (b : binary64 * binary64) => @finite Tdouble b.1 /\ @finite Tdouble b.2) op s)
+  end;
   [ let L := fresh in 
     intros ?? L; rewrite ?/Inv ?/R ?/R';
     xnsimpl
@@ -2023,6 +2027,12 @@ Tactic Notation "xfor_sum" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(
   | rewrite ?/Inv ?/R; rewrite -> ?hbig_fset_hstar; xsimpl
   | intros ?; rewrite ?/Inv ?/R' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl
   ]=> //; autos*.
+
+Tactic Notation "xfor_sum" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(s) :=
+  match goal with
+  | |- context[hsingle s _ (val_int _)] => xfor_sum_core true Inv R R' op s
+  | |- context[hsingle s _ (val_float _)] => xfor_sum_core false Inv R R' op s
+  end.
 
 Tactic Notation "xframe2" uconstr(QH) := 
   (try (xframe QH; [ ]));
@@ -2209,23 +2219,3 @@ Tactic Notation "xsum_normalize" :=
 
 Tactic Notation "xsum_normalize" uconstr(f) :=
   xsum_normalize; rewrite (SumIf' f); xsum_normalize.
-
-Tactic Notation "xfor_sum_fma" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(s) :=
-  eapply (@xfor_big_op_lemma _ _ _ _ Inv R R' val_float float_unit (float_unit, float_unit) (fun a (b : binary64 * binary64) => @BFMA _ Tdouble b.1 b.2 a) 
-    (fun (b : binary64 * binary64) => @finite Tdouble b.1 /\ @finite Tdouble b.2) op s);
-  [ let L := fresh in 
-    intros ?? L; rewrite ?/Inv ?/R ?/R';
-    xnsimpl
-  | disjointE
-  | xfor_sum_cong_solve op
-  |
-  | try lia
-  |
-  |
-  |
-  |
-  |
-  |
-  | rewrite ?/Inv ?/R; rewrite -> ?hbig_fset_hstar; xsimpl
-  | intros ?; rewrite ?/Inv ?/R' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl
-  ]=> //; autos*.
