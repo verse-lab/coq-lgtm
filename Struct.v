@@ -16,14 +16,6 @@ Proof.
   induction l; simpl; rewrite ?LibList.map_cons ?LibList.map_nil; auto; f_equal; auto.
 Qed.
 
-Definition float_unit : binary64 := Zconst Tdouble 0.
-
-Definition to_float (v : val) : binary64 := 
-  match v with 
-  | val_float i => i 
-  | _ => float_unit
-  end.
-
 Ltac hlocal := 
   repeat (intros; 
   match goal with 

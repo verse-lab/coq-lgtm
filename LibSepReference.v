@@ -134,6 +134,24 @@ with trm : Type :=
   | trm_let : var -> trm -> trm -> trm
   | trm_if : trm -> trm -> trm -> trm.
 
+Definition to_int (v : val) : int := 
+  match v with
+  | val_int i => i 
+  | _ => 0
+  end.
+
+Lemma to_int_if P a b : 
+  to_int (If P then a else b) = If P then to_int a else to_int b.
+Proof. by case: classicT. Qed.
+
+Definition float_unit : binary64 := Zconst Tdouble 0.
+
+Definition to_float (v : val) : binary64 := 
+  match v with 
+  | val_float i => i 
+  | _ => float_unit
+  end.
+
 Definition add_val : val -> val -> val := 
   fun v1 v2 => 
     match v1, v2 with 

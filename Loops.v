@@ -2346,16 +2346,6 @@ Tactic Notation "xset_R_core" constr(dom) ident(R) constr(i) :=
 Tactic Notation "xset_R" constr(dom) ident(Inv) ident(R) constr(i) := 
   xset_R_core dom R i; xset_clean R R Inv.
 
-Definition to_int (v : val) : int := 
-  match v with 
-  | val_int i => i 
-  | _ => 0
-  end.
-
-Lemma to_int_if P a b : 
-  to_int (If P then a else b) = If P then to_int a else to_int b.
-Proof. by case: classicT. Qed.
-
 Tactic Notation "xsum_normalize" :=
   repeat match goal with
   | |- val_int _ = val_int _ => f_equal
