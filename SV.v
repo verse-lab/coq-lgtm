@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-From SLF Require Import LabType Fun LibSepFmap Sum Unary_IndexWithBounds.
+From SLF Require Import LabType Fun LibSepFmap Sum Unary.
 From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer Struct Loops ListCommon.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
@@ -136,10 +136,6 @@ Definition sum :=
   free s;
   "res"
 }>.
-
-Lemma val_int_eq i j : 
-  (val_int i = val_int j) = (i = j).
-Proof. by extens; split=> [[]|]->. Qed.
 
 Ltac fold' := 
   rewrite ?label_single ?wp_single ?val_int_eq

@@ -6,7 +6,7 @@ Locate "_ ==> _ ==> _". Check Morphisms.respectful. *)
 
 From SLF Require Import LabType Fun LibSepFmap Sum.
 From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer ListCommon.
-From SLF Require Import Struct Loops Unary_IndexWithBounds SV Subst NTriple Loops2 Struct2.
+From SLF Require Import Struct Loops Unary SV Subst NTriple Loops2 Struct2.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 

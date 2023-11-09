@@ -1,6 +1,6 @@
 Set Implicit Arguments.
 From SLF Require Import LabType Fun LibSepFmap Sum.
-From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer Unary_IndexWithBounds.
+From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer Unary.
 From SLF Require Import Struct Loops SV Subst NTriple Loops2 Struct2 CSR ListCommon.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
@@ -70,7 +70,7 @@ Tactic Notation "seclocal_solver" :=
     | intros; eapply colind_leq, in_interval_list; now eauto
     | idtac ]; auto.
 
-Definition indexf := Unary.index.func Nidx.
+Definition indexf := index.func Nidx.
 
 Definition get (x_mval : loc) := 
 <{
@@ -102,7 +102,7 @@ Lemma get_spec_out_unary {D : Type} `{Inhab D} (x_midx x_mval x_colind x_rowptr 
 Proof with seclocal_solver.
   rewrite -wp_equiv; xsimpl=> Hnotin.
   apply memNindex in Hnotin.
-  xwp; xapp @Unary.index.spec... xwp; xapp.
+  xwp; xapp @index.spec... xwp; xapp.
   xwp; xif=> HQ; try math.
   xwp; xval. xsimpl*.
 Qed.
@@ -197,7 +197,7 @@ Proof with (try seclocal_fold; seclocal_solver).
     xin (1,0) : do 3 (xwp; xapp)...
     xsubst (snd : _ -> int).
     xfocus (2,0); rewrite -> ! hbig_fset_hstar.
-    xwp; xapp (@Unary.index.Spec `[0, Ncol] Nidx (2,0) midx x_midx (fun=> midx[l0]))=> //.
+    xwp; xapp (@index.Spec `[0, Ncol] Nidx (2,0) midx x_midx (fun=> midx[l0]))=> //.
     rewrite index_nodup //; try math.
     xwp; xapp. xwp; xif=> ?; [ | math ].
     do 3 (xwp; xapp).
@@ -266,7 +266,7 @@ Proof with (try seclocal_fold; seclocal_solver).
     xin (1,0) : do 4 (xwp; xapp)...
     xsubst (snd : _ -> int).
     xfocus (2,0); rewrite -> ! hbig_fset_hstar.
-    xwp; xapp (@Unary.index.Spec `[0, Ncol] Nidx (2,0) midx x_midx (fun=> midx[l0]))=> //.
+    xwp; xapp (@index.Spec `[0, Ncol] Nidx (2,0) midx x_midx (fun=> midx[l0]))=> //.
     rewrite index_nodup; try math; try assumption.
     xwp; xapp. xwp; xif=> ?; [ | math ].
     do 3 (xwp; xapp).
@@ -355,7 +355,7 @@ Proof with (try seclocal_fold; seclocal_solver).
     xin (1,0) : do 4 (xwp; xapp)...
     xsubst (snd : _ -> int).
     xfocus (2,0); rewrite -> ! hbig_fset_hstar.
-    xwp; xapp (@Unary.index.Spec `[0, Ncol] Nidx (2,0) midx x_midx (fun=> midx[l0]))=> //.
+    xwp; xapp (@index.Spec `[0, Ncol] Nidx (2,0) midx x_midx (fun=> midx[l0]))=> //.
     rewrite index_nodup; try math; try assumption.
     xwp; xapp. xwp; xif=> ?; [ | math ].
     do 3 (xwp; xapp).

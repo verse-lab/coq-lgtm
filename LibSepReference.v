@@ -167,6 +167,10 @@ Proof. move=> v1 v2 v3; destruct v1, v2, v3=> //=; fequals; lia. Qed.
 
 Hint Resolve add_val_comm add_val_assoc : core.
 
+Lemma val_int_eq i j : 
+  (val_int i = val_int j) = (i = j).
+Proof. by extens; split=> [[]|]->. Qed.
+
 (** A state consists of a finite map from location to values. Records and
     arrays are represented as sets of consecutive cells, preceeded by a
     header field describing the length of the block. *)

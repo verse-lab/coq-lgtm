@@ -6,45 +6,6 @@ Hint Rewrite conseq_cons' : rew_listx.
 
 Open Scope Z_scope.
 
-(* Module NatDom : Domain with Definition type := nat.
-Definition type := nat.
-End NatDom.
-
-Module IntDom : Domain with Definition type := int.
-Definition type := int.
-End IntDom.
-
-Module Int2Dom : Domain with Definition type := (int * int)%type.
-Definition type := (int * int)%type.
-End Int2Dom. *)
-
-
-
-(* Section WithUnary. *)
-
-(* Context `{Inhab D}. *)
-
-(* Module NatDom : Domain with Definition type := nat.
-Definition type := nat.
-End NatDom.
-
-Module IntDom : Domain with Definition type := int.
-Definition type := int.
-End IntDom.
-
-Module Export AD := WithArray(IntDom).
-Check eq_refl : D = labeled int.
-
-Global Instance Inhab_D : Inhab D. 
-Proof Build_Inhab (ex_intro (fun=> True) (Lab (0, 0) 0) I). *)
-
-(*
-  cooi i x_ind x_val = 
-    k = 0
-    while (i != x_ind[k] && i < lenght x_ind)
-      k++
-*)
-
 Module and.
 
 Section and.
@@ -131,39 +92,30 @@ Notation "k '+=' x" :=
   (incr.func k x)
   (in custom trm at level 58, format "k  +=  x") : trm_scope.
 
-Module index.
-Section index.
+Module index_bounded.
+Section index_bounded.
 
-Definition whilecond N (i x_ind k : trm) :=
-  <{
+Definition func := Eval cbn zeta beta in
+  let whilecond N (i x_ind k : trm) := <{
     let 'k = !k in 
     let "x_ind[k]" = read_array x_ind 'k in 
     let 'c = "x_ind[k]" = i in 
     let 'c = not 'c in
     let 'l = 'k < N in 
     'c && 'l
-  }>.
-
-
-Definition func (N : int) := 
-  let loop := While (whilecond N "i" "x_ind" "k") <{++"k"}> in
+  }> in
+  let loop := While (whilecond "rb" "i" "x_ind" "k") <{++"k"}> in
   <{
-    fun "i" "x_ind" =>
-      let 'k = ref 0 in 
+    fun "lb" "rb" "i" "x_ind" =>
+      let 'k = ref "lb" in 
       loop;
       let "ans" = ! 'k in
       free 'k;
       "ans"
   }>.
 
-Lemma val_int_eq i j : 
-  (val_int i = val_int j) = (i = j).
-Proof. by extens; split=> [[]|]->. Qed.
-
 Ltac fold' := 
   rewrite ?wp_single ?val_int_eq
-    -/(whilecond _ _ _ _) 
-    -/(incr _) 
     -/(While_aux _ _) 
     -/(While _ _) //=.
 
@@ -172,42 +124,77 @@ Import List.
 Ltac bool_rew := 
   rewrite ?false_eq_isTrue_eq ?true_eq_isTrue_eq -?(isTrue_and, isTrue_not, isTrue_or).
 
-Lemma spec {D : Type} `{Inhab D} (d : D) N (i : int) (xind : list int) (x_ind : loc) : 
-  htriple (single d tt) 
-    (fun=> func N i x_ind)
-    (harray_int xind x_ind d \* \[length xind = N :> int] \* \[List.NoDup xind])
-    (fun hv => harray_int xind x_ind d \* \[hv = fun=> ListCommon.index i xind]).
+Lemma spec {D} `{Inhab D} d N (lb rb i : int) (xind : list int) (x_ind : loc) : 
+  @htriple D (single d tt) 
+    (fun=> func lb rb i x_ind)
+    (harray_int xind x_ind d \* \[length xind = N :> int] 
+      \* \[List.NoDup (list_interval (abs lb) (abs rb) xind)] 
+      \* \[0 <= lb <= rb] \* \[rb <= N])
+    (fun hv => harray_int xind x_ind d \* \[hv = fun=> lb + ListCommon.index i (list_interval (abs lb) (abs rb) xind)]).
 Proof with fold'.
-  xwp; xsimpl=> ??; xapp=> k...
-  set (cond x := isTrue (List.nth (abs x) xind 0 <> i /\ x < N)).
+  set (xind_sub := list_interval (abs lb) (abs rb) xind).
+  set (N_sub := rb - lb).
+  xwp; xsimpl=> ????; xapp=> k...
+  assert (length xind_sub = rb - lb :> int) by (subst xind_sub N; now rewrite list_interval_length). 
+  set (cond x := isTrue (List.nth (abs x) xind_sub 0 <> i /\ x < N_sub)).
   set (Inv b x := 
-    \[b = cond x] \* \[0 <= x <= N] \*
-    \[~ In i (take (abs x) xind)] \*
-    k d ~(d)~> x \* harray_int xind x_ind d
+    \[b = cond x] \* \[0 <= x <= N_sub] \*
+    \[~ In i (take (abs x) xind_sub)] \*
+    k d ~(d)~> (lb + x) \* harray_int xind x_ind d
     ).
-  xwp; xwhile1 0 (ListCommon.index i xind) (cond 0) Inv; rewrite /Inv.
+  xwp; xwhile1 0 (ListCommon.index i xind_sub) (cond 0) Inv; rewrite /Inv.
   { xsimpl=> ??->??.
     do 5 (xwp; xapp); xapp=> ?->; xsimpl*.
-    rewrite /cond. bool_rew... }
+    rewrite /cond /xind_sub /N_sub. bool_rew.
+    f_equal. rew_bool_eq.
+    subst N_sub. split; intros (? & ?); split; try math.
+    { rewrite <- list_interval_nth; try math; congruence. }
+    { rewrite <- list_interval_nth in *; try math; congruence. }
+  }
   { move=> x; rewrite /cond; xsimpl*.
     bool_rew; rewrite not_and_eq.
-    case: (classicT (x = N)).
+    case: (classicT (x = N_sub)).
     { move=>-> _ _. rewrite in_take; eauto; last math.
-      move: (index_size i xind); math. }
+      move: (index_size i xind_sub); math. }
     move=> ? [/not_not_inv<- ? _|]; last math.
     rewrite index_nodup //; math. }
   { xsimpl*=> {Inv}k; rewrite /cond; bool_rew.
     case=> xindN ??; rewrite in_take; eauto; last math.
-    suff: (ListCommon.index i xind <> k) by math.
+    suff: (ListCommon.index i xind_sub <> k) by math.
     move=> E; apply/xindN; rewrite -E nth_index // -index_mem; eauto; math. }
   { move=> j ? IH; rewrite /cond; bool_rew.
-    xsimpl=> -?? T. xwp; xapp (@incr1.spec _ H); xapp; try math. 
+    xsimpl=> -?? T. xwp; xapp (@incr1.spec _ H).  
+    replace (lb + j + 1) with (lb + (j + 1)) by math.
+    xapp; try math.
     { eauto. }
     { move: T; rewrite ?in_take; eauto; math. }
     rewrite /cond; bool_rew. xsimpl*. }
-  { xsimpl*; split=> //; math. }
+  { replace (lb + 0) with lb by math. 
+    xsimpl*; split=> //; math. }
   { move=> _. xsimpl=> *; do 2 (xwp; xapp); xwp; xval; xsimpl*. }
   exact/indexG0.
+Qed.
+
+End index_bounded.
+End index_bounded.
+
+Module index.
+Section index.
+
+Definition func (N : int) := index_bounded.func 0 N.
+
+Import List.
+
+Lemma spec {D : Type} `{Inhab D} (d : D) (N : int) (i : int) (xind : list int) (x_ind : loc) : 
+  htriple (single d tt) 
+    (fun=> func N i x_ind)
+    (harray_int xind x_ind d \* \[length xind = N :> int] \* \[List.NoDup xind])
+    (fun hv => harray_int xind x_ind d \* \[hv = fun=> ListCommon.index i xind]).
+Proof.
+  apply wp_equiv. xapp @index_bounded.spec=> * //; try math.
+  all: subst N.
+  1: rewrite slice_fullE //.
+  rewrite -> slice_fullE, -> Z.add_0_l in * |-. xsimpl*.
 Qed.
 
 Lemma Spec (fs : fset int) N l (xind : list int) (x_ind : loc) (f : int -> int) : 
@@ -215,7 +202,7 @@ Lemma Spec (fs : fset int) N l (xind : list int) (x_ind : loc) (f : int -> int) 
     (fun i => func N (f (el i)) x_ind)
     ((\*_(d <- fs) harray_int xind x_ind (Lab l d)) \* \[length xind = N :> int] \* \[List.NoDup xind])
     (fun hv => (\*_(d <- fs) harray_int xind x_ind (Lab l d)) \* \[hv = fun i => ListCommon.index (f (el i)) xind]).
-Proof with fold'.
+Proof.
   apply/htriple_conseq. 1: apply htriple_val_eq. 2-3: xsimpl*.
   apply wp_equiv. xsimpl*. intros. apply wp_equiv.
   apply/htriple_conseq. 3: hnf=> hv; rewrite -hstar_fset_pure. 2-3: rewrite -hstar_fset_Lab -?hbig_fset_hstar; xsimpl*. 
@@ -258,14 +245,9 @@ Definition func (N : int) :=
       "ans"
   }>.
 
-Lemma val_int_eq i j : 
-  (val_int i = val_int j) = (i = j).
-Proof. by extens; split=> [[]|]->. Qed.
-
 Ltac fold' := 
   rewrite ?wp_single ?val_int_eq
     -/(whilecond _ _ _ _ _ _) 
-    -/(incr _) 
     -/(While_aux _ _) 
     -/(While _ _) //=.
 

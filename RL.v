@@ -347,10 +347,6 @@ Hint Resolve lhtriple_free : lhtriple.
 Notation "H1 '\\*' H2" := (hstar H1 H2)
   (at level 42, right associativity, format "H1  \\* '//' H2") : hprop_scope.
 
-Lemma val_int_eq i j : 
-  (val_int i = val_int j) = (i = j).
-Proof. by extens; split=> [[]|]->. Qed.
-
 Ltac fold' := 
   rewrite ?label_single ?wp_single ?val_int_eq
     -/(While_aux _ _) 

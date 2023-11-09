@@ -6252,13 +6252,6 @@ Notation "'for' i <- '[' Z ',' N ']' '{' t '}'"  :=
     Z, N, i at level 0,
     format "'[' for  i  <-  [ Z ','  N ] ']'  '{' '/   ' '[' t  '}' ']'") : trm_scope.
 
-Definition incr (p : loc) (t : trm)  :=
-  <{ let "_t_" = t in 
-     let "_p_" = ! p in
-     let "_v_" = "_p_" + "_t_" in
-     p := "_v_";
-     "_t_" }>.
-
 (* Fact For_subst (ZZ NN : int) t x v : 
   x <> "cond" -> 
   x <> "for" ->
