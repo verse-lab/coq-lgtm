@@ -152,6 +152,12 @@ Definition to_float (v : val) : binary64 :=
   | _ => float_unit
   end.
 
+Definition to_loc (v : val) : loc := 
+  match v with 
+  | val_loc v => v 
+  | _         => 0%nat 
+  end.
+
 Definition add_val : val -> val -> val := 
   fun v1 v2 => 
     match v1, v2 with 

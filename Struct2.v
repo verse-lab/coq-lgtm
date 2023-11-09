@@ -6,37 +6,6 @@ Hint Rewrite conseq_cons' : rew_listx.
 
 Open Scope Z_scope.
 
-Definition harray_fun {D : Type} (f:int -> val) (p:loc) (n:int) (d : D) : hhprop D :=
-  harray (projT1 (list_of_fun' f n)) p d.
-
-Definition harray_fun_int {D : Type} (f:int -> int) (p:loc) (n:int) (d : D) : hhprop D :=
-  harray_int (lof f n) p d.
-
-Definition harray_fun_float {D : Type} (f:int -> binary64) (p:loc) (n:int) (d : D) : hhprop D :=
-  harray_float (projT1 (list_of_fun' f n)) p d.
-
-Definition harray_fun_float' {D : Type} (f:int -> binary64) (p:loc) (n:int) (d : D) : hhprop D :=
-  harray_float' (projT1 (list_of_fun' f n)) p d.
-
-Fact harray_fun_congr {D : Type} (f g:int -> val) (p:loc) (n:int) (d : D) (Hn : 0 <= n)
-  (Hcong : forall i, 0 <= i < n -> f i = g i) : harray_fun f p n d = harray_fun g p n d.
-Proof.
-  rewrite /harray_fun/harray.
-  destruct (list_of_fun' _ _) as (l1 & Hlen1 & Hl1); simpl.
-  destruct (list_of_fun' _ _) as (l2 & Hlen2 & Hl2); simpl.
-  rewrite !length_List_length. do 2 f_equal; try math.
-  apply (List.nth_ext _ _ val_uninit val_uninit); try math.
-  intros i Hi. replace i with (abs i) by math. rewrite -> Hl1, -> Hl2; try math.
-  apply Hcong. math.
-Qed.
-
-Fact harray_fun_int_congr {D : Type} (f g:int -> int) (p:loc) (n:int) (d : D) (Hn : 0 <= n)
-  (Hcong : forall i, 0 <= i < n -> f i = g i) : harray_fun_int f p n d = harray_fun_int g p n d.
-Proof. 
-  rewrite /harray_fun_int/harray_int ?map_conversion -?lof_indices -?/(harray_fun _ _ _ _). 
-  apply harray_fun_congr; auto. intros. simpl. f_equal. by apply Hcong.
-Qed.
-
 Section memset_alloc.
 
 Variable (a : val).
@@ -140,12 +109,6 @@ Definition memsetf0 := Eval unfold memset in memset float_unit.
 
 Definition allocf0 := Eval unfold alloc in alloc float_unit.
 
-Definition to_loc (v : val) : loc := 
-  match v with 
-  | val_loc v => v 
-  | _         => 0%nat 
-  end.
-
 Lemma htriple_allocf0_unary {D : Type} `{Inhab D} (n : int) (d : D) :
   htriple (single d tt) (fun=> allocf0 n)
     \[0 <= n]
@@ -154,15 +117,7 @@ Proof.
   eapply htriple_conseq. 1: by apply htriple_alloc_unary. all: xsimpl*=>*.
   rewrite /harray_fun_float /harray_fun /harray_float (lof_indices') (lof_indices') map_conversion List.map_map //.
 Qed.
-(*
-Lemma htriple_allocf0_unary' {D : Type} `{Inhab D} (n : int) (d : D) :
-  htriple (single d tt) (fun=> allocf0 n)
-    \[0 <= n]
-    (fun hv => \exists p, \[hv = fun=> val_loc p] \* harray_fun_float' (fun=> float_unit) p n d).
-Proof.
-  eapply htriple_conseq. 1: by apply htriple_allocf0_unary. all: xsimpl*=>*. apply harray_floatP.
-Qed.
-*)
+
 End memsetf0_allocf0.
 
 (* TODO do not know where to put these; temporarily here *)
