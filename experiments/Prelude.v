@@ -1,6 +1,6 @@
 Set Implicit Arguments.
 From LGTM.lib.theory Require Import LibReflect.
-From LGTM.lib.seplog Require Import LibSepReference.
+From LGTM.lib.seplog Require Import LibSepReference LibWP LibSepSimpl.
 From mathcomp Require Import ssreflect ssrfun zify.
 
 Ltac bool_rew := 
@@ -13,3 +13,11 @@ Notation "H1 '\\*' H2" := (hstar H1 H2)
 Coercion to_int : val >-> Z.
 Coercion to_float : val >-> binary64.
 Coercion to_loc : val >-> loc.
+
+Tactic Notation "xpointwise_build" uconstr(E) :=
+  apply/htriple_val_eq/htriple_conseq;
+  [|eauto|move=> ?]; rewrite -?hstar_fset_pure -?hbig_fset_hstar; first last; 
+  first (move=> ?; apply: applys_eq_init; reflexivity);
+  apply/htriple_union_pointwise=> [> -> //|??]; 
+  rewrite -wp_equiv wp_single; xapp E=> //; try eauto; try intros; try subst;
+  xsimpl*.

@@ -48,8 +48,7 @@ Lemma get_spec_in `{Inhab D} (x_ind x_val : loc) i d :
       harray_int xind x_ind d \* 
       harray_int xval x_val d).
 Proof.
-  rewrite -wp_equiv; xsimpl=> ?.
-  xwp; xapp (@index.spec _ H)=> //.
+  xwp; xsimpl=> ?; xapp (@index.spec _ H)=> //.
   xapp; xsimpl*; rewrite index_nodup //; math.
 Qed.
 
@@ -64,8 +63,7 @@ Lemma get_spec_out_unary `{Inhab D} (x_ind x_val : loc) (i : int) d :
       harray_int xind x_ind d \* 
       harray_int xval x_val d).
 Proof.
-  rewrite -wp_equiv; xsimpl=> ?.
-  xwp; xapp (@index.spec _ H)=> //.
+  xwp; xsimpl=> ?; xapp (@index.spec _ H)=> //.
   xapp; xsimpl*; rewrite memNindex // nth_overflow //; math.
 Qed.
 
@@ -80,14 +78,7 @@ Lemma get_spec_out `{Inhab D} (fs : fset D) (x_ind x_val : loc) :
      \[hr = fun=> 0] \* 
       ((\*_(d <- fs) harray_int xind x_ind d) \* 
        \*_(d <- fs) harray_int xval x_val d)).
-Proof.
-  apply/htriple_val_eq/htriple_conseq;
-  [|eauto|move=> ?]; rewrite -hstar_fset_pure -?hbig_fset_hstar; first last.
-  { move=> ?; apply: applys_eq_init; reflexivity. }
-  apply/htriple_union_pointwise=> [> -> //|??]. 
-  rewrite -wp_equiv wp_single; xapp get_spec_out_unary=> // ??->.
-  xsimpl*.
-Qed.
+Proof. by xpointwise_build get_spec_out_unary. Qed.
 
 Lemma get_spec `{Inhab D} (x_ind x_val : loc) d (l : int): 
   htriple (single d tt) 

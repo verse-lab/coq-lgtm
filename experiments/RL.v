@@ -53,7 +53,6 @@ Lemma get_spec_unary `{Inhab D} (x_ind x_val : loc) d
       harray_int xind x_ind d \* 
       harray_int xval x_val d).
 Proof.
-  apply wp_equiv.
   pose proof (@IIL_L_bounded_impl _ HindIIL _ eq_refl _ _ Ha Hka) as Hk.
   xwp; xapp (@search.spec); eauto; xapp; xsimpl*.
 Qed.
@@ -69,14 +68,7 @@ Lemma get_spec (k : int)  (x_ind x_val : loc)
       (fun hr => \[hr = fun d => xval[k] ] \*
         ((\*_(d <- fs) harray_int xind x_ind d) \*
         (\*_(d <- fs) harray_int xval x_val d))).
-Proof.
-  apply/htriple_val_eq/htriple_conseq;
-  [|eauto|move=> ?]; rewrite -?hstar_fset_pure -?hbig_fset_hstar; first last.
-  { move=> ?; apply: applys_eq_init; reflexivity. }
-  apply/htriple_union_pointwise=> [> -> //|??].
-  rewrite -wp_equiv wp_single; xapp @get_spec_unary=> //; eauto=> ?->.
-  xsimpl*. 
-Qed.
+Proof. by xpointwise_build get_spec_unary. Qed.
 
 Lemma get_spec_seg `{Inhab D} (x_ind x_val : loc) (k : int) 
   (Hk : 0 <= k < (length xind - 1)) l : 

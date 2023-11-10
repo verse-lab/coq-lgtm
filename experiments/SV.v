@@ -58,8 +58,7 @@ Lemma get_spec {D} `{Inhab D} (x_ind x_val : loc) d (l : int):
       harray_int xind x_ind d \* 
       harray_int xval x_val d).
 Proof.
-  rewrite -wp_equiv; xsimpl.
-  xwp; xapp @index_bounded.spec=> //.
+  xwp; xsimpl; xapp @index_bounded.spec=> //.
   xwp; xapp; xwp; xif=> ?; [xapp|xwp;xval]; xsimpl.
 Qed.
 
@@ -74,8 +73,7 @@ Lemma get_spec_in {D : Type} `{Inhab D} (x_ind x_val : loc) i d :
       harray_int xind x_ind d \* 
       harray_int xval x_val d).
 Proof with seclocal_solver.
-  rewrite -wp_equiv; xsimpl=> ?.
-  xwp; xapp (@index_bounded.spec _ H)=> //.
+  xwp; xsimpl=> ?; xapp (@index_bounded.spec _ H)=> //.
   xwp; xapp. rewrite index_nodup; auto...
   xwp; xif=> ?; subst; try math.
   xapp; xsimpl*... 
@@ -92,8 +90,7 @@ Lemma get_spec_out_unary {D : Type} `{Inhab D} (x_ind x_val : loc) (i : int) d :
       harray_int xind x_ind d \* 
       harray_int xval x_val d).
 Proof.
-  rewrite -wp_equiv; xsimpl=> ?.
-  xwp; xapp (@index_bounded.spec _ H)=> //...
+  xwp; xsimpl=> ?; xapp (@index_bounded.spec _ H)=> //...
   rewrite memNindex // list_interval_length //.
   xwp; xapp. xwp; xif=> ?; try math. xwp; xval. xsimpl*.
 Qed.
@@ -110,14 +107,7 @@ Lemma get_spec_out `{Inhab D} fs (x_ind x_val : loc) :
      \[hr = fun=> 0] \* 
       ((\*_(d <- fs) harray_int xind x_ind d) \* 
        \*_(d <- fs) harray_int xval x_val d)).
-Proof.
-  apply/htriple_val_eq/htriple_conseq;
-  [|eauto|move=> ?]; rewrite -hstar_fset_pure -?hbig_fset_hstar; first last.
-  { move=> ?; apply: applys_eq_init; reflexivity. }
-  apply/htriple_union_pointwise=> [> -> //|??]. 
-  rewrite -wp_equiv wp_single; xapp (@get_spec_out_unary D)=> // ??->.
-  xsimpl*.
-Qed.
+Proof. by xpointwise_build (@get_spec_out_unary). Qed.
 
 Definition sum := 
   <{

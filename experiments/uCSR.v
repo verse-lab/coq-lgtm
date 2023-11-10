@@ -91,10 +91,8 @@ Lemma get_spec_out_unary {D : Type} `{Inhab D} (x_midx x_mval x_colind x_rowptr 
       harray_int colind x_colind d \* 
       harray_int rowptr x_rowptr d).
 Proof with seclocal_solver.
-  rewrite -wp_equiv; xsimpl=> Hnotin.
-  apply memNindex in Hnotin.
-  xwp; xapp @index.spec... xwp; xapp.
-  xwp; xif=> HQ; try math.
+  xwp; xsimpl; intros Hnotin%memNindex; xapp @index.spec... 
+  xwp; xapp. xwp; xif=> HQ; try math.
   xwp; xval. xsimpl*.
 Qed.
 
@@ -112,15 +110,7 @@ Lemma get_spec_out `{Inhab (labeled (int * int))} fs (x_midx x_mval x_colind x_r
       (\*_(d <- fs) harray_int midx x_midx d) \* 
       (\*_(d <- fs) harray_int colind x_colind d) \*  
        \*_(d <- fs) harray_int rowptr x_rowptr d).
-Proof.
-  apply/htriple_val_eq/htriple_conseq;
-  [|eauto|move=> ?]; rewrite -hstar_fset_pure -?hbig_fset_hstar; first last.
-  { move=> ?; apply: applys_eq_init; reflexivity. }
-  apply/htriple_union_pointwise=> [> -> //|[?][??]?]. 
-  rewrite -wp_equiv wp_single /=. 
-  xapp (@get_spec_out_unary)=> //= ??->.
-  xsimpl*.
-Qed.
+Proof. by xpointwise_build (@get_spec_out_unary). Qed.
 
 Definition sum := 
   <{
