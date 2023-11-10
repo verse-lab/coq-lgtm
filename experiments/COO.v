@@ -1,6 +1,7 @@
 Set Implicit Arguments.
-From SLF Require Import LabType Fun LibSepFmap Sum ListCommon.
-From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer Struct Loops Unary.
+From LGTM.lib.theory Require Import LibFunExt LibLabType LibSummation LibListExt LibSepTLCbuffer.
+From LGTM.lib.seplog Require Import LibSepReference LibWP LibSepSimpl Struct Loops.
+From LGTM.experiments Require Import Prelude Unary.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
@@ -336,7 +337,7 @@ Proof with fold'.
   xin (1,0) : xwp; xapp=> s...
   have E : (`[0, Nrow] \x `[0, Ncol]) ∩ combine xrow xcol = combine xrow xcol.
   { apply/fset_extens=> -[r c]. specializes xrow_leq r. specializes xcol_leq c. 
-    indomE. rewrite /Sum.mem /=. split; try tauto. intros HH. pose proof HH as HH2%in_combineE. tauto. }
+    indomE. rewrite /LibSummation.mem /=. split; try tauto. intros HH. pose proof HH as HH2%in_combineE. tauto. }
   rewrite ?E (fset_of_list_nodup (0,0)) // lE.
   xfor_sum Inv R (fun=> \Top) (fun hv i => hv[`2]((xrow[i], xcol[i]))) s.
   { (xin (1,0): (xwp; xapp; xapp (@incr.spec _ H)=> y))...

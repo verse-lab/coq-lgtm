@@ -1,6 +1,6 @@
-Set Implicit Arguments.
-From SLF Require Import Fun LabType ListCommon.
-From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer Struct Loops Unary.
+(* Set Implicit Arguments.
+From LGTM.lib.theory Require Import LibFunExt LibLabType LibListExt LibSepTLCbuffer.
+From LGTM.lib.seplog Require Import LibWP LibSepSimpl LibSepReference Struct Loops Unary.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
@@ -119,3 +119,4 @@ Proof.
 Qed.
 
 End memsetf0_allocf0.
+ *)

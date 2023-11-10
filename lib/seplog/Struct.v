@@ -1,9 +1,9 @@
 (** * Struct: Arrays and Records *)
 
 Set Implicit Arguments.
-From SLF Require Import LibSepSimpl LibSepReference LibSepTLCbuffer.
-From SLF Require Import Fun LabType LibSepReference LibWP.
-From SLF Require ListCommon.
+From LGTM.lib.theory Require Import LibSepTLCbuffer LibFunExt LibLabType.
+From LGTM.lib.seplog Require Import LibSepSimpl LibSepReference LibWP.
+From LGTM.lib.theory Require LibListExt.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
@@ -98,7 +98,7 @@ Proof.
   rewrite /harray_float/harray_float'/harray length_map !length_List_length Hl. xsimpl*.
   set (pp := (p + 1)%nat); clearbody pp; revert pp.
   assert (List.Forall2 (@feq Tdouble) L L') as Hf2.
-  { eapply ListCommon.Forall2_nth_pointwise. 
+  { eapply LibListExt.Forall2_nth_pointwise. 
     split; [ assumption | intros i Hi; replace i with (abs i) by math; apply Hfeq ].
     apply inj_lt in Hi. split; try lia; auto. }
   clear Hfeq Hl. induction Hf2; intros; auto; rewrite ?map_cons; simpl.
@@ -818,7 +818,7 @@ Qed.
 
 Section fun_array.
 
-Import ListCommon.
+Import LibListExt.
 
 Definition harray_fun (f:int -> val) (p:loc) (n:int) (d : D) : hhprop :=
   harray (projT1 (list_of_fun' f n)) p d.

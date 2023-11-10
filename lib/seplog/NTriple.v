@@ -1,5 +1,5 @@
-From SLF Require Import LibSepSimpl LibSepReference LibSepTLCbuffer.
-From SLF Require Import Fun LabType LibSepReference LibWP Struct Loops.
+From LGTM.lib.theory Require Import LibFunExt LibLabType LibListExt LibSepTLCbuffer.
+From LGTM.lib.seplog Require Import LibSepReference LibWP LibSepSimpl Struct Loops.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 

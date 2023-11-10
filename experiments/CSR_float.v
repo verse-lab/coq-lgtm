@@ -1,7 +1,8 @@
 Set Implicit Arguments.
-From SLF Require Import LabType Fun LibSepFmap Sum Dotprod_float.
-From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer ListCommon.
-From SLF Require Import Struct Loops Unary Subst NTriple Struct2 Loops2_float Struct SV_float.
+From LGTM.lib.theory Require Import LibFunExt LibLabType LibSummation LibDotprod_float LibSepTLCbuffer.
+From LGTM.lib.seplog Require Import LibSepReference LibWP LibSepSimpl Struct Loops Loops2_float Subst NTriple.
+From LGTM.lib.theory Require Import LibListExt.
+From LGTM.experiments Require Import Prelude Unary SV_float.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
@@ -387,7 +388,7 @@ Proof with (try solve [ seclocal_solver | seclocal_solver2 | auto using finite_s
     move=> /= Hfin; xwp; xapp... xwp; xapp; xapp; xsimpl.
     rewrite -/(Sum_fma _ _ _) Sum_fma_lof ?Sum_fma_filter_If'; try intro;
     rewrite -?sorted_bounded_sublist ?Sum_fma_list_interval ?In_lof_id //...
-    move: (indexG0 a0 (colind_seg l0)); rewrite /Sum.mem=> ??.
+    move: (indexG0 a0 (colind_seg l0)); rewrite /LibSummation.mem=> ??.
     move=> /[dup] /(nth_index 0){2}<-; rewrite -index_mem=> ?.
     rewrite -list_interval_nth; try apply/(Hfin _ _).1... }
   { apply Sum_fma_feq=>? /In_lof_id ? /= /[! hvE]; indomE... }

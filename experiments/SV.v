@@ -1,6 +1,8 @@
 Set Implicit Arguments.
-From SLF Require Import LabType Fun LibSepFmap Sum Unary Prelude.
-From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer Struct Loops ListCommon.
+From LGTM.lib.theory Require Import LibFunExt LibLabType LibSummation LibSepTLCbuffer.
+From LGTM.lib.seplog Require Import LibSepReference LibWP LibSepSimpl Struct Loops.
+From LGTM.lib.theory Require Import LibListExt.
+From LGTM.experiments Require Import Prelude Unary.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
@@ -339,11 +341,11 @@ Proof with fold'.
   rewrite -/(arr1 _ _ _ _).
   xfocus* (2,0) (ind).
   xapp (@get_spec_out xind xval); eauto. 
-  1: case=> ??; indomE; rewrite /Sum.mem/ind In_merge; autos*.
+  1: case=> ??; indomE; rewrite /LibSummation.mem/ind In_merge; autos*.
   xclean_heap.
   xfocus* (3,0) ind.
   xapp (@get_spec_out yind yval); eauto.
-  1: case=> ??; indomE; rewrite /Sum.mem/ind In_merge; autos*.
+  1: case=> ??; indomE; rewrite /LibSummation.mem/ind In_merge; autos*.
   xclean_heap.
   set (H1 := _ \* hbig_fset _ _ _); set (H2 := _ \* H1); set (arrs := _ \* H2).
   xin (1,0) : xwp; xapp=> ans; xwp; xapp=> iX; xwp; xapp=> iY...

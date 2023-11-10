@@ -1,6 +1,7 @@
 Set Implicit Arguments.
-From SLF Require Import Fun LabType ListCommon Prelude.
-From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer Struct Loops.
+From LGTM.lib.theory Require Import LibFunExt LibLabType LibListExt LibSepTLCbuffer.
+From LGTM.lib.seplog Require Import LibSepReference LibWP LibSepSimpl Struct Loops.
+From LGTM.experiments Require Import Prelude.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
@@ -200,7 +201,7 @@ Lemma spec {D} `{Inhab D} d N (lb rb i : int) (xind : list int) (x_ind : loc) :
     (harray_int xind x_ind d \* \[length xind = N :> int] 
       \* \[List.NoDup (xind [[ lb -- rb ]])] 
       \* \[0 <= lb <= rb] \* \[rb <= N])
-    (fun hv => harray_int xind x_ind d \* \[hv = fun=> lb + ListCommon.index i (xind [[ lb -- rb ]])]).
+    (fun hv => harray_int xind x_ind d \* \[hv = fun=> lb + LibListExt.index i (xind [[ lb -- rb ]])]).
 Proof with fold'.
   set (xind_sub := xind [[ lb -- rb ]]).
   set (N_sub := rb - lb).
@@ -212,7 +213,7 @@ Proof with fold'.
     \[~ In i (take (abs x) xind_sub)] \*
     k d ~(d)~> (lb + x) \* harray_int xind x_ind d
     ).
-  xwp; xwhile1 0 (ListCommon.index i xind_sub) (cond 0) Inv; rewrite /Inv.
+  xwp; xwhile1 0 (LibListExt.index i xind_sub) (cond 0) Inv; rewrite /Inv.
   { xsimpl=> ??->??.
     do 5 (xwp; xapp); xapp=> ?->; xsimpl*.
     rewrite /cond /xind_sub /N_sub. bool_rew.
@@ -230,7 +231,7 @@ Proof with fold'.
     rewrite index_nodup //; math. }
   { xsimpl*=> {Inv}k; rewrite /cond; bool_rew.
     case=> xindN ??; rewrite in_take; eauto; last math.
-    suff: (ListCommon.index i xind_sub <> k) by math.
+    suff: (LibListExt.index i xind_sub <> k) by math.
     move=> E; apply/xindN; rewrite -E nth_index // -index_mem; eauto; math. }
   { move=> j ? IH; rewrite /cond; bool_rew.
     xsimpl=> -?? T. xwp; xapp (@incr1.spec _ H).  
@@ -259,7 +260,7 @@ Lemma spec {D : Type} `{Inhab D} (d : D) (N : int) (i : int) (xind : list int) (
   htriple (single d tt) 
     (fun=> func N i x_ind)
     (harray_int xind x_ind d \* \[length xind = N :> int] \* \[List.NoDup xind])
-    (fun hv => harray_int xind x_ind d \* \[hv = fun=> ListCommon.index i xind]).
+    (fun hv => harray_int xind x_ind d \* \[hv = fun=> LibListExt.index i xind]).
 Proof.
   apply wp_equiv. xapp @index_bounded.spec=> * //; try math.
   all: subst N.
@@ -271,7 +272,7 @@ Lemma Spec (fs : fset int) N l (xind : list int) (x_ind : loc) (f : int -> int) 
   htriple ⟨l, fs⟩
     (fun i => func N (f (el i)) x_ind)
     ((\*_(d <- fs) harray_int xind x_ind (Lab l d)) \* \[length xind = N :> int] \* \[List.NoDup xind])
-    (fun hv => (\*_(d <- fs) harray_int xind x_ind (Lab l d)) \* \[hv = fun i => ListCommon.index (f (el i)) xind]).
+    (fun hv => (\*_(d <- fs) harray_int xind x_ind (Lab l d)) \* \[hv = fun i => LibListExt.index (f (el i)) xind]).
 Proof.
   apply/htriple_conseq. 1: apply htriple_val_eq. 2-3: xsimpl*.
   apply wp_equiv. xsimpl*. intros. apply wp_equiv.
@@ -330,7 +331,7 @@ Lemma spec d N (i j : int) (xind yind : list int) (x_ind y_ind : loc) :
      harray_int yind y_ind d \*
      \[length xind = N :> int] \*
      \[length yind = N :> int] \* \[List.NoDup (combine xind yind)])
-    (fun hv => \[hv = fun=> ListCommon.index (i, j) (combine xind yind)] \* harray_int xind x_ind d \* harray_int yind y_ind d).
+    (fun hv => \[hv = fun=> LibListExt.index (i, j) (combine xind yind)] \* harray_int xind x_ind d \* harray_int yind y_ind d).
 Proof with fold'.
 xwp; xsimpl=> ???; xapp=> k...
 have ?: Datatypes.length (combine xind yind) = N :> int by rewrite combine_length; lia.
@@ -340,7 +341,7 @@ set (Inv b x :=
   \[~ In (i,j) (take (abs x) (combine xind yind))] \*
   k d ~(d)~> x \* harray_int xind x_ind d \*  harray_int yind y_ind d
   ).
-xwp; xwhile1 0 (ListCommon.index (i,j) (combine xind yind)) (cond 0) Inv; rewrite /Inv.
+xwp; xwhile1 0 (LibListExt.index (i,j) (combine xind yind)) (cond 0) Inv; rewrite /Inv.
 { xsimpl=> ??->??.
   do 6 (xwp; xapp); move=> ?... 
   move->; do 2 (xwp; xapp).
@@ -356,7 +357,7 @@ xwp; xwhile1 0 (ListCommon.index (i,j) (combine xind yind)) (cond 0) Inv; rewrit
   rewrite index_nodup //; math. }
 { xsimpl*=> {Inv}k; rewrite /cond; bool_rew.
   case=> xindN ??; rewrite in_take; eauto; last math.
-  suff: (ListCommon.index (i, j) (combine xind yind) <> k) by lia.
+  suff: (LibListExt.index (i, j) (combine xind yind) <> k) by lia.
   move=> E; apply/xindN; rewrite -E nth_index // -index_mem; eauto; math. }
 { move=> ?? IH; rewrite /cond; bool_rew...
   xsimpl=> -?? T. xwp; xapp (@incr1.spec _ H); xapp; try math. 
@@ -467,3 +468,116 @@ End search_proof.
 End search. 
 End search. 
 
+Section memset_alloc.
+
+Variable (a : val).
+
+Definition memset : val := Eval cbn zeta beta in
+  let whilecond (i len : trm) := <{ let 'o = ! i in let 'c = 'o < len in 'c }> in
+  let loopbody (p i : trm) := 
+    <{ let 'o = ! i in
+       val_array_set p 'o a;
+       ++ i }> in
+  let loop := While (whilecond "i" "l") (loopbody "p" "i") in
+  <{ fun 'p =>
+      let 'l = val_length 'p in
+      let 'i = ref 0 in 
+      loop; 
+      free 'i }>.
+
+Ltac fold' := 
+  rewrite ?wp_single ?length_List_length
+    -/(incr1.func _) 
+    -/(While_aux _ _) 
+    -/(While _ _) //=.
+
+Import List.
+
+Lemma htriple_memset_unary {D : Type} `{Inhab D} (L : list val) (p : loc) (d : D) :
+  htriple (single d tt) (fun=> memset p)
+    (harray L p d) 
+    (fun=> harray_fun (fun=> a) p (length L) d).
+Proof with fold'.
+  xwp; xapp (@htriple_array_length)...
+  xwp; xapp=> s...
+  remember (s d) as s0 eqn:Es0. (* ? *)
+  xwp; xwhile1 0 (length L) (match L with nil => false | _ => true end)
+    (fun (b : bool) (i : int) => \[i <= (length L) /\ Z.ltb i (length L) = b] \*
+      s0 ~(d)~> i \* 
+      harray (List.app (repeat a (abs i)) (skipn (abs i) L)) p d); try math.
+  { intros b i. xsimpl. intros (Hi & Eb).
+    do 2 (xwp; xapp). xwp. xval. xsimpl*. rewrite isTrue_eq_if.
+    case_if; rewrite <- ? Z.ltb_ge, <- ? Z.ltb_lt, -> ? Eb in *; by destruct b. }
+  { intros i. xsimpl*. rewrite Z.ltb_ge. math. }
+  { intros i. xsimpl*. rewrite Z.ltb_lt. math. }
+  { intros i Hii IH. xsimpl*=>_.
+    xwp. xseq. xwp; xapp. 
+    xwp; xapp (@htriple_array_set)...
+    1:{ intros _ _... rewrite app_length repeat_length skipn_length; math. }
+    xapp @incr1.spec.
+    rewrite -list_update_intermediate__; try math.
+    replace (S (abs i)) with (abs (i+1)) by math.
+    xapp IH; try math.
+    1: split; [ math | reflexivity ].
+    xsimpl*. }
+  { xsimpl*. split; try math. destruct L; by rewrite ? Z.ltb_ge ? Z.ltb_lt. }
+  { xsimpl*=> _ _. xwp; xapp. 
+    replace (abs _) with (length L) by math. (* ... *)
+    rewrite skipn_all List.app_nil_r /harray_fun lof_make_constfun; try math.
+    replace (abs _) with (length L) by math. (* ... *) xsimpl*. }
+Qed.
+
+Definition alloc : val :=
+  <{ fun 'n => 
+      let 'p = val_alloc 'n in
+      memset 'p; 
+      'p }>.
+
+Lemma htriple_alloc_unary {D : Type} `{Inhab D} (n : int) (d : D) :
+  htriple (single d tt) (fun=> alloc n)
+    \[0 <= n]
+    (fun hv => \exists p, \[hv = fun=> val_loc p] \* harray_fun (fun=> a) p n d).
+Proof with fold'.
+  apply wp_equiv. xsimpl. intros HH.
+  assert (n = abs n :> int) as E by math.
+  rewrite -> E.
+  xwp; xapp (@htriple_alloc_nat)=>x p EE... rewrite !EE.
+  xwp; xapp (@htriple_memset_unary). xwp; xval. xsimpl*.
+  rewrite -length_List_length length_make. xsimpl.
+Qed.
+
+End memset_alloc.
+
+Section memset0_alloc0.
+
+Definition memset0 := Eval unfold memset in memset 0.
+
+Definition alloc0 := Eval unfold alloc in alloc 0.
+
+Lemma htriple_alloc0_unary {D : Type} `{Inhab D} (n : int) (d : D) :
+  htriple (single d tt) (fun=> alloc0 n)
+    \[0 <= n]
+    (fun hv => \exists p, \[hv = fun=> val_loc p] \* harray_fun_int (fun=> 0) p n d).
+Proof.
+  eapply htriple_conseq. 1: by apply htriple_alloc_unary. all: xsimpl*=>*.
+  rewrite /harray_fun_int /harray_fun /harray_int !(lof_indices) map_conversion //.
+Qed.
+
+End memset0_alloc0.
+
+Section memsetf0_allocf0.
+
+Definition memsetf0 := Eval unfold memset in memset float_unit.
+
+Definition allocf0 := Eval unfold alloc in alloc float_unit.
+
+Lemma htriple_allocf0_unary {D : Type} `{Inhab D} (n : int) (d : D) :
+  htriple (single d tt) (fun=> allocf0 n)
+    \[0 <= n]
+    (fun hv => \exists p, \[hv = fun=> val_loc p] \* harray_fun_float (fun=> float_unit) p n d).
+Proof.
+  eapply htriple_conseq. 1: by apply htriple_alloc_unary. all: xsimpl*=>*.
+  rewrite /harray_fun_float /harray_fun /harray_float (lof_indices') (lof_indices') map_conversion List.map_map //.
+Qed.
+
+End memsetf0_allocf0.

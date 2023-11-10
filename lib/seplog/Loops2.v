@@ -1,7 +1,6 @@
-Set Implicit Arguments.
-From SLF Require Import Fun LabType Sum ListCommon.
-From SLF Require Import LibSepReference  LibWP LibSepSimpl Struct.
-From SLF Require Import LibSepTLCbuffer Loops Struct2 Subst.
+(* Set Implicit Arguments.
+From LGTM.lib.theory Require Import LibFunExt LibLabType LibSummation LibListExt LibSepTLCbuffer.
+From LGTM.lib.seplog Require Import LibSepSimpl LibSepReference LibWP Struct Loops Struct2 Subst.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
@@ -601,10 +600,4 @@ Tactic Notation "xfor_arrayset" constr(Inv) constr(R1) constr(R1') constr(R2) co
   |
   |rewrite ?/Inv ?/R1 ?/R2; rewrite -> ?hbig_fset_hstar; xsimpl
   | intros ?; rewrite ?/Inv ?/R1' ?/R2' ?/op; rewrite -> ?hbig_fset_hstar; xsimpl
-  ]=> //; try (solve [ rewrite ?/Inv ?/R1 ?/R1' ?/R2 ?/R2' /=; xlocal ]); autos*; try math.
-
-Tactic Notation "xfor_sum" constr(Inv) constr(R) uconstr(R') uconstr(op) constr(s) :=
-  match goal with
-  | |- context[hsingle s _ (val_int _)] => xfor_sum_core true Inv R R' op s
-  | |- context[hsingle s _ (val_float _)] => xfor_sum_core false Inv R R' op s
-  end.
+  ]=> //; try (solve [ rewrite ?/Inv ?/R1 ?/R1' ?/R2 ?/R2' /=; xlocal ]); autos*; try math. *)

@@ -10,7 +10,7 @@ This file is included by the chapters from the course. *)
 Set Implicit Arguments.
 From LGTM.lib.theory Require Export LibCore LibSepTLCbuffer.
 From LGTM.lib.seplog Require Export LibSepVar LibSepFmap.
-From LGTM.lib.theory Require Import Fun LabType.
+From LGTM.lib.theory Require Import LibFunExt LibLabType.
 
 From mathcomp Require Import ssreflect ssrfun zify.
 

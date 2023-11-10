@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-From SLF Require Import LibReflect.
+From LGTM.lib.theory Require Import LibReflect.
 From mathcomp Require Import ssreflect ssrfun zify.
 
 Ltac bool_rew := 

@@ -1,7 +1,7 @@
 Set Implicit Arguments.
 From LGTM.lib.theory Require Export LibCore LibSepTLCbuffer.
 From LGTM.lib.seplog Require Export LibSepVar LibSepFmap.
-From LGTM.lib.theory Require Import Fun LabType.
+From LGTM.lib.theory Require Import LibFunExt LibLabType.
 From LGTM.lib.seplog Require Import LibSepSimpl LibSepReference.
 
 From mathcomp Require Import ssreflect ssrfun zify.
@@ -8660,7 +8660,7 @@ Proof. by rewrite /lab_eqb Z.eqb_sym [l.2 =? _]Z.eqb_sym. Qed.
 Lemma fset_htrm_label_remove_disj l fs_hts fs : 
     disjoint
       (label (Lab l fs))
-      (fset_of (LabType.remove fs_hts l)).
+      (fset_of (LibLabType.remove fs_hts l)).
 Proof.
   elim: fs_hts=> //= -[]l' fs_ht fs_hts IHfs_hts.
   case: ssrbool.ifP=> /= // /lab_neqd.
@@ -8681,7 +8681,7 @@ Definition lookup' (s : labSeq fset_htrm) (l : labType) : labeled fset_htrm :=
 
 Lemma lookup_cons_ht x xs l d :
   indom (fs_of x) d -> 
-  ht_of (el (lookup (Lab l x :: LabType.remove xs l) l)) d = ht_of (el (Lab l x)) d.
+  ht_of (el (lookup (Lab l x :: LibLabType.remove xs l) l)) d = ht_of (el (Lab l x)) d.
 Proof.
   case: x=> ??/= ?.
   elim: xs=> /= [|[]??/=]; rewrite eqbxx /=.
@@ -8690,7 +8690,7 @@ Proof.
 Qed.
 
 Lemma lookup_cons_fs x xs l :
-  fs_of (el (lookup (Lab l x :: LabType.remove xs l) l)) = fs_of x.
+  fs_of (el (lookup (Lab l x :: LibLabType.remove xs l) l)) = fs_of x.
 Proof.
   case: x=> ??/=.
   elim: xs=> /= [|[]???/=]; rewrite eqbxx /=.
@@ -8705,7 +8705,7 @@ Lemma fset_htrm_lookup_remove l fs_hts :
   let fs    := fs_of (el fs_ht) in 
     fset_of fs_hts = 
     label (Lab l fs) \u 
-    fset_of (LabType.remove fs_hts l).
+    fset_of (LibLabType.remove fs_hts l).
 Proof.
   move=> /=. rewrite fset_of''E.
   elim: fs_hts=> /= [|[]?? fs_hts IHfs_hts]/=.
@@ -8738,8 +8738,8 @@ Lemma remove_eq l fs_hts (d : HD) :
   let fs_ht := lookup fs_hts l in
   let fs    := fs_of (el fs_ht) in 
   let ht    := ht_of (el fs_ht) in
-    indom (fset_of (LabType.remove fs_hts l)) d ->
-      htrm_of fs_hts d = htrm_of (LabType.remove fs_hts l) d.
+    indom (fset_of (LibLabType.remove fs_hts l)) d ->
+      htrm_of fs_hts d = htrm_of (LibLabType.remove fs_hts l) d.
 Proof.
   move=> fs_ht fs ht.
   move/(@disjoint_inv_not_indom_both _ _ _ _ _): (fset_htrm_label_remove_disj l fs_hts fs).
@@ -8758,7 +8758,7 @@ Lemma indom_label l (fs : fset D) l' x :
 Proof. rewrite* @indom_label_eq. Qed.
 
 Lemma indom_remove l fs_hts l' x :
-  indom (fset_of (LabType.remove fs_hts l)) (Lab l' x) -> l' <> l.
+  indom (fset_of (LibLabType.remove fs_hts l)) (Lab l' x) -> l' <> l.
 Proof.
   move=> /[swap]->.
   have: (indom (label (Lab l (single x tt))) (Lab l x)).
@@ -8868,7 +8868,7 @@ Lemma xfocus_lemma (l : labType) fs_hts (Q : (HD -> val) -> hhprop) H :
   let fs    := fs_of (el fs_ht) in 
   let ht    := ht_of (el fs_ht) in
     H ==> wp ⟨l, fs⟩ [eta ht]
-            (fun hr => nwp (LabType.remove fs_hts l) (fun hr' => Q (hr \u_⟨l, fs⟩ hr'))) ->
+            (fun hr => nwp (LibLabType.remove fs_hts l) (fun hr' => Q (hr \u_⟨l, fs⟩ hr'))) ->
     ntriple H fs_hts Q.
 Proof.
   move=> fs_ht fs ht.
@@ -8916,7 +8916,7 @@ Lemma xfocus_pred_lemma (p : D -> Prop) (l : labType) fs_hts (Q : (HD -> val) ->
   let fs    := fs_of (el fs_ht) in 
   let ht    := ht_of (el fs_ht) in
     H ==> wp ⟨l, fs ∖ p⟩ [eta ht]
-            (fun hr => nwp (Lab l (FH (fs ∩ p) ht) :: LabType.remove fs_hts l) (fun hr' => Q (hr \u_⟨l, fs ∖ p⟩ hr'))) ->
+            (fun hr => nwp (Lab l (FH (fs ∩ p) ht) :: LibLabType.remove fs_hts l) (fun hr' => Q (hr \u_⟨l, fs ∖ p⟩ hr'))) ->
     ntriple H fs_hts Q.
 Proof.
   move=> fs_ht fs ht.
@@ -8964,7 +8964,7 @@ Lemma xfocus_pred_lemma' (p : D -> Prop) (l : labType) fs_hts (Q : (HD -> val) -
   let ht    := ht_of (el fs_ht) in
     H ==> wp ⟨l, fs ∖ p⟩ [eta ht]
             (fun hr => 
-              nwp (Lab l (FH (fs ∩ p) ht) :: LabType.remove fs_hts l) 
+              nwp (Lab l (FH (fs ∩ p) ht) :: LibLabType.remove fs_hts l) 
                 (fun hr' => Q (lab_fun_upd (uni_pred hr' hr p) hr' l))) ->
     ntriple H fs_hts Q.
 Proof.

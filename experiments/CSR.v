@@ -1,7 +1,8 @@
 Set Implicit Arguments.
-From SLF Require Import LabType Fun LibSepFmap Sum.
-From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer ListCommon.
-From SLF Require Import Struct Loops Unary SV Subst NTriple Loops2 Struct2.
+From LGTM.lib.theory Require Import LibFunExt LibLabType LibSummation LibSepTLCbuffer.
+From LGTM.lib.seplog Require Import LibSepReference LibWP LibSepSimpl Struct Loops Subst NTriple.
+From LGTM.lib.theory Require Import LibListExt.
+From LGTM.experiments Require Import Prelude Unary SV.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 

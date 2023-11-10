@@ -1,7 +1,6 @@
 Set Implicit Arguments.
-From SLF Require Import Fun LabType Sum ListCommon Dotprod_float.
-From SLF Require Import LibSepReference  LibWP LibSepSimpl Struct.
-From SLF Require Import LibSepTLCbuffer Loops Struct2 Subst.
+From LGTM.lib.theory Require Import LibFunExt LibLabType LibSummation LibListExt LibDotprod_float LibSepTLCbuffer.
+From LGTM.lib.seplog Require Import LibSepReference LibWP LibSepSimpl Struct Loops.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
