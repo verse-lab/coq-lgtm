@@ -1,6 +1,6 @@
 Set Implicit Arguments.
 From LGTM.lib.theory Require Import LibFunExt LibLabType LibSummation LibDotprod_float LibSepTLCbuffer.
-From LGTM.lib.seplog Require Import LibSepReference LibWP LibSepSimpl Struct Loops Loops2_float Subst NTriple.
+From LGTM.lib.seplog Require Import LibSepReference LibWP LibSepSimpl LibArray LibLoops LibLoops_float Subst NTriple.
 From LGTM.lib.theory Require Import LibListExt.
 From LGTM.experiments Require Import Prelude Unary SV_float.
 From mathcomp Require Import ssreflect ssrfun zify.
@@ -206,8 +206,6 @@ Proof with (try solve [ seclocal_solver ]; seclocal_fold).
 Qed.
 
 Section spmv_monolithic.
-
-Import Loops.
 
 (* simulating the crs_matrix_vector_multiply function in LAProof *)
 Definition spmv_monolithic := 

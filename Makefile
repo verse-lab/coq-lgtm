@@ -4,7 +4,7 @@ TLC_FILES := LibAxioms.v LibTactics.v LibEqual.v LibLogic.v LibOperation.v LibBo
 
 THEORY_FILES := LibSummation.v LibListExt.v LibDotprod_float.v LibFunExt.v LibLabType.v
 
-SEPLOG_FILES := LibSepFmap.v LibSepVar.v LibSepSimpl.v LibWP.v LibSepReference.v Struct.v Loops.v NTriple.v Subst.v Loops2_float.v
+SEPLOG_FILES := LibSepFmap.v LibSepVar.v LibSepSimpl.v LibWP.v LibSepReference.v LibArray.v LibLoops.v NTriple.v Subst.v LibLoops_float.v
 
 EXPERIMENTS_FILES := COO.v RL.v SV.v CSR.v Unary.v uCSR.v SV_float.v CSR_float.v Prelude.v
 
