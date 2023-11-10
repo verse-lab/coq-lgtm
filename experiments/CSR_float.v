@@ -233,7 +233,6 @@ Definition spmv_monolithic :=
   "ans"
 }>.
 
-Coercion to_loc : val >-> loc.
 (*
 Lemma spmv_monolithic_spec `{Inhab D} (x_mval x_colind x_rowptr x_dvec : loc) : 
   {{ .arr(x_mval, mval)⟨1, (0,0)⟩ \*

@@ -7,11 +7,7 @@ Hint Rewrite conseq_cons' : rew_listx.
 
 Open Scope Z_scope.
 
-Coercion to_int : val >-> Z.
-
 Module coo_vec.
-Notation "H1 '\\*' H2" := (hstar H1 H2)
-  (at level 42, right associativity, format "H1  \\* '//' H2") : hprop_scope.
 
 Section coo_vec.
 Local Notation D := (labeled int).
@@ -206,9 +202,6 @@ End coo_vec.
 
 
 Module coo. 
-
-Notation "H1 '\\*' H2" := (hstar H1 H2)
-  (at level 42, right associativity, format "H1  \\* '//' H2") : hprop_scope.
 
 Section coo.
 

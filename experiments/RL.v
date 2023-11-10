@@ -8,8 +8,6 @@ Hint Rewrite conseq_cons' : rew_listx.
 
 Open Scope Z_scope.
 
-Coercion to_int : val >-> Z.
-
 Module runlength.
 
 Notation "'xind'" := ("x_ind":var) (in custom trm at level 0) : trm_scope.
@@ -260,9 +258,6 @@ Definition alpha_blend := <{
                 step := stride)
       }; !ans
 }>.
-
-Notation "H1 '\\*' H2" := (hstar H1 H2)
-  (at level 42, right associativity, format "H1  \\* '//' H2") : hprop_scope.
 
 Ltac fold' := 
   rewrite ?label_single ?wp_single ?val_int_eq

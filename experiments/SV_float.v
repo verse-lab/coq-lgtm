@@ -10,8 +10,6 @@ From Coq Require Import Permutation.
 
 Open Scope Z_scope.
 
-Coercion to_float : val >-> binary64.
-
 (*
 (* This is not doable ... *)
 Definition Sumf {A : Type} (l : list A) (f : A -> binary64) : binary64 := 
@@ -28,9 +26,6 @@ Admitted.
 *)
 
 Module sv_float.
-
-Notation "H1 '\\*' H2" := (hstar H1 H2)
-  (at level 42, right associativity, format "H1  \\* '//' H2") : hprop_scope.
 
 Section sv.
 
