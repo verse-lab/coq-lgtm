@@ -2,7 +2,7 @@ COQMFFLAGS := -Q . LGTM -arg "-w -implicits-in-term,-redundant-canonical-project
 
 TLC_FILES := LibAxioms.v LibTactics.v LibEqual.v LibLogic.v LibOperation.v LibBool.v LibReflect.v LibProd.v LibSum.v LibRelation.v LibOrder.v LibNat.v LibEpsilon.v LibInt.v LibMonoid.v LibContainer.v LibOption.v LibWf.v LibList.v LibListExec.v LibListZ.v LibMin.v LibSet.v LibChoice.v LibUnit.v LibFun.v LibString.v LibCore.v LibSepTLCbuffer.v
 
-THEORY_FILES := Sum.v ListCommon.v Dotprod_float.v Fun.v LabType.v
+THEORY_FILES := LibSummation.v LibListExt.v LibDotprod_float.v LibFunExt.v LibLabType.v
 
 SEPLOG_FILES := LibSepFmap.v LibSepVar.v LibSepSimpl.v LibWP.v LibSepReference.v Struct.v Loops.v NTriple.v Subst.v Loops2.v Struct2.v Loops2_float.v
 

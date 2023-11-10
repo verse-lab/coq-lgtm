@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-From LGTM.lib.theory Require Import Fun LabType ListCommon.
+From LGTM.lib.theory Require Import LibFunExt LibLabType LibListExt.
 From LGTM.lib.seplog Require Import LibSepReference LibWP.
 From mathcomp Require Import ssreflect ssrfun zify.
 From Coq Require Import List.

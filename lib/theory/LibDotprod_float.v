@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-From LGTM.lib.theory Require Import ListCommon.
+From LGTM.lib.theory Require Import LibListExt.
 From LGTM.lib.seplog Require Import LibSepReference.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
