@@ -1,5 +1,5 @@
-From SLF Require Export LibCore.
-From SLF Require Export LibSepFmap.
+From LGTM.lib.theory Require Export LibCore.
+From LGTM.lib.seplog Require Export LibSepFmap.
 
 From mathcomp Require Import ssreflect ssrfun ssrbool.
 

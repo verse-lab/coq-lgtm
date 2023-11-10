@@ -1,7 +1,8 @@
 Set Implicit Arguments.
-From SLF Require Export LibCore.
-From SLF Require Export LibSepTLCbuffer LibSepVar LibSepFmap.
-From SLF Require Import Fun LabType LibSepSimpl LibSepReference.
+From LGTM.lib.theory Require Export LibCore LibSepTLCbuffer.
+From LGTM.lib.seplog Require Export LibSepVar LibSepFmap.
+From LGTM.lib.theory Require Import Fun LabType.
+From LGTM.lib.seplog Require Import LibSepSimpl LibSepReference.
 
 From mathcomp Require Import ssreflect ssrfun zify.
 

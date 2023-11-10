@@ -1,6 +1,6 @@
 (** * LibSepFmap: Appendix - Finite Maps *)
 Set Implicit Arguments.
-From SLF Require Import LibCore.
+From LGTM.lib.theory Require Import LibCore.
 
 From mathcomp Require Import ssreflect ssrfun zify.
 

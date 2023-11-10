@@ -8,9 +8,9 @@ programming language with programs assumed to be in A-normal form.
 This file is included by the chapters from the course. *)
 
 Set Implicit Arguments.
-From SLF Require Export LibCore.
-From SLF Require Export LibSepTLCbuffer LibSepVar LibSepFmap.
-From SLF Require Import Fun LabType.
+From LGTM.lib.theory Require Export LibCore LibSepTLCbuffer.
+From LGTM.lib.seplog Require Export LibSepVar LibSepFmap.
+From LGTM.lib.theory Require Import Fun LabType.
 
 From mathcomp Require Import ssreflect ssrfun zify.
 

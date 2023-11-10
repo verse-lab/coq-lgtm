@@ -1,9 +1,10 @@
 (** * LibSepVar: Appendix - Program Variables *)
 
 Set Implicit Arguments.
-From SLF Require LibListExec.
-From SLF Require Export LibString LibList LibCore.
-From SLF Require Import LibSepFmap LibSepTLCbuffer.
+From LGTM.lib.theory Require LibListExec.
+From LGTM.lib.theory Require Export LibString LibList LibCore.
+From LGTM.lib.theory Require Import LibSepTLCbuffer.
+From LGTM.lib.seplog Require Import LibSepFmap.
 Open Scope string_scope.
 Generalizable Variables A.
 

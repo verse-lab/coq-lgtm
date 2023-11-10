@@ -1,6 +1,7 @@
 Set Implicit Arguments.
 From mathcomp Require Import ssreflect ssrfun zify.
-From SLF Require Import Fun LabType LibSepFmap.
+From LGTM.lib.theory Require Export Fun LabType.
+From LGTM.lib.seplog Require Export LibSepFmap.
 From Coq Require Sorted.
 
 Import List.

@@ -1,8 +1,8 @@
 (** * LibSepSimpl: Appendix - Simplification of Entailments *)
 
 Set Implicit Arguments.
-From SLF Require Export LibCore.
-From SLF Require Export LibSepTLCbuffer LibSepReference.
+From LGTM.lib.theory Require Export LibCore LibSepTLCbuffer.
+From LGTM.lib.seplog Require Export LibSepReference.
 
 (* ################################################################# *)
 (** * Body of the Functor *)
