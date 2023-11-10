@@ -8,8 +8,8 @@
 **************************************************************************)
 
 Set Implicit Arguments.
-From SLF Require Import LibTactics.
-From SLF Require Export LibBool LibLogic.
+From LGTM.lib.theory Require Import LibTactics.
+From LGTM.lib.theory Require Export LibBool LibLogic.
 
 Implicit Type P : Prop.
 Implicit Type b : bool.

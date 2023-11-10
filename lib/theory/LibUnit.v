@@ -7,7 +7,7 @@
 **************************************************************************)
 
 Set Implicit Arguments.
-From SLF Require Import LibTactics LibLogic LibReflect.
+From LGTM.lib.theory Require Import LibTactics LibLogic LibReflect.
 
 (* ********************************************************************** *)
 (* ################################################################# *)

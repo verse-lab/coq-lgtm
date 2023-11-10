@@ -8,7 +8,7 @@
 **************************************************************************)
 
 Set Implicit Arguments.
-From SLF Require Import LibTactics LibLogic LibRelation.
+From LGTM.lib.theory Require Import LibTactics LibLogic LibRelation.
 Generalizable Variables A B.
 
 (* ********************************************************************** *)

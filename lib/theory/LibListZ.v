@@ -9,11 +9,11 @@
 
 Set Implicit Arguments.
 Generalizable Variables A B.
-From SLF Require Import LibTactics LibLogic LibOperation LibReflect
+From LGTM.lib.theory Require Import LibTactics LibLogic LibOperation LibReflect
   LibProd LibNat LibInt LibOption LibWf.
-From SLF Require Export LibList LibNat.
-From SLF Require Import LibInt.
-From SLF Require Export LibContainer.
+From LGTM.lib.theory Require Export LibList LibNat.
+From LGTM.lib.theory Require Import LibInt.
+From LGTM.lib.theory Require Export LibContainer.
 
 Open Scope Int_scope.
 Local Open Scope comp_scope.

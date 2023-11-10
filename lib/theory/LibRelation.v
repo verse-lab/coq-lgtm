@@ -8,8 +8,8 @@
 **************************************************************************)
 
 Set Implicit Arguments.
-From SLF Require Import LibTactics LibLogic LibBool LibLogic LibProd LibSum.
-From SLF Require Export LibOperation.
+From LGTM.lib.theory Require Import LibTactics LibLogic LibBool LibLogic LibProd LibSum.
+From LGTM.lib.theory Require Export LibOperation.
 
 (* ********************************************************************** *)
 (* ################################################################# *)

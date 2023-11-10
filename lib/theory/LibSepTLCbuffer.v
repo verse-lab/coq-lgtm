@@ -9,11 +9,11 @@ get merged into the various files from the TLC library.
 
 Set Implicit Arguments.
 (*
-From SLF Require Import LibTactics LibLogic LibList.
-From SLF Require Import LibReflect.
-From SLF Require LibListZ LibWf LibMultiset LibInt.
+From LGTM.lib.theory Require Import LibTactics LibLogic LibList.
+From LGTM.lib.theory Require Import LibReflect.
+From LGTM.lib.theory Require LibListZ LibWf LibMultiset LibInt.
 *)
-From SLF Require Import LibInt.
+From LGTM.lib.theory Require Import LibInt.
 Generalizable Variables A B.
 
 Global Opaque Z.mul.

@@ -8,7 +8,7 @@
 **************************************************************************)
 
 Set Implicit Arguments.
-From SLF Require Import LibTactics.
+From LGTM.lib.theory Require Import LibTactics.
 
 (* --LATER: eliminate the use of the section *)
 (* --LATER: add inversion lemmas *)

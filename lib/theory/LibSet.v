@@ -10,10 +10,10 @@
 Set Implicit Arguments.
 Generalizable Variables A B.
 Require Import Coq.Classes.Morphisms. (* for [Proper] instances *)
-From SLF Require Import LibTactics LibLogic LibReflect LibList
+From LGTM.lib.theory Require Import LibTactics LibLogic LibReflect LibList
   LibOperation LibMonoid LibInt LibNat
   LibEpsilon LibRelation LibMin.
-From SLF Require Export LibContainer.
+From LGTM.lib.theory Require Export LibContainer.
 
 (* ********************************************************************** *)
 (* ################################################################# *)

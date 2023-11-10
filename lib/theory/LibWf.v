@@ -8,7 +8,7 @@
 **************************************************************************)
 
 Set Implicit Arguments.
-From SLF Require Import LibTactics LibLogic
+From LGTM.lib.theory Require Import LibTactics LibLogic
  LibProd LibSum LibRelation LibNat LibInt.
 
 (* ********************************************************************** *)

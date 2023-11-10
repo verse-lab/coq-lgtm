@@ -9,8 +9,8 @@
 
 Set Implicit Arguments.
 Generalizable Variables A B.
-From SLF Require Import LibTactics LibReflect.
-From SLF Require Export LibList.
+From LGTM.lib.theory Require Import LibTactics LibReflect.
+From LGTM.lib.theory Require Export LibList.
 
 (* ---------------------------------------------------------------------- *)
 (* ================================================================= *)

@@ -8,7 +8,7 @@
 **************************************************************************)
 
 Set Implicit Arguments.
-From SLF Require Import LibTactics LibAxioms.
+From LGTM.lib.theory Require Import LibTactics LibAxioms.
 Generalizable Variables A.
 
 (* ********************************************************************** *)

@@ -8,7 +8,7 @@
 **************************************************************************)
 
 Set Implicit Arguments.
-From SLF Require Import LibTactics LibReflect.
+From LGTM.lib.theory Require Import LibTactics LibReflect.
 Generalizable Variables A.
 
 (* --TODO: find a more explicit name? *)

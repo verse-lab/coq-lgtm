@@ -12,9 +12,9 @@
 **************************************************************************)
 
 Set Implicit Arguments.
-From SLF Require Import LibTactics LibLogic LibContainer LibSet.
+From LGTM.lib.theory Require Import LibTactics LibLogic LibContainer LibSet.
 (* This will be Import-ed only in the relevant sections *)
-From SLF Require LibList.
+From LGTM.lib.theory Require LibList.
 Generalizable Variables A.
 
 (* ********************************************************************** *)

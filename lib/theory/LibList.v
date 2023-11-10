@@ -10,7 +10,7 @@
 
 Set Implicit Arguments.
 Require Import Coq.Classes.Morphisms. (* for [Proper] instances *)
-From SLF Require Import LibTactics LibLogic LibReflect LibOperation
+From LGTM.lib.theory Require Import LibTactics LibLogic LibReflect LibOperation
  LibProd LibOption LibNat LibInt LibWf LibMonoid LibRelation.
 Generalizable Variables A B.
 Local Open Scope nat_scope.

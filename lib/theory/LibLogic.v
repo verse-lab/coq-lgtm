@@ -8,8 +8,8 @@
 **************************************************************************)
 
 Set Implicit Arguments.
-From SLF Require Import LibTactics.
-From SLF Require Export LibAxioms LibEqual.
+From LGTM.lib.theory Require Import LibTactics.
+From LGTM.lib.theory Require Export LibAxioms LibEqual.
 Generalizable Variables A B P.
 
 (* ********************************************************************** *)

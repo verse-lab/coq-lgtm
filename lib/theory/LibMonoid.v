@@ -13,7 +13,7 @@
 **************************************************************************)
 
 Set Implicit Arguments.
-From SLF Require Import LibTactics LibLogic LibOperation.
+From LGTM.lib.theory Require Import LibTactics LibLogic LibOperation.
 Generalizable Variables A B.
 
 (* ********************************************************************** *)

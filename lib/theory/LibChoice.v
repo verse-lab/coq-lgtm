@@ -8,7 +8,7 @@
 **************************************************************************)
 
 Set Implicit Arguments.
-From SLF Require Import LibTactics LibLogic LibEpsilon LibRelation.
+From LGTM.lib.theory Require Import LibTactics LibLogic LibEpsilon LibRelation.
 Generalizable Variables A B.
 
 (** This files includes several versions of the axiom of choice.

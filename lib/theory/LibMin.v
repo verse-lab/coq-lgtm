@@ -11,7 +11,7 @@
 **************************************************************************)
 
 Set Implicit Arguments.
-From SLF Require Import LibTactics LibLogic LibReflect LibOperation
+From LGTM.lib.theory Require Import LibTactics LibLogic LibReflect LibOperation
   LibRelation LibOrder LibEpsilon.
 Generalizable Variables A.
 
@@ -136,7 +136,7 @@ Qed.
 (* ################################################################# *)
 (* * Application to [nat] *)
 
-From SLF Require Import LibNat.
+From LGTM.lib.theory Require Import LibNat.
 
 (* The type [nat] enjoys this property. *)
 

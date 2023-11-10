@@ -10,8 +10,8 @@
 Set Implicit Arguments.
 Require Export Coq.Arith.Arith.
 From mathcomp Require Import zify.
-From SLF Require Import LibTactics LibReflect LibBool LibOperation LibRelation LibOrder.
-From SLF Require Export LibOrder.
+From LGTM.lib.theory Require Import LibTactics LibReflect LibBool LibOperation LibRelation LibOrder.
+From LGTM.lib.theory Require Export LibOrder.
 Global Close Scope positive_scope.
 
 (* ********************************************************************** *)

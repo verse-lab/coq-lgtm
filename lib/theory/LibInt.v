@@ -9,9 +9,9 @@
 
 Set Implicit Arguments.
 Require Export Coq.ZArith.ZArith.
-From SLF Require Import LibTactics LibLogic LibReflect LibRelation.
+From LGTM.lib.theory Require Import LibTactics LibLogic LibReflect LibRelation.
 Export LibTacticsCompatibility.
-From SLF Require Export LibNat.
+From LGTM.lib.theory Require Export LibNat.
 (* From mathcomp Require Import zify. *)
 Require Import Coq.micromega.Lia.
 

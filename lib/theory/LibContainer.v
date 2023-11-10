@@ -8,7 +8,7 @@
 **************************************************************************)
 
 Set Implicit Arguments.
-From SLF Require Import LibTactics LibLogic LibReflect
+From LGTM.lib.theory Require Import LibTactics LibLogic LibReflect
   LibRelation LibOperation LibInt LibMonoid.
 Generalizable Variables A B K T.
 

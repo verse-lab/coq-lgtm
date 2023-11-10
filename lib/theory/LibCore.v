@@ -7,9 +7,9 @@
 * Packing the Core Modules                                                *
 **************************************************************************)
 
-From SLF Require Export LibTactics LibLogic LibOperation LibReflect.
-From SLF Require Export LibUnit LibProd LibSum LibOption LibNat LibInt LibList.
-From SLF Require Export LibRelation LibOrder LibWf.
+From LGTM.lib.theory Require Export LibTactics LibLogic LibOperation LibReflect.
+From LGTM.lib.theory Require Export LibUnit LibProd LibSum LibOption LibNat LibInt LibList.
+From LGTM.lib.theory Require Export LibRelation LibOrder LibWf.
 Export LibTacticsCompatibility.
 
 Open Scope Z_scope.
