@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-From SLF Require Import LabType Fun LibSepFmap Sum.
+From SLF Require Import LabType Fun LibSepFmap Sum Prelude.
 From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer Struct Loops Unary ListCommon.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
@@ -9,42 +9,6 @@ Open Scope Z_scope.
 Coercion to_int : val >-> Z.
 
 Module runlength.
-
-Module min.
-Section min.
-
-Context {D : Type}.
-
-Definition func :=
-  <{fun "b" "c" =>
-    let "cnd" = "b" < "c" in 
-    if "cnd" then "b" else "c"
-  }>.
-
-Lemma spec `{Inhab D} (b c : int) d : 
-  @htriple D (single d tt) 
-    (fun=> func b c)
-    \[]
-    (fun hr => \[hr = fun d=> Z.min b c]).
-Proof.
-  xwp;xapp; xwp; xif=> ?; xwp; xval; xsimpl; extens=>?;f_equal; lia.
-Qed.
-End min.
-End min.
-
-Hint Resolve min.spec : lhtriple.
-
-Notation "'for' i <- '[' Z ',' N ']' '{' t '}'"  :=
-  (For Z N <{ fun_ i => t }>)
-  (in custom trm at level 69,
-    Z, N, i at level 0,
-    format "'[' for  i  <-  [ Z ','  N ] ']'  '{' '/   ' '[' t  '}' ']'") : trm_scope.
-
-Notation "'while' C '{' T '}'"  :=
-  (While C T)
-  (in custom trm at level 69,
-    C, T at level 0,
-    format "'[' while  C ']'  '{' '/   ' '[' T  '}' ']'") : trm_scope.
 
 Notation "'xind'" := ("x_ind":var) (in custom trm at level 0) : trm_scope.
 Notation "'xval'" := ("x_val":var) (in custom trm at level 0) : trm_scope.
@@ -95,20 +59,17 @@ Proof.
 Qed.
 
 Lemma get_spec (k : int)  (x_ind x_val : loc)
-  (fs : fset (labeled int)) :
-  0 <= k < length xind - 1 -> 
-  (forall i, indom fs i -> xind[k] <= (eld i) < xind[k+1]) ->
+  (fs : fset (labeled int))
+  (Hk : 0 <= k < length xind - 1)
+  (HH : forall i, indom fs i -> xind[k] <= (eld i) < xind[k+1]) :
     htriple fs
       (fun d => get (eld d) x_ind x_val)
-      (\*_(d <- fs) 
-          (harray_int xind x_ind d \* 
-          harray_int xval x_val d))
+      ((\*_(d <- fs) harray_int xind x_ind d) \*
+      (\*_(d <- fs) harray_int xval x_val d))
       (fun hr => \[hr = fun d => xval[k] ] \*
-        \*_(d <- fs) 
-          (harray_int xind x_ind d \* 
-          harray_int xval x_val d)).
+        ((\*_(d <- fs) harray_int xind x_ind d) \*
+        (\*_(d <- fs) harray_int xval x_val d))).
 Proof.
-  move=> *.
   apply/htriple_val_eq/htriple_conseq;
   [|eauto|move=> ?]; rewrite -?hstar_fset_pure -?hbig_fset_hstar; first last.
   { move=> ?; apply: applys_eq_init; reflexivity. }
@@ -119,21 +80,16 @@ Qed.
 
 Lemma get_spec_seg `{Inhab D} (x_ind x_val : loc) (k : int) 
   (Hk : 0 <= k < (length xind - 1)) l : 
-  htriple (label (Lab l (ind_seg xind k)))
+  htriple ⟨l, ind_seg xind k⟩
     (fun d => get (eld d) x_ind x_val)
-    ((\*_(d0 <- (label (Lab l (ind_seg xind k)))) 
-        (harray_int xind x_ind d0 \* 
-        harray_int xval x_val d0)))
-    (fun hr => 
-      (\*_(d0 <- (label (Lab l (ind_seg xind k))))
-        \[hr d0 = val_int (xval[k])]) \*
-      (\*_(d0 <- (label (Lab l (ind_seg xind k)))) 
-        (harray_int xind x_ind d0 \* 
-        harray_int xval x_val d0))).
+    ((\*_(d0 <- ⟨l, ind_seg xind k⟩) harray_int xind x_ind d0) \*
+      ((\*_(d0 <- ⟨l, ind_seg xind k⟩) harray_int xval x_val d0)))
+    (fun hr => \[hr = fun d => xval[k] ] \*
+      ((\*_(d0 <- ⟨l, ind_seg xind k⟩) harray_int xind x_ind d0) \*
+      ((\*_(d0 <- ⟨l, ind_seg xind k⟩) harray_int xval x_val d0)))).
 Proof.
   apply/htriple_conseq; [apply/get_spec| |]; eauto.
-  { move=> -[>]; indomE=> -[<-]/=. rewrite /ind_seg; by indomE. }
-  move=> ?; xsimpl=>->; rewrite hstar_fset_pure; xsimpl*.
+  move=> -[>]; indomE=> -[<-]/=. rewrite /ind_seg; by indomE.
 Qed.
 
 End get.
@@ -183,46 +139,19 @@ Lemma rlsum_spec `{Inhab D} (x_ind x_val : loc) :
       (\*_(i <- `[0, N]) arr(x_val, xval)⟨2, i⟩)
   }}.
 Proof with fold'.
+  xset_Inv Inv 1; xset_R int Inv R 2.
   xin (1,0) : xwp; xapp=> s...
-  rewrite <- interval_segmentation with (L:=xind), <- ! EM; auto.
-  2: now subst M N.
-  set (R i := arr(x_ind, xind)⟨2, i⟩ \* arr(x_val, xval)⟨2, i⟩ : hhprop D).
-  set (Inv (i : int) := arr(x_ind, xind)⟨1, 0⟩ \* arr(x_val, xval)⟨1, 0⟩).
-  set (op hv (j : int) := (Σ_(i <- (ind_seg xind j)) hv[`2](i))).
-  xfor_sum Inv R R op s.
-  2: intros; apply ind_seg_disjoint with (N:=N); subst M N; 
-    try math; try autorewrite with indomE; try assumption.
-  { (* align *)
-    rewrite /Inv /R /op.
-    (xin (1,0): (do 9 (xwp; xapp)))...
-    subst M.
-    xapp (@get_spec_seg H x_ind x_val l0 H0)=> r.
-    rewrite hstar_fset_pure.
-    xsimpl=> Er.
-    (* TODO have no other way? can only touch himpl? *)
-    eapply eq_ind_r with (y:=val_int _).
-    1: apply himpl_refl.
-    do 2 f_equal. 
-    erewrite SumEq. 
-    2: intros ? HH; specialize (Er _ HH); rewrite Er; reflexivity.
-    rewrite SumConst_interval; simpl; try math.
-    apply IIL_L_inc'; auto; try math.
-  }
-  { (* post *)
-    xwp. xapp. xwp. xseq. 
-    (* TODO conjecture: xapp has bad compatibility with free *)
-    (* bad proof start *)
-    eapply wp_equiv, htriple_conseq_frame.
-    2: apply himpl_refl.
-    1: rewrite <- hbig_fset_label_single' with (Q:=fun d0 => s ~(d0)~> _), label_single; apply htriple_free.
-    xsimpl.
-    (* bad proof end *)
-    xwp. xval. xsimpl. f_equal.
-    rewrite SumCascade; try reflexivity.
-    intros i0 j0 Hneq Hi0 Hj0. subst M N.
-    eapply ind_seg_disjoint.
-    rewrite indom_interval in Hi0, Hj0. 2: reflexivity. all: auto.
-  }
+  rewrite <- interval_segmentation with (L:=xind), <- ! EM by now subst M N.
+  xfor_sum Inv R R (fun hv (j : int) => (Σ_(i <- (ind_seg xind j)) hv[`2](i))) s.
+  { (xin (1,0): (do 9 (xwp; xapp)))...
+    rewrite -> ! hbig_fset_hstar. subst M. 
+    xapp (@get_spec_seg H x_ind x_val _ H0). xsimpl.
+    rewrite SumConst_interval; simpl; try math; try xsimpl.
+    apply IIL_L_inc'; auto; try math. }
+  { intros. apply ind_seg_disjoint with (N:=N); subst M N; indomE; auto. } 
+  { do 2 (xwp; xapp). xwp; xval. xsimpl.
+    xsum_normalize. rewrite SumCascade; try reflexivity.
+    disjointE. intros. apply ind_seg_disjoint with (N:=N); subst M N; indomE; auto. }
 Qed.
 
 End rlsum.
@@ -245,12 +174,6 @@ Hypotheses (EMy : My = length yind - 1) (ENy : N = yind[My]).
 Hypotheses (xind0 : xind[0] = 0) (yind0 : yind[0] = 0).
 
 Context (α β : int).
-
-Notation "t1 && t2" :=
-  (and.func t1 t2)
-  (in custom trm at level 58) : trm_scope.
-
-Hint Resolve and.spec : htriple.
 
 Notation "'i'"     := ("i":var) (in custom trm at level 0) : trm_scope.
 Notation "'iX'"     := ("iX":var) (in custom trm at level 0) : trm_scope.
@@ -336,14 +259,6 @@ Definition alpha_blend := <{
       }; !ans
 }>.
 
-Lemma lhtriple_free D : forall (p : loc) (v : val) fs,
-  @htriple D fs (fun d => val_free p)
-    (\*_(d <- fs) p ~(d)~> v)
-    (fun _ => \[]).
-Proof using. intros. apply htriple_free. Qed.
-
-Hint Resolve lhtriple_free : lhtriple.
-
 Notation "H1 '\\*' H2" := (hstar H1 H2)
   (at level 42, right associativity, format "H1  \\* '//' H2") : hprop_scope.
 
@@ -356,13 +271,6 @@ Ltac abbrv :=
   match goal with 
   | |- context [ While ?c ?f ] => set (cnd := c); set (bdy := f)
   end.
-
-Lemma not_isTrueE (P: Prop) : (~ isTrue P) = ~ P.
-Proof. by rewrite istrue_isTrue_eq. Qed.
-
-Ltac bool_rew := 
-  rewrite ?false_eq_isTrue_eq ?istrue_isTrue_eq 
-    ?true_eq_isTrue_eq -?(isTrue_and, isTrue_not, isTrue_or) ?not_isTrueE.
 
 Notation size := Datatypes.length.
 
@@ -438,7 +346,7 @@ Proof with (fold'; try abbrv).
       have indlE: ind[l+1] = Z.min xind[ix + 1] yind[iy + 1].
       { rewrite (merge_nthS (def:=N)) -/ind ?indE...
         rewrite -{1}C Z.min_id {2}C Z.min_id ?search_nth... }
-      rewrite /R2/R3.
+      rewrite /R2/R3; rewrite -> ? hbig_fset_hstar.
       xin (2,0): xapp (@get_spec xind xval HindIIL ix)...
       { move=> [>]; indomE=>-[?]/=; lia. }
       xapp (@get_spec yind yval HindIIL' iy)...
@@ -465,7 +373,7 @@ Proof with (fold'; try abbrv).
       { rewrite (merge_nthS (def:=N)) -/ind ?indE...
         rewrite (Z.min_l xind[ix]) ?search_nth...
         rewrite (@search_nth_pred N _ iy)... }
-      rewrite /R2/R3.
+      rewrite /R2/R3; rewrite -> ? hbig_fset_hstar.
       xin (2,0): xapp (@get_spec xind xval HindIIL ix)...
       { move=> [>]; indomE=>-[?]/=; lia. }
       xapp (@get_spec yind yval HindIIL' (iy-1))...
@@ -492,7 +400,7 @@ Proof with (fold'; try abbrv).
     { rewrite (merge_nthS (def:=N)) -/ind ?indE...
       rewrite (Z.min_r xind[ix]) ?search_nth...
       rewrite (@search_nth_pred N _ ix)... }
-    rewrite /R2/R3.
+    rewrite /R2/R3; rewrite -> ? hbig_fset_hstar.
     xin (2,0): xapp (@get_spec xind xval HindIIL (ix-1))...
     { move=> [>]; indomE=>-[?]/=;
       replace (ix - 1 + 1) with ix; lia. }

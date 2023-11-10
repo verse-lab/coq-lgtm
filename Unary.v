@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-From SLF Require Import Fun LabType ListCommon.
+From SLF Require Import Fun LabType ListCommon Prelude.
 From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer Struct Loops.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
@@ -38,7 +38,7 @@ Notation "t1 && t2" :=
   (and.func t1 t2)
   (in custom trm at level 58) : trm_scope.
 
-Hint Resolve and.spec : htriple.
+Global Hint Resolve and.spec : htriple.
 
 Module incr1.
 
@@ -92,6 +92,79 @@ Notation "k '+=' x" :=
   (incr.func k x)
   (in custom trm at level 58, format "k  +=  x") : trm_scope.
 
+Module incr_float.
+
+Section incr_float. 
+
+Context {D : Type}.
+
+Definition func :=
+  (<{ fun "real_j" "x" =>
+      let "tmp1" = ! "real_j" in
+      let "tmp2" = "tmp1" .+ "x" in
+      "real_j" := "tmp2" }>).
+
+Lemma spec `{Inhab D} (pj0 : loc) (d : D) (j x : binary64) :
+  htriple (single d tt)
+  (fun=> func pj0 x) 
+  (pj0 ~(d)~> val_float j)
+    (fun=> pj0 ~(d)~> val_float (j + x)%F64).
+Proof. by do 3 (xwp; xapp). Qed.
+
+End incr_float.
+End incr_float.
+
+Notation "k '.+=' x" :=
+  (incr_float.func k x)
+  (in custom trm at level 58, format "k  .+=  x") : trm_scope.
+
+Module fma.
+
+Section fma. 
+
+Context {D : Type}.
+
+Definition func :=
+  (<{ fun "z" "x" "y" =>
+      let "tmp1" = "x" .* "y" in
+      let "tmp2" = ! "z" in
+      let "tmp2" = val_float_fma "tmp1" "tmp2" in
+      "z" := "tmp2" }>).
+
+Lemma spec `{Inhab D} (pj0 : loc) (d : D) (x y z : binary64) :
+  htriple (single d tt)
+  (fun=> func pj0 x y) 
+  (pj0 ~(d)~> val_float z)
+    (fun=> pj0 ~(d)~> val_float (@BFMA _ Tdouble x y z)).
+Proof. by do 4 (xwp; xapp). Qed.
+
+End fma.
+End fma.
+
+Module min.
+Section min.
+
+Context {D : Type}.
+
+Definition func :=
+  <{fun "b" "c" =>
+    let "cnd" = "b" < "c" in 
+    if "cnd" then "b" else "c"
+  }>.
+
+Lemma spec `{Inhab D} (b c : int) d : 
+  @htriple D (single d tt) 
+    (fun=> func b c)
+    \[]
+    (fun hr => \[hr = fun d=> Z.min b c]).
+Proof.
+  xwp;xapp; xwp; xif=> ?; xwp; xval; xsimpl; extens=>?;f_equal; lia.
+Qed.
+End min.
+End min.
+
+Hint Resolve min.spec : lhtriple.
+
 Module index_bounded.
 Section index_bounded.
 
@@ -119,20 +192,17 @@ Ltac fold' :=
     -/(While_aux _ _) 
     -/(While _ _) //=.
 
-Import List.
-
-Ltac bool_rew := 
-  rewrite ?false_eq_isTrue_eq ?true_eq_isTrue_eq -?(isTrue_and, isTrue_not, isTrue_or).
+Import List list_interval_notation.
 
 Lemma spec {D} `{Inhab D} d N (lb rb i : int) (xind : list int) (x_ind : loc) : 
   @htriple D (single d tt) 
     (fun=> func lb rb i x_ind)
     (harray_int xind x_ind d \* \[length xind = N :> int] 
-      \* \[List.NoDup (list_interval (abs lb) (abs rb) xind)] 
+      \* \[List.NoDup (xind [[ lb -- rb ]])] 
       \* \[0 <= lb <= rb] \* \[rb <= N])
-    (fun hv => harray_int xind x_ind d \* \[hv = fun=> lb + ListCommon.index i (list_interval (abs lb) (abs rb) xind)]).
+    (fun hv => harray_int xind x_ind d \* \[hv = fun=> lb + ListCommon.index i (xind [[ lb -- rb ]])]).
 Proof with fold'.
-  set (xind_sub := list_interval (abs lb) (abs rb) xind).
+  set (xind_sub := xind [[ lb -- rb ]]).
   set (N_sub := rb - lb).
   xwp; xsimpl=> ????; xapp=> k...
   assert (length xind_sub = rb - lb :> int) by (subst xind_sub N; now rewrite list_interval_length). 
@@ -221,7 +291,8 @@ Section index2.
 
 Context {D : Type} `{Inhab D}.
 
-Definition whilecond N (i j x y k : trm) :=
+Definition func (N : int) := Eval cbn zeta beta in
+  let whilecond N (i j x y k : trm) :=
   <{
     let 'k = !k in 
     let "x[k]" = x['k] in 
@@ -232,9 +303,7 @@ Definition whilecond N (i j x y k : trm) :=
     let "!(x[k] = i && y[k] = j)" = not "x[k] = i && y[k] = j" in
     let "k < N" = 'k < N in 
       "!(x[k] = i && y[k] = j)" && "k < N"
-  }>.
-
-Definition func (N : int) := 
+  }> in
   let loop := While (whilecond N "i" "j" "x" "y" "k") <{++"k"}> in
   <{
     fun "i" "j" "x" "y" =>
@@ -247,16 +316,10 @@ Definition func (N : int) :=
 
 Ltac fold' := 
   rewrite ?wp_single ?val_int_eq
-    -/(whilecond _ _ _ _ _ _) 
     -/(While_aux _ _) 
     -/(While _ _) //=.
 
 Import List.
-
-Ltac bool_rew := 
-  rewrite ?false_eq_isTrue_eq ?true_eq_isTrue_eq -?(isTrue_and, isTrue_not, isTrue_or).
-
-Hint Resolve and.spec : htriple.
 
 Implicit Type d : D.
 
@@ -311,14 +374,13 @@ End index2.
 Module search.
 Section search.
 
-Definition whilecond (p_arr : trm) (pj : trm) (i : trm) :=
-  (<{ let "tmp1" = ! pj in
+Definition func := Eval cbn beta zeta in
+  let whilecond (p_arr : trm) (pj : trm) (i : trm) :=
+  <{ let "tmp1" = ! pj in
       let "tmp2" = "tmp1" + 1 in
       let "tmp3" = read_array p_arr "tmp2" in
       let "cnd" = "tmp3" <= i in 
-      "cnd" }>).
-
-Definition func :=
+      "cnd" }> in
   let loop := While (whilecond "p_arr" "j" "i") <{ ++ "j" }> in
   <{ fun "i" "p_arr" => let "j" = ref 0 in 
       loop ; 
@@ -334,126 +396,70 @@ Context {HDInhabit : Inhab D}.
 
 Import List.
 
-Lemma whilecond_spec (j k : int) (pj p_arr : loc) (d : D) :
-  htriple (single d tt)
-    (fun=> whilecond p_arr pj k)
-    (pj ~(d)~> j \* harray_int L p_arr d)
-    (fun hv => \[hv d = (Z.leb (List.nth (abs (j+1)) L 0) k)]
-      \* pj ~(d)~> j \* harray_int L p_arr d).
-Proof.
-  intros. apply wp_equiv; do 4 (xwp; xapp).
-  xwp; xval; xsimpl.
-  f_equal.
-  rewrite -> isTrue_eq_if.
-  case_if; symmetry; [ apply Z.leb_le | apply Z.leb_gt ]; math.
-Qed.
-
 Local Tactic Notation "fold_search" := 
-  rewrite ?wp_single
-    -/(whilecond _ _ _) 
+  rewrite ?wp_single ?val_int_eq
     -/(incr1.func _) 
     -/(While_aux _ _) 
     -/(While _ _) //.
 
-Lemma spec : forall (d : D) (p_arr : loc) (k : int)
-  (Hk : (0 <= k < List.nth (abs (length L - 1)) L 0))
+Lemma spec (d : D) (p_arr : loc) (k : int)
+  (Hk : (0 <= k < L[length L - 1]))
   (a : int) (Ha : (0 <= a < (length L - 1))) 
-  (Hka : (List.nth (abs a) L 0 <= k < List.nth (abs (a + 1)) L 0)), 
+  (Hka : (L[a] <= k < L[a + 1])) :
   htriple (single d tt) 
     (fun=> func k p_arr)
     (harray_int L p_arr d)
     (fun hv => \[hv = fun=> val_int a] \* harray_int L p_arr d).
 Proof with fold_search.
-  intros.
-  apply wp_equiv.
   xwp; xapp=> pj /=...
   remember (pj d) as pj0.
   xwp; xwhile1 0 a (negb (ssrbool.is_left (Z.eq_dec 0 a)))
     (fun b j => \[(0 <= j < (length L - 1)) /\
-      (List.nth (abs j) L 0 <= k) /\ b = Z.leb (List.nth (abs (j+1)) L 0) k] 
+      (L[j] <= k) /\ b = Z.leb L[j+1] k] 
       \* pj0 ~(d)~> j \* harray_int L p_arr d).
   { intros b j. xsimpl. intros (H1 & H2 & ->).
-    xapp whilecond_spec; auto.
-    intros ? ->. xsimpl*.
-  }
-  { intros j. xsimpl*.
-    intros (Hj & Hleb & EE).
-    symmetry in EE.
-    rewrite -> Z.leb_gt in EE.
-    eapply search_unify with (L:=L) (j:=k); auto.
-  }
-  { intros j. xsimpl*.
-    intros (Hj & Hleb & EE).
-    symmetry in EE.
-    rewrite -> Z.leb_le in EE.
-    destruct (Z.leb a j) eqn:EE2.
-    2: now apply Z.leb_gt in EE2.
-    apply Z.leb_le in EE2. 
+    do 4 (xwp; xapp). xwp; xval; xsimpl*.
+    rewrite isTrue_eq_if. 
+    destruct ((L[j + 1] <=? k)) eqn:E; rewrite ?Z.leb_le ?Z.leb_gt in E; case_if; try eqsolve; try math. }
+  { intros j. xsimpl*. intros (Hj & Hleb & EE%eq_sym%Z.leb_gt).
+    eapply search_unify with (L:=L) (j:=k); auto. }
+  { intros j. xsimpl*. intros (Hj & Hleb & EE%eq_sym%Z.leb_le).
+    destruct (Z.leb a j) eqn:EE2; rewrite ?Z.leb_le ?Z.leb_gt in EE2; try math.
     assert (a + 1 <= j + 1) as EE2' by math.
-    apply IIL_L_inc' with (L:=L) in EE2'; auto; try math.
-  }
-  { intros j (Hj1 & Hj2) IH.
-    xsimpl. intros (_ & H1 & H2).
-    apply eq_sym, Z.leb_le in H2.
-    xwp. xapp (@incr1.spec _ HDInhabit).
-    destruct (Z.leb (a-1) j) eqn:Ef.
+    apply IIL_L_inc' with (L:=L) in EE2'; auto; try math. }
+  { intros j (Hj1 & Hj2) IH. xsimpl. intros (_ & H1 & H2%eq_sym%Z.leb_le).
+    xwp. xapp (@incr1.spec).
+    destruct (Z.leb (a-1) j) eqn:Ef; rewrite ?Z.leb_le ?Z.leb_gt in Ef.
     { (* check if it is the end *)
-      rewrite -> Z.leb_le in Ef.
       assert (j = a - 1) as -> by math.
       replace (a - 1 + 1) with a in * by math.
-      xwp; xapp whilecond_spec...
-      intros r Er...
-      destruct Hka as (_ & Hka).
-      rewrite -Z.leb_gt in Hka.
-      rewrite -> Hka in Er.
-      rewrite Er.
-      xwp. xif. 1: intros; by false.
-      intros _. 
-      xwp. xval.
-      xsimpl. split; auto. eqsolve.
-    }
+      xwp; xlet. do 4 (xwp; xapp). xwp; xval; xsimpl*. xwp; xif=> C; try math.
+      xwp; xval; xsimpl*.
+      rewrite -?Z.leb_le in C. eqsolve. }
     { (* use IH *)
-      rewrite -> Z.leb_gt in Ef. clear Hj2.
+      clear Hj2.
       assert (j + 1 <= a) as Hj2 by math.
       assert (j < j + 1) as Hj3 by math.
       specialize (IH (j+1) true).
       destruct Hka as (Hka1 & Hka2).
       xapp IH; try math.
       2: intros; xsimpl*.
-      { split; try math. split; try assumption. 
-        symmetry. apply Z.leb_le.
-        transitivity (List.nth (abs a) L 0); try assumption. 
-        destruct (Z.leb a (j+1+1)) eqn:EE.
-        { rewrite -> Z.leb_le in EE.
-          assert (j+1+1 = a) as -> by math.
-          reflexivity.
-        }
-        { rewrite -> Z.leb_gt in EE.
-          match goal with |- (?a <= ?b)%Z => enough (a < b); try math end.
-          apply IIL_L_inc; math.
-        }
-      }
-    }
-  }
-  { (* pre *)
-    xsimpl. split; try math. destruct Hka as (Hka1 & Hka2). split.
-    { transitivity (List.nth (abs a) L 0); try assumption.
-      apply IIL_L_inc'; auto; try math.
-    }
+      split; try math. split; try assumption. 
+      symmetry. apply Z.leb_le.
+      transitivity (L[a]); try assumption. 
+      destruct (Z.leb a (j+1+1)) eqn:EE; rewrite ?Z.leb_le ?Z.leb_gt in EE.
+      { assert (j+1+1 = a) as -> by math. reflexivity. }
+      { apply IIL_L_inc'; auto; math. } } }
+  { xsimpl. split; try math. destruct Hka as (Hka1 & Hka2). split.
+    { transitivity (L[a]); try assumption.
+      apply IIL_L_inc'; auto; try math. }
     { destruct (Z.eq_dec 0 a) as [ <- | ]; simpl.
       { apply eq_sym, Z.leb_gt; math. }
       { apply eq_sym, Z.leb_le.
-        transitivity (List.nth (abs a) L 0); try assumption.
-        apply IIL_L_inc'; auto; math.
-      }
-    }
-  }
-  { (* post *)
-    xsimpl. intros _ (_ & H1 & H2).
-    symmetry in H2. rewrite -> Z.leb_gt in H2.
-    xwp. xapp. xwp. xapp. xwp. xval.
-    xsimpl*.
-  }
+        transitivity (L[a]); try assumption.
+        apply IIL_L_inc'; auto; math. } } }
+  { xsimpl. intros _ (_ & H1 & H2%eq_sym%Z.leb_gt).
+    do 2 (xwp; xapp). xwp. xval. xsimpl*. }
 Qed.
 
 End search_proof.

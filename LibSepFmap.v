@@ -2935,6 +2935,8 @@ Proof.
   { eapply Union_fmap_none_inv with (t:=0) in E; auto. rewrite indom_interval. lia. }
 Qed.
 
+Global Arguments Union_same {_ _} _ _.
+
 Lemma update_union_not_r' [A B : Type] `{Inhab B} (h1 : fmap A B) [h2 : fmap A B] [x : A] (v : B) :
   update (h1 \+ h2) x v = update h1 x v \+ h2.
 Proof.

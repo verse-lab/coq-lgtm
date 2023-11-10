@@ -1,9 +1,4 @@
 Set Implicit Arguments.
-(* Require Export Setoid.
-Require Export Relation_Definitions.
-
-Locate "_ ==> _ ==> _". Check Morphisms.respectful. *)
-
 From SLF Require Import LabType Fun LibSepFmap Sum.
 From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer ListCommon.
 From SLF Require Import Struct Loops Unary SV Subst NTriple Loops2 Struct2.
@@ -11,8 +6,6 @@ From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
 Open Scope Z_scope.
-
-(* Module Export AD := WithUnary(Int2Dom). *)
 
 Module csr.
 
@@ -28,13 +21,7 @@ Notation "'lb'" := ("l_b":var) (in custom trm at level 0) : trm_scope.
 Notation "'rb'" := ("r_b":var) (in custom trm at level 0) : trm_scope.
 Notation "'i''" := ("i_'":var) (in custom trm at level 0) : trm_scope.
 
-Notation "'for' i <- '[' Z ',' N ']' '{' t '}'"  :=
-  (For Z N <{ fun_ i => t }>)
-  (in custom trm at level 69,
-    Z, N, i at level 0,
-    format "'[' for  i  <-  [ Z ','  N ] ']'  '{' '/   ' '[' t  '}' ']'") : trm_scope.
-
-Import List Vars.
+Import List Vars list_interval_notation.
 
 Context (mval colind rowptr : list int).
 Context (N Nrow Ncol : int).
@@ -49,14 +36,11 @@ Hypothesis rowptr_weakly_sorted : forall (i j : int),
   (0 <= i <= Nrow) -> 
   (0 <= j <= Nrow) -> 
   (i <= j) -> 
-  (List.nth (abs i) rowptr 0 <= List.nth (abs j) rowptr 0).
+  (rowptr[i] <= rowptr[j]).
 
-Definition colind_seg (row : int) :=
-  list_interval (abs (nth (abs row) rowptr 0)) (abs (nth (abs (row + 1)) rowptr 0)) colind.
+Definition colind_seg (row : int) := colind [[ (rowptr[row]) -- (rowptr[row + 1]) ]].
 
 Hypothesis nodup_eachcol : forall x : int, 0 <= x < Nrow -> NoDup (colind_seg x).
-(* FIXME: rowptr may not be strictly increasing? so the existing definition of increasing list 
-    may not work, currently use these instead *)
 
 Tactic Notation "seclocal_solver" :=
   first [ assumption 
@@ -70,8 +54,6 @@ Tactic Notation "seclocal_solver" :=
       split; [ rewrite <- rowptr_first at 1 | ]; apply rowptr_weakly_sorted; math
     | intros; eapply colind_leq, in_interval_list; now eauto
     | idtac ]; auto.
-
-(* Definition indexf := index_bounded.func. *)
 
 Definition get := 
 <{
@@ -102,28 +84,10 @@ Tactic Notation "seclocal_fold" :=
     -/(For_aux _ _) 
     -/(For _ _ _) //=.
 
-Arguments in_interval_list {_ _ _ _ _}.
-
 Local Notation Dom := (int * int)%type.
 Local Notation D := (labeled (int * int)).
 Definition eld := @LibWP.eld (int * int)%type.
 Coercion eld : D >-> Dom.
-
-Lemma sum_prod1{A B :Type} (fs : fset B) (x : A) : 
-  Sum (`{x} \x fs) = fun Q => Sum fs (fun i => Q (x, i)).
-Proof.
-  extens=> ?.
-  unfold prod; rewrite -SumCascade ?Sum1 -?SumCascade; try by disjointE.
-  erewrite SumEq with (fs:=fs); eauto.
-  move=>* /=; by rewrite Sum1.
-Qed.
-
-Lemma sum_prod1' {A B :Type} (fs : fset B) Q: 
-(fun x : A => Sum (`{x} \x fs) Q) = fun x => Sum fs (fun i => Q (x, i)).
-Proof. extens=> ?. by rewrite sum_prod1. Qed.
-
-Definition sum_prod1E := (@sum_prod1, @sum_prod1')%type.
-
 
 Lemma sum_spec `{Inhab D} (x_mval x_colind x_rowptr : loc) : 
   {{ arr(x_mval, mval)⟨1, (0,0)⟩ \*
@@ -226,7 +190,6 @@ Definition spmspv x_colind y_ind x_mval y_val :=
   s
 }>.
 
-Arguments Union_same {_ _} _ _.
 
 Lemma spmspv_spec `{Inhab D}
   (x_mval x_colind x_rowptr y_ind y_val : loc) : 
@@ -260,8 +223,8 @@ Proof with (try seclocal_fold; seclocal_solver; try lia).
     xin (1,0) : do 3 (xwp; xapp)...
     xsubst (snd : _ -> int).
     xnapp @sv.sv_dotprod_spec... 
-    { by rewrite -len_xind /slice slice_fullE. }
-    { move=> ?; rewrite -len_xind /slice slice_fullE... }
+    { by rewrite -len_xind slice_fullE. }
+    { move=> ?; rewrite -len_xind slice_fullE... }
     xsimpl=>->. xapp @lhtriple_array_set_pre; try math.
     rewrite sum_prod1E; xsimpl. }
   { rewrite Union_same //; try math; xsimpl*. xsimpl*. }

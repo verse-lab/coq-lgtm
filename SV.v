@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-From SLF Require Import LabType Fun LibSepFmap Sum Unary.
+From SLF Require Import LabType Fun LibSepFmap Sum Unary Prelude.
 From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer Struct Loops ListCommon.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
@@ -24,7 +24,7 @@ Notation "'dvec'" := ("d_vec":var) (in custom trm at level 0) : trm_scope.
 Notation "'xlb'" := ("l_b":var) (in custom trm at level 0) : trm_scope.
 Notation "'xrb'" := ("r_b":var) (in custom trm at level 0) : trm_scope.
 
-Import List Vars.
+Import List Vars list_interval_notation.
 
 Context (xind xval : list int).
 Context (N M : int).
@@ -33,8 +33,8 @@ Hypothesis (len : rb - lb = N).
 Hypotheses (bounds_l: 0 <= lb) (bounds_r: lb <= rb).
 Hypothesis len_xind : rb <= length xind.
 Hypothesis len_xval : rb <= length xval.
-Hypothesis nodup_xind : NoDup (list_interval (abs lb) (abs rb) xind).
-Hypothesis xind_leq : forall x, In x (list_interval (abs lb) (abs rb) xind) -> 0 <= x < M.
+Hypothesis nodup_xind : NoDup (xind [[ lb -- rb ]]).
+Hypothesis xind_leq : forall x, In x (xind [[ lb -- rb ]]) -> 0 <= x < M.
 
 Tactic Notation "seclocal_solver" :=
   first [ rewrite list_interval_nth'; auto; try math
@@ -70,12 +70,12 @@ Qed.
 
 Lemma get_spec_in {D : Type} `{Inhab D} (x_ind x_val : loc) i d : 
   @htriple D (single d tt) 
-    (fun=> get (List.nth (abs i) (list_interval (abs lb) (abs rb) xind) 0) x_ind x_val lb rb)
+    (fun=> get (List.nth (abs i) (xind [[ lb -- rb ]]) 0) x_ind x_val lb rb)
     (\[0 <= i < N] \*
       harray_int xind x_ind d \* 
       harray_int xval x_val d)
     (fun hr => 
-     \[hr = fun=> List.nth (abs i) (list_interval (abs lb) (abs rb) xval) 0] \* 
+     \[hr = fun=> List.nth (abs i) (xval [[ lb -- rb ]]) 0] \* 
       harray_int xind x_ind d \* 
       harray_int xval x_val d).
 Proof with seclocal_solver.
@@ -89,7 +89,7 @@ Qed.
 Lemma get_spec_out_unary {D : Type} `{Inhab D} (x_ind x_val : loc) (i : int) d : 
   @htriple D (single d tt) 
     (fun=> get i x_ind x_val lb rb)
-    (\[~ In i (list_interval (abs lb) (abs rb) xind)] \*
+    (\[~ In i (xind [[ lb -- rb ]])] \*
       harray_int xind x_ind d \* 
       harray_int xval x_val d)
     (fun hr => 
@@ -108,7 +108,7 @@ Local Notation D := (labeled int).
 Lemma get_spec_out `{Inhab D} fs (x_ind x_val : loc) : 
   @htriple D fs
     (fun i => get (eld i) x_ind x_val lb rb)
-    (\[forall d, indom fs d -> ~ In (eld d) (list_interval (abs lb) (abs rb) xind)] \*
+    (\[forall d, indom fs d -> ~ In (eld d) (xind [[ lb -- rb ]])] \*
       (\*_(d <- fs) harray_int xind x_ind d) \* 
        \*_(d <- fs) harray_int xval x_val d)
     (fun hr => 
@@ -141,8 +141,6 @@ Ltac fold' :=
   rewrite ?label_single ?wp_single ?val_int_eq
     -/(For_aux _ _) 
     -/(For _ _ _) //=.
-
-Notation "l '[[' i '--' j ']]' " := (list_interval (abs i) (abs j) l) (at level 5).
 
 Lemma sum_spec `{Inhab D} (x_ind x_val : loc) (s : int) : 
   {{ arr(x_ind, xind)⟨1, 0⟩ \*
@@ -233,9 +231,7 @@ End sv.
 
 Section sv.
 
-Import List.
-
-Definition slice {A} (l : list A) i j := (list_interval (abs i) (abs j) l).
+Import List list_interval_notation.
 
 Context (xind xval yind yval : list int).
 Context (Nx Ny M rbx lbx rby lby : int).
@@ -247,10 +243,10 @@ Hypothesis len_xind : rbx <= length xind.
 Hypothesis len_xval : rbx <= length xval.
 Hypothesis len_yind : rby <= length yind.
 Hypothesis len_yval : rby <= length yval.
-Hypothesis sorted_xind : sorted (slice xind lbx rbx).
-Hypothesis sorted_yind : sorted (slice yind lby rby).
-Hypothesis xind_leq : forall x, In x (slice xind lbx rbx) -> 0 <= x < M.
-Hypothesis yind_leq : forall x, In x (slice yind lby rby) -> 0 <= x < M.
+Hypothesis sorted_xind : sorted (xind [[ lbx -- rbx ]]).
+Hypothesis sorted_yind : sorted (yind [[ lby -- rby ]]).
+Hypothesis xind_leq : forall x, In x (xind [[ lbx -- rbx ]]) -> 0 <= x < M.
+Hypothesis yind_leq : forall x, In x (yind [[ lby -- rby ]]) -> 0 <= x < M.
 
 
 (* Notation "'xind'" := ("x_ind":var) (in custom trm at level 0) : trm_scope. *)
@@ -264,12 +260,6 @@ Notation "'lby'" := ("lb_y":var) (in custom trm at level 0) : trm_scope.
 Notation "'iX'" := ("iX":var) (in custom trm at level 0) : trm_scope.
 Notation "'iY'" := ("iY":var) (in custom trm at level 0) : trm_scope.
 Notation "'ans'" := ("ans":var) (in custom trm at level 0) : trm_scope.
-
-Notation "'while' C '{' T '}'"  :=
-  (While C T)
-  (in custom trm at level 69,
-    C, T at level 0,
-    format "'[' while  C ']'  '{' '/   ' '[' T  '}' ']'") : trm_scope.
 
 Definition sv_dotprod (xind yind xval yval : loc) := <{
   fun lbx rbx lby rby  =>
@@ -316,13 +306,6 @@ Ltac fold' :=
 
 Notation size := Datatypes.length.
 
-Lemma not_isTrueE (P: Prop) : (~ isTrue P) = ~ P.
-Proof. by rewrite istrue_isTrue_eq. Qed.
-
-Ltac bool_rew := 
-  rewrite ?false_eq_isTrue_eq ?istrue_isTrue_eq 
-    ?true_eq_isTrue_eq -?(isTrue_and, isTrue_not, isTrue_or) ?not_isTrueE.
-
 Lemma sv_dotprod_spec `{Inhab (labeled int)} (x_ind x_val y_ind y_val : loc) : 
   {{ (arr(x_ind, xind)⟨1, 0⟩ \* arr(y_ind, yind)⟨1, 0⟩ \*
      arr(x_val, xval)⟨1, 0⟩ \* arr(y_val, yval)⟨1, 0⟩) \*
@@ -343,10 +326,10 @@ Lemma sv_dotprod_spec `{Inhab (labeled int)} (x_ind x_val y_ind y_val : loc) :
       (\*_(i <- `[0, M]) arr(y_ind, yind)⟨3, i⟩) \\*
       (\*_(i <- `[0, M]) arr(y_val, yval)⟨3, i⟩)}}.
 Proof with fold'.
-  set (sxind := (slice xind lbx rbx)).
-  set (syind := (slice yind lby rby)).
-  set (sxval := (slice xval lbx rbx)).
-  set (syval := (slice yval lby rby)).
+  set (sxind := (xind [[ lbx -- rbx ]])).
+  set (syind := (yind [[ lby -- rby ]])).
+  set (sxval := (xval [[ lbx -- rbx ]])).
+  set (syval := (yval [[ lby -- rby ]])).
   pose proof (size_merge sxind syind) as indlen.
   set (ind := merge sxind syind) in indlen |- *.
   have indsorted : sorted ind by rewrite /sxind/syind; apply sorted_merge.
@@ -518,7 +501,7 @@ Proof with fold'.
       rewrite /R2.
       xapp get_spec_out_unary...
       { move/max_le; move: L1; rewrite take_ge ?length_List_length; try math.
-        rewrite -/(slice _ _ _)-/sxind; lia. }
+        rewrite -/sxind; lia. }
       xsimpl; try math.
       splits*=> //.
       { move=> ?. suff: ind[l] < ind[l+1] by lia.
@@ -531,7 +514,7 @@ Proof with fold'.
     rewrite /R1.
     xapp get_spec_out_unary...
     { move/max_le; move: L2; rewrite take_ge ?length_List_length; try math.
-      rewrite -/(slice _ _ _)-/syind; lia. }
+      rewrite -/syind; lia. }
     xsimpl; try lia.
     splits*=> //.
     { move=> ?. suff: ind[l] < ind[l+1] by lia.

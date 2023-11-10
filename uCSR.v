@@ -22,13 +22,7 @@ Notation "'lb'" := ("l_b":var) (in custom trm at level 0) : trm_scope.
 Notation "'rb'" := ("r_b":var) (in custom trm at level 0) : trm_scope.
 Notation "'i''" := ("i_'":var) (in custom trm at level 0) : trm_scope.
 
-Notation "'for' i <- '[' Z ',' N ']' '{' t '}'"  :=
-  (For Z N <{ fun_ i => t }>)
-  (in custom trm at level 69,
-    Z, N, i at level 0,
-    format "'[' for  i  <-  [ Z ','  N ] ']'  '{' '/   ' '[' t  '}' ']'") : trm_scope.
-
-Import List Vars.
+Import List Vars list_interval_notation.
 
 Context (mval midx colind rowptr : list int).
 Context (N Nrow Ncol Nidx : int).
@@ -48,14 +42,10 @@ Hypothesis rowptr_weakly_sorted : forall (i j : int),
   (i <= j) -> 
   (rowptr[i] <= rowptr[j]).
 
-Definition colind_seg (row : int) :=
-  list_interval (abs rowptr[row]) (abs rowptr[row+1]) colind.
+Definition colind_seg (row : int) := colind [[ (rowptr[row]) -- (rowptr[row + 1]) ]].
 
 Hypothesis nodup_eachcol : forall x : int, 0 <= x < Nidx -> NoDup (colind_seg x).
 Hypotheses nodup_midx : NoDup midx.
-
-(* FIXME: rowptr may not be strictly increasing? so the existing definition of increasing list 
-    may not work, currently use these instead *)
 
 Tactic Notation "seclocal_solver" :=
   first [ assumption 
@@ -150,24 +140,10 @@ Tactic Notation "seclocal_fold" :=
     -/(For_aux _ _) 
     -/(For _ _ _) //=.
 
-Arguments in_interval_list {_ _ _ _ _}.
-
 Local Notation Dom := (int * int)%type.
 Local Notation D := (labeled (int * int)).
 Definition eld := @LibWP.eld (int * int)%type.
 Coercion eld : D >-> Dom.
-
-(* although this can be put in LibSepFmap.v, it depends on Sum.mem so put it here now *)
-Fact prod_intr_list_on_1 {A B : Type} (fs1 : fset A) (fs2 : fset B) (la : list A) :
-  (fs1 ∩ la) \x fs2 = (fs1 \x fs2) ∩ (indom (la \x fs2)).
-Proof.
-  apply fset_extens. intros (a, b).
-  rewrite /intr !indom_prod !filter_indom !indom_prod /Sum.mem -fset_of_list_in /=. intuition.
-Qed.
-
-Hint Rewrite @filter_indom @indom_Union : indomE.
-Hint Rewrite <- @fset_of_list_in :  indomE.
-
 
 Lemma sum_spec `{Inhab D} `{Inhab (labeled int)} (x_mval x_colind x_rowptr x_midx : loc) : 
   {{ arr(x_mval, mval)⟨1, (0,0)⟩ \*
@@ -203,7 +179,7 @@ Proof with (try seclocal_fold; seclocal_solver).
     do 3 (xwp; xapp).
     xunfocus; xin (1,0) : idtac. (* reformat *)
     xnapp sv.sum_spec...
-    xsimpl=>->. xapp @incr.spec. rewrite csr.sum_prod1E. xsimpl. }
+    xsimpl=>->. xapp @incr.spec. rewrite sum_prod1E. xsimpl. }
   { move=>Ha Hb Hc; left. move: Ha; apply contrapose, NoDup_nthZ; autos*; math. }
   xwp; xapp. xsimpl*. xsum_normalize.
   rewrite SumCascade -?prod_Union_distr -?len_midx -?(fset_of_list_nodup 0) ?E //.
@@ -272,12 +248,12 @@ Proof with (try seclocal_fold; seclocal_solver).
     do 3 (xwp; xapp).
     xunfocus; xin (1,0) : idtac. (* reformat *)
     xnapp sv.dotprod_spec...
-    xsimpl=>->. xapp @lhtriple_array_set_pre. rewrite csr.sum_prod1E. xsimpl. }
+    xsimpl=>->. xapp @lhtriple_array_set_pre. rewrite sum_prod1E. xsimpl. }
   { intros. now case_if. }
   xwp; xval. xsimpl*. erewrite -> harray_fun_int_congr; try assumption; first xsimpl*.
   move=> i Hi /=. xsum_normalize.
   case_if.
-  { rewrite csr.sum_prod1E /=; apply SumEq=> >; indomE.
+  { rewrite sum_prod1E /=; apply SumEq=> >; indomE.
     case: classicT=> // /[swap]? []; exists (index i midx); indomE=> /=.
     splits; try tauto. 
     { rewrite -len_midx index_mem //; splits*; exact/(indexG0). }
@@ -345,7 +321,7 @@ Proof with (try seclocal_fold; seclocal_solver).
   have E : (`[0, Nrow] \x `[0, Ncol]) ∩ indom (midx \x `[0, Ncol]) = midx \x `[0, Ncol].
   { rewrite -prod_intr_list_on_1. f_equal. now apply intr_list. }
   rewrite E (fset_of_list_nodup 0 nodup_midx) len_midx prod_Union_distr.
-  rewrite -(Union_same (v:=Nidx) (`{0} \x `[0, Ncol])) //; try math.
+  rewrite -(Union_same Nidx (`{0} \x `[0, Ncol])) //; try math.
   xin (1,0) : (xwp; xapp (@htriple_alloc0_unary)=> // s)...
   xfor_arrayset Inv R1 R1 R2 R2 
     (fun hv (i : int) => (If (In i midx) then Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * hv[`3]((0,j.2))) else 0)) (fun _ : int => 0) s midx.
@@ -362,15 +338,15 @@ Proof with (try seclocal_fold; seclocal_solver).
     xunfocus; xin (1,0) : idtac. (* reformat *)
     xnapp sv.sv_dotprod_spec...
     1-3: lia. 
-    { by rewrite /slice -len_xind slice_fullE. }
-    { move=> ?; rewrite /slice -len_xind slice_fullE... }
-    xsimpl=>->. xapp @lhtriple_array_set_pre. rewrite csr.sum_prod1E. xsimpl. }
+    { by rewrite -len_xind slice_fullE. }
+    { move=> ?; rewrite -len_xind slice_fullE... }
+    xsimpl=>->. xapp @lhtriple_array_set_pre. rewrite sum_prod1E. xsimpl. }
   { intros. now case_if. }
   { rewrite Union_same //; try math; xsimpl*. xsimpl*. }
   xwp; xval. xsimpl*. erewrite -> harray_fun_int_congr; try assumption; first xsimpl*.
   move=> i Hi /=. xsum_normalize.
   case_if.
-  { rewrite csr.sum_prod1E /=; apply SumEq=> >; indomE.
+  { rewrite sum_prod1E /=; apply SumEq=> >; indomE.
     case: classicT=> // /[swap]? []; exists (index i midx); indomE=> /=.
     splits; try tauto. 
     { rewrite -len_midx index_mem //; splits*; exact/(indexG0). }

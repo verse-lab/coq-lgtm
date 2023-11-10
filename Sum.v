@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-From SLF Require Import Fun LabType LibSepReference ListCommon.
+From SLF Require Import Fun LabType LibSepReference LibWP ListCommon.
 From mathcomp Require Import ssreflect ssrfun zify.
 From Coq Require Import List.
 
@@ -24,6 +24,8 @@ Proof.
     apply nth_error_In in E. congruence. }
 Qed.
 
+Global Hint Rewrite <- @fset_of_list_in :  indomE.
+
 Lemma fset_of_list_nodup {A : Type} a (l : list A) : 
   List.NoDup l ->
   l = \U_(i <- interval 0 (length l)) `{List.nth (abs i) l a} :> fset _.
@@ -43,6 +45,11 @@ Fact intr_list (a b : int) (l: list int) :
 Proof.
   intros H. apply fset_extens=> x. rewrite intr_indom_both indom_interval -fset_of_list_in /mem. firstorder.
 Qed.
+
+(* can only put it here ... *)
+Fact prod_intr_list_on_1 {A B : Type} (fs1 : fset A) (fs2 : fset B) (la : list A) :
+  (fs1 ∩ la) \x fs2 = (fs1 \x fs2) ∩ (indom (la \x fs2)).
+Proof. apply fset_extens. intros (a, b). indomE. intuition. Qed.
 
 Definition Sum {A : Type} (fs : fset A) (f : A -> int) : int :=
   fset_fold 0 (fun idx acc => acc + (f idx)) fs.
@@ -146,7 +153,7 @@ Qed.
 
 Lemma SumUnion {A : Type} (F : A -> int) (fs1 fs2 : fset A) 
   (Hdj : disjoint fs1 fs2) :
-  Σ_(i <- fs1 \+ fs2) F i = (Σ_(i <- fs1) F i) + (Σ_(i <- fs2) F i).
+  Σ_(i <- union fs1 fs2) F i = (Σ_(i <- fs1) F i) + (Σ_(i <- fs2) F i).
 Proof.
   revert fs2 Hdj.
   apply fset_ind with (fs:=fs1); intros.
@@ -246,6 +253,21 @@ Proof.
   apply SumEq=> x. rewrite indom_interval. intros.
   rewrite list_interval_nth' //. tauto.
 Qed.
+
+Lemma sum_prod1{A B :Type} (fs : fset B) (x : A) : 
+  Sum (`{x} \x fs) = fun Q => Sum fs (fun i => Q (x, i)).
+Proof.
+  extens=> ?.
+  unfold prod; rewrite -SumCascade ?Sum1 -?SumCascade; try by disjointE.
+  erewrite SumEq with (fs:=fs); eauto.
+  move=>* /=; by rewrite Sum1.
+Qed.
+
+Lemma sum_prod1' {A B :Type} (fs : fset B) Q: 
+(fun x : A => Sum (`{x} \x fs) Q) = fun x => Sum fs (fun i => Q (x, i)).
+Proof. extens=> ?. by rewrite sum_prod1. Qed.
+
+Definition sum_prod1E := (@sum_prod1, @sum_prod1')%type.
 
 Tactic Notation "xsum_normalize" :=
   repeat match goal with

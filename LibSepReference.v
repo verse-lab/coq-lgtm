@@ -152,6 +152,10 @@ Definition to_float (v : val) : binary64 :=
   | _ => float_unit
   end.
 
+Lemma to_float_if P a b : 
+  to_float (If P then a else b) = If P then to_float a else to_float b.
+Proof. by case: classicT. Qed.
+
 Definition to_loc (v : val) : loc := 
   match v with 
   | val_loc v => v 
@@ -175,6 +179,10 @@ Hint Resolve add_val_comm add_val_assoc : core.
 
 Lemma val_int_eq i j : 
   (val_int i = val_int j) = (i = j).
+Proof. by extens; split=> [[]|]->. Qed.
+
+Lemma val_float_eq i j : 
+  (val_float i = val_float j) = (i = j).
 Proof. by extens; split=> [[]|]->. Qed.
 
 (** A state consists of a finite map from location to values. Records and

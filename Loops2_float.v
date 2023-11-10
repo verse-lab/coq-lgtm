@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-From SLF Require Import Fun LabType Sum ListCommon.
+From SLF Require Import Fun LabType Sum ListCommon Dotprod_float.
 From SLF Require Import LibSepReference  LibWP LibSepSimpl Struct.
 From SLF Require Import LibSepTLCbuffer Loops Struct2 Subst.
 From mathcomp Require Import ssreflect ssrfun zify.

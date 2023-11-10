@@ -5048,6 +5048,10 @@ Tactic Notation "xapp" constr(E) :=
 Tactic Notation "xapp" :=
   xapp_nosubst; xapp_try_subst.
 
+Tactic Notation "xapp_big" constr(E) :=
+  rewrite -> ! hbig_fset_hstar;
+  xapp E=> //; rewrite -?hbig_fset_hstar.
+
 Tactic Notation "xapp_debug" :=
   xseq_xlet_if_needed; xstruct_if_needed; applys @xapp_lemma.
 
@@ -8380,6 +8384,12 @@ End WP_for.
 
 End For_loop.
 
+Notation "'while' C '{' T '}'"  :=
+  (While C T)
+  (in custom trm at level 69,
+    C, T at level 0,
+    format "'[' while  C ']'  '{' '/   ' '[' T  '}' ']'") : trm_scope.
+
 Notation "'for' i <- '[' Z ',' N ']' '{' t '}'"  :=
   (For Z N (trm_fun i t))
   (in custom trm at level 69,
@@ -9562,7 +9572,7 @@ Qed.
 Global Hint Rewrite @disjoint_single disjoint_interval disjoint_single_interval 
   disjoint_interval_single @disjoint_eq_label @disjoint_label @disjoint_prod : disjointE.
 
-Global Hint Rewrite @indom_label_eq @indom_union_eq @indom_prod @indom_interval @indom_single_eq @intr_indom @intr_neg_indom : indomE.
+Global Hint Rewrite @indom_label_eq @indom_union_eq @indom_prod @indom_interval @indom_single_eq @intr_indom @intr_neg_indom @indom_Union : indomE.
 
 Ltac indomE := autorewrite with indomE.
 

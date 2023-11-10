@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-From SLF Require Import LabType Fun LibSepFmap Sum.
+From SLF Require Import LabType Fun LibSepFmap Sum Dotprod_float.
 From SLF Require Import LibWP LibSepSimpl LibSepReference LibSepTLCbuffer ListCommon.
 From SLF Require Import Struct Loops Unary Subst NTriple Struct2 Loops2_float Struct SV_float.
 From mathcomp Require Import ssreflect ssrfun zify.
@@ -19,7 +19,7 @@ Notation "'lb'" := ("l_b":var) (in custom trm at level 0) : trm_scope.
 Notation "'rb'" := ("r_b":var) (in custom trm at level 0) : trm_scope.
 Notation "'i''" := ("i_'":var) (in custom trm at level 0) : trm_scope.
 
-Import List Vars.
+Import List Vars list_interval_notation.
 
 Context (mval : list binary64).
 Context (colind rowptr : list int).
@@ -35,18 +35,15 @@ Hypothesis rowptr_weakly_sorted : forall (i j : int),
   (0 <= i <= Nrow) -> 
   (0 <= j <= Nrow) -> 
   (i <= j) -> 
-  (List.nth (abs i) rowptr 0 <= List.nth (abs j) rowptr 0).
+  (rowptr[i] <= rowptr[j]).
 Hypothesis mval_finite : forall x, In x mval -> @finite Tdouble x.
 
-Definition colind_seg (row : int) :=
-  list_interval (abs (nth (abs row) rowptr 0)) (abs (nth (abs (row + 1)) rowptr 0)) colind.
+Definition colind_seg (row : int) := colind [[ (rowptr[row]) -- (rowptr[row + 1]) ]].
 
 Hypothesis nodup_eachcol : forall x : int, 0 <= x < Nrow -> NoDup (colind_seg x).
-Hypothesis sorted_eachcol : forall x : int, 0 <= x < Nrow -> sorted (colind_seg x). (* TODO possibly remove nodup_eachcol since sorted_eachcol subsumes it? *)
-(* FIXME: rowptr may not be strictly increasing? so the existing definition of increasing list 
-    may not work, currently use these instead *)
+Hypothesis sorted_eachcol : forall x : int, 0 <= x < Nrow -> sorted (colind_seg x). 
 
-Tactic Notation "seclocal_solver" :=
+Local Tactic Notation "seclocal_solver" :=
   first [ assumption 
     | rewrite -/(colind_seg _); now apply nodup_eachcol
     | (* for rowptr[?] <= N *)
@@ -60,8 +57,6 @@ Tactic Notation "seclocal_solver" :=
     | intros; eapply colind_leq, in_interval_list; now eauto
     | intros; eapply mval_finite, in_interval_list; now eauto
     | idtac ]; auto.
-
-(* Definition indexf := index_bounded.func. *)
 
 Definition get := 
 <{
@@ -92,8 +87,6 @@ Tactic Notation "seclocal_fold" :=
     -?/(harray_int _ _ _)
     -/(For_aux _ _) 
     -/(For _ _ _) //=.
-
-Arguments in_interval_list {_ _ _ _ _}.
 
 Local Notation Dom := (int * int)%type.
 Local Notation D := (labeled (int * int)).
@@ -323,9 +316,6 @@ Proof with (try seclocal_fold; seclocal_solver).
     { xwp; xval. xsimpl*. }
 Qed.
 *)
-Ltac xapp_big E := 
-  rewrite -> ! hbig_fset_hstar;
-  xapp E=> //; rewrite -?hbig_fset_hstar.
 
 Definition spmv' := 
   <{
@@ -349,8 +339,6 @@ Definition spmv' :=
   }; 
   "ans"
 }>.
-
-Hint Resolve lhtriple_array_set_pre : lhtriple.
 
 Tactic Notation "seclocal_solver2" :=
   first [ rewrite /colind_seg list_interval_nth'; auto; solve [ math | seclocal_solver ]

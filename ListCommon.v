@@ -7,6 +7,12 @@ Import List.
 
 Notation "x '[' i ']'" := (List.nth (abs i) x 0) (at level 5, format "x [ i ]").
 
+Fact fold_left_map {A B C : Type} (l : list B) (g : B -> C) (f : A -> C -> A) (s : A) :
+  fold_left (fun a b => f a (g b)) l s = fold_left f (map g l) s.
+Proof.
+  revert s. induction l as [ | x l IH ] using rev_ind; intros; rewrite ?map_app ?fold_left_app /= ?IH; auto. 
+Qed. 
+
 Fact take_conversion [A : Type] (n : nat) (l : list A) : take n l = firstn n l.
 Proof.
   revert n. induction l; intros; simpl in *; rewrite ?take_nil; auto.
@@ -362,6 +368,14 @@ Proof.
 Qed.
 
 End list_interval.
+
+Global Arguments in_interval_list {_ _ _ _ _}.
+
+Module list_interval_notation.
+
+Notation "l '[[' i '--' j ']]' " := (list_interval (abs i) (abs j) l) (at level 5).
+
+End list_interval_notation.
 
 Section sorted_max.
 

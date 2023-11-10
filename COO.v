@@ -118,14 +118,8 @@ Definition sum :=
   ! s
 }>.
 
-(* Tactic Notation "xin" constr(S1) ":" tactic(tac) := 
-  let n := constr:(S1) in
-  xfocus n; tac; try(
-  first [xunfocus | xcleanup n]; simpl; try apply xnwp0_lemma). *)
-
 Ltac fold' := 
   rewrite ?label_single ?wp_single
-    (* -/(incr _)  *)
     -/(For_aux _ _) 
     -/(For _ _ _) //=.
 
@@ -214,13 +208,6 @@ Module coo.
 
 Notation "H1 '\\*' H2" := (hstar H1 H2)
   (at level 42, right associativity, format "H1  \\* '//' H2") : hprop_scope.
-
-
-Notation "'for' i <- '[' Z ',' N ']' '{' t '}'"  :=
-  (For Z N <{ fun_ i => t }>)
-  (in custom trm at level 69,
-    Z, N, i at level 0,
-    format "'[' for  i  <-  [ Z ','  N ] ']'  '{' '/   ' '[' t  '}' ']'") : trm_scope.
 
 Section coo.
 
@@ -349,7 +336,7 @@ Proof with fold'.
   xin (1,0) : xwp; xapp=> s...
   have E : (`[0, Nrow] \x `[0, Ncol]) ∩ combine xrow xcol = combine xrow xcol.
   { apply/fset_extens=> -[r c]. specializes xrow_leq r. specializes xcol_leq c. 
-    indomE. rewrite -fset_of_list_in /Sum.mem /=. split; try tauto. intros HH. pose proof HH as HH2%in_combineE. tauto. }
+    indomE. rewrite /Sum.mem /=. split; try tauto. intros HH. pose proof HH as HH2%in_combineE. tauto. }
   rewrite ?E (fset_of_list_nodup (0,0)) // lE.
   xfor_sum Inv R (fun=> \Top) (fun hv i => hv[`2]((xrow[i], xcol[i]))) s.
   { (xin (1,0): (xwp; xapp; xapp (@incr.spec _ H)=> y))...

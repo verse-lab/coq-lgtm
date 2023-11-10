@@ -272,6 +272,9 @@ Lemma isTrue_If_eq_if_isTrue : forall P1 P2 P3,
   = (if isTrue P1 then isTrue P2 else isTrue P3).
 Proof using. intros. rewrite if_isTrue. rewrite~ isTrue_If. Qed.
 
+Lemma not_isTrueE (P: Prop) : (~ isTrue P) = ~ P.
+Proof using. rewrite~ istrue_isTrue_eq. Qed.
+
 (* ---------------------------------------------------------------------- *)
 (* ================================================================= *)
 (** ** Lemmas for testing booleans *)

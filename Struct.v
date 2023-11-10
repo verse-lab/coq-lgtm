@@ -856,23 +856,13 @@ End fun_array.
 End WithArray.
 
 
-Global Hint Resolve lhtriple_array_read : lhtriple.
+Global Hint Resolve lhtriple_array_read lhtriple_array_read_float lhtriple_array_set_pre : lhtriple.
 
-Global Hint Resolve htriple_array_read : htriple.
-
-Global Hint Resolve lhtriple_array_read_float : lhtriple.
-
-Global Hint Resolve htriple_array_read_float : htriple.
+Global Hint Resolve htriple_array_read htriple_array_read_float htriple_length htriple_dealloc htriple_alloc_nat : htriple.
 
 Global Notation "x '[' i ']'" := (read_array x i) (in custom trm at level 50, format "x [ i ]") : trm_scope.
 
 Global Notation "x '[.' i ']'" := (read_array_float x i) (in custom trm at level 50, format "x [. i ]") : trm_scope.
-
-Global Hint Resolve htriple_length : htriple.
-
-Global Hint Resolve htriple_dealloc : htriple.
-
-Global Hint Resolve htriple_alloc_nat : htriple.
 
 Global Notation "'arr(' x ',' y ')⟨' l ',' d '⟩'" := 
 (harray_int y x (Lab (l,0) d)) (at level 32, format "arr( x ,  y )⟨ l ,  d ⟩") : hprop_scope.
