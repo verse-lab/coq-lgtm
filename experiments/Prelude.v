@@ -20,4 +20,4 @@ Tactic Notation "xpointwise_build" uconstr(E) :=
   first (move=> ?; apply: applys_eq_init; reflexivity);
   apply/htriple_union_pointwise=> [> -> //|??]; 
   rewrite -wp_equiv wp_single; xapp E=> //; try eauto; try intros; try subst;
-  xsimpl*.
+  try xsimpl*.
