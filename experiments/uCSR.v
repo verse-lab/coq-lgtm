@@ -212,9 +212,8 @@ Lemma spmv_spec `{Inhab D} `{H__ : Inhab (labeled int)} (x_mval x_midx x_colind 
     [1| ld in `{(0,0)}                 => spmv x_mval x_midx x_colind x_rowptr x_dvec];
     {2| ld in `[0, Nrow] \x `[0, Ncol] => get x_mval x_midx x_colind x_rowptr ld.1 ld.2}
   }]
-  {{ hv, (\exists p, 
-    \[hv[`1]((0,0)) = val_loc p] \*
-    harray_fun_int (fun i => Σ_(j <- `[0, Ncol]) hv[`2]((i, j)) * dvec[j]) p Nrow (Lab (1,0) (0,0)))
+  {{ hv, 
+    harray_fun_int (fun i => Σ_(j <- `[0, Ncol]) hv[`2]((i, j)) * dvec[j]) (hv[`1]((0,0))) Nrow (Lab (1,0) (0,0))
       \* \Top }}.
 Proof with (try seclocal_fold; seclocal_solver).
   xset_Inv Inv 1; xset_R int Inv R 2.
@@ -300,9 +299,8 @@ Lemma spmspv_spec `{Inhab D} `{H__ : Inhab (labeled int)}
     {2| ld in `[0, Nrow] \x `[0, Ncol] => get x_mval x_midx x_colind x_rowptr ld.1 ld.2};
     {3| ld in `{0}       \x `[0, Ncol] => sv.get ld.2 y_ind y_val 0 M}
   }]
-  {{ hv, (\exists p, 
-    \[hv[`1]((0,0)) = val_loc p] \*
-    harray_fun_int (fun i => Σ_(j <- `[0, Ncol]) hv[`2]((i, j)) * hv[`3]((0, j))) p Nrow (Lab (1,0) (0,0)))
+  {{ hv, 
+    harray_fun_int (fun i => Σ_(j <- `[0, Ncol]) hv[`2]((i, j)) * hv[`3]((0, j))) (hv[`1]((0,0))) Nrow (Lab (1,0) (0,0))
       \* \Top }}.
 Proof with (try seclocal_fold; seclocal_solver).
   xset_Inv Inv 1; xset_R_core int R1 2; xset_R_core int R2 3. xset_clean Inv R1 R2.

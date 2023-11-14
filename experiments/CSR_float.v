@@ -183,11 +183,10 @@ Lemma spmv_spec `{Inhab D} (x_mval x_colind x_rowptr x_dvec : loc) :
     [1| ld in `{(0,0)}                 => spmv x_mval x_colind x_rowptr x_dvec];
     {2| ld in `[0, Nrow] \x `[0, Ncol] => get x_mval x_colind x_rowptr ld.1 ld.2}
   }]
-  {{ hv, (\exists p, \exists vl : int -> binary64, 
-    \[hv[`1]((0,0)) = val_loc p /\ forall i : int, 0 <= i < Nrow ->
-      @feq Tdouble (vl i) (Sum_fma float_unit (lof id Ncol) (fun j => (to_float (hv[`2]((i, j))), dvec[j])))] \*
-    harray_fun_float vl p Nrow (Lab (1,0) (0,0)))
-      \* \Top }}. (* this \Top can be made concrete, if needed *)
+  {{ hv, 
+  harray_fun_float' 
+    (fun i => (Sum_fma float_unit (lof id Ncol) (fun j => (to_float (hv[`2]((i, j))), dvec[j]))))
+    (hv[`1]((0,0))) Nrow (Lab (1,0) (0,0)) \* \Top }}. (* this \Top can be made concrete, if needed *)
 Proof with (try solve [ seclocal_solver ]; seclocal_fold).
   xset_Inv Inv 1; xset_R int Inv R 2.
   xin (2,0) : do 3 (xwp; xapp).
