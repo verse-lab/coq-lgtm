@@ -49,6 +49,7 @@ Hypothesis nodup_eachcol : forall x : int, 0 <= x < Nidx -> NoDup (colind_seg x)
 Hypotheses nodup_midx : NoDup midx.
 
 Tactic Notation "seclocal_solver" :=
+  try (rewrite index_nodup=> //; math);
   first [ assumption 
     | rewrite -/(colind_seg _); now apply nodup_eachcol
     | (* for rowptr[?] <= N *)
@@ -59,6 +60,7 @@ Tactic Notation "seclocal_solver" :=
     | (* for 0 <= rowptr[i] <= rowptr[i + 1] *)
       split; [ rewrite <- rowptr_first at 1 | ]; apply rowptr_weakly_sorted; math
     | intros; eapply colind_leq, in_interval_list; now eauto
+    | intros; now case_if
     | idtac ]; auto.
 
 Definition indexf := index.func Nidx.
@@ -197,6 +199,18 @@ Definition spmv :=
   s
 }>.
 
+Ltac xstep := xwp; xapp.
+Ltac xgo := do ? xstep.
+Tactic Notation "xapp*" constr(E) := xwp; xapp_big E=> //.
+Tactic Notation "xin*" constr(S1) ":" tactic(tac) := 
+  let n := constr:(S1) in
+  xfocus n; try rewrite wp_prod_single /=; tac; try(
+  first [xunfocus | xcleanup n]; simpl; try apply xnwp0_lemma); rewrite -?xntriple1_lemma /=.
+
+Tactic Notation "xmalloc" ident(s) := xwp; xapp (@htriple_alloc0_unary)=> // s.
+
+Hint Resolve lhtriple_array_set_pre : lhtriple.
+
 Lemma spmv_spec `{Inhab D} `{H__ : Inhab (labeled int)} (x_mval x_midx x_colind x_rowptr x_dvec : loc) : 
   {{ arr(x_mval, mval)⟨1, (0,0)⟩ \*
      arr(x_midx, midx)⟨1, (0,0)⟩ \*
@@ -212,7 +226,7 @@ Lemma spmv_spec `{Inhab D} `{H__ : Inhab (labeled int)} (x_mval x_midx x_colind 
     [1| ld in `{(0,0)}                 => spmv x_mval x_midx x_colind x_rowptr x_dvec];
     {2| ld in `[0, Nrow] \x `[0, Ncol] => get x_mval x_midx x_colind x_rowptr ld.1 ld.2}
   }]
-  {{ hv, 
+  {{ hv,
     harray_fun_int (fun i => Σ_(j <- `[0, Ncol]) hv[`2]((i, j)) * dvec[j]) (hv[`1]((0,0))) Nrow (Lab (1,0) (0,0))
       \* \Top }}.
 Proof with (try seclocal_fold; seclocal_solver).
@@ -223,23 +237,18 @@ Proof with (try seclocal_fold; seclocal_solver).
   have E : (`[0, Nrow] \x `[0, Ncol]) ∩ indom (midx \x `[0, Ncol]) = midx \x `[0, Ncol].
   { rewrite -prod_intr_list_on_1. f_equal. now apply intr_list. }
   rewrite E (fset_of_list_nodup 0 nodup_midx) len_midx prod_Union_distr.
-  xin (1,0) : (xwp; xapp (@htriple_alloc0_unary)=> // s)...
+  xin (1,0) : xmalloc ans...
   xfor_arrayset Inv R R 
-    (fun hv (i : int) => (If (In i midx) then Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * dvec[j.2]) else 0)) (fun _ : int => 0) s midx.
+    (fun hv (i : int) => (If (In i midx) then Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * dvec[j.2]) else 0)) 
+    (fun _ : int => 0) ans midx...
   { intros. apply midx_leq, nth_In; math. }
-  { case: classicT=> [?|/(_ (nth_In _ _ _))]; last lia.
-    xin (2,0) : rewrite wp_prod_single /=.
-    xin (1,0) : do 4 (xwp; xapp)...
+  { xin* (2,0): xapp* @index.specs; xstep; xwp; xif=> [?|]; xgo...
+    xin (1,0) : xgo...
+    rewrite index_nodup //; try math.
     xsubst (snd : _ -> int).
-    xfocus (2,0); rewrite -> ! hbig_fset_hstar.
-    xwp; xapp (@index.Spec `[0, Ncol] Nidx (2,0) midx x_midx (fun=> midx[l0]))=> //.
-    rewrite index_nodup; try math; try assumption.
-    xwp; xapp. xwp; xif=> ?; [ | math ].
-    do 3 (xwp; xapp).
-    xunfocus; xin (1,0) : idtac. (* reformat *)
     xnapp sv.dotprod_spec...
-    xsimpl=>->. xapp @lhtriple_array_set_pre. rewrite sum_prod1E. xsimpl. }
-  { intros. now case_if. }
+    xsimpl=>->; xapp; rewrite sum_prod1E; xsimpl.
+    case: classicT=> [?|/(_ (nth_In _ _ _))] //; lia. }
   xwp; xval. xsimpl*. erewrite -> harray_fun_int_congr; try assumption; first xsimpl*.
   move=> i Hi /=. xsum_normalize.
   case_if.
@@ -299,7 +308,7 @@ Lemma spmspv_spec `{Inhab D} `{H__ : Inhab (labeled int)}
     {2| ld in `[0, Nrow] \x `[0, Ncol] => get x_mval x_midx x_colind x_rowptr ld.1 ld.2};
     {3| ld in `{0}       \x `[0, Ncol] => sv.get ld.2 y_ind y_val 0 M}
   }]
-  {{ hv, 
+  {{ hv,
     harray_fun_int (fun i => Σ_(j <- `[0, Ncol]) hv[`2]((i, j)) * hv[`3]((0, j))) (hv[`1]((0,0))) Nrow (Lab (1,0) (0,0))
       \* \Top }}.
 Proof with (try seclocal_fold; seclocal_solver).
