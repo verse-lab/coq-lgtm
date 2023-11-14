@@ -68,7 +68,7 @@ Definition get :=
       xval[.k]
     else float_unit
 }>.
-
+(*
 Lemma get_spec {D} `{Inhab D} (x_ind x_val : loc) d (l : int): 
   @htriple D (single d tt) 
     (fun=> get l x_ind x_val lb rb)
@@ -81,7 +81,7 @@ Proof.
   xwp; xapp @index_bounded.spec=> //.
   xwp; xapp; xwp; xif=> ?; [xapp|xwp;xval]; xsimpl.
 Qed.
-
+*)
 Lemma get_spec_in {D : Type} `{Inhab D} (x_ind x_val : loc) i d : 
   @htriple D (single d tt) 
     (fun=> get (List.nth (abs i) (xind [[ lb -- rb ]]) 0) x_ind x_val lb rb)

@@ -6,7 +6,8 @@ From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
 Open Scope Z_scope.
-
+(*
+(* essentially SV *)
 Module coo_vec.
 
 Section coo_vec.
@@ -187,7 +188,7 @@ End coo_vec.
 
 
 End coo_vec.
-
+*)
 
 
 

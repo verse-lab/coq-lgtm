@@ -8,7 +8,7 @@ Hint Rewrite conseq_cons' : rew_listx.
 
 Open Scope Z_scope.
 
-Module csr.
+Module csr_float.
 
 Section csr.
 
@@ -477,4 +477,4 @@ Qed.
 *)
 End csr.
 
-End csr.
+End csr_float.
