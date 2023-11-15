@@ -71,6 +71,7 @@ Tactic Notation "seclocal_solver" :=
     | intros; now case_if
     | move=> >; rewrite -len_xind slice_fullE //
     | lia
+    | intros; apply midx_leq, nth_In; math
     | idtac ]; auto.
 
 Definition indexf := index.func Nidx.
@@ -251,7 +252,6 @@ Proof with (try seclocal_fold; seclocal_solver).
   xfor_arrayset Inv R R 
     (fun hv (i : int) => (If (In i midx) then Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * dvec[j.2]) else 0)) 
     (fun _ : int => 0) ans midx...
-  { intros. apply midx_leq, nth_In; math. }
   { xin* (2,0): xapp* @index.specs; xstep; xwp; xif=> [?|]; xgo...
     xin (1,0) : xgo...
     rewrite index_nodup //; try math.
@@ -327,7 +327,6 @@ Proof with (try seclocal_fold; seclocal_solver).
   xfor_arrayset Inv R1 R1 R2 R2 
     (fun hv (i : int) => (If (In i midx) then Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * hv[`3]((0,j.2))) else 0)) 
     (fun _ : int => 0) ans midx...
-  { intros. apply midx_leq, nth_In; math. }
   { xin* (2,0): xapp* @index.specs; xstep; xwp; xif=> [?|]; xgo...
     xin (1,0) : xgo...
     rewrite index_nodup //; try math.
