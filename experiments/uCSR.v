@@ -43,6 +43,14 @@ Hypothesis rowptr_weakly_sorted : forall (i j : int),
   (i <= j) -> 
   (rowptr[i] <= rowptr[j]).
 
+Context (yind yval : list int).
+Context (M : int).
+Hypothesis len_xind : length yind = M :> int.
+Hypothesis len_xval : length yval = M :> int.
+Hypothesis stored_yind : sorted yind.
+Hypothesis yind_leq : forall x, In x yind -> 0 <= x < Ncol.
+Hypothesis Nrow0 : Nidx > 0. (* we get rid of it later *)
+
 Definition colind_seg (row : int) := colind [[ (rowptr[row]) -- (rowptr[row + 1]) ]].
 
 Hypothesis nodup_eachcol : forall x : int, 0 <= x < Nidx -> NoDup (colind_seg x).
@@ -61,6 +69,8 @@ Tactic Notation "seclocal_solver" :=
       split; [ rewrite <- rowptr_first at 1 | ]; apply rowptr_weakly_sorted; math
     | intros; eapply colind_leq, in_interval_list; now eauto
     | intros; now case_if
+    | move=> >; rewrite -len_xind slice_fullE //
+    | lia
     | idtac ]; auto.
 
 Definition indexf := index.func Nidx.
@@ -262,13 +272,6 @@ Proof with (try seclocal_fold; seclocal_solver).
     case: C; subst; apply/nth_In; math. }
 Qed.
 
-Context (yind yval : list int).
-Context (M : int).
-Hypothesis len_xind : length yind = M :> int.
-Hypothesis len_xval : length yval = M :> int.
-Hypothesis stored_yind : sorted yind.
-Hypothesis yind_leq : forall x, In x yind -> 0 <= x < Ncol.
-Hypothesis Nrow0 : Nidx > 0. (* we get rid of it later *)
 
 
 Hypothesis sorted_eachcol : forall x : int, 0 <= x < Nidx -> sorted (colind_seg x).
@@ -320,27 +323,19 @@ Proof with (try seclocal_fold; seclocal_solver).
   { rewrite -prod_intr_list_on_1. f_equal. now apply intr_list. }
   rewrite E (fset_of_list_nodup 0 nodup_midx) len_midx prod_Union_distr.
   rewrite -(Union_same Nidx (`{0} \x `[0, Ncol])) //; try math.
-  xin (1,0) : (xwp; xapp (@htriple_alloc0_unary)=> // s)...
+  xin (1,0) : xmalloc ans...
   xfor_arrayset Inv R1 R1 R2 R2 
-    (fun hv (i : int) => (If (In i midx) then Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * hv[`3]((0,j.2))) else 0)) (fun _ : int => 0) s midx.
+    (fun hv (i : int) => (If (In i midx) then Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * hv[`3]((0,j.2))) else 0)) 
+    (fun _ : int => 0) ans midx...
   { intros. apply midx_leq, nth_In; math. }
-  { case: classicT=> [?|/(_ (nth_In _ _ _))]; last lia.
-    xin (2,0) : rewrite wp_prod_single /=.
-    xin (1,0) : do 4 (xwp; xapp)...
+  { xin* (2,0): xapp* @index.specs; xstep; xwp; xif=> [?|]; xgo...
+    xin (1,0) : xgo...
+    rewrite index_nodup //; try math.
     xsubst (snd : _ -> int).
-    xfocus (2,0); rewrite -> ! hbig_fset_hstar.
-    xwp; xapp (@index.Spec `[0, Ncol] Nidx (2,0) midx x_midx (fun=> midx[l0]))=> //.
-    rewrite index_nodup; try math; try assumption.
-    xwp; xapp. xwp; xif=> ?; [ | math ].
-    do 3 (xwp; xapp).
-    xunfocus; xin (1,0) : idtac. (* reformat *)
-    xnapp sv.sv_dotprod_spec...
-    1-3: lia. 
-    { by rewrite -len_xind slice_fullE. }
-    { move=> ?; rewrite -len_xind slice_fullE... }
-    xsimpl=>->. xapp @lhtriple_array_set_pre. rewrite sum_prod1E. xsimpl. }
-  { intros. now case_if. }
-  { rewrite Union_same //; try math; xsimpl*. xsimpl*. }
+    xnapp sv.sv_dotprod_spec... 
+    xsimpl=>->; xapp; rewrite sum_prod1E; xsimpl.
+    case: classicT=> [?|/(_ (nth_In _ _ _))] //; lia. }
+  { rewrite Union_same... do 2 xsimpl*. }
   xwp; xval. xsimpl*. erewrite -> harray_fun_int_congr; try assumption; first xsimpl*.
   move=> i Hi /=. xsum_normalize.
   case_if.
