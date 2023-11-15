@@ -115,7 +115,7 @@ Ltac fold' :=
     -/(For_aux _ _) 
     -/(For _ _ _) //=.
 
-(* Lemma rlsum_spec `{Inhab D} (x_ind x_val : loc) : 
+Lemma rlsum_spec `{Inhab D} (x_ind x_val : loc) : 
   {{ arr(x_ind, xind)⟨1, 0⟩ \*
      arr(x_val, xval)⟨1, 0⟩ \* 
      (\*_(i <- `[0, N]) arr(x_ind, xind)⟨2, i⟩) \*
@@ -144,7 +144,7 @@ Proof with fold'.
   { do 2 (xwp; xapp). xwp; xval. xsimpl.
     xsum_normalize. rewrite SumCascade; try reflexivity.
     disjointE. intros. apply ind_seg_disjoint with (N:=N); subst M N; indomE; auto. }
-Qed. *)
+Qed.
 
 End rlsum.
 
