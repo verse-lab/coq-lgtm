@@ -283,6 +283,21 @@ Proof.
   xsimpl*.
 Qed.
 
+Lemma specs D (fs : fset D) N l (xind : list int) (x_ind : loc) (f : int) : 
+  htriple ⟨l, fs⟩
+    (fun i => func N f x_ind)
+    ((\*_(d <- fs) harray_int xind x_ind (Lab l d)) \* \[length xind = N :> int] \* \[List.NoDup xind])
+    (fun hv => (\*_(d <- fs) harray_int xind x_ind (Lab l d)) \* \[hv = fun i => LibListExt.index f xind]).
+Proof.   
+  apply/htriple_conseq. 1: apply htriple_val_eq. 2-3: xsimpl*.
+  apply wp_equiv. xsimpl*. intros. apply wp_equiv.
+  apply/htriple_conseq. 3: hnf=> hv; rewrite -hstar_fset_pure. 2-3: rewrite -hstar_fset_Lab -?hbig_fset_hstar; xsimpl*. 
+  apply/htriple_union_pointwise=> [> -> //|].
+  intros. rewrite -wp_equiv wp_single /=. 
+  xapp (@spec)=> //.
+  xsimpl*. 
+Qed.
+
 End index.
 End index.
 
