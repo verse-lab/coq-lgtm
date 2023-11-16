@@ -461,28 +461,36 @@ Lemma spmspv_spec `{Inhab D} `{H__ : Inhab (labeled int)}
     harray_fun_int (fun i => Σ_(j <- `[0, Ncol]) hv[`2]((i, j)) * hv[`3]((0, j))) (hv[`1]((0,0))) Nrow (Lab (1,0) (0,0))
       \* \Top }}.
 Proof with (try seclocal_fold; seclocal_solver; autos* ).
-  xstart.
+  xstart. (* proof start *)
+  (* § 2.2 *)
   xfocus* (2,0) (indom (midx \x `[0, Ncol])).
   xapp get_spec_out=> //. 1: case=> ??; indomE; tauto.
-  xclean_heap.
+  xclean_heap. (* clean up unused assertions *)
+  (* § 2.1.1 *)
   xin (1,0) : xmalloc p=> //; xret...
+  (* frame out unused part of ans array *)
   xframe_array p midx...
   { move=> *; erewrite <-Sum0s at 1; apply/SumEq=> ?.
     indomE=> /=; case_if... }
+  (* partition index set into Si to apply For-rule *)
   have E : (`[0, Nrow] \x `[0, Ncol]) ∩ indom (midx \x `[0, Ncol]) = midx \x `[0, Ncol].
   { rewrite -prod_intr_list_on_1. f_equal. now apply intr_list. }
   rewrite E (fset_of_list_nodup 0 nodup_midx) len_midx prod_Union_distr.
   rewrite -(Union_same Nidx (`{0} \x `[0, Ncol])) //; try math.
+  (* § 2.3 *)
   xfor_bigsrt Inv R2 R3
     (fun l => (p + 1 + abs midx[l])%nat ~⟨(1%Z, 0%Z), (0, 0)⟩~> 0) 
     (fun l hv => (p + 1 + abs midx[l])%nat ~⟨(1%Z, 0%Z), (0, 0)⟩~>  
       Σ_(j <- `[0, Ncol]) hv[`2]((midx[l], j)) * hv[`3]((0, j))).
   { xin* (2,0): xapp* @index.specs; xstep; xwp; xif=> [?|]; xgo...
     xin (1,0) : xgo...
-    rewrite index_nodup //; try math.
+    rewrite index_nodup //; try math. (* simplify goal *)
+    (* § 2.4 *)
     xsubst (snd : _ -> int).
+    (* § 2.5 *)
     xnapp sv.sv_dotprod_spec... 
-    xsimpl=>->; xapp; xsimpl. }
+    xsimpl=>->; xapp; xsimpl. (* store result of spvspv *) }
+  (* solve arithmetic to adjust big summations in precondition *)
   erewrite hbig_fset_eq with (fs := `[0, Nidx]); first xsimpl*.
   move=> ?; indomE=> ?; do 2? f_equal; apply/SumEq=> ?.
   rewrite -prod_Union_distr -len_midx -fset_of_list_nodup; indomE=> //=.
