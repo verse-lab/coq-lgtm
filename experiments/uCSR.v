@@ -292,151 +292,23 @@ Definition spmspv x_colind y_ind x_mval y_val :=
   s
 }>.
 
-Lemma ntriple_frame_array D H fs_ht H' 
-  (fs : list int) (p : loc) f g d S : 
-  (forall i, In i fs -> 0 <= i < S) ->
-  (forall i v, ~ In i fs -> f i = g v i) ->
-  (H = H' (harray_fun_int f p S d)) ->
-  (forall X, H' X = (H' hempty) \* X) ->
-  H' (\*_(i <- fs) (p + 1 + abs i)%nat ~(d)~> f i) ==> 
-    nwp fs_ht (fun (v : labeled D -> val) => (\*_(i <- fs) (p + 1 + abs i)%nat ~(d)~> g v i) \* \Top) ->
-  ntriple H fs_ht (fun hv => (harray_fun_int (g hv) p S d) \* \Top).
-Proof.
-Admitted.
-
-
-Tactic Notation "xframe_array" constr(p) uconstr(s) := 
-    let Q1 := fresh "Q1" in 
-    let HEQ1 := fresh "Q" in 
-    match goal with 
-    | |- context[harray_fun_int ?f p ?S ?d] =>
-    set (QH1 := harray_fun_int f p S d);
-    remember QH1 as Q1 eqn: HEQ1 in |- *;
-    rewrite -?HEQ1
-    end;
-    eapply ntriple_frame_array with (p := p) (fs := s); 
-      [ |
-        |
-        let h := fresh "h" in 
-        let f := fresh "h" in 
-        match goal with |- ?x = ?y => set (h := x) end;
-        pattern Q1 in h;
-        set (f := fun _ => _) in h;
-        simpl in h;
-        rewrite /h HEQ1;
-        reflexivity
-      | intro=> /=; xsimpl*
-      |
-      ]; clear Q1 HEQ1; simpl; try xsimpl.
-
-Lemma wp_ret D : forall t1 (v : val) Q H (fs : fset D),
-    htriple fs t1 H (fun hr => Q (fun=> v)) -> 
-    htriple fs (fun d => trm_seq (t1 d) v) H Q.
-Proof using.
-Admitted.
-
-Lemma eqbxx l : lab_eqb l l = true.
-Proof. exact/eqbxx. Qed.
-
-Lemma xunfocus_lemma' D (Q : (labeled D -> val) (*-> (HD -> val)*) -> _) fs_hts 
-  (ht : D -> trm) (fs : fset D) H (ht' : labeled D -> _)
-  (l : labType) :
-  ~ has_lab fs_hts l ->
-  (ht = (fun d => ht' (Lab l d))) ->
-  (* adequate (fun hr => Q hr hr) (⟨l, fs⟩ \u fset_of fs_hts) -> *)
-  ntriple H ((Lab l (FH fs ht)) :: fs_hts) (fun hr => Q hr) ->
-  H ==> wp ⟨l, fs⟩ ht' (fun=> nwp fs_hts (fun hr' => Q hr')).
-Proof.
-  rewrite /ntriple/nwp=> /hasnt_lab /[dup]rE {1}-> /[! @fset_of_cons] htE.
-  apply: himpl_trans_r.
-  apply: himpl_trans; first  apply wp_union2.
-  {  exact/fset_htrm_label_remove_disj. }
-  under wp_ht_eq=> -[l' d] IN.
-  { unfold label in IN. rewrite -> indom_Union in IN. 
-    setoid_rewrite -> indom_single_eq in IN.
-    simpl in IN.
-    destruct IN as (? & ? & IN). injection IN as <-. subst.
-    (* move: (htE l)=> /(congr1 (@^~ d)) {}htE. *)
-    rewrite (@lookup_eq _ l) rE ?lookup_cons // ?lookup_cons_ht ?lookup_cons_fs //=. 
-    { rewrite rE. over. }
-    unfold label. rewrite -> indom_Union. eauto. } 
-  move=> /= h Hwp; simpl; apply/wp_conseq; eauto=> hr /=; simpl.
-  (* xpull=> hv' {Hwp}h Hwp; exists hv'. *)
-  (* move: h Hwp. *)
-  under wp_ht_eq=> ? IN.
-  { rewrite (@remove_eq _ l) /= eqbxx /= // -rE; over. }
-  rewrite -rE // => {Hwp}h Hwp.
-Qed.
-
-Tactic Notation "xunfocus'" := 
-eapply xunfocus_lemma'=> //=.
-
-Tactic Notation "xret" := 
-rewrite wp_equiv; apply wp_ret;
-apply/htriple_conseq; [|exact: himpl_refl
-|intro; xcleanup (1,0); exact: himpl_refl]; rewrite -wp_equiv /=.
-
-Tactic Notation "xin" constr(S1) ":" tactic(tac) := 
-  let n := constr:(S1) in
-  xfocus n; tac; try(
-  first [xunfocus | xunfocus' | xcleanup n]; simpl; try apply xnwp0_lemma); rewrite -?xntriple1_lemma /=.
-
-Tactic Notation "xfor_sum_cong_solve3" :=
-  let hvE1 := fresh "hvE1" in
-  let hvE2 := fresh "hvE2" in
-  let someindom := fresh "someindom" in
-  intros ???? hvE1 hvE2;  (try case_if=> //; [ ]);  
-  indomE; f_equal; f_equal;
-  match goal with 
-  | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
-  | _ => idtac
-  end; try (rewrite hvE1 1?hvE2; 
-  [eauto|autorewrite with indomE; try math; 
-    (first [ apply someindom | idtac ])| autorewrite with indomE; try math; 
-    (first [ apply someindom | idtac ])]; simpl; try lia).
-Tactic Notation "xstart" :=   
-  let Inv := fresh "Inv" in 
-  let R1 := fresh "R1" in 
-  let R2 := fresh "R2" in 
-  xset_Inv Inv 1; xset_R_core int R1 2; xset_R_core int R2 3; xset_clean Inv R1 R2.
-
-
-Tactic Notation "xfor_bigsrt" constr(Inv) constr(R1) constr(R2) constr(H) constr(H') :=
-  eapply (@xfor_lemma_gen2_bigstr _ _ Inv R1 R1 R2 R2 _ _ _ _ H H');
-  [ intros ??; rewrite ?/Inv ?/R1 ?/R2; xnsimpl
-  | 
-  |
-  |
-  | 
-  | 
-  |
-  |
-  | xfor_sum_cong_solve3
-  | 
-  |
-  |
-  |
-  |
-  |
-  | 
-  |
-  |
-  |
-  |rewrite ?/Inv ?/R1 ?/R2; rewrite -> ?hbig_fset_hstar; rewrite ?Union_same; try lia; try do ? xsimpl*
-  | intros ?; rewrite ?/Inv ; rewrite -> ?hbig_fset_hstar; xsimpl
-  ]=> //; try (solve [ rewrite ?/Inv ?/R1 ?/R2 /=; xlocal ]); autos*; try math.
-
-Lemma hbig_fset_list (fs : list int) :
-    NoDup fs ->
-    @hbig_fset D int hstar fs = 
-    fun (H : _ -> hhprop D) =>
-    \*_(i <- `[0,length fs]) H (fs[i]).
-Proof.
-Admitted.
-
-Hint Rewrite hbig_fset_list : hstar_fset.
-
 Notation size := length.
+
+(**************************************************************************************)
+(*********  The full verison of the proof snippet from Section 4 of the paper *********)
+(**************************************************************************************)
+(* 
+  Differencies: 
+  (1) Our Coq implementation only supports LGTM triples, where index sets of all 
+    components have the same type. To run the `uscr_get` funtion (`get` here) we need an
+    index set with elements of type `int * int`. That is why indexs sets of the first 
+    and the third components are artifically made to have the same type as well. 
+  (2) Instread `xfor` tactic from the paper, we use a more convinient tactic 
+    `xfor_bigstr`. This tactic takes not the whole invariant as an input, but only that
+    part of it, which changes within the inductive step. Here we provide it some
+    technical arguments `Inv`, `R2`, `R3`, althother with two verisions of the changed 
+    clause from I_for: before and after the induvtive step.
+*)
 
 Lemma spmspv_spec `{Inhab D} `{H__ : Inhab (labeled int)}
   (x_mval x_colind x_midx x_rowptr y_ind y_val : loc) : 
@@ -462,7 +334,7 @@ Lemma spmspv_spec `{Inhab D} `{H__ : Inhab (labeled int)}
       \* \Top }}.
 Proof with (try seclocal_fold; seclocal_solver; autos* ).
   xstart. (* proof start *)
-  (* § 2.2 *)
+  (* § 2.2 *)    
   xfocus* (2,0) (indom (midx \x `[0, Ncol])).
   xapp get_spec_out=> //. 1: case=> ??; indomE; tauto.
   xclean_heap. (* clean up unused assertions *)

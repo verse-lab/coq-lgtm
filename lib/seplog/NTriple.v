@@ -1,4 +1,4 @@
-From LGTM.lib.theory Require Import LibFunExt LibLabType LibListExt LibSepTLCbuffer.
+From LGTM.lib.theory Require Import LibFunExt LibLabType LibListExt LibSepTLCbuffer LibSummation.
 From LGTM.lib.seplog Require Import LibSepReference LibWP LibSepSimpl LibArray LibLoops.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
@@ -200,3 +200,191 @@ Proof.
 Qed.
 
 Hint Rewrite @hstar_fset_prod1fs : hstar_fset.
+
+Import List.
+
+Lemma ntriple_frame_array D H fs_ht H' 
+  (fs : list int) (p : loc) f g d S : 
+  (0 <= S) ->
+  (forall i, In i fs -> 0 <= i < S) ->
+  (forall i v, ~ In i fs -> f i = g v i) ->
+  (H = H' (harray_fun_int f p S d)) ->
+  (forall X, H' X = (H' hempty) \* X) ->
+  H' (\*_(i <- fset_of_list fs) (p + 1 + abs i)%nat ~(d)~> f i) ==> 
+    nwp fs_ht (fun (v : labeled D -> val) => (\*_(i <- fs) (p + 1 + abs i)%nat ~(d)~> g v i) \* \Top) ->
+  ntriple H fs_ht (fun hv => (harray_fun_int (g hv) p S d) \* \Top).
+Proof.
+  move=> ? IN NIN HE HE' ?.
+  set Q := 
+    (\*_(i <- diff `[0,S] (fset_of_list fs)) (p + 1 + abs i)%nat ~(d)~> f i) \*
+    hheader (abs S) p d.
+  have E: (fset_of_list fs \+ `[0, S] \- fset_of_list fs) = `[0, abs S].
+  { apply/fset_extens=> x; indomE; rewrite diff_indom. indomE.
+    split.
+    { case=> [/IN|]; lia. }
+    case: (classicT (In x fs))=> [/[dup]?/IN|]; autos*.
+    right; splits*; lia. }
+  apply/(@ntriple_conseq_frame2 _ Q); eauto.
+  { rewrite HE HE' (HE' (hbig_fset _ _ _)). xsimpl.
+    rewrite /Q /harray_fun_int /harray_int /harray.
+    rewrite hcellsE_int length_map length_List_length ?length_lof'. 
+    xsimpl. rewrite -hbig_fset_union //; last (rewrite disjoint_comm; exact/diff_disj).
+    rewrite E; erewrite hbig_fset_eq. xsimpl. 
+    by move=> ?; indomE=> ?; rewrite nth_lof. }
+  move=> v.
+  rewrite /Q /harray_fun_int /harray_int /harray.
+  xsimpl.
+  rewrite hcellsE_int length_map length_List_length ?length_lof'.
+  xsimpl.
+  erewrite hbig_fset_eq with (fs := `[0,S] \- fset_of_list fs); first last. 
+  { move=> ?; rewrite diff_indom; indomE=> -[]*; rewrite (NIN _ v) //. }
+  rewrite -hbig_fset_union //; last (rewrite disjoint_comm; exact/diff_disj).
+  rewrite E; erewrite hbig_fset_eq. xsimpl. 
+  by move=> ?; indomE=> ?; rewrite nth_lof.
+Qed.
+
+Tactic Notation "xframe_array" constr(p) uconstr(s) := 
+    let Q1 := fresh "Q1" in 
+    let HEQ1 := fresh "Q" in 
+    match goal with 
+    | |- context[harray_fun_int ?f p ?S ?d] =>
+    set (QH1 := harray_fun_int f p S d);
+    remember QH1 as Q1 eqn: HEQ1 in |- *;
+    rewrite -?HEQ1
+    end;
+    eapply ntriple_frame_array with (p := p) (fs := s); 
+      [ |
+        |
+        |
+        let h := fresh "h" in 
+        let f := fresh "h" in 
+        match goal with |- ?x = ?y => set (h := x) end;
+        pattern Q1 in h;
+        set (f := fun _ => _) in h;
+        simpl in h;
+        rewrite /h HEQ1;
+        reflexivity
+      | intro=> /=; xsimpl*
+      |
+      ]; clear Q1 HEQ1; simpl; try xsimpl.
+
+
+Lemma wp_ret D : forall t1 (v : val) Q H (fs : fset D),
+    htriple fs t1 H (fun hr => Q (fun=> v)) -> 
+    htriple fs (fun d => trm_seq (t1 d) v) H Q.
+Proof using.
+  move=> *.
+  rewrite -wp_equiv. 
+  apply: himpl_trans; last apply: wp_seq.
+  rewrite wp_equiv. apply: htriple_conseq; eauto.
+  move=> ?. rewrite wp_equiv. apply/htriple_val.
+  exact: himpl_refl.
+Qed.
+
+
+Lemma eqbxx l : lab_eqb l l = true.
+Proof. exact/eqbxx. Qed.
+
+Lemma xunfocus_lemma' D (Q : (labeled D -> val) (*-> (HD -> val)*) -> _) fs_hts 
+  (ht : D -> trm) (fs : fset D) H (ht' : labeled D -> _)
+  (l : labType) :
+  ~ has_lab fs_hts l ->
+  (ht = (fun d => ht' (Lab l d))) ->
+  (* adequate (fun hr => Q hr hr) (⟨l, fs⟩ \u fset_of fs_hts) -> *)
+  ntriple H ((Lab l (FH fs ht)) :: fs_hts) (fun hr => Q hr) ->
+  H ==> wp ⟨l, fs⟩ ht' (fun=> nwp fs_hts (fun hr' => Q hr')).
+Proof.
+  rewrite /ntriple/nwp=> /hasnt_lab /[dup]rE {1}-> /[! @fset_of_cons] htE.
+  apply: himpl_trans_r.
+  apply: himpl_trans; first  apply wp_union2.
+  {  exact/fset_htrm_label_remove_disj. }
+  under wp_ht_eq=> -[l' d] IN.
+  { unfold label in IN. rewrite -> indom_Union in IN. 
+    setoid_rewrite -> indom_single_eq in IN.
+    simpl in IN.
+    destruct IN as (? & ? & IN). injection IN as <-. subst.
+    (* move: (htE l)=> /(congr1 (@^~ d)) {}htE. *)
+    rewrite (@lookup_eq _ l) rE ?lookup_cons // ?lookup_cons_ht ?lookup_cons_fs //=. 
+    { rewrite rE. over. }
+    unfold label. rewrite -> indom_Union. eauto. } 
+  move=> /= h Hwp; simpl; apply/wp_conseq; eauto=> hr /=; simpl.
+  (* xpull=> hv' {Hwp}h Hwp; exists hv'. *)
+  (* move: h Hwp. *)
+  under wp_ht_eq=> ? IN.
+  { rewrite (@remove_eq _ l) /= eqbxx /= // -rE; over. }
+  rewrite -rE // => {Hwp}h Hwp.
+Qed.
+
+Tactic Notation "xunfocus'" := 
+eapply xunfocus_lemma'=> //=.
+
+Tactic Notation "xret" := 
+rewrite wp_equiv; apply wp_ret;
+apply/htriple_conseq; [|exact: himpl_refl
+|intro; xcleanup (1,0); exact: himpl_refl]; rewrite -wp_equiv /=.
+
+Tactic Notation "xin" constr(S1) ":" tactic(tac) := 
+  let n := constr:(S1) in
+  xfocus n; tac; try(
+  first [xunfocus | xunfocus' | xcleanup n]; simpl; try apply xnwp0_lemma); rewrite -?xntriple1_lemma /=.
+
+Tactic Notation "xfor_sum_cong_solve3" :=
+  let hvE1 := fresh "hvE1" in
+  let hvE2 := fresh "hvE2" in
+  let someindom := fresh "someindom" in
+  intros ???? hvE1 hvE2;  (try case_if=> //; [ ]);  
+  indomE; f_equal; f_equal;
+  match goal with 
+  | |- Sum ?a _ = Sum ?a _ => apply fold_fset_eq; intros ?; indomE; intros someindom; extens; intros 
+  | _ => idtac
+  end; try (rewrite hvE1 1?hvE2; 
+  [eauto|autorewrite with indomE; try math; 
+    (first [ apply someindom | idtac ])| autorewrite with indomE; try math; 
+    (first [ apply someindom | idtac ])]; simpl; try lia).
+Tactic Notation "xstart" :=   
+  let Inv := fresh "Inv" in 
+  let R1 := fresh "R1" in 
+  let R2 := fresh "R2" in 
+  xset_Inv Inv 1; xset_R_core int R1 2; xset_R_core int R2 3; xset_clean Inv R1 R2.
+
+
+Tactic Notation "xfor_bigsrt" constr(Inv) constr(R1) constr(R2) constr(H) constr(H') :=
+  eapply (@xfor_lemma_gen2_bigstr _ _ Inv R1 R1 R2 R2 _ _ _ _ H H');
+  [ intros ??; rewrite ?/Inv ?/R1 ?/R2; xnsimpl
+  | 
+  |
+  |
+  | 
+  | 
+  |
+  |
+  | xfor_sum_cong_solve3
+  | 
+  |
+  |
+  |
+  |
+  |
+  | 
+  |
+  |
+  |
+  |rewrite ?/Inv ?/R1 ?/R2; rewrite -> ?hbig_fset_hstar; rewrite ?Union_same; try lia; try do ? xsimpl*
+  | intros ?; rewrite ?/Inv ; rewrite -> ?hbig_fset_hstar; xsimpl
+  ]=> //; try (solve [ rewrite ?/Inv ?/R1 ?/R2 /=; xlocal ]); autos*; try math.
+
+Lemma hbig_fset_list D (fs : list int) :
+    NoDup fs ->
+    @hbig_fset D int hstar fs = 
+    fun (H : _ -> hhprop D) =>
+    \*_(i <- `[0,length fs]) H (fs[i]).
+Proof.
+  move=> nd; apply/fun_ext_1=> ?.
+  rewrite (fset_of_list_nodup 0 nd) hbig_fset_Union.
+  { apply/hbig_fset_eq=> ??.
+    rewrite update_empty hbig_fset_update // hbig_fset_empty. 
+    xsimpl*. }
+  disjointE=> ??? /((NoDup_nthZ _ _).1 nd). lia.
+Qed.
+
+Hint Rewrite hbig_fset_list : hstar_fset.
