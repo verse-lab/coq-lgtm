@@ -348,7 +348,7 @@ Tactic Notation "xstart" :=
   xset_Inv Inv 1; xset_R_core int R1 2; xset_R_core int R2 3; xset_clean Inv R1 R2.
 
 
-Tactic Notation "xfor_bigsrt" constr(Inv) constr(R1) constr(R2) constr(H) constr(H') :=
+Tactic Notation "xfor_bigstr" constr(Inv) constr(R1) constr(R2) constr(H) constr(H') :=
   eapply (@xfor_lemma_gen2_bigstr _ _ Inv R1 R1 R2 R2 _ _ _ _ H H');
   [ intros ??; rewrite ?/Inv ?/R1 ?/R2; xnsimpl
   | 

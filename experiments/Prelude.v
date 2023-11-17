@@ -1,6 +1,6 @@
 Set Implicit Arguments.
 From LGTM.lib.theory Require Import LibReflect.
-From LGTM.lib.seplog Require Import LibSepReference LibWP LibSepSimpl.
+From LGTM.lib.seplog Require Import LibSepReference LibWP LibSepSimpl LibArray.
 From mathcomp Require Import ssreflect ssrfun zify.
 
 Ltac bool_rew := 
@@ -21,3 +21,8 @@ Tactic Notation "xpointwise_build" uconstr(E) :=
   apply/htriple_union_pointwise=> [> -> //|??]; 
   rewrite -wp_equiv wp_single; xapp E=> //; try eauto; try intros; try subst;
   try xsimpl*.
+
+Notation "p '.+' i '|-(' l ',' x ')->' v" := (hsingle (p + 1 + abs i)%nat (LibLabType.Lab (l,0)%Z x) v) (at level 32, format  "p  .+  i  |-( l ,  x )->  v").
+
+Notation "'arrf(' y ',' i 'in' N '=>' f ')⟨' l ',' d '⟩'" := 
+  (harray_fun_int (fun i => f) y N (LibLabType.Lab (l,0) d)) (at level 32, i binder, format "arrf( y ,  i  in  N =>  f )⟨ l ,  d ⟩") : hprop_scope.

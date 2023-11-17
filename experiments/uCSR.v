@@ -286,7 +286,7 @@ Notation size := length.
 (*********  The full verison of the proof snippet from Section 4 of the paper *********)
 (**************************************************************************************)
 (* 
-  Differencies: 
+  Major differencies with the paper verison: 
   (1) Our Coq implementation only supports LGTM triples, where index sets of all 
     components have the same type. To run the `uscr_get` funtion (`get` here) we need an
     index set with elements of type `int * int`. That is why indexs sets of the first 
@@ -296,6 +296,9 @@ Notation size := length.
     part of it, which changes within the inductive step. Here we provide it some
     technical arguments `Inv`, `R2`, `R3`, althother with two verisions of the changed 
     clause from I_for: before and after the induvtive step.
+  (3) The Coq notation for `x(i) |-> y` heap predicate is `x |-(i)-> y`. 
+  (4) The Coq notation for `arr(x(i), y)` heap predicate is `arr(x, y)⟨i⟩`. 
+  (5) 
 *)
 
 Lemma spmspv_spec `{Inhab D} `{H__ : Inhab (labeled int)}
@@ -318,7 +321,7 @@ Lemma spmspv_spec `{Inhab D} `{H__ : Inhab (labeled int)}
     {3| ld in `{0}       \x `[0, Ncol] => sv.get ld.2 y_ind y_val 0 M}
   }]
   {{ hv,
-    harray_fun_int (fun i => Σ_(j <- `[0, Ncol]) hv[`2]((i, j)) * hv[`3]((0, j))) (hv[`1]((0,0))) Nrow (Lab (1,0) (0,0))
+    arrf(hv[`1]((0,0)), i in Nrow => Σ_(j <- `[0, Ncol]) hv[`2]((i, j)) * hv[`3]((0, j)))⟨1, (0,0)⟩
       \* \Top }}.
 Proof with (try seclocal_fold; seclocal_solver; autos* ).
   xstart. (* proof start *)
@@ -338,9 +341,9 @@ Proof with (try seclocal_fold; seclocal_solver; autos* ).
   rewrite E (fset_of_list_nodup 0 nodup_midx) len_midx prod_Union_distr.
   rewrite -(Union_same Nidx (`{0} \x `[0, Ncol])) //; try math.
   (* § 2.3 *)
-  xfor_bigsrt Inv R2 R3
-    (fun l => (p + 1 + abs midx[l])%nat ~⟨(1%Z, 0%Z), (0, 0)⟩~> 0) 
-    (fun l hv => (p + 1 + abs midx[l])%nat ~⟨(1%Z, 0%Z), (0, 0)⟩~>  
+  xfor_bigstr Inv R2 R3
+    (fun l => p .+ midx[l] |-(1, (0, 0))-> 0)
+    (fun l hv => p .+ midx[l] |-(1, (0, 0))->
       Σ_(j <- `[0, Ncol]) hv[`2]((midx[l], j)) * hv[`3]((0, j))).
   { xin* 2: xapp* @index.specs; xstep; xwp; xif=> [?|]; xgo...
     xin 1: xgo...
