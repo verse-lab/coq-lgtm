@@ -6,7 +6,7 @@ THEORY_FILES := LibSummation.v LibListExt.v LibDotprod_float.v LibFunExt.v LibLa
 
 SEPLOG_FILES := LibSepFmap.v LibSepVar.v LibSepSimpl.v LibWP.v LibSepReference.v LibArray.v LibLoops.v NTriple.v Subst.v LibLoops_float.v
 
-EXPERIMENTS_FILES := COO.v RL.v SV.v CSR.v UnaryCommon.v uCSR.v CSR_float_mono.v Prelude.v
+EXPERIMENTS_FILES := COO.v RL.v SV.v CSR.v UnaryCommon.v uCSR.v CSR_float.v Prelude.v
 
 ALLVFILES := ${addprefix lib/theory/,${TLC_FILES}} \
 	${addprefix lib/theory/,${THEORY_FILES}} \

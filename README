@@ -5,16 +5,11 @@
 The version of Coq used in our development is **8.16.1**, where the version of underlying OCaml compiler is **4.12.0**. We list the required packages along with their respective versions (printed by `opam list`) as follows. 
 
 ```
-coq-cfml               20220112
-coq-cfml-basis         20220112
-coq-cfml-stdlib        20220112
-coq-fcsl-pcm           1.7.0
 coq-mathcomp-algebra   1.15.0
 coq-mathcomp-fingroup  1.15.0
 coq-mathcomp-finmap    1.5.2
 coq-mathcomp-ssreflect 1.15.0
 coq-mathcomp-zify      1.3.0+1.12+8.13
-coq-tlc                20211215
 ```
 
 ### Prerequisites
@@ -30,6 +25,7 @@ make
 ```
 
 Please note that warnings (in yellow colour) may appear during the compilation, but they will not cause the compilation to fail. 
+
 ## Navigation Guide
 
 ### Appendix
@@ -84,6 +80,6 @@ Evaluation Case Studies:
 - #10: `spmspv_spec` in `experiments/uCSR.v`
 - #11: `rlsum_spec` in `experiments/RL.v`
 - #12: `alpha_blend_spec` in `experiments/RL.v`
-- #13: `spmv_spec` in `experiments/CSR_float_mono.v`
+- #13: `spmv_spec` in `experiments/CSR_float.v`
 
 The mechanised proof of the overview case study, presented in Section 4, is located in `experiments/uCSR.v` with all correspondent comments.
