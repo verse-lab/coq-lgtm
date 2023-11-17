@@ -298,7 +298,9 @@ Notation size := length.
     clause from I_for: before and after the induvtive step.
   (3) The Coq notation for `x(i) |-> y` heap predicate is `x |-(i)-> y`. 
   (4) The Coq notation for `arr(x(i), y)` heap predicate is `arr(x, y)⟨i⟩`. 
-  (5) 
+  (5) In the paper the output of each component is a separate hyper vaule. Here all 
+    outputs are assembled in the same hyper value `hv`. To reference to the outcome of
+    each particular componet with tag `t`, one should write `hv[`t]`.
 *)
 
 Lemma spmspv_spec `{Inhab D} `{H__ : Inhab (labeled int)}
