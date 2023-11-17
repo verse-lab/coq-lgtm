@@ -15,10 +15,6 @@ Notation "'xval'" := ("x_val":var) (in custom trm at level 0) : trm_scope.
 Notation "'yind'" := ("y_ind":var) (in custom trm at level 0) : trm_scope.
 Notation "'yval'" := ("y_val":var) (in custom trm at level 0) : trm_scope.
 
-(* FIXME: A possible problem is that search assumes the existence of answer, while index does not;
-    this may be bad. 
-  As a direct result, only one spec of get is proven. *)
-
 Section runlength.
 
 Import List Vars.
