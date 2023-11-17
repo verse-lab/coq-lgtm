@@ -4,7 +4,7 @@
 
 The version of Coq used in our development is **8.18.0**, where the version of underlying OCaml compiler is **4.13.1**. We recommend installing Coq and the required packages via OPAM. [The official page of OPAM](https://opam.ocaml.org/doc/Install.html) describes how to install and configure OPAM, and [the official page of Coq](https://coq.inria.fr/opam-using.html) describes how to install Coq and Coq packages with OPAM. 
 
-We have tested on our machine that after executing `opam repo add coq-released https://coq.inria.fr/opam/released` according to the official page of Coq, running the following command can install all required packages for compiling our project:
+We have tested on our machine that after executing `opam repo add coq-released https://coq.inria.fr/opam/released` according to the official page of Coq, running the following commands can install all required packages for compiling our project:
 
 ```
 opam install coq-mathcomp-ssreflect
