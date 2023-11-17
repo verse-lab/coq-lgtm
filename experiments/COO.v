@@ -123,7 +123,7 @@ Lemma sum_spec `{Inhab D} (x_ind x_val : loc) :
   {{ hv, \[hv[`1](0) = Σ_(i <- `[0,M]) hv[`2](i)] \* \Top}}.
 Proof with fold'.
   xset_Inv Inv 1; xset_R int Inv R 2.
-  xfocus* (2,0) xind.
+  xfocus* 2 xind.
   xapp get_spec_out=> //. 1: case=> ??; indomE; autos*.
   xclean_heap.
   xin (1,0) : xwp; xapp=> s...
@@ -169,7 +169,7 @@ Lemma dotprod_spec `{Inhab D} (x_ind x_val d_vec : loc) :
   {{ hv, \[hv[`1](0) = Σ_(i <- `[0,M]) (hv[`2](i) * dvec[i])] \* \Top}}.
 Proof with fold'.
   xset_Inv Inv 1; xset_R int Inv R 2.
-  xfocus* (2,0) xind.
+  xfocus* 2 xind.
   xapp get_spec_out=> //. 1: case=> ??; indomE; autos*.
   xclean_heap.
   xin (1,0) : xwp; xapp=> s...
@@ -305,16 +305,16 @@ Lemma sum_spec `{Inhab D} (x_row x_col x_val : loc) :
 Proof with fold'.
   xset_Inv Inv 1; xset_R int Inv R 2.
   have lE: length (combine xrow xcol) = N :> int by rewrite combine_length; lia.
-  xfocus* (2,0) (combine xrow xcol).
+  xfocus* 2 (combine xrow xcol).
   xapp get_spec_out=> //. 1: case=> ??; indomE; autos*.
   xclean_heap.
-  xin (1,0) : xwp; xapp=> s...
+  xin 1 : xwp; xapp=> s...
   have E : (`[0, Nrow] \x `[0, Ncol]) ∩ combine xrow xcol = combine xrow xcol.
   { apply/fset_extens=> -[r c]. specializes xrow_leq r. specializes xcol_leq c. 
     indomE. rewrite /LibSummation.mem /=. split; try tauto. intros HH. pose proof HH as HH2%in_combineE. tauto. }
   rewrite ?E (fset_of_list_nodup (0,0)) // lE.
   xfor_sum Inv R (fun=> \Top) (fun hv i => hv[`2]((xrow[i], xcol[i]))) s.
-  { (xin (1,0): (xwp; xapp; xapp (@incr.spec _ H)=> y))...
+  { (xin 1: (xwp; xapp; xapp (@incr.spec _ H)=> y))...
     rewrite ?combine_nth /=; try lia.
     xapp get_spec_in=> //; xsimpl*. }
   { move=>Ha Hb Hc; move: Ha; apply contrapose, NoDup_nthZ; autos*; math. }

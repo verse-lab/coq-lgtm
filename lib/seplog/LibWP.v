@@ -9309,7 +9309,7 @@ Tactic Notation "xfocus" constr(S) :=
 Tactic Notation "xfocus" constr(S) constr(P) := 
   let n := constr:(S) in
   let P := constr:(P) in
-  apply (@xfocus_pred_lemma' _ P n); simpl; rewrite /uni_pred /=; rewrite -?xntriple1_lemma; try apply xnwp0_lemma.
+  apply (@xfocus_pred_lemma' _ P (n,0)%Z); simpl; rewrite /uni_pred /=; rewrite -?xntriple1_lemma; try apply xnwp0_lemma.
 
 Tactic Notation "xfocus_split_core" constr(HPP) constr(S) constr(P) :=
   repeat match HPP with
@@ -9318,7 +9318,7 @@ Tactic Notation "xfocus_split_core" constr(HPP) constr(S) constr(P) :=
     | context[intr _ _] => fail
     | _ =>
       match ff with
-      | context[Lab S] => rewrite -> (fun_eq_1 ff (hbig_fset_part ffs P)) in |- *
+      | context[Lab (S,0)%Z] => rewrite -> (fun_eq_1 ff (hbig_fset_part ffs P)) in |- *
       end
     end
   end.
@@ -9341,13 +9341,13 @@ eapply xunfocus_lemma=> //=; [intros; remember ((_ \u_ _) _); reflexivity|]=>/=.
 
 Tactic Notation "xcleanup" constr(n) := 
 match goal with 
-| |- context G [?v \u_ ⟨_, ?fs⟩] => eapply ((@xcleanup_lemma _ _ _ v n fs))
+| |- context G [?v \u_ ⟨_, ?fs⟩] => eapply ((@xcleanup_lemma _ _ _ v (n,0)%Z fs))
 end=>//; [intros; remember ((_ \u_ _) _); reflexivity|].
 
 
 Tactic Notation "xin" constr(S1) ":" tactic(tac) := 
   let n := constr:(S1) in
-  xfocus n; tac; try(
+  xfocus (n, 0)%Z; tac; try(
   first [xunfocus | xcleanup n]; simpl; try apply xnwp0_lemma); rewrite -?xntriple1_lemma /=.
 
 

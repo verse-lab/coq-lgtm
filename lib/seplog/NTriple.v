@@ -1,5 +1,5 @@
 From LGTM.lib.theory Require Import LibFunExt LibLabType LibListExt LibSepTLCbuffer LibSummation.
-From LGTM.lib.seplog Require Import LibSepReference LibWP LibSepSimpl LibArray LibLoops.
+From LGTM.lib.seplog Require Import LibSepReference LibWP LibSepSimpl LibArray LibLoops LibArray.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
 
@@ -321,11 +321,11 @@ eapply xunfocus_lemma'=> //=.
 Tactic Notation "xret" := 
 rewrite wp_equiv; apply wp_ret;
 apply/htriple_conseq; [|exact: himpl_refl
-|intro; xcleanup (1,0); exact: himpl_refl]; rewrite -wp_equiv /=.
+|intro; xcleanup 1; exact: himpl_refl]; rewrite -wp_equiv /=.
 
 Tactic Notation "xin" constr(S1) ":" tactic(tac) := 
   let n := constr:(S1) in
-  xfocus n; tac; try(
+  xfocus (n,0)%Z; tac; try(
   first [xunfocus | xunfocus' | xcleanup n]; simpl; try apply xnwp0_lemma); rewrite -?xntriple1_lemma /=.
 
 Tactic Notation "xfor_sum_cong_solve3" :=
@@ -388,3 +388,11 @@ Proof.
 Qed.
 
 Hint Rewrite hbig_fset_list : hstar_fset.
+
+Ltac xstep := xwp; xapp.
+Ltac xgo := do ? xstep.
+Tactic Notation "xapp*" constr(E) := xwp; xapp_big E=> //.
+Tactic Notation "xin*" constr(S1) ":" tactic(tac) := 
+  let n := constr:(S1) in
+  xfocus (n,0)%Z; try rewrite wp_prod_single /=; tac; try(
+  first [xunfocus | xcleanup n]; simpl; try apply xnwp0_lemma); rewrite -?xntriple1_lemma /=.

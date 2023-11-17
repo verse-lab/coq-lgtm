@@ -104,12 +104,12 @@ Lemma sum_spec `{Inhab D} (x_mval x_colind x_rowptr : loc) :
   {{ hv, \[hv[`1]((0,0)) = Σ_(i <- `[0, Nrow] \x `[0, Ncol]) hv[`2](i)] \* \Top}}. (* this \Top can be made concrete, if needed *)
 Proof with (try seclocal_fold; seclocal_solver).
   xset_Inv Inv 1; xset_R Dom Inv R 2.
-  xin (2,0) : do 3 (xwp; xapp).
-  xin (1,0) : xwp; xapp=> s...
+  xin 2 : do 3 (xwp; xapp).
+  xin 1 : xwp; xapp=> s...
   rewrite prod_cascade.
   xfor_sum Inv R R (fun hv i => Σ_(j <- `{i} \x `[0, Ncol]) hv[`2](j)) s.
-  { xin (2,0) : rewrite wp_prod_single /=.
-    xin (1,0) : do 3 (xwp; xapp)...
+  { xin 2 : rewrite wp_prod_single /=.
+    xin 1 : do 3 (xwp; xapp)...
     xsubst (snd : _ -> int).
     xnapp sv.sum_spec...
     xsimpl=>->. xapp @incr.spec; rewrite sum_prod1E; xsimpl. }
@@ -151,12 +151,12 @@ Lemma spmv_spec `{Inhab D} (x_mval x_colind x_rowptr x_dvec : loc) :
       \* \Top }}. (* this \Top can be made concrete, if needed *)
 Proof with (try seclocal_fold; seclocal_solver).
   xset_Inv Inv 1; xset_R Dom Inv R 2.
-  xin (2,0) : do 3 (xwp; xapp).
-  xin (1,0) : (xwp; xapp (@htriple_alloc0_unary)=> // s)...
+  xin 2 : do 3 (xwp; xapp).
+  xin 1 : (xwp; xapp (@htriple_alloc0_unary)=> // s)...
   rewrite prod_cascade.
   xfor_arrayset Inv R R (fun hv (i : int) => Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * dvec[j.2])) (fun _ : int => 0) s.
-  { xin (2,0) : rewrite wp_prod_single /=.
-    xin (1,0) : do 3 (xwp; xapp)...
+  { xin 2 : rewrite wp_prod_single /=.
+    xin 1 : do 3 (xwp; xapp)...
     xsubst (snd : _ -> int).
     xnapp sv.dotprod_spec...
     xsimpl=>->. xapp @lhtriple_array_set_pre; try math.
@@ -213,13 +213,13 @@ Lemma spmspv_spec `{Inhab D}
       \* \Top }}. (* this \Top can be made concrete, if needed *)
 Proof with (try seclocal_fold; seclocal_solver; try lia).
   xset_Inv Inv 1; xset_R_core Dom R1 2; xset_R_core Dom R2 3. xset_clean R1 R2 Inv.
-  xin (2,0) : do 3 (xwp; xapp).
-  xin (1,0) : (xwp; xapp (@htriple_alloc0_unary)=> // s)...
+  xin 2 : do 3 (xwp; xapp).
+  xin 1 : (xwp; xapp (@htriple_alloc0_unary)=> // s)...
   rewrite prod_cascade -(Union_same Nrow (`{0} \x `[0, Ncol])) //; try math.
   xfor_arrayset Inv R1 R1 R2 R2 
     (fun hv (i : int) => Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * hv[`3]((0, j.2)))) (fun _ : int => 0) s.
-  { xin (2,0) : rewrite wp_prod_single /=.
-    xin (1,0) : do 3 (xwp; xapp)...
+  { xin 2 : rewrite wp_prod_single /=.
+    xin 1 : do 3 (xwp; xapp)...
     xsubst (snd : _ -> int).
     xnapp @sv.sv_dotprod_spec... 
     { by rewrite -len_xind slice_fullE. }

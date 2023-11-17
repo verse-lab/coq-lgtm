@@ -596,3 +596,7 @@ Proof.
 Qed.
 
 End memsetf0_allocf0.
+
+Tactic Notation "xmalloc" ident(s) := xwp; xapp (@htriple_alloc0_unary)=> // s.
+
+Hint Resolve lhtriple_array_set_pre : lhtriple.

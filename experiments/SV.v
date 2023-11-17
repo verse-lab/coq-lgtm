@@ -143,14 +143,14 @@ Lemma sum_spec `{Inhab D} (x_ind x_val : loc) (s : int) :
       (\*_(i <- `[0, M]) arr(x_val, xval)⟨2, i⟩)}}.
 Proof with (try solve [ seclocal_solver ]; fold').
   xset_Inv Inv 1; xset_R int Inv R 2.
-  xfocus* (2,0) xind[[lb -- rb]].
+  xfocus* 2 xind[[lb -- rb]].
   xapp get_spec_out=> //. 1: case=> ??; indomE; autos*.
   xclean_heap.
-  xin (1,0) : xwp; xapp=> q...
+  xin 1 : xwp; xapp=> q...
   have Hl : length xind[[lb -- rb]] = rb - lb :> int by apply list_interval_length.
   rewrite intr_list ?(fset_of_list_nodup 0) ?Hl ?Union_interval_change2 //.
   xfor_sum Inv R R (fun hv i => hv[`2](xind[i])) q...
-  { (xin (1,0): (xwp; xapp; xapp (@incr.spec  _ H)=> y))...
+  { (xin 1: (xwp; xapp; xapp (@incr.spec  _ H)=> y))...
     xapp (@get_spec_in D)=> //; try math. xsimpl*... }
   { move=>Ha Hb Hc; have Ha' : i0 - lb <> j0 - lb by math.
     move: Ha'; apply contrapose, NoDup_nthZ; autos*; math. }
@@ -197,14 +197,14 @@ Lemma dotprod_spec `{Inhab D} (x_ind x_val d_vec : loc) :
      (\*_(i <- `[0, M]) arr(d_vec, dvec)⟨2, i⟩)}}.
 Proof with (try solve [ seclocal_solver ]; fold').
   xset_Inv Inv 1; xset_R int Inv R 2.
-  xfocus* (2,0) xind[[lb -- rb]].
+  xfocus* 2 xind[[lb -- rb]].
   xapp get_spec_out=> //. 1: case=> ??; indomE; autos*.
   xclean_heap.
-  xin (1,0) : xwp; xapp=> q...
+  xin 1 : xwp; xapp=> q...
   have Hl : length xind[[lb -- rb]] = rb - lb :> int by apply list_interval_length.
   rewrite intr_list ?(fset_of_list_nodup 0) ?Hl ?Union_interval_change2 //.
   xfor_sum Inv R R (fun hv i => (hv[`2](xind[i]) * dvec[xind[i] ])) q...
-  { (xin (1,0): do 4 (xwp; xapp); xapp (@incr.spec _ H)=> y)...
+  { (xin 1: do 4 (xwp; xapp); xapp (@incr.spec _ H)=> y)...
     xapp (@get_spec_in D)=> //; try math. xsimpl*... }
   { move=>Ha Hb Hc; have Ha' : i0 - lb <> j0 - lb by math.
     move: Ha'; apply contrapose, NoDup_nthZ; autos*; math. }
@@ -322,16 +322,16 @@ Proof with fold'.
   have?: NoDup syind by exact/sorted_nodup.
   have ndind: NoDup ind by exact/sorted_nodup.
   rewrite -/(arr1 _ _ _ _).
-  xfocus* (2,0) (ind).
+  xfocus* 2 ind.
   xapp (@get_spec_out xind xval); eauto. 
   1: case=> ??; indomE; rewrite /LibSummation.mem/ind In_merge; autos*.
   xclean_heap.
-  xfocus* (3,0) ind.
+  xfocus* 3 ind.
   xapp (@get_spec_out yind yval); eauto.
   1: case=> ??; indomE; rewrite /LibSummation.mem/ind In_merge; autos*.
   xclean_heap.
   set (H1 := _ \* hbig_fset _ _ _); set (H2 := _ \* H1); set (arrs := _ \* H2).
-  xin (1,0) : xwp; xapp=> ans; xwp; xapp=> iX; xwp; xapp=> iY...
+  xin 1 : xwp; xapp=> ans; xwp; xapp=> iX; xwp; xapp=> iY...
   have Hlx : length sxind = rbx - lbx :> int by apply list_interval_length.
   have Hly : length syind = rby - lby :> int by apply list_interval_length.
   have E : `[0,M] ∩ ind = ind.
@@ -372,14 +372,14 @@ Proof with fold'.
     have max_ind_ge_max_syind : max ind >= max syind by apply/max_sublist; try math; move=>?; rewrite In_merge; right.
     have max_sxind_lt_M : max sxind <= M by apply/Z.lt_le_incl/max_upperbound_lt; try math; move=>??; apply xind_leq.
     have max_syind_lt_M : max syind <= M by apply/Z.lt_le_incl/max_upperbound_lt; try math; move=>??; apply yind_leq.
-    xin (1,0): do 5 (xwp; xapp); xwp; xif=> C.
-    { xin (1,0): 
+    xin 1: do 5 (xwp; xapp); xwp; xif=> C.
+    { xin 1: 
         do 3 (xwp; xapp); xwp; xapp @incr.spec; 
         (xwp; xapp @incr1.spec); xapp @incr1.spec=> ?.
       rewrite /op /=; rewrite <-?hstar_assoc.
       set (Heap := _ \* harray_int xind _ _); rewrite /R2...
       rewrite val_int_eq in C; rewrite {-1 4 6}indlE -C Z.min_id xindE...
-      xin (2,0): fold'; xapp get_spec_in; eauto...
+      xin 2: fold'; xapp get_spec_in; eauto...
       rewrite /R1 indlE C Z.min_id yindE...
       xapp get_spec_in; eauto...
       rewrite /Heap /Inv /arr1/cond.
@@ -412,11 +412,11 @@ Proof with fold'.
       suff: (y <= yind[iy]) by lia.
       rewrite yindE; first apply/In_lt; rewrite ?sE -?yindE... }
     rewrite /op.
-    xin (1,0): xwp; xapp; xwp; xif=> L; xapp @incr1.spec=> ?.
+    xin 1: xwp; xapp; xwp; xif=> L; xapp @incr1.spec=> ?.
     { rewrite /op /=; rewrite <-?hstar_assoc.
       set (Heap := _ \* harray_int yval _ _); rewrite /R2...
       rewrite indlE Z.min_l... rewrite (xindE ix)...
-      xin (2,0): fold'; xapp get_spec_in; eauto...
+      xin 2: fold'; xapp get_spec_in; eauto...
       rewrite /R1; xapp get_spec_out_unary; eauto.
       { move/L2; rewrite -xindE... }
       rewrite Z.mul_0_r Z.add_0_r.
@@ -449,7 +449,7 @@ Proof with fold'.
     rewrite /op /=; rewrite <-?hstar_assoc.
     set (Heap := _ \* harray_int yval _ _); rewrite /R1...
     rewrite indlE Z.min_r... rewrite (yindE iy)...
-    xin (3,0): fold'; xapp get_spec_in...
+    xin 3: fold'; xapp get_spec_in...
     rewrite /R2; xapp get_spec_out_unary; eauto.
     { move/L1. rewrite val_int_eq in C; rewrite -yindE... }
     rewrite Z.mul_0_l Z.add_0_r.
@@ -482,7 +482,7 @@ Proof with fold'.
   { move=> l *; rewrite /Inv/op/ntriple.
     xpull=> ix iy []_[]?[]?[]L1[]L2; rewrite /cond; bool_rew=> /[!not_and_eq]-[] []G _.
     { rewrite /R1.
-      xin (3,0): fold'; xapp get_spec=> *...
+      xin 3: fold'; xapp get_spec=> *...
       rewrite /R2.
       xapp get_spec_out_unary...
       { move/max_le; move: L1; rewrite take_ge ?length_List_length; try math.
@@ -495,7 +495,7 @@ Proof with fold'.
         apply/sorted_le; autos*; try lia. }
         bool_rew; lia. }
     rewrite /R2.
-    xin (2,0): fold'; xapp get_spec=> *...
+    xin 2: fold'; xapp get_spec=> *...
     rewrite /R1.
     xapp get_spec_out_unary...
     { move/max_le; move: L2; rewrite take_ge ?length_List_length; try math.

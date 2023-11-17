@@ -104,9 +104,9 @@ Lemma get_spec_out_unary {D : Type} `{Inhab D} (x_midx x_mval x_colind x_rowptr 
       harray_int colind x_colind d \* 
       harray_int rowptr x_rowptr d).
 Proof with seclocal_solver.
-  xwp; xsimpl; intros Hnotin%memNindex; xapp @index.spec... 
-  xwp; xapp. xwp; xif=> HQ; try math.
-  xwp; xval. xsimpl*.
+  xwp; xsimpl=> /(memNindex _)?; xapp @index.spec... 
+  xstep; xwp; xif=> ?... 
+  xwp; xval; xsimpl*.
 Qed.
 
 Lemma get_spec_out `{Inhab (labeled (int * int))} fs (x_midx x_mval x_colind x_rowptr : loc) : 
@@ -165,23 +165,23 @@ Lemma sum_spec `{Inhab D} `{Inhab (labeled int)} (x_mval x_colind x_rowptr x_mid
   {{ hv, \[hv[`1]((0,0)) = Σ_(i <- `[0, Nrow] \x `[0, Ncol]) hv[`2](i)] \* \Top}}.
 Proof with (try seclocal_fold; seclocal_solver).
   xset_Inv Inv 1; xset_R int Inv R 2.
-  xfocus* (2,0) (indom (midx \x `[0, Ncol])).
+  xfocus* 2 (indom (midx \x `[0, Ncol])).
   xapp get_spec_out=> //. 1: case=> ??; indomE; tauto.
   xclean_heap.
   have E : (`[0, Nrow] \x `[0, Ncol]) ∩ indom (midx \x `[0, Ncol]) = midx \x `[0, Ncol].
   { rewrite -prod_intr_list_on_1. f_equal. now apply intr_list. }
   rewrite E (fset_of_list_nodup 0 nodup_midx) len_midx prod_Union_distr.
-  xin (1,0) : xwp; xapp=> s...
+  xin 1 : xwp; xapp=> s...
   xfor_sum Inv R R (fun hv i => Σ_(j <- `{midx[i]} \x `[0, Ncol]) hv[`2](j)) s.
-  { xin (2,0) : rewrite wp_prod_single /=.
-    xin (1,0) : do 3 (xwp; xapp)...
+  { xin 2 : rewrite wp_prod_single /=.
+    xin 1 : do 3 (xwp; xapp)...
     xsubst (snd : _ -> int).
     xfocus (2,0); rewrite -> ! hbig_fset_hstar.
     xwp; xapp (@index.Spec `[0, Ncol] Nidx (2,0) midx x_midx (fun=> midx[l0]))=> //.
     rewrite index_nodup //; try math.
     xwp; xapp. xwp; xif=> ?; [ | math ].
     do 3 (xwp; xapp).
-    xunfocus; xin (1,0) : idtac. (* reformat *)
+    xunfocus; xin 1 : idtac. (* reformat *)
     xnapp sv.sum_spec...
     xsimpl=>->. xapp @incr.spec. rewrite sum_prod1E. xsimpl. }
   { move=>Ha Hb Hc; left. move: Ha; apply contrapose, NoDup_nthZ; autos*; math. }
@@ -210,18 +210,6 @@ Definition spmv :=
   s
 }>.
 
-Ltac xstep := xwp; xapp.
-Ltac xgo := do ? xstep.
-Tactic Notation "xapp*" constr(E) := xwp; xapp_big E=> //.
-Tactic Notation "xin*" constr(S1) ":" tactic(tac) := 
-  let n := constr:(S1) in
-  xfocus n; try rewrite wp_prod_single /=; tac; try(
-  first [xunfocus | xcleanup n]; simpl; try apply xnwp0_lemma); rewrite -?xntriple1_lemma /=.
-
-Tactic Notation "xmalloc" ident(s) := xwp; xapp (@htriple_alloc0_unary)=> // s.
-
-Hint Resolve lhtriple_array_set_pre : lhtriple.
-
 Lemma spmv_spec `{Inhab D} `{H__ : Inhab (labeled int)} (x_mval x_midx x_colind x_rowptr x_dvec : loc) : 
   {{ arr(x_mval, mval)⟨1, (0,0)⟩ \*
      arr(x_midx, midx)⟨1, (0,0)⟩ \*
@@ -242,18 +230,18 @@ Lemma spmv_spec `{Inhab D} `{H__ : Inhab (labeled int)} (x_mval x_midx x_colind 
       \* \Top }}.
 Proof with (try seclocal_fold; seclocal_solver).
   xset_Inv Inv 1; xset_R int Inv R 2.
-  xfocus* (2,0) (indom (midx \x `[0, Ncol])).
+  xfocus* 2 (indom (midx \x `[0, Ncol])).
   xapp get_spec_out=> //. 1: case=> ??; indomE; tauto.
   xclean_heap.
   have E : (`[0, Nrow] \x `[0, Ncol]) ∩ indom (midx \x `[0, Ncol]) = midx \x `[0, Ncol].
   { rewrite -prod_intr_list_on_1. f_equal. now apply intr_list. }
   rewrite E (fset_of_list_nodup 0 nodup_midx) len_midx prod_Union_distr.
-  xin (1,0) : xmalloc ans...
+  xin 1 : xmalloc ans...
   xfor_arrayset Inv R R 
     (fun hv (i : int) => (If (In i midx) then Σ_(j <- `{i} \x `[0, Ncol]) (hv[`2](j) * dvec[j.2]) else 0)) 
     (fun _ : int => 0) ans midx...
-  { xin* (2,0): xapp* @index.specs; xstep; xwp; xif=> [?|]; xgo...
-    xin (1,0) : xgo...
+  { xin* 2: xapp* @index.specs; xstep; xwp; xif=> [?|]; xgo...
+    xin 1 : xgo...
     rewrite index_nodup //; try math.
     xsubst (snd : _ -> int).
     xnapp sv.dotprod_spec...
@@ -335,11 +323,11 @@ Lemma spmspv_spec `{Inhab D} `{H__ : Inhab (labeled int)}
 Proof with (try seclocal_fold; seclocal_solver; autos* ).
   xstart. (* proof start *)
   (* § 2.2 *)    
-  xfocus* (2,0) (indom (midx \x `[0, Ncol])).
+  xfocus* 2 (indom (midx \x `[0, Ncol])).
   xapp get_spec_out=> //. 1: case=> ??; indomE; tauto.
   xclean_heap. (* clean up unused assertions *)
   (* § 2.1.1 *)
-  xin (1,0) : xmalloc p=> //; xret...
+  xin 1: xmalloc p=> //; xret...
   (* frame out unused part of ans array *)
   xframe_array p midx...
   { move=> *; erewrite <-Sum0s at 1; apply/SumEq=> ?.
@@ -354,9 +342,9 @@ Proof with (try seclocal_fold; seclocal_solver; autos* ).
     (fun l => (p + 1 + abs midx[l])%nat ~⟨(1%Z, 0%Z), (0, 0)⟩~> 0) 
     (fun l hv => (p + 1 + abs midx[l])%nat ~⟨(1%Z, 0%Z), (0, 0)⟩~>  
       Σ_(j <- `[0, Ncol]) hv[`2]((midx[l], j)) * hv[`3]((0, j))).
-  { xin* (2,0): xapp* @index.specs; xstep; xwp; xif=> [?|]; xgo...
-    xin (1,0) : xgo...
-    rewrite index_nodup //; try math. (* simplify goal *)
+  { xin* 2: xapp* @index.specs; xstep; xwp; xif=> [?|]; xgo...
+    xin 1: xgo...
+    rewrite index_nodup... (* simplify goal *)
     (* § 2.4 *)
     xsubst (snd : _ -> int).
     (* § 2.5 *)

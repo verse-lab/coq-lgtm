@@ -132,10 +132,10 @@ Lemma rlsum_spec `{Inhab D} (x_ind x_val : loc) :
   }}.
 Proof with fold'.
   xset_Inv Inv 1; xset_R int Inv R 2.
-  xin (1,0) : xwp; xapp=> s...
+  xin 1 : xwp; xapp=> s...
   rewrite <- interval_segmentation with (L:=xind), <- ! EM by now subst M N.
   xfor_sum Inv R R (fun hv (j : int) => (Σ_(i <- (ind_seg xind j)) hv[`2](i))) s.
-  { (xin (1,0): (do 9 (xwp; xapp)))...
+  { (xin 1: (do 9 (xwp; xapp)))...
     rewrite -> ! hbig_fset_hstar. subst M. 
     xapp (@get_spec_seg H x_ind x_val _ H0). xsimpl.
     rewrite SumConst_interval; simpl; try math; try xsimpl.
@@ -286,7 +286,7 @@ Proof with (fold'; try abbrv).
   have?: NoDup yind by exact/sorted_nodup.
   have sind: sorted ind by exact/sorted_merge.
   have ndind: NoDup ind by exact/sorted_nodup.
-  xin (1,0): (xwp;xapp=> ans); (xwp;xapp=> iX); 
+  xin 1: (xwp;xapp=> ans); (xwp;xapp=> iX); 
     (xwp;xapp=> iY); (xwp;xapp=> step)...
   have xind_notnil : xind <> nil by apply notnil_length; try math.
   have yind_notnil : yind <> nil by apply notnil_length; try math.
@@ -326,7 +326,7 @@ Proof with (fold'; try abbrv).
       do 2 (xwp; xapp @incr1.spec).
       do ? (xwp; xapp). xwp; xapp @min.spec. do ? (xwp; xapp).
       xwp; xapp @incr.spec; xwp; xapp. 
-      xcleanup (1,0); rewrite /op /=.
+      xcleanup 1; rewrite /op /=.
       rewrite val_int_eq in C.
       move: (indL); rewrite {1}indE {1}ENx -{1}C Z.min_id.
       move/(sorted_le_rev sxind)=> ?.
@@ -336,7 +336,7 @@ Proof with (fold'; try abbrv).
       { rewrite (merge_nthS (def:=N)) -/ind ?indE...
         rewrite -{1}C Z.min_id {2}C Z.min_id ?search_nth... }
       rewrite /R2/R3; rewrite -> ? hbig_fset_hstar.
-      xin (2,0): xapp (@get_spec xind xval HindIIL ix)...
+      xin 2: xapp (@get_spec xind xval HindIIL ix)...
       { move=> [>]; indomE=>-[?]/=; lia. }
       xapp (@get_spec yind yval HindIIL' iy)...
       { move=> [>]; indomE=>-[?]/=; lia. }
@@ -352,7 +352,7 @@ Proof with (fold'; try abbrv).
     { do 6 (xwp; xapp); xwp; xapp @incr1.spec. 
       do 2 (xwp; xapp); xwp; xapp @min.spec.
       do 2 (xwp; xapp); xwp; xapp @incr.spec; xwp; xapp.
-      xcleanup (1,0); rewrite /op /=.
+      xcleanup 1; rewrite /op /=.
       move: (indL); rewrite {1}indE {1}ENx Z.min_l...
       move/(sorted_le_rev sxind)=> ?.
       have?: (0 < iy).
@@ -363,7 +363,7 @@ Proof with (fold'; try abbrv).
         rewrite (Z.min_l xind[ix]) ?search_nth...
         rewrite (@search_nth_pred N _ iy)... }
       rewrite /R2/R3; rewrite -> ? hbig_fset_hstar.
-      xin (2,0): xapp (@get_spec xind xval HindIIL ix)...
+      xin 2: xapp (@get_spec xind xval HindIIL ix)...
       { move=> [>]; indomE=>-[?]/=; lia. }
       xapp (@get_spec yind yval HindIIL' (iy-1))...
       { move=> [>]; indomE=>-[?]/=;
@@ -378,7 +378,7 @@ Proof with (fold'; try abbrv).
     do 6 (xwp; xapp); xwp; xapp @incr1.spec. 
     do 2 (xwp; xapp); xwp; xapp @min.spec.
     do 2 (xwp; xapp); xwp; xapp @incr.spec; xwp; xapp.
-    xcleanup (1,0); rewrite /op /=.
+    xcleanup 1; rewrite /op /=.
     rewrite val_int_eq in C.
     move: (indL); rewrite {1}indE {1}ENy Z.min_r...
     move/(sorted_le_rev yxind)=> ?.
@@ -390,7 +390,7 @@ Proof with (fold'; try abbrv).
       rewrite (Z.min_r xind[ix]) ?search_nth...
       rewrite (@search_nth_pred N _ ix)... }
     rewrite /R2/R3; rewrite -> ? hbig_fset_hstar.
-    xin (2,0): xapp (@get_spec xind xval HindIIL (ix-1))...
+    xin 2: xapp (@get_spec xind xval HindIIL (ix-1))...
     { move=> [>]; indomE=>-[?]/=;
       replace (ix - 1 + 1) with ix; lia. }
     xapp (@get_spec yind yval HindIIL' iy)...
@@ -407,7 +407,7 @@ Proof with (fold'; try abbrv).
     suff: (l + 1 = size ind) by lia. 
     apply/nth_le_max... }
   { move=> ???; rewrite /Inv{}/cnd.
-    xnsimpl=> *; xin (1,0): do ? (xwp; xapp).
+    xnsimpl=> *; xin 1: do ? (xwp; xapp).
     xsimpl*. apply/eq_sym/f_equal. autos*. }
   { move=> ??[?][?][->]*; apply/isTrue_eq_false...
     rewrite sorted_max_size... }
