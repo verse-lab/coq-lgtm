@@ -39,45 +39,51 @@ Appendix is attached in `appendix.pdf`.
 ### Important Proof Rules
 
 Structural rules:
-- WpNest: `wp_union` in `LibSepReference.v`
-- Prod: `htriple_union_pointwise` in `LibSepReference.v`
-- Conseq: `htriple_conseq` in `LibSepReference.v`
-- Frame: `htriple_frame` in `LibSepReference.v`
+- Focus: `wp_union` in `lib/seplog/LibWP.v`
+- Product: `htriple_union_pointwise` in `lib/seplog/LibWP.v`
+- Conseq: `htriple_conseq` in `lib/seplog/LibWP.v`
+- Frame: `htriple_frame` in `lib/seplog/LibWP.v`
 
 Lockstep rules: 
-- Ret: `htriple_val` in `LibSepReference.v`
-- Read: `htriple_get` in `LibSepReference.v`
-- Asn: `htriple_set` in `LibSepReference.v`
-- Fr: `htriple_free` in `LibSepReference.v`
-- Alc: `htriple_ref` in `LibSepReference.v`
-- MAlc: `htriple_alloc` in `LibSepReference.v`
-- MFr: `htriple_dealloc` in `LibSepReference.v`
-- Let: `htriple_let` in `LibSepReference.v`
-- If: `htriple_if` in `LibSepReference.v`
-- Len: `htriple_array_length` in `Struct.v`
-- AsnArr: `htriple_array_set` in `Struct.v`
-- ReadArr: `htriple_array_get` in `Struct.v`
+- Ret: `htriple_val` in `lib/seplog/LibWP.v`
+- Read: `htriple_get` in `lib/seplog/LibWP.v`
+- Asn: `htriple_set` in `lib/seplog/LibWP.v`
+- Fr: `htriple_free` in `lib/seplog/LibWP.v`
+- Alc: `htriple_ref` in `lib/seplog/LibWP.v`
+- MAlc: `htriple_alloc` in `lib/seplog/LibWP.v`
+- MFr: `htriple_dealloc` in `lib/seplog/LibWP.v`
+- Let: `htriple_let` in `lib/seplog/LibWP.v`
+- If: `htriple_if` in `lib/seplog/LibWP.v`
+- Len: `htriple_array_length` in `lib/seplog/LibArray.v`
+- AsnArr: `htriple_array_set` in `lib/seplog/LibArray.v`
+- ReadArr: `htriple_array_get` in `lib/seplog/LibArray.v`
 
 Domain substitution rule: 
-- Subst: `htriple_hsub` in `LibSepReference.v`
+- Subst: `htriple_hsub` in `lib/seplog/LibWP.v`
 
 Rule for for-loops: 
-- For: `xfor_lemma` in `LibSepReference.v`
+- For: `wp_for` in `lib/seplog/LibWP.v`
 
 Rule for while-loops: 
-- While: `htriple_while` in `LibSepReference.v`
+- While: `xwhile_lemma` in `lib/seplog/LibLoops.v`
 
 ### Important Results
 
-The mechanisation of the overview example from the paper can be found in `ArrayDemo.v`.
-We list the important results, namely the proofs of the hyper-triples, as follows. We refer to the hyper-triples in the paper by their tags. 
-- Hyper-triple (2): `rlsum_rl_ntriple`
-- Hyper-triple (3), (9): `rlsum_rli_ntriple`
-- Hyper-triple (8): `rl_rli_ntriple`
-- Hyper-triple (10): `rlsum_rl_rli_ntriple_pre`
-- Hyper-triple (14): `rlsum_rl_rli_ntriple`
-- Hyper-triple (18): `rl_rli_align_step`
-- Hyper-triple (22): `rli_func_spec`
-- Hyper-triple (24): `rlsum_rli_align_step`
+The mechanisation of the overview example from the paper can be found in `experiments` folder. 
 
-We note that not all hyper-triples are mentioned above since their proofs are nested in the proofs of other hyper-triples. For example, hyper-triple (27) is proved in the proof of hyper-triple (24) with the Rule Prod. 
+Evaluation Case Studies: 
+- #1:  `sum_spec` in `experiments/SV.v`
+- #2:  `dotprod_spec` in `experiments/SV.v`
+- #3:  `sv_dotprod_spec` in `experiments/SV.v`
+- #4:  `sum_spec` in `experiments/COO.v`
+- #5:  `sum_spec` in `experiments/CSR.v`
+- #6:  `spmv_spec` in `experiments/CSR.v`
+- #7:  `spmspv_spec` in `experiments/CSR.v`
+- #8:  `sum_spec` in `experiments/uCSR.v`
+- #9:  `spmv_spec` in `experiments/uCSR.v`
+- #10: `spmspv_spec` in `experiments/uCSR.v`
+- #11: `rlsum_spec` in `experiments/RL.v`
+- #12: `alpha_blend_spec` in `experiments/RL.v`
+- #13: `spmv_spec` in `experiments/CSR_float_mono.v`
+
+The mechanised proof of the overview case study, presented in Section 4, is located in `experiments/uCSR.v` with all correspondent comments.
