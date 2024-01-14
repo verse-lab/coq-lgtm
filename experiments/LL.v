@@ -54,6 +54,21 @@ Lemma xfor_align `{INH: Inhab D} {A B : Type} Inv
 Proof.
 Admitted.
 
+Lemma xdiv j `{INH: Inhab D} i (Pre : hhprop) Post C1 C2 s:
+  i <> j ->
+  {{ Pre }}
+  [{
+    {i| x in s => C1 x};
+    {j| x in s => C2 x}
+  }]
+  {{ hv, Post hv }} ->
+  {{ Pre }}
+  [{
+    {i| x in s => trm_seq (C1 x) (C2 x)}
+  }]
+  {{ hv, Post hv }}.
+Admitted.
+
 End tmp.
 
 
@@ -110,11 +125,11 @@ Notation "p '|-(' l ')->' v" := (hsingle (p)%nat (LibLabType.Lab (l,0)%Z tt) v) 
 Lemma allocK `{Inhab D} (x : loc) : 
   {{ x |-(1)-> 0 }}
   [{
-    [1| _ in `{tt} => alloc x];
-    [2| _ in `{tt} => dealloc x]
+    [1| _ in `{tt} => alloc x; dealloc x]
   }]
   {{ _, \[] }}.
 Proof with fold'; try lia.
+  apply/(@xdiv _ 2)=> //.
   xin 1: xstep=> curr1...
   xin 2: xstep=> curr2...
   eapply xfor_align with 
