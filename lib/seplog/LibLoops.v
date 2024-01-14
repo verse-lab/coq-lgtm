@@ -273,6 +273,23 @@ Proof.
   by [].
 Qed.
 
+Lemma wp_for_unary Dom fs' ht 
+  (H : int -> hhprop Dom) Z N (C C' : Dom -> trm) (P : hhprop Dom) Q vr :
+  (forall j, Z <= j < N -> H j ==> wp fs' ((fun d=> subst vr j (C d))) (fun=> H (j + 1))) ->
+  H N ==> wp fs' C' (fun=> Q) ->
+  (P ==> H Z) -> 
+  (Z <= N) ->
+  (forall t x, subst "for" t (C x) = C x) ->
+  (forall t x, subst "cnt" t (C x) = C x) ->
+  (forall t x, subst "cond" t (C x) = C x) ->
+  var_eq vr "cnt" = false ->
+  var_eq vr "for" = false ->
+  var_eq vr "cond" = false ->
+  (forall x, indom fs' x -> ht x = trm_seq (For Z N (trm_fun vr (C x))) (C' x)) ->
+  P ==> wp fs' ht (fun=> Q).
+Proof.
+Admitted.
+
 Context {Dom : Type}.
 
 Local Notation D := (labeled Dom).
