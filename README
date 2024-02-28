@@ -6,10 +6,11 @@ The version of Coq used in our development is **8.18.0**, where the version of u
 
 We have tested on our machine that after executing `opam repo add coq-released https://coq.inria.fr/opam/released` according to the official page of Coq, running the following commands can install all required packages for compiling our project:
 
-```
-opam install coq-mathcomp-ssreflect
+```bash
+opam install coq-mathcomp-ssreflect=2.1.0
 opam install coq-mathcomp-zify coq-mathcomp-algebra coq-mathcomp-fingroup coq-mathcomp-finmap
 opam install coq-flocq
+opam install coq-bignums=9.0.0+coq8.18
 opam install coq-vcfloat --ignore-constraints-on=coq
 ```
 
@@ -19,23 +20,22 @@ For reference, we list the versions of all Coq-related packages (installed by th
 
 ```
 coq                    8.18.0
-coq-bignums            9.0.0+coq8.18 
+coq-bignums            9.0.0+coq8.18
 coq-compcert           3.13.1
-coq-coquelicot         3.4.0
+coq-coquelicot         3.4.1
 coq-core               8.18.0
-coq-elpi               1.19.3
-coq-flocq              4.1.3 
-coq-hierarchy-builder  1.6.0
+coq-elpi               2.0.0.1
+coq-flocq              4.1.4
+coq-hierarchy-builder  1.7.0
 coq-interval           4.9.0
 coq-mathcomp-algebra   2.1.0
 coq-mathcomp-fingroup  2.1.0
-coq-mathcomp-finmap    2.0.0
+coq-mathcomp-finmap    2.1.0
 coq-mathcomp-ssreflect 2.1.0
 coq-mathcomp-zify      1.5.0+2.0+8.16
-coq-menhirlib          20230608
+coq-menhirlib          20231231
 coq-stdlib             8.18.0
 coq-vcfloat            2.1.1
-coqide-server          8.18.0
 ```
 
 ### Build the Coq Project
