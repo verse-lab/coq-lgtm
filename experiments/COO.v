@@ -1,6 +1,6 @@
 Set Implicit Arguments.
 From LGTM.lib.theory Require Import LibFunExt LibLabType LibSummation LibListExt LibSepTLCbuffer.
-From LGTM.lib.seplog Require Import LibSepReference LibWP LibSepSimpl LibArray LibLoops.
+From LGTM.lib.seplog Require Import LibSepReference LibWP LibSepSimpl LibArray LibLoops NTriple.
 From LGTM.experiments Require Import Prelude UnaryCommon.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.
@@ -32,25 +32,31 @@ Hypothesis xcol_leq : forall x, In x xcol -> 0 <= x < Ncol.
 
 Definition indexf := index2.func N.
 
+(* Accessor function for sparse COO matrix. COO format consists of three arrays:
+  1. xrow -- contains row coordinats of non-zero vaules
+  2. xcol -- contains column coordinats of non-zero vaules
+  3. xval -- contains vaules of non-zero vaules
+  to access an element with `i` and `j` coordintes, we call `index2 i j xrow xcol` function.
+  Which essentially is equal to `index (i, j) (zip xrow xcol)` *)
 Definition get := 
   <{
   fun i j xrow xcol xval =>
     let k = indexf i j xrow xcol in 
-    read_array xval k
+    xval[k]
 }>.
 
 Lemma get_spec_in `{Inhab D} (x_row x_col x_val : loc) i d : 
-  htriple (single d tt) 
-    (fun=> get (List.nth (abs i) xrow 0) (List.nth (abs i) xcol 0) x_row x_col x_val)
+  htriple (`{d}) 
+    (fun=> get (xrow[i]) (xcol[i]) x_row x_col x_val)
     (\[0 <= i < N] \*
-      harray_int xrow x_row d \* 
-      harray_int xcol x_col d \* 
-      harray_int xval x_val d)
+      arr(x_row, xrow)⟨`d⟩ \* 
+      arr(x_col, xcol)⟨`d⟩ \* 
+      arr(x_val, xval)⟨`d⟩)
     (fun hr => 
-     \[hr = fun=> List.nth (abs i) xval 0] \* 
-      harray_int xrow x_row d \* 
-      harray_int xcol x_col d \* 
-      harray_int xval x_val d).
+      \[hr = fun=> xval[i] ] \* 
+      arr(x_row, xrow)⟨`d⟩ \* 
+      arr(x_col, xcol)⟨`d⟩ \* 
+      arr(x_val, xval)⟨`d⟩).
 Proof.
   xwp; xsimpl=> ?; xapp (@index2.spec _ H)=> //.
   xapp; xsimpl*; rewrite -combine_nth; last lia. 
@@ -58,17 +64,17 @@ Proof.
 Qed.
 
 Lemma get_spec_out_unary `{Inhab D} (x_row x_col x_val : loc) (i j : int) d : 
-  htriple (single d tt) 
+  htriple (`{d}) 
     (fun=> get i j x_row x_col x_val)
     (\[~ In (i, j) (combine xrow xcol)] \*
-      harray_int xrow x_row d \* 
-      harray_int xcol x_col d \* 
-      harray_int xval x_val d)
+      arr(x_row, xrow)⟨`d⟩ \* 
+      arr(x_col, xcol)⟨`d⟩ \* 
+      arr(x_val, xval)⟨`d⟩)
     (fun hr => 
      \[hr = fun=> 0] \* 
-      harray_int xrow x_row d \* 
-      harray_int xcol x_col d \* 
-      harray_int xval x_val d).
+      arr(x_row, xrow)⟨`d⟩ \* 
+      arr(x_col, xcol)⟨`d⟩ \* 
+      arr(x_val, xval)⟨`d⟩).
 Proof.
   xwp; xsimpl=> ?; xapp (@index2.spec _ H)=> //.
   xapp; xsimpl*; rewrite memNindex // nth_overflow // combine_length; lia.
@@ -78,16 +84,18 @@ Lemma get_spec_out `{Inhab D} (fs : fset D) (x_row x_col x_val : loc) :
   htriple fs
     (fun i => get (eld i).1 (eld i).2 x_row x_col x_val)
     (\[forall d, indom fs d -> ~ In (eld d) (combine xrow xcol)] \*
-      (\*_(d <- fs) harray_int xrow x_row d) \* 
-      (\*_(d <- fs) harray_int xcol x_col d) \* 
-       \*_(d <- fs) harray_int xval x_val d)
+      (\*_(d <- fs) arr(x_row, xrow)⟨`d⟩) \* 
+      (\*_(d <- fs) arr(x_col, xcol)⟨`d⟩) \* 
+       \*_(d <- fs) arr(x_val, xval)⟨`d⟩)
     (fun hr => 
      \[hr = fun=> 0] \* 
-      (\*_(d <- fs) harray_int xrow x_row d) \*
-      (\*_(d <- fs) harray_int xcol x_col d) \*  
-       \*_(d <- fs) harray_int xval x_val d).
+      (\*_(d <- fs) arr(x_row, xrow)⟨`d⟩) \*
+      (\*_(d <- fs) arr(x_col, xcol)⟨`d⟩) \*  
+       \*_(d <- fs) arr(x_val, xval)⟨`d⟩).
 Proof. xpointwise_build get_spec_out_unary. now destruct (eld _). Qed.
 
+(* #4 from the table
+  Summation of all elements in sparse COO matrix *)
 Definition sum := 
   <{
   fun xval =>
@@ -104,7 +112,7 @@ Ltac fold' :=
     -/(For_aux _ _) 
     -/(For _ _ _) //=.
 
-
+(* Specification for `sum` *)
 Lemma sum_spec `{Inhab D} (x_row x_col x_val : loc) : 
   {{ arr(x_row, xrow)⟨1, (0,0)⟩ \\*
      arr(x_col, xcol)⟨1, (0,0)⟩ \\*
@@ -129,7 +137,7 @@ Proof with fold'.
     indomE. rewrite /LibSummation.mem /=. split; try tauto. intros HH. pose proof HH as HH2%in_combineE. tauto. }
   rewrite ?E (fset_of_list_nodup (0,0)) // lE.
   xfor_sum Inv R (fun=> \Top) (fun hv i => hv[`2]((xrow[i], xcol[i]))) s.
-  { (xin 1: (xwp; xapp; xapp (@incr.spec _ H)=> y))...
+  { (xin 1: (xstep; xapp (@incr.spec _ H)=> y))...
     rewrite ?combine_nth /=; try lia.
     xapp get_spec_in=> //; xsimpl*. }
   { move=>Ha Hb Hc; move: Ha; apply contrapose, NoDup_nthZ; autos*; math. }

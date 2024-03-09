@@ -6,7 +6,6 @@ The version of Coq used in our development is **8.18.0**, where the version of u
 
 We have tested on our machine that after executing `opam repo add coq-released https://coq.inria.fr/opam/released` according to the official page of Coq, running the following commands can install all required packages for compiling our project:
 
-```bash
 opam install coq-mathcomp-ssreflect=2.1.0
 opam install coq-mathcomp-zify coq-mathcomp-algebra coq-mathcomp-fingroup coq-mathcomp-finmap
 opam install coq-flocq
@@ -15,28 +14,6 @@ opam install coq-vcfloat --ignore-constraints-on=coq
 ```
 
 The flag `--ignore-constraints-on` is necessary for working around some version constraints. 
-
-For reference, we list the versions of all Coq-related packages (installed by the commands above) as follows. 
-
-```
-coq                    8.18.0
-coq-bignums            9.0.0+coq8.18
-coq-compcert           3.13.1
-coq-coquelicot         3.4.1
-coq-core               8.18.0
-coq-elpi               2.0.0.1
-coq-flocq              4.1.4
-coq-hierarchy-builder  1.7.0
-coq-interval           4.9.0
-coq-mathcomp-algebra   2.1.0
-coq-mathcomp-fingroup  2.1.0
-coq-mathcomp-finmap    2.1.0
-coq-mathcomp-ssreflect 2.1.0
-coq-mathcomp-zify      1.5.0+2.0+8.16
-coq-menhirlib          20231231
-coq-stdlib             8.18.0
-coq-vcfloat            2.1.1
-```
 
 ### Build the Coq Project
 
@@ -75,7 +52,7 @@ Lockstep rules:
 Domain substitution rule: 
 - Subst: `htriple_hsub` in `lib/seplog/LibWP.v`
 
-Rule for for-loops: 
+Rule for for-loops:
 - For: `wp_for` in `lib/seplog/LibWP.v`
 
 Rule for while-loops: 
@@ -83,7 +60,7 @@ Rule for while-loops:
 
 ### Important Results
 
-The mechanisation of the overview example from the paper can be found in `experiments` folder. 
+Mechanisation of the overview example from the paper can be found in `experiments` folder. 
 
 Evaluation Case Studies: 
 - #1:  `sum_spec` in `experiments/SV.v`
@@ -100,4 +77,17 @@ Evaluation Case Studies:
 - #12: `alpha_blend_spec` in `experiments/RL.v`
 - #13: `spmv_spec` in `experiments/CSR_float.v`
 
-The mechanised proof of the overview case study, presented in Section 4, is located in `experiments/uCSR.v` with all correspondent comments.
+Mechanised proof of the overview case study, presented in Section 4, is located in `experiments/uCSR.v` with all correspondent comments.
+
+### LGTM embedding details
+
+The Coq-specific details of the framework are explained in `Triple.md`. `Triple.md` explains how LGTM specification triples are embedded in the Coq development.
+
+### Recommended order of Artifact Evaluation 
+
+1. `Triple.md` -- explains how LGTM triples are embedded 
+2. `experiments/uCSR.v` -- explains the mechanised proof of Section 4 from the paper, as well as other uCSR related proofs.
+3. `experiments/SV.v` -- explains the mechanised proofs related to operations on SV format.
+4. `experiments/CSR.v` -- explains the CSR format. Mechanised proofs in `experiments/CSR.v` are similar to ones in `experiments/uCSR.v`.
+5. Other `experiments/*` files
+6. Files with metatheory mechanisation

@@ -26,3 +26,10 @@ Notation "p '.+' i '|-(' l ',' x ')->' v" := (hsingle (p + 1 + abs i)%nat (LibLa
 
 Notation "'arrf(' y ',' i 'in' N '=>' f ')⟨' l ',' d '⟩'" := 
   (harray_fun_int (fun i => f) y N (LibLabType.Lab (l,0) d)) (at level 32, i binder, format "arrf( y ,  i  in  N =>  f )⟨ l ,  d ⟩") : hprop_scope.
+
+Notation "'arr(' x ',' y ')⟨`' d '⟩'" := 
+  (harray_int y x d) (at level 32, format "arr( x ,  y )⟨` d ⟩") : hprop_scope.
+
+Notation "s '[' i ']' ':=' x" := (val_array_set s i x) (in custom trm at level 50, format "s [ i ]  :=  x").
+    
+  

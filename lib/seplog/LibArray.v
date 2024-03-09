@@ -74,6 +74,9 @@ Definition harray_int (L:list int) (p:loc) (d : D) : hhprop :=
 Notation "'arr(' x ',' y ')⟨' l ',' d '⟩'" := 
   (harray_int y x (Lab (l,0) d)) (at level 32, format "arr( x ,  y )⟨ l ,  d ⟩") : hprop_scope.
 
+  Notation "'arr(' x ',' y ')⟨' d '⟩'" := 
+    (harray_int y x d) (at level 32, format "arr( x ,  y )⟨ d ⟩") : hprop_scope.
+
 Definition harray_float (L:list binary64) (p:loc) (d : D) : hhprop :=
   harray (LibList.map val_float L) p d.
 

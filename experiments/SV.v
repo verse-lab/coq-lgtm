@@ -1,6 +1,6 @@
 Set Implicit Arguments.
 From LGTM.lib.theory Require Import LibFunExt LibLabType LibSummation LibSepTLCbuffer.
-From LGTM.lib.seplog Require Import LibSepReference LibWP LibSepSimpl LibArray LibLoops.
+From LGTM.lib.seplog Require Import LibSepReference LibWP LibSepSimpl LibArray LibLoops NTriple.
 From LGTM.lib.theory Require Import LibListExt.
 From LGTM.experiments Require Import Prelude UnaryCommon.
 From mathcomp Require Import ssreflect ssrfun zify.
@@ -15,7 +15,6 @@ Section sv.
 Notation "'xind'" := ("x_ind":var) (in custom trm at level 0) : trm_scope.
 Notation "'xval'" := ("x_val":var) (in custom trm at level 0) : trm_scope.
 Notation "'dvec'" := ("d_vec":var) (in custom trm at level 0) : trm_scope.
-(* sometimes Coq cannot tell whether lb is a variable or an int, so avoid using the same name lb here *)
 Notation "'xlb'" := ("l_b":var) (in custom trm at level 0) : trm_scope.
 Notation "'xrb'" := ("r_b":var) (in custom trm at level 0) : trm_scope.
 
@@ -31,6 +30,8 @@ Hypothesis len_xval : rb <= length xval.
 Hypothesis nodup_xind : NoDup (xind [[ lb -- rb ]]).
 Hypothesis xind_leq : forall x, In x (xind [[ lb -- rb ]]) -> 0 <= x < M.
 
+
+(* Local automation tactic *)
 Tactic Notation "seclocal_solver" :=
   first [ rewrite list_interval_nth'; auto; try math
     | rewrite list_interval_length; auto; math
@@ -39,76 +40,96 @@ Tactic Notation "seclocal_solver" :=
 
 Definition indexf := index_bounded.func.
 
+(* Accessor function for 'extended' SV format. It takes pointers to values 
+  and indices arrays `xind` and `xval` as well as the range where to search 
+  for a value -- `xlb` and `xrb`. In case if `xlb = 0` and `xrb = size xind`, 
+  `get` will perform the search through the entire two arrays.  *)
 Definition get := 
   <{
   fun i xind xval xlb xrb =>
     let k = indexf xlb xrb i xind in 
     let "k < rb" = k < xrb in
     if "k < rb" then
-      read_array xval k
+      xval[k]
     else 0
 }>.
 
-Lemma get_spec {D} `{Inhab D} (x_ind x_val : loc) d (l : int): 
-  @htriple D (single d tt) 
-    (fun=> get l x_ind x_val lb rb)
-    (harray_int xind x_ind d \* 
-      harray_int xval x_val d)
+
+(* Unary dummy specification for a getter functions. This specification 
+  Just says that `get` doesn't change the head state. It is needed in the 
+  `spvspv` verification to handle `sv_get` values multiple by 0 *)
+Lemma get_spec {D} `{Inhab D} (x_ind x_val : loc) (d : D) (l : int): 
+  htriple (`{d}) (* Domain of a unary triple -- a singleton set `{d}` *)
+    (fun=> get l x_ind x_val lb rb) (* we run `get` funtion on this unary domain *)
+    (arr(x_ind, xind)⟨`d⟩ \* 
+      arr(x_val, xval)⟨`d⟩) (* precondition *)
     (fun hr => 
-      harray_int xind x_ind d \* 
-      harray_int xval x_val d).
+      arr(x_ind, xind)⟨`d⟩ \* 
+      arr(x_val, xval)⟨`d⟩). (* postcondition *)
 Proof.
-  xwp; xsimpl; xapp @index_bounded.spec=> //.
-  xwp; xapp; xwp; xif=> ?; [xapp|xwp;xval]; xsimpl.
+  xwp; xsimpl; xapp @index_bounded.spec=> //. (* apply `index` function spec  *)
+  xstep. (* compute the `if` condition *)
+  xwp; xif=> ?; (* case analysis on the `if` condition *)
+  [xapp|xwp;xval]; xsimpl. (* finish the proof *)
 Qed.
 
-Lemma get_spec_in {D : Type} `{Inhab D} (x_ind x_val : loc) i d : 
-  @htriple D (single d tt) 
-    (fun=> get (List.nth (abs i) (xind [[ lb -- rb ]]) 0) x_ind x_val lb rb)
+(* Unary specification for `sv_get` called on the `i`th element of the 
+  `xind[lb..rb]` array *)
+Lemma get_spec_in {D : Type} `{Inhab D} (x_ind x_val : loc) i (d : D) : 
+  let xindr := xind [[ lb -- rb ]] in (* `lb` to `rb` rangle of `xind` *)
+  let xvalr := xval [[ lb -- rb ]] in (* `lb` to `rb` rangle of `xval` *)
+  htriple (`{d})
+    (fun=> get xindr[i] x_ind x_val lb rb) (* running `sv_get` on `xind[lb..rb][i]` *)
     (\[0 <= i < N] \*
-      harray_int xind x_ind d \* 
-      harray_int xval x_val d)
+      arr(x_ind, xind)⟨`d⟩ \* 
+      arr(x_val, xval)⟨`d⟩)
     (fun hr => 
-     \[hr = fun=> List.nth (abs i) (xval [[ lb -- rb ]]) 0] \* 
-      harray_int xind x_ind d \* 
-      harray_int xval x_val d).
+     \[hr = fun=> xvalr[i] ] \*  (* the output is the singleton hyper-value indexed by {d}, which is equal to `xval[lb..rb][i]` *)
+      arr(x_ind, xind)⟨`d⟩ \* 
+      arr(x_val, xval)⟨`d⟩).
 Proof with seclocal_solver.
   xwp; xsimpl=> ?; xapp (@index_bounded.spec _ H)=> //.
-  xwp; xapp. rewrite index_nodup; auto...
+  xstep. rewrite index_nodup; auto...
   xwp; xif=> ?; subst; try math.
   xapp; xsimpl*... 
 Qed.
 
-Lemma get_spec_out_unary {D : Type} `{Inhab D} (x_ind x_val : loc) (i : int) d : 
-  @htriple D (single d tt) 
+(* Unary specification for `sv_get` called on the index outside of the `xind[lb..rb]` array *)
+Lemma get_spec_out_unary {D : Type} `{Inhab D} (x_ind x_val : loc) (i : int) (d : D) : 
+  htriple (`{d}) 
     (fun=> get i x_ind x_val lb rb)
     (\[~ In i (xind [[ lb -- rb ]])] \*
-      harray_int xind x_ind d \* 
-      harray_int xval x_val d)
+      arr(x_ind, xind)⟨`d⟩ \* 
+      arr(x_val, xval)⟨`d⟩)
     (fun hr => 
-     \[hr = fun=> 0] \* 
-      harray_int xind x_ind d \* 
-      harray_int xval x_val d).
+     \[hr = fun=> 0] \* (* the output value is 0 *)
+      arr(x_ind, xind)⟨`d⟩ \* 
+      arr(x_val, xval)⟨`d⟩).
 Proof.
   xwp; xsimpl=> ?; xapp (@index_bounded.spec _ H)=> //...
   rewrite memNindex // list_interval_length //.
-  xwp; xapp. xwp; xif=> ?; try math. xwp; xval. xsimpl*.
+  xstep. xwp; xif=> ?; try math. xwp; xval. xsimpl*.
 Qed.
 
 Local Notation D := (labeled int).
 
-Lemma get_spec_out `{Inhab D} fs (x_ind x_val : loc) : 
-  @htriple D fs
+(* Hyper specification for `sv_get` function, called on a set on indecies,
+  outside of the `xind[lb..rb]` array. The index set in this case is a finite 
+  set (`fset`) of elements of type `labeled int`. *)
+Lemma get_spec_out `{Inhab D} (x_ind x_val : loc) (fs : fset D) (* finite index set *) : 
+  htriple fs
     (fun i => get (eld i) x_ind x_val lb rb)
     (\[forall d, indom fs d -> ~ In (eld d) (xind [[ lb -- rb ]])] \*
-      (\*_(d <- fs) harray_int xind x_ind d) \* 
-       \*_(d <- fs) harray_int xval x_val d)
+      (\*_(d <- fs) arr(x_ind, xind)⟨`d⟩ ) \* 
+       \*_(d <- fs) arr(x_val, xval)⟨`d⟩)
     (fun hr => 
      \[hr = fun=> 0] \* 
-      ((\*_(d <- fs) harray_int xind x_ind d) \* 
-       \*_(d <- fs) harray_int xval x_val d)).
+      ((\*_(d <- fs) arr(x_ind, xind)⟨`d⟩) \* 
+       \*_(d <- fs) arr(x_val, xval)⟨`d⟩)).
 Proof. by xpointwise_build (@get_spec_out_unary). Qed.
 
+(* #1 from the table
+  Function that sums up elements in the sparse array in SV format *)
 Definition sum := 
   <{
   fun xind xval xlb xrb =>
@@ -127,6 +148,7 @@ Ltac fold' :=
     -/(For_aux _ _) 
     -/(For _ _ _) //=.
 
+(* Specification for the summation function *)
 Lemma sum_spec `{Inhab D} (x_ind x_val : loc) (s : int) : 
   {{ arr(x_ind, xind)⟨1, 0⟩ \*
      arr(x_val, xval)⟨1, 0⟩ \\* 
@@ -143,24 +165,26 @@ Lemma sum_spec `{Inhab D} (x_ind x_val : loc) (s : int) :
       (\*_(i <- `[0, M]) arr(x_val, xval)⟨2, i⟩)}}.
 Proof with (try solve [ seclocal_solver ]; fold').
   xset_Inv Inv 1; xset_R int Inv R 2.
-  xfocus* 2 xind[[lb -- rb]].
-  xapp get_spec_out=> //. 1: case=> ??; indomE; autos*.
-  xclean_heap.
-  xin 1 : xwp; xapp=> q...
+  xfocus* 2 xind[[lb -- rb]]. (* focusing on non-zero indices of the sparse array *)
+  xapp get_spec_out=> //. 1: case=> ??; indomE; autos*. (* prove that remaining indices are zeros, making use of `get_spec_out` *)
+  xclean_heap. (* clean up the heap *)
+  xin 1 : xstep=> q... (* advance the first instruction in `sum` *)
   have Hl : length xind[[lb -- rb]] = rb - lb :> int by apply list_interval_length.
-  rewrite intr_list ?(fset_of_list_nodup 0) ?Hl ?Union_interval_change2 //.
-  xfor_sum Inv R R (fun hv i => hv[`2](xind[i])) q...
-  { (xin 1: (xwp; xapp; xapp (@incr.spec  _ H)=> y))...
-    xapp (@get_spec_in D)=> //; try math. xsimpl*... }
+  rewrite intr_list ?(fset_of_list_nodup 0) ?Hl ?Union_interval_change2 //. (* prepare for `For` rule application *)
+  xfor_sum Inv R R (fun hv i => hv[`2](xind[i])) q... (* `For` rule application *)
+  { (xin 1: (xstep; xapp (@incr.spec  _ H)=> y))... (* advance the rest of the `sum` *)
+    xapp (@get_spec_in D)=> //; try math. xsimpl*... } (* advance getters *)
   { move=>Ha Hb Hc; have Ha' : i0 - lb <> j0 - lb by math.
-    move: Ha'; apply contrapose, NoDup_nthZ; autos*; math. }
-  xwp; xapp... xwp; xapp. xwp; xval. xsimpl*.
-  xsum_normalize. by rewrite intr_list // Sum_list_interval.
+    move: Ha'; apply contrapose, NoDup_nthZ; autos*; math. } (* minor proof obligation *)
+  xstep... xstep. xwp; xval. xsimpl*. (* deallocating the accumulator in `sum` *)
+  xsum_normalize. by rewrite intr_list // Sum_list_interval. (* adjusting summations *)
 Qed.
 
 Context (dvec : list int).
 Context (dvec_len : length dvec = M :> int).
 
+(* #2 from the table
+  Dot product of a sparse SV array and a dense one *)
 Definition dotprod := 
   <{
   fun xind xval dvec xlb xrb =>
@@ -177,6 +201,8 @@ Definition dotprod :=
   "res"
 }>.
 
+
+(* Specification for the `dotprod` *)
 Lemma dotprod_spec `{Inhab D} (x_ind x_val d_vec : loc) : 
   {{ arr(x_ind, xind)⟨1, 0⟩ \\*
      arr(x_val, xval)⟨1, 0⟩ \\*
@@ -200,15 +226,15 @@ Proof with (try solve [ seclocal_solver ]; fold').
   xfocus* 2 xind[[lb -- rb]].
   xapp get_spec_out=> //. 1: case=> ??; indomE; autos*.
   xclean_heap.
-  xin 1 : xwp; xapp=> q...
+  xin 1 : xstep=> q...
   have Hl : length xind[[lb -- rb]] = rb - lb :> int by apply list_interval_length.
   rewrite intr_list ?(fset_of_list_nodup 0) ?Hl ?Union_interval_change2 //.
   xfor_sum Inv R R (fun hv i => (hv[`2](xind[i]) * dvec[xind[i] ])) q...
-  { (xin 1: do 4 (xwp; xapp); xapp (@incr.spec _ H)=> y)...
+  { (xin 1: do 4 xstep; xapp (@incr.spec _ H)=> y)...
     xapp (@get_spec_in D)=> //; try math. xsimpl*... }
   { move=>Ha Hb Hc; have Ha' : i0 - lb <> j0 - lb by math.
     move: Ha'; apply contrapose, NoDup_nthZ; autos*; math. }
-  xwp; xapp... xwp; xapp. xwp; xval. xsimpl*.
+  xgo; xwp; xval. xsimpl*.
   xsum_normalize (fun=> Z.mul^~ _). by rewrite intr_list // Sum_list_interval.
 Qed.
 
@@ -246,6 +272,9 @@ Notation "'iX'" := ("iX":var) (in custom trm at level 0) : trm_scope.
 Notation "'iY'" := ("iY":var) (in custom trm at level 0) : trm_scope.
 Notation "'ans'" := ("ans":var) (in custom trm at level 0) : trm_scope.
 
+
+(* #3 from the table
+  Product of two sparse SV arrays. Correspond to `spvspv` from Fig. 3 of the paper *)
 Definition sv_dotprod (xind yind xval yval : loc) := <{
   fun lbx rbx lby rby  =>
     let ans = ref 0 in
@@ -291,6 +320,7 @@ Ltac fold' :=
 
 Notation size := Datatypes.length.
 
+(* specification of `sv_dotprod` *)
 Lemma sv_dotprod_spec `{Inhab (labeled int)} (x_ind x_val y_ind y_val : loc) : 
   {{ (arr(x_ind, xind)⟨1, 0⟩ \* arr(y_ind, yind)⟨1, 0⟩ \*
      arr(x_val, xval)⟨1, 0⟩ \* arr(y_val, yval)⟨1, 0⟩) \*
@@ -531,7 +561,7 @@ Proof with fold'.
     rewrite /H2/H1 ?E (fset_of_list_nodup 0) // /R1 /R2.
     rewrite -> ?hbig_fset_hstar; xsimpl*. }
   simpl=> v; rewrite /op/R1/R2/Inv/arr1/arrs/H2/H1 -fset_of_list_nodup //.
-  rewrite -> ?hbig_fset_hstar; xsimpl=> ?? _. 
+  rewrite -> ?hbig_fset_hstar; xsimpl=> ?? _ //. 
   do 4 (xwp; xapp); xwp; xval; xsimpl; rewrite /op.
   rewrite (@SumEq _ _
     (fun i => If ind i then v[`2](i) *  v[`3](i) else 0) 
