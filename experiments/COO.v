@@ -94,6 +94,8 @@ Lemma get_spec_out `{Inhab D} (fs : fset D) (x_row x_col x_val : loc) :
        \*_(d <- fs) arr(x_val, xval)⟨`d⟩).
 Proof. xpointwise_build get_spec_out_unary. now destruct (eld _). Qed.
 
+(* #4 from the table
+  Summation of all elements in sparse COO matrix *)
 Definition sum := 
   <{
   fun xval =>

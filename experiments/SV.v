@@ -128,7 +128,8 @@ Lemma get_spec_out `{Inhab D} (x_ind x_val : loc) (fs : fset D) (* finite index 
        \*_(d <- fs) arr(x_val, xval)⟨`d⟩)).
 Proof. by xpointwise_build (@get_spec_out_unary). Qed.
 
-(* funtion that sums up elements in the sparse array in SV format *)
+(* #1 from the table
+  Function that sums up elements in the sparse array in SV format *)
 Definition sum := 
   <{
   fun xind xval xlb xrb =>
@@ -182,7 +183,8 @@ Qed.
 Context (dvec : list int).
 Context (dvec_len : length dvec = M :> int).
 
-(* Dot product of a sparse SV array and a dense one *)
+(* #2 from the table
+  Dot product of a sparse SV array and a dense one *)
 Definition dotprod := 
   <{
   fun xind xval dvec xlb xrb =>
@@ -271,7 +273,8 @@ Notation "'iY'" := ("iY":var) (in custom trm at level 0) : trm_scope.
 Notation "'ans'" := ("ans":var) (in custom trm at level 0) : trm_scope.
 
 
-(* Dot product of two sparse SV arrays. Correspond to `spvspv` from Fig. 3 of the paper *)
+(* #3 from the table
+  Product of two sparse SV arrays. Correspond to `spvspv` from Fig. 3 of the paper *)
 Definition sv_dotprod (xind yind xval yval : loc) := <{
   fun lbx rbx lby rby  =>
     let ans = ref 0 in

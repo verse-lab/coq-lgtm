@@ -159,7 +159,8 @@ Tactic Notation "seclocal_fold" :=
 
 Hypothesis sorted_eachcol : forall x : int, 0 <= x < Nidx -> sorted (mind_seg x).
 
-(* Version of `spmspv` from Fig.3 *)
+(* #10 from the table
+  Version of `spmspv` from Fig.3 *)
 Definition spmspv m_ind y_ind m_val y_val := 
   let spvspv := sv.sv_dotprod m_ind y_ind m_val y_val in
   <{
@@ -248,7 +249,8 @@ Proof with (try seclocal_fold; seclocal_solver; autos* ).
   rewrite -index_mem index_nodup; try case_if...
 Qed. 
 
-(* Summation of all elements in uCSR sparse maitrix *)
+(* #8 from the table
+  Summation of all elements in uCSR sparse maitrix *)
 Definition sum := 
   <{
     fun mval midx mind mcrd =>
@@ -304,7 +306,8 @@ Qed.
 Context (dvec : list int).
 Context (dvec_len : length dvec = Ncol :> int).
 
-(* Dot product of a sparse uCSR matrix and a dense vector *)
+(* #9 from the table
+  Dot product of a sparse uCSR matrix and a dense vector *)
 Definition spmv := 
   <{
   fun mval midx mind mcrd dvec =>

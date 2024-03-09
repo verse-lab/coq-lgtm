@@ -182,7 +182,8 @@ Hypothesis dvec_finite : forall x, In x dvec -> @finite Tdouble x.
 
 Section spmv_monolithic.
 
-(* Product of float-valued sparse CSR matrix and dense vector, implemented
+(* #13 from the table
+  Product of float-valued sparse CSR matrix and dense vector, implemented
   without calling any subroutines *)
 Definition spmv := 
   <{

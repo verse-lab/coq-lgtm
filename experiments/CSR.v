@@ -67,7 +67,8 @@ Definition get :=
       sv.get j mind mval lb rb
 }>.
 
-(* Summation of all elements in sparse CSR matrix *)
+(* #5 from the table
+  Summation of all elements in sparse CSR matrix *)
 Definition sum := 
   <{
   fun mval mind mcrd =>
@@ -125,7 +126,8 @@ Context (dvec : list int).
 Context (dvec_len : length dvec = Ncol :> int).
 
 
-(* Dot product of a sparse CSR matrix and a dense vector *)
+(* #6 from the table
+  Dot product of a sparse CSR matrix and a dense vector *)
 Definition spmv := 
   <{
   fun mval mind mcrd dvec =>
@@ -183,7 +185,8 @@ Hypothesis Nrow0 : Nrow > 0. (* we get rid of it later *)
 
 Hypothesis sorted_eachcol : forall x : int, 0 <= x < Nrow -> sorted (mind_seg x).
 
-(* Product of sparse CSR matrix and sparse SV vector *)
+(* #7 from the table
+  Product of sparse CSR matrix and sparse SV vector *)
 Definition spmspv m_ind y_ind m_val y_val := 
   let dot := sv.sv_dotprod m_ind y_ind m_val y_val in
   <{
