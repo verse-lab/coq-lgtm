@@ -36,7 +36,7 @@ Definition indexf := index2.func N.
   1. xrow -- contains row coordinats of non-zero vaules
   2. xcol -- contains column coordinats of non-zero vaules
   3. xval -- contains vaules of non-zero vaules
-  to access element with `i`, `j` coordintes, we call `index2 i j xrow xcol` function.
+  to access an element with `i` and `j` coordintes, we call `index2 i j xrow xcol` function.
   Which essentially is equal to `index (i, j) (zip xrow xcol)` *)
 Definition get := 
   <{
