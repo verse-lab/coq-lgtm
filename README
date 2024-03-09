@@ -6,10 +6,10 @@ The version of Coq used in our development is **8.18.0**, where the version of u
 
 We have tested on our machine that after executing `opam repo add coq-released https://coq.inria.fr/opam/released` according to the official page of Coq, running the following commands can install all required packages for compiling our project:
 
-```
 opam install coq-mathcomp-ssreflect=2.1.0
 opam install coq-mathcomp-zify coq-mathcomp-algebra coq-mathcomp-fingroup coq-mathcomp-finmap
 opam install coq-flocq
+opam install coq-bignums=9.0.0+coq8.18
 opam install coq-vcfloat --ignore-constraints-on=coq
 ```
 
