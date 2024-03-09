@@ -7,7 +7,7 @@ The version of Coq used in our development is **8.18.0**, where the version of u
 We have tested on our machine that after executing `opam repo add coq-released https://coq.inria.fr/opam/released` according to the official page of Coq, running the following commands can install all required packages for compiling our project:
 
 ```
-opam install coq-mathcomp-ssreflect
+opam install coq-mathcomp-ssreflect=2.1.0
 opam install coq-mathcomp-zify coq-mathcomp-algebra coq-mathcomp-fingroup coq-mathcomp-finmap
 opam install coq-flocq
 opam install coq-vcfloat --ignore-constraints-on=coq
@@ -101,3 +101,4 @@ Evaluation Case Studies:
 - #13: `spmv_spec` in `experiments/CSR_float.v`
 
 The mechanised proof of the overview case study, presented in Section 4, is located in `experiments/uCSR.v` with all correspondent comments.
+We advise to go though case studies in the order presented here.  
