@@ -1,6 +1,6 @@
 Set Implicit Arguments.
 From LGTM.lib.theory Require Import LibFunExt LibLabType LibSummation LibSepTLCbuffer.
-From LGTM.lib.seplog Require Import LibSepReference LibWP LibSepSimpl LibArray LibLoops.
+From LGTM.lib.seplog Require Import LibSepReference LibWP LibSepSimpl LibArray LibLoops NTriple.
 From LGTM.lib.theory Require Import LibListExt.
 From LGTM.experiments Require Import Prelude UnaryCommon.
 From mathcomp Require Import ssreflect ssrfun zify.
@@ -28,26 +28,34 @@ Implicit Type d : D.
 
 Section get.
 
+(* Accessor function for vector compressed with RL encoding. 
+  RL encoding can be applied to arrays with repeated data. It
+  consists of two arrays:
+  1. xval -- array storing distinct values, in order the appear in the original vector
+  2. xind -- array storing indices of the start of each contiguous same-element segment 
+  
+  For example vector [A, A, B, B, C, C, C, B] can be compressed as 
+  xval:  [A, B, C, B]
+  xind: [0, 2, 4, 7, 8]  *)
 Definition get := 
   <{
   fun i xind xval =>
     let k = search.func i xind in 
-    read_array xval k
+    xval[k]
 }>.
 
 Lemma get_spec_unary `{Inhab D} (x_ind x_val : loc) d 
   (k : int) 
-  (* (Hk : (0 <= k < xind[(length xind - 1)])) *)
   (a : int) (Ha : (0 <= a < (length xind - 1))) 
   (Hka : (xind[a] <= k < xind[a + 1])) : 
-  htriple (single d tt) 
+  htriple (`{d}) 
     (fun=> get k x_ind x_val)
-    (harray_int xind x_ind d \* 
-      harray_int xval x_val d)
+    (arr(x_ind, xind)⟨`d⟩ \* 
+      arr(x_val, xval)⟨`d⟩)
     (fun hr => 
-      \[hr d = val_int (xval[a])] \*
-      harray_int xind x_ind d \* 
-      harray_int xval x_val d).
+      \[hr d = xval[a] ] \*
+      arr(x_ind, xind)⟨`d⟩ \* 
+      arr(x_val, xval)⟨`d⟩).
 Proof.
   pose proof (@IIL_L_bounded_impl _ HindIIL _ eq_refl _ _ Ha Hka) as Hk.
   xwp; xapp (@search.spec); eauto; xapp; xsimpl*.
@@ -59,22 +67,22 @@ Lemma get_spec (k : int)  (x_ind x_val : loc)
   (HH : forall i, indom fs i -> xind[k] <= (eld i) < xind[k+1]) :
     htriple fs
       (fun d => get (eld d) x_ind x_val)
-      ((\*_(d <- fs) harray_int xind x_ind d) \*
-      (\*_(d <- fs) harray_int xval x_val d))
+      ((\*_(d <- fs) arr(x_ind, xind)⟨`d⟩) \*
+      (\*_(d <- fs) arr(x_val, xval)⟨`d⟩))
       (fun hr => \[hr = fun d => xval[k] ] \*
-        ((\*_(d <- fs) harray_int xind x_ind d) \*
-        (\*_(d <- fs) harray_int xval x_val d))).
+        ((\*_(d <- fs) arr(x_ind, xind)⟨`d⟩) \*
+        (\*_(d <- fs) arr(x_val, xval)⟨`d⟩))).
 Proof. by xpointwise_build get_spec_unary. Qed.
 
 Lemma get_spec_seg `{Inhab D} (x_ind x_val : loc) (k : int) 
   (Hk : 0 <= k < (length xind - 1)) l : 
   htriple ⟨l, ind_seg xind k⟩
     (fun d => get (eld d) x_ind x_val)
-    ((\*_(d0 <- ⟨l, ind_seg xind k⟩) harray_int xind x_ind d0) \*
-      ((\*_(d0 <- ⟨l, ind_seg xind k⟩) harray_int xval x_val d0)))
+    ((\*_(d <- ⟨l, ind_seg xind k⟩) arr(x_ind, xind)⟨`d⟩) \*
+      ((\*_(d <- ⟨l, ind_seg xind k⟩) arr(x_val, xval)⟨`d⟩)))
     (fun hr => \[hr = fun d => xval[k] ] \*
-      ((\*_(d0 <- ⟨l, ind_seg xind k⟩) harray_int xind x_ind d0) \*
-      ((\*_(d0 <- ⟨l, ind_seg xind k⟩) harray_int xval x_val d0)))).
+      ((\*_(d <- ⟨l, ind_seg xind k⟩) arr(x_ind, xind)⟨`d⟩) \*
+      ((\*_(d <- ⟨l, ind_seg xind k⟩) arr(x_val, xval)⟨`d⟩)))).
 Proof.
   apply/htriple_conseq; [apply/get_spec| |]; eauto.
   move=> -[>]; indomE=> -[<-]/=. rewrite /ind_seg; by indomE.
@@ -87,19 +95,20 @@ Section rlsum.
 Variables (M N : int).
 Hypotheses (EM : M = length xind - 1) (EN : N = xind[M]).
 
+
+(* #11 from the table
+  Summation over all elements in RL vector *)
 Definition rlsum :=
   <{ fun xind xval => 
       let s = ref 0 in 
       for i <- [0, M] {
-        let "tmp1" = ! s in
-        let "tmp2" = read_array xval i in
-        let "tmp3" = i + 1 in
-        let "tmp4" = read_array xind "tmp3" in
-        let "tmp5" = read_array xind i in
-        let "tmp6" = "tmp4" - "tmp5" in
-        let "tmp7" = "tmp2" * "tmp6" in
-        let "tmp8" = "tmp1" + "tmp7" in
-        s := "tmp8"
+        let "x_val[i]" = xval[i] in
+        let "i + 1" = i + 1 in
+        let "x_ind[i + 1]" = xind["i + 1"] in
+        let "x_ind[i]" = xind[i] in
+        let "x_ind[i + 1] - x_ind[i]" = "x_ind[i + 1]" - "x_ind[i]" in
+        let "x_val[i] * (x_ind[i + 1] - x_ind[i])" = "x_val[i]" * "x_ind[i + 1] - x_ind[i]" in
+        s += "x_val[i] * (x_ind[i + 1] - x_ind[i])"
       };
       let "res" = ! s in
       free s; 
@@ -111,6 +120,7 @@ Ltac fold' :=
     -/(For_aux _ _) 
     -/(For _ _ _) //=.
 
+(* Specification for `rlsum` *)
 Lemma rlsum_spec `{Inhab D} (x_ind x_val : loc) : 
   {{ arr(x_ind, xind)⟨1, 0⟩ \*
      arr(x_val, xval)⟨1, 0⟩ \* 
@@ -131,13 +141,13 @@ Proof with fold'.
   xin 1 : xwp; xapp=> s...
   rewrite <- interval_segmentation with (L:=xind), <- ! EM by now subst M N.
   xfor_sum Inv R R (fun hv (j : int) => (Σ_(i <- (ind_seg xind j)) hv[`2](i))) s.
-  { (xin 1: (do 9 (xwp; xapp)))...
+  { (xin 1: xgo)...
     rewrite -> ! hbig_fset_hstar. subst M. 
     xapp (@get_spec_seg H x_ind x_val _ H0). xsimpl.
     rewrite SumConst_interval; simpl; try math; try xsimpl.
     apply IIL_L_inc'; auto; try math. }
   { intros. apply ind_seg_disjoint with (N:=N); subst M N; indomE; auto. } 
-  { do 2 (xwp; xapp). xwp; xval. xsimpl.
+  { xgo. xwp; xval. xsimpl.
     xsum_normalize. rewrite SumCascade; try reflexivity.
     disjointE. intros. apply ind_seg_disjoint with (N:=N); subst M N; indomE; auto. }
 Qed.
@@ -180,6 +190,7 @@ Notation "'yvaly'"  := ("y_valy":var) (in custom trm at level 0) : trm_scope.
 Notation "'cnd'"    := ("cnd"   :var) (in custom trm at level 0)  : trm_scope.
 Notation "'delta'"  := ("delta" :var) (in custom trm at level 0) : trm_scope.
 
+(* Alpha blending of two RL vectors *)
 Definition alpha_blend := <{
   fun xind yind xval yval  =>
     let ans    = ref 0 in
@@ -259,6 +270,8 @@ Ltac abbrv :=
 
 Notation size := Datatypes.length.
 
+(* #12 from the table
+  Specification for alpha blenging *)
 Lemma alpha_blend_spec `{Inhab (labeled int)} (x_ind x_val y_ind y_val : loc) : 
   {{ (arr(x_ind, xind)⟨1, 0⟩ \* arr(y_ind, yind)⟨1, 0⟩ \*
      arr(x_val, xval)⟨1, 0⟩ \* arr(y_val, yval)⟨1, 0⟩) \*
@@ -282,8 +295,8 @@ Proof with (fold'; try abbrv).
   have?: NoDup yind by exact/sorted_nodup.
   have sind: sorted ind by exact/sorted_merge.
   have ndind: NoDup ind by exact/sorted_nodup.
-  xin 1: (xwp;xapp=> ans); (xwp;xapp=> iX); 
-    (xwp;xapp=> iY); (xwp;xapp=> step)...
+  xin 1: (xstep=> ans); (xstep=> iX); 
+    (xstep=> iY); (xstep=> step)...
   have xind_notnil : xind <> nil by apply notnil_length; try math.
   have yind_notnil : yind <> nil by apply notnil_length; try math.
   have maxxindE: max xind = N by rewrite -(sorted_max_size _ (i:=Mx)) //; try math.
