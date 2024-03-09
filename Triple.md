@@ -1,6 +1,6 @@
 # LGTM triples in Coq
 
-Here we discuss how the Coq encoding on LGTM triples is different from the paper one. For illustration purposes we consider the example from the section 4 (Fig. 13). The Coq embedding LGTM triple looks like
+Here we discuss how the Coq encoding of LGTM triples is different from the paper one. For illustration, purposes we consider the example from the section 4 (Fig. 13). The Coq embedding LGTM triple looks like
 
 ```coq
 Lemma spmspv_spec `{Inhab D} `{H__ : Inhab (labeled int)}
@@ -29,20 +29,20 @@ Lemma spmspv_spec `{Inhab D} `{H__ : Inhab (labeled int)}
 
 Major differences with the paper verison are: 
 1. The Coq notation for `x(i) |-> y` heap predicate is `x |-(i)-> y`. 
-2. The Coq notation for `arr(x(i), y)` heap predicate is `arr(x, y)⟨i⟩`. 
+2. The Coq notation for `arr(x(i), y)` heap predicate is `arr(x, y)⟨i⟩`. `arrf(x, i in N => f(i))⟨i⟩` from the post condition is a syntactic sugar to `arr(x, [f(0), f(1),.., f(N-1)])⟨i⟩`. 
 3. The triple from the paper has three index sets for each product program: 
   - $\{⟨1,0⟩\}$: stands for $\{0\}$ set with tag `1`
   - $\{⟨2, i, j⟩ : i \in [0,M), j \in [0,N) \}$: stands for $[0,M)\times[0,N)$ with tag `2`
   - $\{⟨3, i⟩ : i \in  [0,N) \}$: stands for $[0,N)$ with tag `3`
-  In Coq we only support index sets of the same type within one triple. That is why the first and the third index set of the Coq triple have an artificial extra component (which is always `0`). The type of index set elements in this case would be `labeled (int * int * int)`, where `labeled T` is a type of elements from `T` paired with some tag.
-4. In the paper the output of each component is a separate hyper vaule. Here all 
-  outputs are assembled in the same hyper value `hv`. To reference to the outcome of
-  each particular componet with tag `t`, one should write `hv['t]`.
+  In Coq, within one triple we only support index sets of the same type (different triples can have index sets of different types). That is why the first and the third index set of the Coq triple have an artificial extra component (which is always `0`). The type of index set elements in this case would be `labeled (int * int)`, where `labeled T` is a type of elements from `T` paired with some tag.
+4. In the paper the output of each component is a separate hyper value. Here all 
+  outputs are assembled in the one hyper value `hv`. To reference to the outcome of
+  each particular component with tag `t`, one should write `hv['t]`.
 
 
 # Other variations of LGTM triples
 
-Other equivalent variations of LGTM triple embedding include 
+Other equivalent variations of LGTM triple embeddings include 
 
 ```coq
 htriple fs code Pre Post
@@ -51,4 +51,4 @@ and
 ```coq
 Pre ==> wp fs code Post
 ```
-Where `fs` is a finite index set. Typically of type `fset (labeled T)`, `code` is a function from the index set to program ASTs, `Pre` is a post condition and `Post` is a postcondition.  
+Where `fs` is a finite index set, `code` is a function from the index set to program ASTs, `Pre` is a precondition and `Post` is a postcondition.

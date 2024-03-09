@@ -41,9 +41,9 @@ Tactic Notation "seclocal_solver" :=
 Definition indexf := index_bounded.func.
 
 (* Accessor function for 'extended' SV format. It takes pointers to values 
-  and indices arrays `xind` and `xval` as well as the range of where to search 
+  and indices arrays `xind` and `xval` as well as the range where to search 
   for a value -- `xlb` and `xrb`. In case if `xlb = 0` and `xrb = size xind`, 
-  `get` will perform the search throug the entier two arrays.  *)
+  `get` will perform the search through the entire two arrays.  *)
 Definition get := 
   <{
   fun i xind xval xlb xrb =>
@@ -57,7 +57,7 @@ Definition get :=
 
 (* Unary dummy specification for a getter functions. This specification 
   Just says that `get` doesn't change the head state. It is needed in the 
-  `spvspv` verification to hangle `sv_get` vaules multipled by 0 *)
+  `spvspv` verification to handle `sv_get` values multiple by 0 *)
 Lemma get_spec {D} `{Inhab D} (x_ind x_val : loc) (d : D) (l : int): 
   htriple (`{d}) (* Domain of a unary triple -- a singleton set `{d}` *)
     (fun=> get l x_ind x_val lb rb) (* we run `get` funtion on this unary domain *)
@@ -168,12 +168,12 @@ Proof with (try solve [ seclocal_solver ]; fold').
   xfocus* 2 xind[[lb -- rb]]. (* focusing on non-zero indices of the sparse array *)
   xapp get_spec_out=> //. 1: case=> ??; indomE; autos*. (* prove that remaining indices are zeros, making use of `get_spec_out` *)
   xclean_heap. (* clean up the heap *)
-  xin 1 : xstep=> q... (* executing the first instruction in `sum` *)
+  xin 1 : xstep=> q... (* advance the first instruction in `sum` *)
   have Hl : length xind[[lb -- rb]] = rb - lb :> int by apply list_interval_length.
   rewrite intr_list ?(fset_of_list_nodup 0) ?Hl ?Union_interval_change2 //. (* prepare for `For` rule application *)
   xfor_sum Inv R R (fun hv i => hv[`2](xind[i])) q... (* `For` rule application *)
-  { (xin 1: (xstep; xapp (@incr.spec  _ H)=> y))... (* executing the rest of the `sum` *)
-    xapp (@get_spec_in D)=> //; try math. xsimpl*... } (* executing getters *)
+  { (xin 1: (xstep; xapp (@incr.spec  _ H)=> y))... (* advance the rest of the `sum` *)
+    xapp (@get_spec_in D)=> //; try math. xsimpl*... } (* advance getters *)
   { move=>Ha Hb Hc; have Ha' : i0 - lb <> j0 - lb by math.
     move: Ha'; apply contrapose, NoDup_nthZ; autos*; math. } (* minor proof obligation *)
   xstep... xstep. xwp; xval. xsimpl*. (* deallocating the accumulator in `sum` *)
@@ -226,15 +226,15 @@ Proof with (try solve [ seclocal_solver ]; fold').
   xfocus* 2 xind[[lb -- rb]].
   xapp get_spec_out=> //. 1: case=> ??; indomE; autos*.
   xclean_heap.
-  xin 1 : xwp; xapp=> q...
+  xin 1 : xstep=> q...
   have Hl : length xind[[lb -- rb]] = rb - lb :> int by apply list_interval_length.
   rewrite intr_list ?(fset_of_list_nodup 0) ?Hl ?Union_interval_change2 //.
   xfor_sum Inv R R (fun hv i => (hv[`2](xind[i]) * dvec[xind[i] ])) q...
-  { (xin 1: do 4 (xwp; xapp); xapp (@incr.spec _ H)=> y)...
+  { (xin 1: do 4 xstep; xapp (@incr.spec _ H)=> y)...
     xapp (@get_spec_in D)=> //; try math. xsimpl*... }
   { move=>Ha Hb Hc; have Ha' : i0 - lb <> j0 - lb by math.
     move: Ha'; apply contrapose, NoDup_nthZ; autos*; math. }
-  xwp; xapp... xwp; xapp. xwp; xval. xsimpl*.
+  xgo; xwp; xval. xsimpl*.
   xsum_normalize (fun=> Z.mul^~ _). by rewrite intr_list // Sum_list_interval.
 Qed.
 

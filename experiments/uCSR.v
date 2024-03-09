@@ -87,8 +87,8 @@ Definition indexf := index.func Nidx.
   midx :  [3, 0, 4, 3]
   
   mcrd: [0, 1,    3, 4,   6]
-   mind: [2, 1, 4, 4, 1, 3]
-   mval: [C, A, B, G, D, E] *)
+  mind:  [2, 1, 4, 4, 1, 3]
+  mval:  [C, A, B, G, D, E] *)
 Definition get (m_val : loc) := 
 <{
   fun midx mind mcrd i j =>
@@ -107,7 +107,7 @@ Definition get (m_val : loc) :=
 Lemma get_spec_out_unary {D : Type} `{Inhab D} (m_idx m_val m_ind m_crd : loc) (i j : int) (d : D) :
   htriple (`{d}) (* The index set here is just an arbitrary singleton set `{d}` *)
     (fun=> get m_val m_idx m_ind m_crd i j) (* We run out `get` funtion on indicies `i` and `j` *)
-    (\[~ In i midx] \*                              (* such that `i` ∉ midx *)
+    (\[~ In i midx] \*                      (* such that `i` ∉ midx *)
       arr(m_val, mval)⟨`d⟩ \* 
       arr(m_idx, midx)⟨`d⟩ \* 
       arr(m_ind, mind)⟨`d⟩ \* 
@@ -127,8 +127,8 @@ Qed.
 
 Local Notation Dom := (int * int)%type.
 Local Notation D := (labeled (int * int)).
-Definition eld := @LibWP.eld (int * int)%type.
-Coercion eld : D >-> Dom. (* `eld` is a coercion of `labeled (int * int)` to `int * int` *)
+Definition get_index := @LibWP.eld (int * int)%type.
+Coercion get_index : D >-> Dom. (* `get_index` is a coercion of `labeled (int * int)` to `int * int` *)
 
 (* Hyper specification for `ucsr_get` function, called on a set of indecies,
   outside of the `midx` array. The index set in this case is a finite 
@@ -137,7 +137,7 @@ Coercion eld : D >-> Dom. (* `eld` is a coercion of `labeled (int * int)` to `in
 Lemma get_spec_out `{Inhab (labeled (int * int))} (fs : fset (labeled (int * int))) (m_idx m_val m_ind m_crd : loc) : 
   htriple fs
     (fun ij => get m_val m_idx m_ind m_crd ij.1 ij.2) 
-    (\[forall d, indom fs d -> ~ In (eld d).1 midx] \* (* for all `⟨l, i, j⟩` elements of `fs`, `i ∉ midx` *)
+    (\[forall d, indom fs d -> ~ In (get_index d).1 midx] \* (* for all `⟨l, i, j⟩` elements of `fs`, `i ∉ midx` *)
       (\*_(d <- fs) arr(m_val, mval)⟨`d⟩) \* 
       (\*_(d <- fs) arr(m_idx, midx)⟨`d⟩) \* 
       (\*_(d <- fs) arr(m_ind, mind)⟨`d⟩) \* 
@@ -207,7 +207,7 @@ Lemma spmspv_spec `{Inhab D} `{H__ : Inhab (labeled int)}
   [{
     {1| _  in `{(0,0)}                 => spmspv m_ind y_ind m_val y_val m_crd m_idx};
     {2| ij in `[0, Nrow] \x `[0, Ncol] => get m_val m_idx m_ind m_crd ij.1 ij.2};
-    {3| j  in `{0}       \x `[0, Ncol] => sv.get j.2 y_ind y_val 0 M}
+    {3| zj in `{0}       \x `[0, Ncol] => sv.get zj.2 y_ind y_val 0 M}
   }]
   {{ hv,
     arrf(hv[`1]((0,0)), i in Nrow => Σ_(j <- `[0, Ncol]) hv[`2]((i, j)) * hv[`3]((0, j)))⟨1, (0,0)⟩
@@ -290,7 +290,7 @@ Proof with (try seclocal_fold; seclocal_solver).
   rewrite E (fset_of_list_nodup 0 nodup_midx) len_midx prod_Union_distr.
   xin 1 : xstep=> s... (* advance the first instruction in `sum` *)
   xfor_sum Inv R R (fun hv i => Σ_(j <- `{midx[i]} \x `[0, Ncol]) hv[`2](j)) s. (* `For` rule application (Fig.6) *)
-  { xin* 2: xapp* @index.specs; xstep; xwp; xif=> [?|]; xgo...  (* advance all intructions in `ucsr.get` up to `sv.get` *)
+  { xin* 2: xapp* @index.specs; xstep; xwp; xif=> [?|]; xgo...  (* advance all instructions in `ucsr.get` up to `sv.get` *)
     xin 1 : xgo... (* advance `sum` up to `sv.sum` *)
     rewrite index_nodup //; try math. (* simplify index *)
     xsubst (snd : _ -> int). (* apply `Subst` rule from `Fig.7` *)
