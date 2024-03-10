@@ -37,7 +37,7 @@ Major differences with the paper verison are:
   In Coq, within one triple we only support index sets of the same type (different triples can have index sets of different types). That is why the first and the third index set of the Coq triple have an artificial extra component (which is always `0`). The type of index set elements in this case would be `labeled (int * int)`, where `labeled T` is a type of elements from `T` paired with some tag.
 4. In the paper the output of each component is a separate hyper value. Here all 
   outputs are assembled in the one hyper value `hv`. To reference to the outcome of
-  each particular component with tag `t`, one should write `hv['t]`.
+  each particular component with tag `t`, one should write ```hv[`t]```.
 
 
 # Other variations of LGTM triples
