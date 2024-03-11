@@ -57,7 +57,7 @@ Rule for for-loops:
 - For: `wp_for` in `lib/seplog/LibWP.v`
 
 Rule for while-loops: 
-- While: `xwhile_lemma` in `lib/seplog/LibLoops.v`
+- While: `wp_while` in `lib/seplog/LibWP.v`
 
 ### Important Results
 
