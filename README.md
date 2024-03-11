@@ -42,8 +42,8 @@ Lockstep rules:
 - Asn: `htriple_set` in `lib/seplog/LibWP.v`
 - Fr: `htriple_free` in `lib/seplog/LibWP.v`
 - Alc: `htriple_ref` in `lib/seplog/LibWP.v`
-- MAlc: `htriple_alloc` in `lib/seplog/LibWP.v`
-- MFr: `htriple_dealloc` in `lib/seplog/LibWP.v`
+- MAlc: `htriple_alloc_nat` in `lib/seplog/LibArray.v`
+- MFr: `htriple_dealloc` in `lib/seplog/LibArray.v`
 - Let: `htriple_let` in `lib/seplog/LibWP.v`
 - If: `htriple_if` in `lib/seplog/LibWP.v`
 - Len: `htriple_array_length` in `lib/seplog/LibArray.v`
