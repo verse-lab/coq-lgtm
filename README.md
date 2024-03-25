@@ -11,6 +11,7 @@ opam install coq-mathcomp-ssreflect=2.1.0
 opam install coq-mathcomp-zify coq-mathcomp-algebra=2.1.0 coq-mathcomp-fingroup=2.1.0 coq-mathcomp-finmap=2.1.0
 opam install coq-flocq
 opam install coq-bignums=9.0.0+coq8.18
+opam install coq-interval=4.9.0
 opam install coq-vcfloat=2.1.1 --ignore-constraints-on=coq
 ```
 
