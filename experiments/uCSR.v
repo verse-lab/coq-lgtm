@@ -182,12 +182,16 @@ Notation size := length.
 (**************************************************************************************)
 (*********  The full verison of the proof snippet from Section 4 of the paper *********)
 (**************************************************************************************)
-(* 
-  Instead of `xfor` tactic from the paper, we use a more convenient tactic 
-  `xfor_bigstr`. This tactic takes not the whole invariant as an input, but only that
-  part of it, which changes within the inductive step. Here we provide it some
-  technical arguments `Inv`, `R2`, `R3`, althother with two verisions of the changed 
-  clause from I_for: before and after the inductive step.
+(*
+  Discrepancies with a paper version: 
+  1. Instead of `xfor` tactic from the paper, we use a more convenient tactic 
+    `xfor_bigstr`. This tactic takes not the whole invariant as an input, but only that
+    part of it, which changes within the inductive step. Here we provide it some
+    technical arguments `Inv`, `R2`, `R3`, althother with two verisions of the changed 
+    clause from I_for: before and after the inductive step.
+  2. The postcondtion of the triple in the paper contains `Arrs` predicate. This predicate 
+    states that all arrays from the precondition are left untouched. Here, we replace it 
+    with `\Top` for readibility purposes.
 *)
 
 Lemma spmspv_spec `{Inhab D} `{H__ : Inhab (labeled int)}
