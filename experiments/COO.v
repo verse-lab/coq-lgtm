@@ -1,6 +1,6 @@
 Set Implicit Arguments.
 From LGTM.lib.theory Require Import LibFunExt LibLabType LibSummation LibListExt LibSepTLCbuffer.
-From LGTM.lib.seplog Require Import LibSepReference LibWP LibSepSimpl LibArray LibLoops NTriple.
+From LGTM.lib.seplog Require Import LibSepReference LibHypHeap LibWP LibXWP LibSepSimpl LibArray LibLoops NTriple.
 From LGTM.experiments Require Import Prelude UnaryCommon.
 From mathcomp Require Import ssreflect ssrfun zify.
 Hint Rewrite conseq_cons' : rew_listx.

@@ -1,6 +1,6 @@
 Set Implicit Arguments.
 From LGTM.lib.theory Require Import LibReflect.
-From LGTM.lib.seplog Require Import LibSepReference LibWP LibSepSimpl LibArray.
+From LGTM.lib.seplog Require Import LibSepReference LibHypHeap LibWP LibXWP LibSepSimpl LibArray.
 From mathcomp Require Import ssreflect ssrfun zify.
 
 Ltac bool_rew := 

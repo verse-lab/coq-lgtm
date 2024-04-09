@@ -29,6 +29,22 @@ Please note that warnings (in yellow colour) may appear during the compilation, 
 
 ## Navigation Guide
 
+This project consists of two major folders: `lib/` with LGTM metatheory formalisation and `experiments/` with LGTM case study evaluation. First we present a brief description of `lib/` folder contents: 
+
+- `theory/`: various extensions of Coq Standard Library
+- `seplog/`: LGTM metatheoty mechanisation 
+  - `LibSepFmap`: mechanisation of finite mappings
+  - `LibSepVar`: auxilary file to deal with variables
+  - `LibSepSimpl`: tactic for heap asserions simplification and automation
+  - `LibHypHeap`: lemmas about hyper heap assertions
+  - `LibWP`: lemmas about weakest precondition calculus
+  - `LibXWP`: setting up a Coq framework (automation and notations) to reason about LGTM hyper-triples in weakest precondition style
+  - `LibArrays`: lemmas to reason about arrays in LGTM
+  - `LibLoops`: lemmas to reason about `for`/`while` loops in LGTM
+  - `LibLoops_float`: lemmas to reason about `for`/`while` loops operating with floats in LGTM
+  - `NTriple`: lemmas for structural LGTM hyper-triples transformations
+  - `Subst`: machanisation and a tactic for `Subst` rule from the paper
+
 ### Important Proof Rules
 
 Structural rules:
@@ -55,10 +71,10 @@ Domain substitution rule:
 - Subst: `htriple_hsub` in `lib/seplog/LibWP.v`
 
 Rule for for-loops:
-- For: `wp_for` in `lib/seplog/LibWP.v`
+- For: `wp_for` in `lib/seplog/LibXWP.v`
 
 Rule for while-loops: 
-- While: `wp_while` in `lib/seplog/LibWP.v`
+- While: `wp_while` in `lib/seplog/LibXWP.v`
 
 ### Important Results
 
