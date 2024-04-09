@@ -24,12 +24,12 @@ Please refer to the following [commit](https://github.com/verse-lab/coq-lgtm/com
 
 > In addition to pinpointing where the important results and proof rules can be found it would also be helpful to have more details about the overall structure of mechanisation in the README file.
 
-In the [commit](https://github.com/verse-lab/coq-lgtm/commit/fa7e7756bc11ab59bc13d26cfc4a25b8b967fe0d) mentioned above the also elaborate on the structure of `lib/seplog` folder.
+In the [commit](https://github.com/verse-lab/coq-lgtm/commit/fa7e7756bc11ab59bc13d26cfc4a25b8b967fe0d) mentioned above we also elaborate on the structure of `lib/seplog` folder.
 
 >  In particular, I could not find any description in `README` about the content of the folder “lib/theory”.
 
 The content of this folder was fully adopted from the code attached to the [6th volume of Software Foundations](https://softwarefoundations.cis.upenn.edu/slf-current/index.html) which presents the simplified version of [CFML](https://gitlab.inria.fr/charguer/cfml2) framework. In particular this folder represents a subset of [TLC](https://github.com/charguer/tlc/tree/master/src) library, designed for a general purpose automation and standard library extension. For instance file `LibEqual.v` defines an [`extens`](https://github.com/verse-lab/coq-lgtm/blob/fa7e7756bc11ab59bc13d26cfc4a25b8b967fe0d/lib/theory/LibEqual.v#L87) tactic to exploit extensionality of various structures.  We use this tactic in many places, including [`disjoint_update`](https://github.com/verse-lab/coq-lgtm/blob/fa7e7756bc11ab59bc13d26cfc4a25b8b967fe0d/lib/seplog/LibSepFmap.v#L1873) lemma, to exercise the extensionality of finite mappings.  
 
-Each file from this folder contains comments with extensible documentation. As that is not our contribution we do not comment on its structure. We have added a reface to TLC and 6th volume of Software Foundations to the README file.
+Each file from this folder contains comments with extensible documentation. As that is not our contribution we do not comment on its structure. We have added a reference to TLC and 6th volume of Software Foundations to the README file.
 
 
