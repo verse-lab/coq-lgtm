@@ -25,17 +25,21 @@ Execute the following command in the terminal:
 make
 ```
 
-Please note that warnings (in yellow colour) may appear during the compilation, but they will not cause the compilation to fail. 
-
+Please note that warnings (in yellow color) may appear during the compilation, but they will not cause the compilation to fail. 
+ 
 ## Navigation Guide
 
-This project consists of two major folders: `lib/` with LGTM metatheory formalisation and `experiments/` with LGTM case study evaluation. First we present a brief description of `lib/` folder contents: 
+This project consists of two major folders: `lib/` with LGTM metatheory formalisation and `experiments/` with LGTM case study evaluation.
 
-- `theory/`: various extensions of Coq Standard Library
-- `seplog/`: LGTM metatheoty mechanisation 
+### Metatheory Mechanisation
+
+#### `lib/` structure
+
+- `theory/`: A subset of [TCL](https://github.com/charguer/tlc/tree/master/src) library taken from the [6th volume of Software Foundations](https://softwarefoundations.cis.upenn.edu/slf-current/index.html)
+- `seplog/`: LGTM metatheory mechanisation 
   - `LibSepFmap`: mechanisation of finite mappings
-  - `LibSepVar`: auxilary file to deal with variables
-  - `LibSepSimpl`: tactic for heap asserions simplification and automation
+  - `LibSepVar`: auxiliary file to deal with variables
+  - `LibSepSimpl`: tactic for heap assertions simplification and automation
   - `LibHypHeap`: lemmas about hyper heap assertions
   - `LibWP`: lemmas about weakest precondition calculus
   - `LibXWP`: setting up a Coq framework (automation and notations) to reason about LGTM hyper-triples in weakest precondition style
@@ -43,9 +47,9 @@ This project consists of two major folders: `lib/` with LGTM metatheory formalis
   - `LibLoops`: lemmas to reason about `for`/`while` loops in LGTM
   - `LibLoops_float`: lemmas to reason about `for`/`while` loops operating with floats in LGTM
   - `NTriple`: lemmas for structural LGTM hyper-triples transformations
-  - `Subst`: machanisation and a tactic for `Subst` rule from the paper
+  - `Subst`: mechanisation and a tactic for `Subst` rule from the paper
 
-### Important Proof Rules
+#### Important Proof Rules
 
 Structural rules:
 - Focus: `wp_union` in `lib/seplog/LibWP.v`
@@ -76,7 +80,11 @@ Rule for for-loops:
 Rule for while-loops: 
 - While: `wp_while` in `lib/seplog/LibXWP.v`
 
-### Important Results
+#### LGTM embedding details
+
+The Coq-specific details of the framework are explained in `Triple.md`. `Triple.md` explains how LGTM specification triples are embedded in the Coq development.
+
+### Important Experimental Results
 
 Mechanisation of the overview example from the paper can be found in `experiments` folder. 
 
@@ -97,11 +105,7 @@ Evaluation Case Studies:
 
 Mechanised proof of the overview case study, presented in Section 4, is located in `experiments/uCSR.v` with all correspondent comments.
 
-### LGTM embedding details
-
-The Coq-specific details of the framework are explained in `Triple.md`. `Triple.md` explains how LGTM specification triples are embedded in the Coq development.
-
-### Recommended order of Artifact Evaluation 
+### Recommended order of Artefact Evaluation 
 
 1. `Triple.md` -- explains how LGTM triples are embedded 
 2. `experiments/uCSR.v` -- explains the mechanised proof of Section 4 from the paper, as well as other uCSR related proofs.

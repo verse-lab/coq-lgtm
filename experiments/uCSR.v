@@ -191,7 +191,7 @@ Notation size := length.
     clause from I_for: before and after the inductive step.
   2. The postcondtion of the triple in the paper contains `Arrs` predicate. This predicate 
     states that all arrays from the precondition are left untouched. Here, we replace it 
-    with `\Top` for readibility purposes.
+    with `\Top` for readability purposes.
 *)
 
 Lemma spmspv_spec `{Inhab D} `{H__ : Inhab (labeled int)}
